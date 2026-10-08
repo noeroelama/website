@@ -111,14 +111,15 @@ See [docs/development.md](docs/development.md).
 
 ## Branches and environments
 
-| Branch    | Environment            | Firebase project        |
-| --------- | ---------------------- | ----------------------- |
-| `dev`     | Development (all work) | `ppidk-website-staging` |
-| `staging` | Staging (release test) | `ppidk-website-staging` |
-| `prod`    | Production (live)      | `ppidk-website-prod`    |
+| Branch    | Environment            | Firebase project     |
+| --------- | ---------------------- | -------------------- |
+| `dev`     | Development (all work) | `ppidk-website-prod` |
+| `staging` | Staging (release test) | `ppidk-website-prod` |
+| `prod`    | Production (live)      | `ppidk-website-prod` |
 
 Work is committed to `dev` and promoted by pull request `dev → staging → prod`.
-No other branches are created. Staging can never reach production data — this is enforced in code.
+No other branches are created. There is **one** Firebase project (one Firestore, one Auth) for every
+environment, so `dev` and `staging` deployments work on the live data.
 See [docs/deployment.md](docs/deployment.md) and [docs/environment.md](docs/environment.md).
 
 ## Documentation

@@ -3,8 +3,8 @@
 ## Decision: Firestore for everything
 
 All data — content, events, registrations, organization/chapters, members, newsletter,
-audit log, API keys and the shop — lives in **Cloud Firestore**, one database per environment
-(`ppidk-website-staging`, `ppidk-website-prod`). There is no second database.
+audit log, API keys and the shop — lives in **Cloud Firestore**: ONE database in the one Firebase project (`ppidk-website-prod`),
+shared by every environment. There is no second database.
 
 Browsers never talk to Firestore: rules are deny-all and every read/write goes through our
 servers with the Admin SDK (`infrastructure/firebase/firestore.rules`).

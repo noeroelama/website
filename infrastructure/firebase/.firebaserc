@@ -1,6 +1,5 @@
 {
   "projects": {
-    "staging": "ppidk-website-staging",
-    "production": "ppidk-website-prod"
+    "default": "ppidk-website-prod"
   }
 }

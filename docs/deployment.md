@@ -10,11 +10,11 @@ apps whose dependency graph did not change.
 
 There are exactly three branches. **Do not create other branches** (no feature/fix branches).
 
-| Branch    | Purpose                               | Deploys to                          | Firebase project        |
-| --------- | ------------------------------------- | ----------------------------------- | ----------------------- |
-| `dev`     | All day-to-day work is committed here | Vercel Preview (dev branch)         | `ppidk-website-staging` |
-| `staging` | Release candidate, tested by the team | Vercel Staging (custom environment) | `ppidk-website-staging` |
-| `prod`    | What is live (default branch)         | Vercel Production                   | `ppidk-website-prod`    |
+| Branch    | Purpose                               | Deploys to                          | Firebase project     |
+| --------- | ------------------------------------- | ----------------------------------- | -------------------- |
+| `dev`     | All day-to-day work is committed here | Vercel Preview (dev branch)         | `ppidk-website-prod` |
+| `staging` | Release candidate, tested by the team | Vercel Staging (custom environment) | `ppidk-website-prod` |
+| `prod`    | What is live (default branch)         | Vercel Production                   | `ppidk-website-prod` |
 
 ```text
 commit + push to dev ─PR─▶ staging ─PR─▶ prod

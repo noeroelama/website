@@ -11,34 +11,37 @@ describe("environment validation", () => {
     );
   });
 
-  it("never lets staging/development use the production Firebase project", () => {
-    for (const appEnv of ["development", "test", "staging"]) {
+  it("uses ONE Firebase project for every environment", () => {
+    for (const appEnv of ["development", "test", "staging", "production"]) {
+      expect(
+        loadEnv(schema, { APP_ENV: appEnv, FIREBASE_PROJECT_ID: "ppidk-website-prod" })
+          .FIREBASE_PROJECT_ID,
+      ).toBe("ppidk-website-prod");
+    }
+  });
+
+  it("deployed environments refuse any other project and the emulators", () => {
+    for (const appEnv of ["staging", "production"]) {
       expect(() =>
-        loadEnv(schema, { APP_ENV: appEnv, FIREBASE_PROJECT_ID: "ppidk-website-prod" }),
+        loadEnv(schema, { APP_ENV: appEnv, FIREBASE_PROJECT_ID: "someone-elses-project" }),
+      ).toThrow(EnvironmentIsolationError);
+      expect(() =>
+        loadEnv(schema, {
+          APP_ENV: appEnv,
+          FIREBASE_PROJECT_ID: "ppidk-website-prod",
+          FIRESTORE_EMULATOR_HOST: "localhost:8080",
+        }),
       ).toThrow(EnvironmentIsolationError);
     }
   });
 
-  it("requires production to use a registered production project and no emulators", () => {
-    expect(() =>
-      loadEnv(schema, { APP_ENV: "production", FIREBASE_PROJECT_ID: "ppidk-website-staging" }),
-    ).toThrow(EnvironmentIsolationError);
-    expect(() =>
+  it("lets development use the local emulators (demo-* projects)", () => {
+    expect(
       loadEnv(schema, {
-        APP_ENV: "production",
-        FIREBASE_PROJECT_ID: "ppidk-website-prod",
+        APP_ENV: "development",
+        FIREBASE_PROJECT_ID: "demo-website",
         FIRESTORE_EMULATOR_HOST: "localhost:8080",
-      }),
-    ).toThrow(EnvironmentIsolationError);
-    expect(
-      loadEnv(schema, { APP_ENV: "production", FIREBASE_PROJECT_ID: "ppidk-website-prod" }).APP_ENV,
-    ).toBe("production");
-  });
-
-  it("accepts staging with the staging project", () => {
-    expect(
-      loadEnv(schema, { APP_ENV: "staging", FIREBASE_PROJECT_ID: "ppidk-website-staging" })
-        .FIREBASE_PROJECT_ID,
-    ).toBe("ppidk-website-staging");
+      }).FIREBASE_PROJECT_ID,
+    ).toBe("demo-website");
   });
 });

@@ -17,9 +17,9 @@ Per project:
 
 1. **Git**: Production Branch = `prod`. Create a custom environment **Staging** tracking the
    `staging` branch. Everything else (`dev`, PR branches) is a Preview.
-2. **Environment variables**: separate values for Preview, Staging and Production.
-   Preview and Staging use `ppidk-website-staging` (`APP_ENV=staging`); Production uses
-   `ppidk-website-prod` (`APP_ENV=production`). Production values exist only in Production.
+2. **Environment variables**: every environment uses the one Firebase project
+   `ppidk-website-prod`. Preview and Staging set `APP_ENV=staging`, Production `APP_ENV=production`;
+   the Firebase values are the same in all three.
 3. Mark secrets as **Sensitive**. Every project needs its own `RATE_LIMIT_SECRET` (≥ 32 random characters) per environment.
 4. Enable **Deployment Protection** for Preview deployments (preview URLs are otherwise public).
 5. Set `ENABLE_EXPERIMENTAL_COREPACK=1` so Vercel uses the pnpm version pinned in `package.json`.

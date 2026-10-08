@@ -41,7 +41,7 @@ describe.each(apps)("%s request guard wiring", (app) => {
   it("staging uses the shared Firestore store with the app's role, and fails open if it is down", async () => {
     vi.stubEnv("APP_ENV", "staging");
     vi.stubEnv("RATE_LIMIT_SECRET", "s".repeat(32));
-    vi.stubEnv("FIREBASE_PROJECT_ID", "ppidk-website-staging");
+    vi.stubEnv("FIREBASE_PROJECT_ID", "ppidk-website-prod");
     const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     const { guardRequest } = await load(app);
     expect((await guardRequest(new Request("https://site.example/"))).blocked).toBeNull();
@@ -49,7 +49,7 @@ describe.each(apps)("%s request guard wiring", (app) => {
       expect.objectContaining({
         appEnv: "staging",
         role: roles[app],
-        projectId: "ppidk-website-staging",
+        projectId: "ppidk-website-prod",
       }),
     );
     expect(createFirestoreRateLimitStore).toHaveBeenCalled();

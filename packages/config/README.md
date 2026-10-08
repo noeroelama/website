@@ -10,11 +10,11 @@ Environment validation and shared TypeScript configuration.
 
 ## Structure
 
-| Import                            | Contains                                                           |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `@website/config`                 | `APP_ENVIRONMENTS`, project ID lists, `assertEnvironmentIsolation` |
-| `@website/config/env`             | Env schemas, `loadEnv`, `lazyEnv`                                  |
-| `@website/config/tsconfig/*.json` | TypeScript bases                                                   |
+| Import                            | Contains                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `@website/config`                 | `APP_ENVIRONMENTS`, `WEBSITE_FIREBASE_PROJECT_ID`, `assertEnvironmentIsolation` |
+| `@website/config/env`             | Env schemas, `loadEnv`, `lazyEnv`                                               |
+| `@website/config/tsconfig/*.json` | TypeScript bases                                                                |
 
 ## Rules
 

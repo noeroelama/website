@@ -1,7 +1,7 @@
 # Authentication
 
 **One Firebase Authentication user pool for everyone** — staff, members and shop customers —
-per environment (`ppidk-website-staging`, `ppidk-website-prod`). Firebase says _who_ someone
+in the one Firebase project (`ppidk-website-prod`) used by every environment. Firebase says _who_ someone
 is; _what_ they may do comes only from RBAC role assignments in Firestore (`users/{uid}`).
 
 ## Sign-in methods
