@@ -8,7 +8,7 @@ no queues, no self-managed workers.
 ```text
                  web.example.org    admin.example.org   shop.example.org    api.example.org
                  apps/web           apps/admin          apps/shop           apps/gateway
-                 (Next.js, ISR)     (Next.js, SSR)      (Next.js)           (Hono, /v1)
+                 (Next.js, PPR)     (Next.js, PPR)      (Next.js, PPR)      (Hono, /v1)
                       │                  │                   │                   │
                       └──────────────────┴─────────┬─────────┴───────────────────┘
                                                    │  in-process imports (no shared API service)
@@ -19,7 +19,7 @@ no queues, no self-managed workers.
 ```
 
 Each app is its own Vercel project and failure boundary. A broken admin deploy cannot take
-down the public site; the public site serves cached (ISR) pages even if the database is down.
+down the public site; the public site serves prerendered pages even if the database is down.
 
 ## Applications
 
@@ -93,6 +93,26 @@ UI → Server Action → createGuardedAction:
        → validate (Zod) → authorize (permissions.can, scoped)
        → domain logic → repository (@website/db) + audit event in the SAME transaction
 ```
+
+## Rendering
+
+web, admin and shop use **Partial Prerendering** (`cacheComponents: true` in each
+`next.config.ts`; checked by `tests/integration/architecture.test.ts`). At build, Next.js
+prerenders a static shell for every page; anything that needs the request streams in afterwards.
+
+| Page content                                   | What to do                                                                              |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Static (layout, headings, client-side forms)   | Nothing — it is in the shell.                                                           |
+| Shared data (news, events, products)           | `"use cache"` + `cacheLife(...)` (+ `cacheTag` to revalidate on publish). In the shell. |
+| Per-user (`cookies()`, session, principal)     | Put the component that reads it inside `<Suspense>`; the rest of the page stays static. |
+| Whole page is per-user and must redirect (307) | `export const instant = false` on the page — it renders at request time, no shell.      |
+
+`export const dynamic`, `revalidate` and `fetchCache` are not allowed with Cache Components.
+The shell must never contain personal data; authentication and authorization still run on the
+server for every request (inside the `<Suspense>` part). Current pages: web `/`, `/login`,
+`/signup`, `/forgot-password` and shop `/` are fully static; admin `/` is a static shell with the
+sign-in state streamed; web `/account` uses `instant = false`. Next.js guide:
+`node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md`.
 
 ## Asynchronous work
 

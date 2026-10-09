@@ -1,7 +1,7 @@
 import { AppShell, StatusBadge } from "@website/ui";
 
-// Public pages are static/ISR so they keep serving even if admin, shop or the database is down.
-export const revalidate = 300;
+// Fully prerendered at build (no request-time data), so it keeps serving even if admin, shop or
+// the database is down. Cache content with "use cache" + cacheLife (docs/architecture.md#rendering).
 
 export default function HomePage() {
   return (

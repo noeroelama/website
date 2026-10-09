@@ -13,7 +13,7 @@ Staff administration for content, events, members, users and audit.
 
 | Path                           | Purpose                                                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `src/app/`                     | Pages (App Router). Never cached: every request is authenticated.                                            |
+| `src/app/`                     | Pages (App Router). Partial Prerendering: data-free shell; session parts stream in `<Suspense>`.             |
 | `src/proxy.ts`                 | Runs before every request: origin check, per-IP rate limit, private caching (`src/server/request-guard.ts`). |
 | `src/app/api/session/route.ts` | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                      |
 | `src/server/context.ts`        | `getPrincipal()` — session → Firebase → roles in Firestore; staff only.                                      |

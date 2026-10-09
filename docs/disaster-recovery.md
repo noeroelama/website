@@ -4,7 +4,7 @@
 
 | Area        | RTO                                | RPO                                                       |
 | ----------- | ---------------------------------- | --------------------------------------------------------- |
-| Public site | ~0 (cached ISR pages keep serving) | n/a                                                       |
+| Public site | ~0 (static pages keep serving)     | n/a                                                       |
 | Admin       | 4 h                                | minutes (PITR)                                            |
 | Shop        | 4 h                                | minutes; payment provider is source of truth for payments |
 | Gateway     | 4 h                                | minutes                                                   |

@@ -12,6 +12,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Partial Prerendering: a static shell is prerendered at build; request-time parts stream in
+  // behind <Suspense>. See docs/architecture.md#rendering.
+  cacheComponents: true,
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: [
     "@website/audit",

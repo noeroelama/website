@@ -12,7 +12,7 @@ Public website of PPIDK Asia-Oseania and the member self-service area.
 
 | Path                                              | Purpose                                                                                                      |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `src/app/`                                        | Pages (App Router). Public pages are static/ISR so they survive backend outages.                             |
+| `src/app/`                                        | Pages (App Router). Partial Prerendering: public pages are prerendered, so they survive outages.             |
 | `src/proxy.ts`                                    | Runs before every request: origin check, per-IP rate limit, private caching (`src/server/request-guard.ts`). |
 | `src/app/api/session/route.ts`                    | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                      |
 | `src/app/{login,signup,forgot-password,account}/` | Sign-in pages: Google, email/password, passkeys, password reset, account (add passkey, sign out).            |
