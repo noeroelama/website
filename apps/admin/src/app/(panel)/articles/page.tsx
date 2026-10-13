@@ -1,7 +1,7 @@
 import { AccessMessage } from "@/components/access-message";
 import { requireAdminViewer } from "@/server/context";
 
-// Login required: rendered at request time so a signed-out visitor gets a real 307 to sign-in.
+// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
 export default async function ArticlesPage() {

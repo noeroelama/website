@@ -1,4 +1,5 @@
 // Used by src/proxy.ts. No "server-only" import: the proxy is not a React Server Component.
+import { readCookie, SESSION_COOKIE, signInUrl } from "@website/auth";
 import { baseEnv, firebaseAdminEnv, lazyEnv, loadEnv, rateLimitEnv } from "@website/config/env";
 import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
 import { createLogger } from "@website/observability";
@@ -40,4 +41,15 @@ const getGuard = lazyEnv(() => {
 /** Origin check + per-IP rate limit + private caching headers for every request. */
 export function guardRequest(request: Request): Promise<GuardResult> {
   return getGuard()(request);
+}
+
+/**
+ * Login-required page (/account) without a session cookie → the sign-in URL, for a real 307 from
+ * the proxy (with Cache Components a page's redirect() is streamed: 200 + client-side redirect).
+ * Only checks that the cookie exists; the page still verifies it.
+ */
+export function signInRedirect(request: Request): string | null {
+  const { pathname, search } = new URL(request.url);
+  if (pathname !== "/account" && !pathname.startsWith("/account/")) return null;
+  return readCookie(request, SESSION_COOKIE) ? null : signInUrl("", pathname + search);
 }

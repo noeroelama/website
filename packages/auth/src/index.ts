@@ -1,5 +1,5 @@
 export * from "./session";
-export { createSessionRoutes } from "./session-routes";
+export { createSessionRoutes, readCookie } from "./session-routes";
 export { safeReturnUrl, signInUrl } from "./return-url";
 export {
   createPasskeyRoutes,

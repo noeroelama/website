@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SESSION_COOKIE } from "@website/auth";
 import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
 import type * as WebGuardModule from "../../apps/web/src/server/request-guard";
 
@@ -69,5 +70,46 @@ describe.each(apps)("%s request guard wiring", (app) => {
     vi.stubEnv("NODE_ENV", "development");
     const { guardRequest } = await load(app);
     expect((await guardRequest(new Request("https://site.example/"))).blocked).toBeNull();
+  });
+});
+
+// With Cache Components a page's redirect() is streamed (200 + client-side redirect), so each
+// proxy sends signed-out visitors of login-required pages to sign-in itself, with a real 307.
+describe("sign-in redirect before the page renders (proxy)", () => {
+  const signedIn = { headers: { cookie: `theme=dark; ${SESSION_COOKIE}=token` } };
+
+  it("web sends a visitor without a session cookie from /account to /login", async () => {
+    vi.stubEnv("APP_ENV", "test");
+    const { signInRedirect } = await load("web");
+    expect(signInRedirect(new Request("https://site.example/account?tab=keys"))).toBe(
+      `/login?next=${encodeURIComponent("/account?tab=keys")}`,
+    );
+    expect(signInRedirect(new Request("https://site.example/account/passkeys"))).toBe(
+      `/login?next=${encodeURIComponent("/account/passkeys")}`,
+    );
+    expect(signInRedirect(new Request("https://site.example/account", signedIn))).toBeNull();
+    for (const path of ["/", "/accounts", "/login", "/api/session"]) {
+      expect(signInRedirect(new Request(`https://site.example${path}`)), path).toBeNull();
+    }
+  });
+
+  it("admin sends a visitor without a session cookie from any page to the web sign-in", async () => {
+    vi.stubEnv("APP_ENV", "test");
+    vi.stubEnv("WEB_URL", "https://web.example");
+    vi.stubEnv("ADMIN_URL", "https://admin.example");
+    const { signInRedirect } = await load("admin");
+    expect(signInRedirect(new Request("https://admin.example/events?page=2"))).toBe(
+      `https://web.example/login?next=${encodeURIComponent("https://admin.example/events?page=2")}`,
+    );
+    expect(signInRedirect(new Request("https://admin.example/events", signedIn))).toBeNull();
+    expect(signInRedirect(new Request("https://admin.example/api/session"))).toBeNull();
+  });
+
+  it("admin leaves signed-out visitors to the page when WEB_URL/ADMIN_URL are not set", async () => {
+    vi.stubEnv("APP_ENV", "test");
+    vi.stubEnv("WEB_URL", "");
+    vi.stubEnv("ADMIN_URL", "");
+    const { signInRedirect } = await load("admin");
+    expect(signInRedirect(new Request("https://admin.example/events"))).toBeNull();
   });
 });

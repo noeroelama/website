@@ -10,17 +10,17 @@ Public website of PPIDK Asia-Oseania and the member self-service area.
 
 ## Structure
 
-| Path                                              | Purpose                                                                                                      |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `src/app/`                                        | Pages (App Router). Partial Prerendering: public pages are prerendered, so they survive outages.             |
-| `src/proxy.ts`                                    | Runs before every request: origin check, per-IP rate limit, private caching (`src/server/request-guard.ts`). |
-| `src/app/api/session/route.ts`                    | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                      |
-| `src/app/{articles,map,events,gallery,about}/`    | Public pages (blank for now; Home is `src/app/page.tsx`). Prerendered, no sign-in.                           |
-| `src/app/{login,signup,forgot-password,account}/` | Sign-in pages: Google, email/password, passkeys, password reset, account (add passkey, sign out).            |
-| `src/app/api/passkeys/[action]/route.ts`          | Passkey registration and sign-in endpoints (`src/server/passkeys.ts`).                                       |
-| `src/lib/auth-client.ts`                          | Browser sign-in flows (Firebase Auth SDK + WebAuthn); ends in the session cookie.                            |
-| `src/server/`                                     | Server-only code (`import "server-only"`): env, database and auth access.                                    |
-| `.env.example`                                    | Variables this app needs.                                                                                    |
+| Path                                              | Purpose                                                                                                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/`                                        | Pages (App Router). Partial Prerendering: public pages are prerendered, so they survive outages.                                                        |
+| `src/proxy.ts`                                    | Runs before every request: origin check, per-IP rate limit, private caching, sign-in redirect without a session cookie (`src/server/request-guard.ts`). |
+| `src/app/api/session/route.ts`                    | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                                                                 |
+| `src/app/{articles,map,events,gallery,about}/`    | Public pages (blank for now; Home is `src/app/page.tsx`). Prerendered, no sign-in.                                                                      |
+| `src/app/{login,signup,forgot-password,account}/` | Sign-in pages: Google, email/password, passkeys, password reset, account (add passkey, sign out).                                                       |
+| `src/app/api/passkeys/[action]/route.ts`          | Passkey registration and sign-in endpoints (`src/server/passkeys.ts`).                                                                                  |
+| `src/lib/auth-client.ts`                          | Browser sign-in flows (Firebase Auth SDK + WebAuthn); ends in the session cookie.                                                                       |
+| `src/server/`                                     | Server-only code (`import "server-only"`): env, database and auth access.                                                                               |
+| `.env.example`                                    | Variables this app needs.                                                                                                                               |
 
 ## Rules
 

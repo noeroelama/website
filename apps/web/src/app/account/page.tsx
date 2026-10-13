@@ -7,8 +7,8 @@ import { AccountActions } from "./account-actions";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
 
-// No static shell (allowed to block): everything here depends on the session, and a signed-out
-// visitor must get a real 307 to /login (a redirect inside streamed <Suspense> arrives as 200).
+// No static shell (allowed to block): everything here depends on the session. A visitor without
+// a session cookie already got a real 307 to /login from src/proxy.ts; this check verifies it.
 export const instant = false;
 
 export default async function AccountPage() {

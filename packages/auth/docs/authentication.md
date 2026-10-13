@@ -74,6 +74,10 @@ every request, every app: cookie → verifySessionCookie(checkRevoked) → users
   web app returns there only if `safeReturnUrl` accepts the target (a relative path, or a URL on
   WEB_URL / ADMIN_URL / SHOP_URL — no open redirect). Admin needs `WEB_URL` and `ADMIN_URL` set for
   the redirect; without them it shows "sign-in required" instead.
+- That redirect is sent by each app's `src/proxy.ts` (`signInRedirect` in
+  `src/server/request-guard.ts`) when the session cookie is missing, before the page renders. With
+  Cache Components a page's own `redirect()` is streamed (200 + client-side redirect), so the
+  proxy is what makes it a real 307. The page still verifies the session and permissions.
 - Endpoint (web, admin, shop): `POST /api/session` with `{ "idToken": "<Firebase ID token>" }` →
   `204` + cookie; invalid body `400`; invalid/expired token `401` (reason not disclosed).
   `DELETE /api/session` → revokes all sessions of the user and clears the cookie (same Domain).
@@ -83,7 +87,8 @@ every request, every app: cookie → verifySessionCookie(checkRevoked) → users
 - Sign-out and role changes revoke refresh tokens (`revokeSessions`), which ends the session in
   every app.
 - Sensitive actions require a recent sign-in (`isRecentSignIn`, ≤ 15 min).
-- `proxy.ts` (middleware) is never relied on for authentication or authorization.
+- `proxy.ts` (middleware) is never relied on for authentication or authorization: it only checks
+  that a session cookie exists (for the sign-in redirect); pages verify it.
 - Custom Claims are not used for authorization.
 - Keep DNS clean: every subdomain of `SESSION_COOKIE_DOMAIN` receives the cookie, so remove
   records that point to services we no longer control (subdomain takeover).
