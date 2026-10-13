@@ -1,32 +1,68 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@website/auth";
+import { redirect } from "next/navigation";
+import { SESSION_COOKIE, signInUrl, type VerifiedIdentity } from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
 import { canAccessAdmin, type Principal } from "@website/permissions";
-import { getAdminEnv } from "./env";
+import { getAdminEnv, getAppUrls } from "./env";
 import { denyAllUserDirectory, type UserDirectory } from "./user-directory";
 
 const userDirectory: UserDirectory = denyAllUserDirectory;
 
-/**
- * Resolves the current principal on the server for every request:
- * session cookie → Firebase verification (with revocation check) → user record + roles in Firestore.
- * Returns null unless the user holds a staff role (`admin.access`).
- * Never trusts client state, token claims, URL params or payload role fields.
- */
-export async function getPrincipal(): Promise<Principal | null> {
+/** The signed-in staff member: who they are (for display) and what they may do. */
+export interface AdminViewer {
+  readonly principal: Principal;
+  readonly name: string | null;
+  readonly email: string | null;
+}
+
+/** Shared session cookie → Firebase verification (with revocation check). Once per request. */
+const getIdentity = cache(async (): Promise<VerifiedIdentity | null> => {
   const cookie = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!cookie) return null;
-
   const env = getAdminEnv();
-  const identity = await createFirebaseIdentityProvider({
+  return createFirebaseIdentityProvider({
     appEnv: env.APP_ENV,
     projectId: env.FIREBASE_PROJECT_ID,
     clientEmail: env.FIREBASE_CLIENT_EMAIL,
     privateKey: env.FIREBASE_PRIVATE_KEY,
   }).verifySessionCookie(cookie);
-  if (!identity) return null;
+});
 
+/**
+ * Resolves the current staff member on the server for every request:
+ * session cookie → Firebase verification → user record + roles in Firestore.
+ * Returns null unless the user holds a staff role (any admin-page permission).
+ * Never trusts client state, token claims, URL params or payload role fields.
+ */
+export const getAdminViewer = cache(async (): Promise<AdminViewer | null> => {
+  const identity = await getIdentity();
+  if (!identity) return null;
   const principal = await userDirectory.findPrincipalByUid(identity.uid);
-  return canAccessAdmin(principal) ? principal : null;
+  if (!principal || !canAccessAdmin(principal)) return null;
+  return { principal, name: identity.name ?? null, email: identity.email };
+});
+
+/** The principal alone, for createGuardedAction. */
+export async function getPrincipal(): Promise<Principal | null> {
+  return (await getAdminViewer())?.principal ?? null;
+}
+
+/**
+ * For every login-required page. Not signed in → straight to the web sign-in page (307), which
+ * brings the visitor back to `path` with the shared session. Signed in without staff access →
+ * "no-access" (redirecting would loop). "signed-out" is only returned when WEB_URL/ADMIN_URL
+ * are not configured (e.g. CI), so the page can show a message instead.
+ * Use with `export const instant = false` so the redirect is a real 307.
+ */
+export async function requireAdminViewer(
+  path: string,
+): Promise<AdminViewer | "signed-out" | "no-access"> {
+  if (!(await getIdentity())) {
+    const { WEB_URL, ADMIN_URL } = getAppUrls();
+    if (WEB_URL && ADMIN_URL) redirect(signInUrl(WEB_URL, `${ADMIN_URL}${path}`));
+    return "signed-out";
+  }
+  return (await getAdminViewer()) ?? "no-access";
 }

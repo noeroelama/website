@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { addPasskey, signOut } from "@/lib/auth-client";
-import { Button, formStyle, Message, useAuthAction } from "@/components/auth-form";
+import { Button, formClass, Message, useAuthAction } from "@/components/auth-form";
 
 export function AccountActions() {
   const passkey = useAuthAction();
   const [added, setAdded] = useState(false);
   const signOutAction = useAuthAction();
   return (
-    <div style={formStyle}>
+    <div className={formClass}>
       <Button
         type="button"
         busy={passkey.busy}

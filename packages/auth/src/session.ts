@@ -1,15 +1,22 @@
 /**
- * Session cookie policy. There is ONE Firebase Auth user pool for everyone (staff, members,
- * customers), but each app keeps its own session cookie:
- * `__Host-` prefix => Secure, Path=/, no Domain, so a cookie set by admin.example.org is
- * never sent to web/shop/api, and a stolen shop session cannot be replayed against admin.
+ * Session cookie policy. ONE Firebase Auth user pool for everyone (staff, members, customers)
+ * and ONE session shared by web, admin and shop (decision DEC-13): sign in once, signed in
+ * everywhere; sign out anywhere revokes the session everywhere.
+ *
+ * `__Secure-` (not `__Host-`, which forbids a Domain): the cookie is always Secure + HttpOnly +
+ * SameSite=Lax and is set on the parent domain from SESSION_COOKIE_DOMAIN (e.g. ppiasiania.id),
+ * so it is sent to every subdomain — never to the gateway, which does not read it. Without a
+ * domain (local development) it is host-only; localhost apps still share it across ports.
+ * What an account may do in each app is still decided by RBAC on every request.
  */
-export const SESSION_COOKIE = "__Host-session";
+export const SESSION_COOKIE = "__Secure-session";
 
 /** Verified identity. Says WHO someone is — never what they may do (that is RBAC, from Firestore). */
 export interface VerifiedIdentity {
   readonly uid: string;
   readonly email: string | null;
+  /** Display name from the sign-in provider (Google sets it; email/password accounts may not). */
+  readonly name?: string | null;
   readonly emailVerified: boolean;
   readonly signInProvider: string | null;
   /** Seconds since epoch of the last real sign-in; used for re-auth on sensitive actions. */

@@ -31,6 +31,8 @@ and link to it from the others.
 | Authorization                                            | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |
 | Request security                                         | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
 | Audit logging                                            | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
+| Admin side panel                                         | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
+| Design tokens (colours, Poppins type scale, spacing)     | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
 
 Add a row here when you add a feature doc.
 

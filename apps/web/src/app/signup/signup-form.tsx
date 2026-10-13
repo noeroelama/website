@@ -7,7 +7,7 @@ import { signUpSchema } from "@/lib/auth-errors";
 import {
   Button,
   Field,
-  formStyle,
+  formClass,
   formValues,
   GoogleButton,
   Message,
@@ -18,10 +18,10 @@ export function SignUpForm() {
   const { busy, error, run } = useAuthAction();
   const [invalid, setInvalid] = useState("");
   return (
-    <div style={formStyle}>
+    <div className={formClass}>
       <GoogleButton />
       <form
-        style={formStyle}
+        className={formClass}
         onSubmit={(event) => {
           const parsed = signUpSchema.safeParse(formValues(event, "email", "password", "confirm"));
           setInvalid(parsed.success ? "" : (parsed.error.issues[0]?.message ?? ""));

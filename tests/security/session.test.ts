@@ -43,6 +43,24 @@ describe("OAuth session endpoint (Google sign-in via Firebase → server session
     expect(cookie).not.toMatch(/Domain=/i);
   });
 
+  it("uses a __Secure- cookie so one session can be shared by web, admin and shop", () => {
+    // __Host- forbids the Domain attribute; __Secure- still forces Secure.
+    expect(SESSION_COOKIE).toBe("__Secure-session");
+  });
+
+  it("sets and clears the shared cookie on the configured parent domain", async () => {
+    const { identity } = provider();
+    const routes = createSessionRoutes({ identity, maxAgeHours: 8, cookieDomain: "ppiasiania.id" });
+    const signIn = await routes.POST(post({ idToken: "google-id-token" }));
+    expect(signIn.headers.get("set-cookie")).toContain("Domain=ppiasiania.id");
+    const signOut = await routes.DELETE(
+      new Request("https://admin.ppiasiania.id/api/session", { method: "DELETE" }),
+    );
+    // A cookie set with a Domain can only be cleared with the same Domain.
+    expect(signOut.headers.get("set-cookie")).toContain("Domain=ppiasiania.id");
+    expect(signOut.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
   it("rejects malformed bodies and any attempt to choose a uid or role", async () => {
     const routes = createSessionRoutes({ identity: provider().identity, maxAgeHours: 8 });
     for (const body of [

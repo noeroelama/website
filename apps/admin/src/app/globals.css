@@ -1,0 +1,342 @@
+/*
+ * Admin-only layout tokens. Colours, type, radius, spacing and shadows come from the shared
+ * design tokens (@website/ui/styles.css, imported first in layout.tsx).
+ */
+:root {
+  --sidebar-width: 16.5rem; /* 264 px */
+  --sidebar-width-mobile: min(17.5rem, 82vw);
+  --topbar-height: 3.5rem; /* 56 px */
+  --brand-logo-size: 2.5rem;
+  --brand-name-measure: 18ch;
+  --content-padding: var(--space-4);
+  --content-padding-desktop: var(--space-8) var(--space-10);
+}
+
+/* ===================== Side panel (components/admin-sidebar.tsx) ===================== */
+.admin-frame {
+  min-height: 100dvh;
+}
+
+.admin-skip-link {
+  position: absolute;
+  top: calc(-1 * var(--space-12));
+  left: var(--space-3);
+  z-index: 50;
+  padding: var(--space-2-5) var(--space-3-5);
+  border-radius: var(--radius-md);
+  background: var(--color-panel-active);
+  color: var(--color-on-panel-active);
+  font-weight: var(--font-semibold);
+}
+
+.admin-skip-link:focus {
+  top: var(--space-3);
+}
+
+/* Mobile top bar (hidden on desktop) */
+.admin-topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--topbar-height);
+  padding: env(safe-area-inset-top) var(--space-2) 0;
+  background: var(--color-panel);
+  color: var(--color-on-panel);
+}
+
+.admin-topbar-title {
+  overflow: hidden;
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-touch);
+  height: var(--size-touch);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.admin-icon-button:hover {
+  background: var(--color-panel-hover);
+}
+
+/* Drawer backdrop (mobile) */
+.admin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  border: 0;
+  padding: 0;
+  background: var(--color-overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.admin-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Panel */
+.admin-panel {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width-mobile);
+  padding: calc(env(safe-area-inset-top) + var(--space-6)) var(--space-3-5)
+    calc(env(safe-area-inset-bottom) + var(--space-4));
+  overflow-y: auto;
+  background: var(--color-panel);
+  color: var(--color-on-panel);
+  transform: translateX(-100%);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.admin-panel[data-open="true"] {
+  transform: translateX(0);
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-1-5) var(--space-5);
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-logo {
+  flex: none;
+  width: var(--brand-logo-size);
+  height: var(--brand-logo-size);
+  object-fit: contain;
+}
+
+.admin-brand-name {
+  max-width: var(--brand-name-measure);
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.admin-nav {
+  padding-top: var(--space-4);
+}
+
+.admin-menu-label {
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-1-5);
+  color: var(--color-on-panel-muted);
+  font-weight: var(--font-medium);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.admin-nav-list {
+  display: grid;
+  gap: var(--space-0-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-on-panel);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.admin-nav-link:hover {
+  background: var(--color-panel-hover);
+}
+
+.admin-nav-link[aria-current="page"] {
+  background: var(--color-panel-active);
+  color: var(--color-on-panel-active);
+  font-weight: var(--font-semibold);
+}
+
+.admin-panel :focus-visible {
+  outline-color: var(--color-panel-active);
+}
+
+/* Footer with the account menu */
+.admin-footer {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-panel-line);
+}
+
+.admin-user-menu {
+  position: relative;
+}
+
+.admin-user-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--size-touch);
+  padding: var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-on-panel);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-user-button:hover {
+  background: var(--color-panel-hover);
+}
+
+.admin-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--size-avatar);
+  height: var(--size-avatar);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-950);
+  color: var(--color-white);
+  font-weight: var(--font-bold);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-user-text {
+  display: grid;
+  min-width: 0;
+}
+
+.admin-user-name,
+.admin-user-email {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-user-name {
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.admin-user-email {
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-popup {
+  position: absolute;
+  inset: auto 0 calc(100% + var(--space-2));
+  padding: var(--space-1) 0;
+  border-radius: var(--radius-md);
+  background: var(--color-panel-active);
+  color: var(--color-on-panel-active);
+  box-shadow: var(--shadow-popover);
+}
+
+.admin-popup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  width: 100%;
+  min-height: var(--size-touch);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admin-popup-item:last-child {
+  border-bottom: 0;
+}
+
+.admin-popup-item:hover,
+.admin-popup-item:focus-visible {
+  outline: none;
+  background: var(--color-hover);
+}
+
+.admin-popup-separator {
+  height: var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.admin-sign-out-error {
+  margin: 0 0 var(--space-2);
+  color: var(--color-on-panel);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+/* Content */
+.admin-main {
+  min-height: 100dvh;
+  padding: calc(var(--topbar-height) + env(safe-area-inset-top) + var(--space-6))
+    var(--content-padding) var(--space-8);
+}
+
+/* Desktop. CSS cannot read a custom property in a media query: 1024px must match
+   DESKTOP_QUERY in components/admin-sidebar.tsx. */
+@media (min-width: 1024px) {
+  .admin-topbar,
+  .admin-backdrop {
+    display: none;
+  }
+
+  .admin-panel {
+    width: var(--sidebar-width);
+    padding-top: var(--space-6);
+    transform: none;
+    transition: none;
+  }
+
+  /* Pointer devices: denser rows, as in the desktop design. */
+  .admin-nav-link {
+    min-height: var(--size-control);
+  }
+
+  .admin-popup-item {
+    min-height: calc(var(--size-control) - var(--space-0-5));
+  }
+
+  .admin-main {
+    margin-left: var(--sidebar-width);
+    padding: var(--content-padding-desktop);
+  }
+}

@@ -14,5 +14,6 @@ export const sessionRoutes = lazyEnv(() => {
       privateKey: env.FIREBASE_PRIVATE_KEY,
     }),
     maxAgeHours: env.SESSION_MAX_AGE_HOURS,
+    cookieDomain: env.SESSION_COOKIE_DOMAIN,
   });
 });

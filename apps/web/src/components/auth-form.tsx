@@ -7,8 +7,8 @@ import { authErrorMessage } from "@/lib/auth-errors";
 
 /** Small building blocks shared by the sign-in, sign-up and reset forms. */
 
-export const formStyle = { display: "grid", gap: "0.75rem", maxWidth: 360 } as const;
-const buttonStyle = { padding: "0.6rem 1rem", cursor: "pointer" } as const;
+/** Styling: classes from @website/ui/styles.css (design tokens), never inline values. */
+export const formClass = "ui-form";
 
 export function Field(props: {
   label: string;
@@ -17,9 +17,15 @@ export function Field(props: {
   autoComplete: string;
 }) {
   return (
-    <label style={{ display: "grid", gap: "0.25rem" }}>
+    <label className="ui-field">
       {props.label}
-      <input name={props.name} type={props.type} autoComplete={props.autoComplete} required />
+      <input
+        className="ui-input"
+        name={props.name}
+        type={props.type}
+        autoComplete={props.autoComplete}
+        required
+      />
     </label>
   );
 }
@@ -29,7 +35,8 @@ export function Message(props: { text: string; tone?: "error" | "info" }) {
   return (
     <p
       role={props.tone === "info" ? "status" : "alert"}
-      style={{ color: props.tone === "info" ? "#166534" : "#b91c1c" }}
+      className="ui-message"
+      data-tone={props.tone ?? "error"}
     >
       {props.text}
     </p>
@@ -47,7 +54,7 @@ export function Button(props: {
       type={props.type ?? "submit"}
       disabled={props.busy}
       onClick={props.onClick}
-      style={buttonStyle}
+      className="ui-button"
     >
       {props.children}
     </button>
@@ -56,18 +63,26 @@ export function Button(props: {
 
 type Navigate = (path: string) => void;
 
-/** Runs an auth action with busy/error state; on success goes to the account page by default. */
-export function useAuthAction() {
+/**
+ * Runs an auth action with busy/error state. On success it goes to `next` (already validated on
+ * the server with `safeReturnUrl`; another app such as admin shares the session cookie) or to the
+ * account page.
+ */
+export function useAuthAction(next: string | null = null) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const go: Navigate = (path) => {
+    if (!path.startsWith("/")) {
+      window.location.assign(path); // another of our apps (full page load)
+      return;
+    }
     router.push(path);
     router.refresh(); // re-render server components with the new session cookie
   };
   async function run(
     action: () => Promise<void>,
-    onSuccess: (go: Navigate) => void = () => go("/account"),
+    onSuccess: (go: Navigate) => void = () => go(next ?? "/account"),
   ) {
     setBusy(true);
     setError("");
@@ -83,8 +98,8 @@ export function useAuthAction() {
   return { busy, error, run };
 }
 
-export function GoogleButton() {
-  const { busy, error, run } = useAuthAction();
+export function GoogleButton(props: { next?: string | null }) {
+  const { busy, error, run } = useAuthAction(props.next ?? null);
   return (
     <>
       <Button type="button" busy={busy} onClick={() => void run(continueWithGoogle)}>

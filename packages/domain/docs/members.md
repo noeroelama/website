@@ -27,8 +27,8 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 
 - **The member**: reads/edits their own profile (`profile.read_own` / `profile.write_own`).
 - **Staff with `members.read`**: basic fields only (`toBasicView`).
-- **Staff with `members.read_pii`**: all fields — `chapter_admin` only for their chapter.
-- **Exports**: `members.export` (superadmin only by default), logged as a security event.
+- **Staff with `members.pii`**: all fields — `chapter_admin` only for their chapter.
+- **Exports**: `members.export` (only roles given it in the Roles page), logged as a security event.
 - **Never**: the third-party gateway (lint-enforced), public pages, audit snapshots (restricted
   values are replaced with `[changed]`/`[unchanged]`; such changes are not revertible from the log).
 

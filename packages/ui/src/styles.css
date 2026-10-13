@@ -1,0 +1,279 @@
+/*
+ * PPIDK design tokens + base styles. The ONE place for colours, type, radius, spacing, shadows
+ * and motion. Every app imports it once in its root layout (`import "@website/ui/styles.css"`);
+ * app CSS and components use `var(--…)` only (tests/unit/design-tokens.test.ts enforces this).
+ * The Poppins font file is loaded by each app with next/font and exposed as --font-poppins.
+ */
+:root {
+  /* ---- Brand palette ---- */
+  --color-brand-950: #220709; /* darkest maroon */
+  --color-brand-800: #551d22; /* maroon */
+  --color-brand-600: #a63232; /* red */
+  --color-brand-200: #e8d8cb; /* sand */
+  --color-brand-50: #fbf3ec; /* cream */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-success: #166534;
+  --color-warning: #92400e;
+
+  /* ---- Semantic colours (use these in components) ---- */
+  --color-bg: var(--color-brand-50);
+  --color-surface: var(--color-white);
+  --color-text: var(--color-brand-950);
+  --color-text-muted: color-mix(in srgb, var(--color-brand-950) 65%, transparent);
+  --color-primary: var(--color-brand-800);
+  --color-on-primary: var(--color-brand-50);
+  --color-accent: var(--color-brand-600);
+  --color-danger: var(--color-brand-600);
+  --color-border: var(--color-brand-200);
+  --color-border-subtle: color-mix(in srgb, var(--color-brand-800) 12%, transparent);
+  --color-hover: color-mix(in srgb, var(--color-brand-800) 7%, transparent);
+  --color-focus: var(--color-brand-600);
+  --color-overlay: color-mix(in srgb, var(--color-brand-950) 94%, transparent);
+
+  /* Dark (maroon) surfaces: side panel, top bars */
+  --color-panel: var(--color-brand-800);
+  --color-on-panel: var(--color-brand-50);
+  --color-on-panel-muted: color-mix(in srgb, var(--color-brand-50) 68%, transparent);
+  --color-panel-line: color-mix(in srgb, var(--color-white) 16%, transparent);
+  --color-panel-hover: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --color-panel-active: var(--color-brand-50);
+  --color-on-panel-active: var(--color-brand-950);
+
+  /* ---- Typography (Poppins) ---- */
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --tracking-wide: 0.08em;
+
+  --text-xs: 0.75rem; /* 12 — small label / date */
+  --leading-xs: 1.5;
+  --text-sm: 0.875rem; /* 14 — secondary text / meta */
+  --leading-sm: 1.5;
+  --text-base: 1rem; /* 16 — main body text */
+  --leading-base: 1.5;
+  --text-lg: 1.125rem; /* 18 — intro paragraph */
+  --leading-lg: 1.5;
+  --text-xl: 1.25rem; /* 20 — small heading */
+  --leading-xl: 1.4;
+  --text-2xl: 1.5rem; /* 24 — section / card title */
+  --leading-2xl: 1.3;
+  --text-3xl: 1.875rem; /* 30 — hero sub-title */
+  --leading-3xl: 1.2;
+  --text-4xl: 2.25rem; /* 36 — page title / hero */
+  --leading-4xl: 1.2;
+  --text-5xl: 3rem; /* 48 — large title */
+  --leading-5xl: 1;
+  --text-6xl: 3.75rem; /* 60 — "PPIDK Asiania" */
+  --leading-6xl: 1;
+
+  /* ---- Spacing (4 px grid) ---- */
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-2-5: 0.625rem;
+  --space-3: 0.75rem;
+  --space-3-5: 0.875rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ---- Sizes ---- */
+  --size-touch: 2.75rem; /* 44 px minimum touch target */
+  --size-control: 2.5rem; /* 40 px control row on pointer devices */
+  --size-avatar: 2.5rem;
+  --size-icon: 1.125rem;
+  --measure: 22.5rem; /* narrow forms */
+  --measure-content: 45rem; /* readable content column */
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* ---- Elevation & motion ---- */
+  --shadow-popover: 0 8px 24px color-mix(in srgb, var(--color-black) 28%, transparent);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+/* ---- Base ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 var(--space-4);
+  font-weight: var(--font-semibold);
+}
+
+h1 {
+  font-size: var(--text-4xl);
+  line-height: var(--leading-4xl);
+}
+
+h2 {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+}
+
+h3 {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* ---- Type scale utilities (same names as the design spec) ---- */
+.text-xs {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+.text-sm {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.text-base {
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+.text-lg {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+.text-xl {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+}
+.text-2xl {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+}
+.text-3xl {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+}
+.text-4xl {
+  font-size: var(--text-4xl);
+  line-height: var(--leading-4xl);
+}
+.text-5xl {
+  font-size: var(--text-5xl);
+  line-height: var(--leading-5xl);
+}
+.text-6xl {
+  font-size: var(--text-6xl);
+  line-height: var(--leading-6xl);
+}
+
+/* ---- Shared components (packages/ui and simple app forms) ---- */
+.ui-shell {
+  max-width: var(--measure-content);
+  margin: var(--space-16) auto;
+  padding: 0 var(--space-4);
+}
+
+.ui-shell-title {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+}
+
+.ui-status {
+  font-weight: var(--font-semibold);
+}
+.ui-status[data-status="ok"] {
+  color: var(--color-success);
+}
+.ui-status[data-status="warn"] {
+  color: var(--color-warning);
+}
+
+.ui-form {
+  display: grid;
+  gap: var(--space-3);
+  max-width: var(--measure);
+}
+
+.ui-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ui-input {
+  min-height: var(--size-control);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.ui-button {
+  min-height: var(--size-control);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-weight: var(--font-medium);
+  cursor: pointer;
+}
+
+.ui-button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.ui-message {
+  margin: 0;
+  color: var(--color-danger);
+}
+.ui-message[data-tone="info"] {
+  color: var(--color-success);
+}

@@ -4,20 +4,22 @@ Role-based access control (RBAC), evaluated on the server.
 
 ## Responsibilities
 
-- The permission vocabulary and role → permission map
-- `can()`, `requirePermission()`, `canAccessAdmin()`, `canAssignRole()`
-- Chapter-scoped roles and `*_own` (ownership) permissions
+- The admin page catalogue (`ADMIN_PAGES`: read / edit / extras per page) and self-service
+  permissions
+- Built-in roles (`superadmin`, `member`, `user`); custom roles are Firestore data
+- `can()`, `requirePermission()`, `canAccessAdmin()`, `canInSomeScope()` (what to show)
+- Anti-escalation checks: `canSaveRole()`, `canDeleteRole()`, `canAssignRole()`
 
 ## Structure
 
-| File                 | Contains                                            |
-| -------------------- | --------------------------------------------------- |
-| `src/permissions.ts` | `PERMISSIONS`, `ROLES`, `ROLE_PERMISSIONS`          |
-| `src/policy.ts`      | `Principal`, checks, default roles for new accounts |
+| File                 | Contains                                                                    |
+| -------------------- | --------------------------------------------------------------------------- |
+| `src/permissions.ts` | `ADMIN_PAGES`, `PAGE_PERMISSIONS`, `normalizePermissions()`, `SYSTEM_ROLES` |
+| `src/policy.ts`      | `Principal`, `resolveAssignments()`, checks, default roles for new accounts |
 
 ## Rules
 
-- Deny by default. Adding a permission or role is a reviewed code change.
+- Deny by default. Adding an admin page is a reviewed code change; role contents are data.
 - Never derive roles from client input or token claims.
 
 ## Commands
@@ -29,5 +31,6 @@ pnpm --filter @website/permissions typecheck
 
 ## Documentation
 
-Feature docs for this workspace: [`docs/`](docs/README.md).
+Feature docs for this workspace: [`docs/`](docs/README.md) — start with
+[authorization.md](docs/authorization.md).
 Project-wide guides: [../../docs/](../../docs/README.md).

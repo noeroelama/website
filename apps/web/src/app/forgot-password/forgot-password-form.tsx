@@ -6,7 +6,7 @@ import { sendPasswordReset } from "@/lib/auth-client";
 import {
   Button,
   Field,
-  formStyle,
+  formClass,
   formValues,
   Message,
   useAuthAction,
@@ -17,7 +17,7 @@ export function ForgotPasswordForm() {
   const [sent, setSent] = useState(false);
   return (
     <form
-      style={formStyle}
+      className={formClass}
       onSubmit={(event) => {
         const { email } = formValues(event, "email");
         void run(

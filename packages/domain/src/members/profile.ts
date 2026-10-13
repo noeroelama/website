@@ -8,7 +8,7 @@ import type { EntityMeta } from "../shared";
  * role checks and listings never load personal data).
  *
  * Personal data under Indonesia's UU PDP (Law 27/2022): collect only these fields,
- * with recorded consent, restricted access (`members.read_pii`) and audit redaction.
+ * with recorded consent, restricted access (`members.pii`) and audit redaction.
  */
 
 export const GENDERS = ["male", "female"] as const;
@@ -163,7 +163,7 @@ export interface MemberProfile extends EntityMeta, Omit<MemberProfileInput, "con
 
 /**
  * Field classification. `basic` is visible with `members.read`; `restricted` needs
- * `members.read_pii`. Every field must be classified (compile-time checked).
+ * `members.pii`. Every field must be classified (compile-time checked).
  */
 export type ProfileField = Exclude<keyof MemberProfile, keyof EntityMeta | "userId" | "consent">;
 export const PROFILE_FIELD_CLASS = {
@@ -188,7 +188,7 @@ export const RESTRICTED_PROFILE_FIELDS = (
   Object.keys(PROFILE_FIELD_CLASS) as ProfileField[]
 ).filter((field) => PROFILE_FIELD_CLASS[field] === "restricted");
 
-/** The view returned to staff without `members.read_pii`. */
+/** The view returned to staff without `members.pii`. */
 export type MemberProfileBasic = Pick<
   MemberProfile,
   | "userId"

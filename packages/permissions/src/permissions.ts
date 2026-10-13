@@ -1,140 +1,116 @@
 /**
- * The complete permission vocabulary. Adding a permission is a reviewed code change.
- * Format: <resource>.<action>. Permissions ending in `_own` only apply to resources
- * owned by the acting user (see policy.ts).
- */
-export const PERMISSIONS = [
-  // Self-service (every signed-in user)
-  "profile.read_own",
-  "profile.write_own",
-  "events.register",
-  "registrations.read_own",
-  "shop.orders.read_own",
-  // Admin area
-  "admin.access",
-  "content.read",
-  "content.write",
-  "news.read",
-  "news.write",
-  "news.publish",
-  "events.read",
-  "events.write",
-  "registrants.read",
-  "registrants.export",
-  "gallery.read",
-  "gallery.write",
-  "newsletter.write",
-  "newsletter.send",
-  "organizations.write",
-  "members.read",
-  "members.read_pii",
-  "members.export",
-  "members.approve",
-  "users.manage",
-  "audit.read",
-  "audit.revert",
-  "apikeys.manage",
-  "tools.zoom",
-  "shop.products.write",
-  "shop.orders.manage",
-  "shop.refund",
-] as const;
-export type Permission = (typeof PERMISSIONS)[number];
-
-/**
- * One account system for everyone (staff, members, customers). What an account may do
- * comes only from its role assignments:
+ * Permission vocabulary.
  *
- * - `user`: every signed-in account (assigned automatically on first sign-in)
- * - `member`: an approved PPI member
- * - staff roles: `viewer` … `superadmin`; every staff role includes `admin.access`
+ * - Self-service permissions (`*_own`) belong to every active account, for its own data only.
+ * - Admin permissions come from ADMIN PAGES: every page has `<page>.read` and `<page>.edit`
+ *   (edit includes read) and, where needed, named extras (e.g. `members.pii`). Adding a page is
+ *   a reviewed code change; WHICH roles get which page permissions is data, edited in the admin
+ *   Roles page (roles are Firestore documents).
  */
-export const ROLES = [
-  "superadmin",
-  "admin",
-  "chapter_admin",
-  "editor",
-  "chapter_editor",
-  "shop_manager",
-  "viewer",
-  "member",
-  "user",
-] as const;
-export type Role = (typeof ROLES)[number];
-
-const SELF_SERVICE: readonly Permission[] = [
+export const SELF_SERVICE_PERMISSIONS = [
   "profile.read_own",
   "profile.write_own",
   "events.register",
   "registrations.read_own",
   "shop.orders.read_own",
-];
+] as const;
+export type SelfServicePermission = (typeof SELF_SERVICE_PERMISSIONS)[number];
 
-const STAFF_HIGH_RISK: readonly Permission[] = [
-  "users.manage",
-  "apikeys.manage",
-  "shop.refund",
-  "members.export",
-];
+interface AdminPageDefinition {
+  /** Shown in the Roles page. */
+  readonly label: string;
+  /** Extra permissions beyond read/edit: key → label shown as a checkbox. */
+  readonly extras?: Readonly<Record<string, string>>;
+}
+
+export const ADMIN_PAGES = {
+  tools: { label: "Tools" },
+  events: { label: "Event" },
+  registrants: { label: "Event registrants", extras: { export: "Export registrants" } },
+  gallery: { label: "Gallery" },
+  articles: { label: "Article", extras: { publish: "Publish" } },
+  newsletter: { label: "Newsletter", extras: { send: "Send campaigns" } },
+  organizations: { label: "Organizations" },
+  members: {
+    label: "Members",
+    extras: { pii: "See personal data", export: "Export", approve: "Approve members" },
+  },
+  users: { label: "Users & role assignments" },
+  roles: { label: "Roles & permissions" },
+  audit: { label: "Audit Log", extras: { revert: "Revert changes" } },
+  apikeys: { label: "API keys" },
+  shop_products: { label: "Shop products" },
+  shop_orders: { label: "Shop orders", extras: { refund: "Refund" } },
+} as const satisfies Record<string, AdminPageDefinition>;
+
+export type AdminPageId = keyof typeof ADMIN_PAGES;
+type ExtraOf<P extends AdminPageId> = (typeof ADMIN_PAGES)[P] extends {
+  readonly extras: infer E;
+}
+  ? keyof E & string
+  : never;
+export type PagePermission = {
+  [P in AdminPageId]: `${P}.read` | `${P}.edit` | `${P}.${ExtraOf<P>}`;
+}[AdminPageId];
+export type Permission = PagePermission | SelfServicePermission;
+
+/** Every admin-page permission, page by page (read, edit, extras). */
+export const PAGE_PERMISSIONS: readonly PagePermission[] = Object.entries(ADMIN_PAGES).flatMap(
+  ([page, definition]: [string, AdminPageDefinition]) =>
+    [
+      `${page}.read`,
+      `${page}.edit`,
+      ...Object.keys(definition.extras ?? {}).map((extra) => `${page}.${extra}`),
+    ] as PagePermission[],
+);
+const PAGE_PERMISSION_SET: ReadonlySet<string> = new Set(PAGE_PERMISSIONS);
+
+export function isPagePermission(value: string): value is PagePermission {
+  return PAGE_PERMISSION_SET.has(value);
+}
 
 /**
- * Role → permission map. Lives in code (versioned, reviewed), not in the database.
- * Scoped roles (chapter_*) only take effect for resources in their chapter.
+ * Cleans a permission list before it is stored on a role: unknown entries and self-service
+ * permissions are dropped, and `edit` or any extra adds `read` of the same page.
  */
-export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
-  superadmin: PERMISSIONS,
-  admin: PERMISSIONS.filter((p) => !STAFF_HIGH_RISK.includes(p)),
-  chapter_admin: [
-    ...SELF_SERVICE,
-    "admin.access",
-    "content.read",
-    "content.write",
-    "news.read",
-    "news.write",
-    "events.read",
-    "events.write",
-    "registrants.read",
-    "gallery.read",
-    "gallery.write",
-    "members.read",
-    "members.read_pii",
-    "members.approve",
-  ],
-  editor: [
-    ...SELF_SERVICE,
-    "admin.access",
-    "content.read",
-    "content.write",
-    "news.read",
-    "news.write",
-    "news.publish",
-    "events.read",
-    "events.write",
-    "gallery.read",
-    "gallery.write",
-    "newsletter.write",
-  ],
-  chapter_editor: [
-    ...SELF_SERVICE,
-    "admin.access",
-    "content.read",
-    "content.write",
-    "news.read",
-    "news.write",
-    "events.read",
-    "events.write",
-    "gallery.read",
-    "gallery.write",
-  ],
-  shop_manager: [...SELF_SERVICE, "admin.access", "shop.products.write", "shop.orders.manage"],
-  viewer: [
-    ...SELF_SERVICE,
-    "admin.access",
-    "content.read",
-    "news.read",
-    "events.read",
-    "gallery.read",
-  ],
-  member: [...SELF_SERVICE],
-  user: [...SELF_SERVICE],
-};
+export function normalizePermissions(values: Iterable<string>): PagePermission[] {
+  const result = new Set<PagePermission>();
+  for (const value of values) {
+    if (!isPagePermission(value)) continue;
+    result.add(value);
+    if (!value.endsWith(".read")) {
+      result.add(`${value.slice(0, value.lastIndexOf("."))}.read` as PagePermission);
+    }
+  }
+  return [...result];
+}
+
+/** A role: built-in (code) or custom (Firestore `roles/{id}`, edited in the admin Roles page). */
+export interface RoleDefinition {
+  readonly id: string;
+  readonly name: string;
+  readonly permissions: readonly PagePermission[];
+}
+
+export const SUPERADMIN_ROLE_ID = "superadmin";
+
+/**
+ * Built-in roles. They cannot be created, edited or deleted in the Roles page, and a stored role
+ * document with the same id is ignored.
+ * - superadmin: every admin page (keep 2-3 people)
+ * - member: an approved PPI member (self-service only, for now)
+ * - user: every account (assigned on first sign-in)
+ */
+export const SYSTEM_ROLES = {
+  [SUPERADMIN_ROLE_ID]: {
+    id: SUPERADMIN_ROLE_ID,
+    name: "Superadmin",
+    permissions: PAGE_PERMISSIONS,
+  },
+  member: { id: "member", name: "Member", permissions: [] },
+  user: { id: "user", name: "User", permissions: [] },
+} as const satisfies Record<string, RoleDefinition>;
+
+export function isSystemRoleId(id: string): id is keyof typeof SYSTEM_ROLES {
+  return Object.hasOwn(SYSTEM_ROLES, id);
+}

@@ -17,3 +17,14 @@ const webEnvSchema = baseEnv
   .extend(publicUrlsEnv.pick({ WEB_URL: true }).shape);
 
 export const getWebEnv = lazyEnv(() => loadEnv(webEnvSchema, process.env));
+
+/**
+ * Our apps' public URLs only (no secrets), for the sign-in return target. Loaded separately so
+ * the static sign-in page works without Firebase configuration.
+ */
+export const getAppUrls = lazyEnv(() =>
+  loadEnv(baseEnv.extend(publicUrlsEnv.shape), {
+    APP_ENV: process.env["NODE_ENV"] === "development" ? "development" : undefined,
+    ...process.env,
+  }),
+);

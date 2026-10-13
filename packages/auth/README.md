@@ -4,7 +4,8 @@ Identity: who the user is. Never what they may do.
 
 ## Responsibilities
 
-- Session cookie policy (`__Host-session`, one per app)
+- Session cookie policy (`__Secure-session`, one session shared by web, admin and shop)
+- `safeReturnUrl()`: validates `/login?next=…` targets (no open redirect)
 - `IdentityProvider` port and the Firebase Admin adapter
 - Recent-sign-in check for sensitive actions
 - Session endpoints and passkey (WebAuthn) registration/sign-in

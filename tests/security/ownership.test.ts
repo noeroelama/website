@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { can, DEFAULT_ROLE_ASSIGNMENTS, type Principal } from "@website/permissions";
+import {
+  can,
+  canAccessAdmin,
+  DEFAULT_ROLE_ASSIGNMENTS,
+  resolveAssignments,
+  type Principal,
+} from "@website/permissions";
 
 const alice: Principal = {
   kind: "user",
   userId: "alice-uid",
   active: true,
-  assignments: DEFAULT_ROLE_ASSIGNMENTS,
+  assignments: resolveAssignments(DEFAULT_ROLE_ASSIGNMENTS, new Map()),
 };
 
 describe("users are locked to their own uid", () => {
@@ -18,6 +24,6 @@ describe("users are locked to their own uid", () => {
 
   it("a regular user cannot use any staff permission", () => {
     expect(can(alice, "members.read")).toBe(false);
-    expect(can(alice, "admin.access")).toBe(false);
+    expect(canAccessAdmin(alice)).toBe(false);
   });
 });

@@ -5,25 +5,26 @@ import { signInWithEmail, signInWithPasskey } from "@/lib/auth-client";
 import {
   Button,
   Field,
-  formStyle,
+  formClass,
   formValues,
   GoogleButton,
   Message,
   useAuthAction,
 } from "@/components/auth-form";
 
-export function LoginForm() {
-  const email = useAuthAction();
-  const passkey = useAuthAction();
+/** `next`: where to go after sign-in, already validated on the server (or null). */
+export function LoginForm({ next }: { next: string | null }) {
+  const email = useAuthAction(next);
+  const passkey = useAuthAction(next);
   return (
-    <div style={formStyle}>
+    <div className={formClass}>
       <Button type="button" busy={passkey.busy} onClick={() => void passkey.run(signInWithPasskey)}>
         Sign in with a passkey
       </Button>
       <Message text={passkey.error} />
-      <GoogleButton />
+      <GoogleButton next={next} />
       <form
-        style={formStyle}
+        className={formClass}
         onSubmit={(event) => {
           const v = formValues(event, "email", "password");
           void email.run(() => signInWithEmail(v["email"] ?? "", v["password"] ?? ""));

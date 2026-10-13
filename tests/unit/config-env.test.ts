@@ -5,7 +5,13 @@ import {
   EnvironmentIsolationError,
   FIREBASE_EMULATOR_VARIABLES,
 } from "@website/config";
-import { baseEnv, EnvValidationError, firebaseAdminEnv, loadEnv } from "@website/config/env";
+import {
+  baseEnv,
+  EnvValidationError,
+  firebaseAdminEnv,
+  loadEnv,
+  sessionEnv,
+} from "@website/config/env";
 
 const schema = baseEnv.extend(firebaseAdminEnv.shape);
 
@@ -68,5 +74,36 @@ describe("environment validation", () => {
         env: { FIRESTORE_EMULATOR_HOST: "  " },
       }),
     ).not.toThrow();
+  });
+});
+
+describe("shared session cookie domain", () => {
+  const session = baseEnv.extend(sessionEnv.shape);
+
+  it("is optional (host-only cookie; localhost apps share it across ports anyway)", () => {
+    expect(loadEnv(session, { APP_ENV: "development" }).SESSION_COOKIE_DOMAIN).toBeUndefined();
+  });
+
+  it("accepts a parent domain, normalised to lower case without a leading dot", () => {
+    for (const value of ["ppiasiania.id", ".PPIAsiania.id"]) {
+      expect(
+        loadEnv(session, { APP_ENV: "production", SESSION_COOKIE_DOMAIN: value })
+          .SESSION_COOKIE_DOMAIN,
+      ).toBe("ppiasiania.id");
+    }
+  });
+
+  it("rejects anything that is not a plain domain (scheme, port, path, single label)", () => {
+    for (const value of [
+      "https://ppiasiania.id",
+      "ppiasiania.id:443",
+      "ppiasiania.id/x",
+      "localhost",
+      "a;b.id",
+    ]) {
+      expect(() =>
+        loadEnv(session, { APP_ENV: "production", SESSION_COOKIE_DOMAIN: value }),
+      ).toThrow(EnvValidationError);
+    }
   });
 });

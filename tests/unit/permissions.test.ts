@@ -1,70 +1,228 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_PAGES,
   can,
   canAccessAdmin,
   canAssignRole,
+  canDeleteRole,
+  canInSomeScope,
+  canSaveRole,
   DEFAULT_ROLE_ASSIGNMENTS,
+  isPagePermission,
+  normalizePermissions,
+  PAGE_PERMISSIONS,
   requirePermission,
+  resolveAssignments,
+  SUPERADMIN_ROLE_ID,
+  SYSTEM_ROLES,
   type Principal,
+  type RoleDefinition,
+  type Scope,
 } from "@website/permissions";
 
-const user = (assignments: Principal["assignments"], active = true): Principal => ({
+const global: Scope = { type: "global" };
+const jp: Scope = { type: "chapter", chapterId: "jp" };
+
+/** Custom roles as an admin would create them in the Roles page. */
+const roles: RoleDefinition[] = [
+  {
+    id: "editor",
+    name: "Editor",
+    permissions: normalizePermissions(["articles.publish", "gallery.edit"]),
+  },
+  {
+    id: "viewer",
+    name: "Viewer",
+    permissions: normalizePermissions(["articles.read", "events.read"]),
+  },
+  {
+    id: "chapter_admin",
+    name: "Chapter admin",
+    permissions: normalizePermissions(["members.pii", "events.edit"]),
+  },
+  {
+    id: "role_manager",
+    name: "Role manager",
+    permissions: normalizePermissions(["roles.edit", "users.edit", "articles.edit"]),
+  },
+  { id: "everything", name: "Everything", permissions: [...PAGE_PERMISSIONS] },
+  { id: "nothing", name: "No pages", permissions: [] },
+];
+const lookup = new Map(roles.map((role) => [role.id, role]));
+
+const principal = (assignments: { roleId: string; scope?: Scope }[], active = true): Principal => ({
   kind: "user",
   userId: "u1",
   active,
-  assignments,
+  assignments: resolveAssignments(
+    assignments.map((a) => ({ roleId: a.roleId, scope: a.scope ?? global })),
+    lookup,
+  ),
 });
-const global = { type: "global" } as const;
+const role = (id: string): RoleDefinition =>
+  lookup.get(id) ?? SYSTEM_ROLES[id as keyof typeof SYSTEM_ROLES];
 
-describe("RBAC", () => {
+describe("admin page catalogue", () => {
+  it("gives every page a read and an edit permission, plus its named extras", () => {
+    for (const [page, definition] of Object.entries(ADMIN_PAGES)) {
+      expect(PAGE_PERMISSIONS).toContain(`${page}.read`);
+      expect(PAGE_PERMISSIONS).toContain(`${page}.edit`);
+      for (const extra of Object.keys("extras" in definition ? definition.extras : {})) {
+        expect(PAGE_PERMISSIONS).toContain(`${page}.${extra}`);
+      }
+    }
+    expect(new Set(PAGE_PERMISSIONS).size).toBe(PAGE_PERMISSIONS.length);
+    expect(PAGE_PERMISSIONS).toContain("members.pii");
+    expect(PAGE_PERMISSIONS).not.toContain("events.pii");
+  });
+
+  it("recognises only catalogue permissions", () => {
+    expect(isPagePermission("audit.revert")).toBe(true);
+    expect(isPagePermission("audit.delete")).toBe(false);
+    expect(isPagePermission("profile.read_own")).toBe(false);
+  });
+
+  it("normalises a role: edit and extras include read; unknown and self-service entries are dropped", () => {
+    expect(normalizePermissions(["articles.publish", "gallery.edit"]).sort()).toEqual([
+      "articles.publish",
+      "articles.read",
+      "gallery.edit",
+      "gallery.read",
+    ]);
+    expect(normalizePermissions(["profile.write_own", "bogus.read", "__proto__"])).toEqual([]);
+  });
+});
+
+describe("resolving role assignments", () => {
+  it("system roles always come from code; a stored role named like one is ignored", () => {
+    const fake = new Map([
+      [SUPERADMIN_ROLE_ID, { id: SUPERADMIN_ROLE_ID, name: "x", permissions: [] }],
+    ]);
+    const [resolved] = resolveAssignments([{ roleId: SUPERADMIN_ROLE_ID, scope: global }], fake);
+    expect(resolved?.permissions.size).toBe(PAGE_PERMISSIONS.length);
+  });
+
+  it("drops assignments whose role no longer exists (fail closed)", () => {
+    expect(resolveAssignments([{ roleId: "deleted-role", scope: global }], lookup)).toEqual([]);
+  });
+
+  it("new accounts get the user role, which opens no admin page", () => {
+    const fresh: Principal = {
+      kind: "user",
+      userId: "u1",
+      active: true,
+      assignments: resolveAssignments(DEFAULT_ROLE_ASSIGNMENTS, lookup),
+    };
+    expect(canAccessAdmin(fresh)).toBe(false);
+  });
+});
+
+describe("can()", () => {
   it("denies by default and for null/inactive principals", () => {
     expect(can(null, "events.read")).toBe(false);
-    expect(can(user([{ role: "superadmin", scope: global }], false), "events.read")).toBe(false);
-    expect(can(user([]), "events.read")).toBe(false);
+    expect(can(principal([{ roleId: SUPERADMIN_ROLE_ID }], false), "events.read")).toBe(false);
+    expect(can(principal([]), "events.read")).toBe(false);
   });
 
-  it("one user pool: plain users and members are not staff", () => {
-    expect(canAccessAdmin(user(DEFAULT_ROLE_ASSIGNMENTS))).toBe(false);
-    expect(canAccessAdmin(user([{ role: "member", scope: global }]))).toBe(false);
-    expect(canAccessAdmin(user([{ role: "viewer", scope: global }]))).toBe(true);
+  it("grants what the role was given in the admin panel, nothing more", () => {
+    const editor = principal([{ roleId: "editor" }]);
+    expect(can(editor, "articles.publish")).toBe(true);
+    expect(can(editor, "articles.read")).toBe(true);
+    expect(can(editor, "articles.edit")).toBe(false);
+    expect(can(editor, "members.pii")).toBe(false);
+    expect(can(editor, "roles.edit")).toBe(false);
   });
 
-  it("*_own permissions only apply to the user's own resources", () => {
-    const u = user(DEFAULT_ROLE_ASSIGNMENTS);
-    expect(can(u, "profile.write_own", { ownerId: "u1" })).toBe(true);
-    expect(can(u, "profile.write_own", { ownerId: "someone-else" })).toBe(false);
-    expect(can(u, "profile.write_own")).toBe(false);
-    // even a superadmin edits OTHER people's data via admin permissions, not *_own
-    expect(
-      can(user([{ role: "superadmin", scope: global }]), "profile.write_own", { ownerId: "x" }),
-    ).toBe(false);
+  it("scopes chapter assignments to their chapter", () => {
+    const admin = principal([{ roleId: "chapter_admin", scope: jp }]);
+    expect(can(admin, "members.pii", { chapterId: "jp" })).toBe(true);
+    expect(can(admin, "members.pii", { chapterId: "au" })).toBe(false);
+    expect(can(admin, "members.pii")).toBe(false);
   });
 
-  it("grants granular permissions through roles", () => {
-    const editor = user([{ role: "editor", scope: global }]);
-    expect(can(editor, "news.publish")).toBe(true);
-    expect(can(editor, "members.read_pii")).toBe(false);
-    expect(can(editor, "users.manage")).toBe(false);
+  it("*_own permissions belong to every active account, for its own resources only", () => {
+    const user = principal([]);
+    expect(can(user, "profile.write_own", { ownerId: "u1" })).toBe(true);
+    expect(can(user, "profile.write_own", { ownerId: "someone-else" })).toBe(false);
+    expect(can(user, "profile.write_own")).toBe(false);
+    const superadmin = principal([{ roleId: SUPERADMIN_ROLE_ID }]);
+    expect(can(superadmin, "profile.write_own", { ownerId: "x" })).toBe(false);
   });
 
-  it("scopes chapter roles to their chapter, including member personal data", () => {
-    const jp = user([{ role: "chapter_admin", scope: { type: "chapter", chapterId: "jp" } }]);
-    expect(can(jp, "members.read_pii", { chapterId: "jp" })).toBe(true);
-    expect(can(jp, "members.read_pii", { chapterId: "au" })).toBe(false);
-    expect(can(jp, "members.export", { chapterId: "jp" })).toBe(false);
+  it("requirePermission throws for a missing permission", () => {
+    expect(() => requirePermission(principal([{ roleId: "viewer" }]), "articles.publish")).toThrow(
+      /Missing permission/,
+    );
   });
 
-  it("requirePermission throws for missing permission", () => {
-    expect(() =>
-      requirePermission(user([{ role: "viewer", scope: global }]), "news.publish"),
-    ).toThrow(/Missing permission/);
+  it("canAccessAdmin needs at least one admin-page permission", () => {
+    expect(canAccessAdmin(principal([{ roleId: "viewer" }]))).toBe(true);
+    expect(canAccessAdmin(principal([{ roleId: "nothing" }]))).toBe(false);
+    expect(canAccessAdmin(principal([{ roleId: "member" }]))).toBe(false);
+    expect(canAccessAdmin(null)).toBe(false);
   });
 
-  it("prevents privilege escalation when assigning roles", () => {
-    const admin = user([{ role: "admin", scope: global }]);
-    const superadmin = user([{ role: "superadmin", scope: global }]);
-    expect(canAssignRole(admin, "editor")).toBe(false); // admin lacks users.manage
-    expect(canAssignRole(superadmin, "superadmin")).toBe(true);
-    expect(canAssignRole(superadmin, "member")).toBe(true);
+  it("canInSomeScope ignores the resource scope (navigation), but never inactive principals", () => {
+    const admin = principal([{ roleId: "chapter_admin", scope: jp }]);
+    expect(can(admin, "events.edit")).toBe(false);
+    expect(canInSomeScope(admin, "events.edit")).toBe(true);
+    expect(canInSomeScope(admin, "audit.read")).toBe(false);
+    expect(canInSomeScope(principal([{ roleId: SUPERADMIN_ROLE_ID }], false), "audit.read")).toBe(
+      false,
+    );
+    expect(canInSomeScope(null, "audit.read")).toBe(false);
+  });
+});
+
+describe("no privilege escalation through the Roles page", () => {
+  const manager = principal([{ roleId: "role_manager" }]);
+  const superadmin = principal([{ roleId: SUPERADMIN_ROLE_ID }]);
+
+  it("saving a role needs roles.edit and only permissions the editor holds globally", () => {
+    const draft = (permissions: string[]): RoleDefinition => ({
+      id: "new",
+      name: "New",
+      permissions: normalizePermissions(permissions),
+    });
+    expect(canSaveRole(manager, draft(["articles.edit"]))).toBe(true);
+    expect(canSaveRole(manager, draft(["members.pii"]))).toBe(false);
+    expect(canSaveRole(principal([{ roleId: "editor" }]), draft(["articles.read"]))).toBe(false);
+    const chapterManager = principal([{ roleId: "role_manager", scope: jp }]);
+    expect(canSaveRole(chapterManager, draft(["articles.read"]))).toBe(false);
+    expect(canSaveRole(superadmin, draft(["members.pii", "audit.revert"]))).toBe(true);
+  });
+
+  it("editing needs the old permissions too (no stripping roles you don't control)", () => {
+    const updated = {
+      ...role("chapter_admin"),
+      permissions: normalizePermissions(["events.read"]),
+    };
+    expect(canSaveRole(manager, updated, role("chapter_admin"))).toBe(false);
+    expect(canSaveRole(superadmin, updated, role("chapter_admin"))).toBe(true);
+  });
+
+  it("system roles can never be saved or deleted", () => {
+    for (const id of Object.keys(SYSTEM_ROLES)) {
+      expect(canSaveRole(superadmin, role(id))).toBe(false);
+      expect(canDeleteRole(superadmin, role(id))).toBe(false);
+    }
+  });
+
+  it("deleting a custom role needs roles.edit and its permissions", () => {
+    expect(canDeleteRole(manager, role("viewer"))).toBe(false); // lacks events.read
+    expect(canDeleteRole(superadmin, role("viewer"))).toBe(true);
+  });
+
+  it("assigning a role needs users.edit and every permission of that role", () => {
+    expect(canAssignRole(manager, role("editor"))).toBe(false); // lacks gallery.edit / publish
+    expect(canAssignRole(manager, role("member"))).toBe(true);
+    expect(canAssignRole(principal([{ roleId: "viewer" }]), role("member"))).toBe(false);
+  });
+
+  it("only a superadmin assigns superadmin, even if a custom role holds every permission", () => {
+    expect(canAssignRole(principal([{ roleId: "everything" }]), role(SUPERADMIN_ROLE_ID))).toBe(
+      false,
+    );
+    expect(canAssignRole(superadmin, role(SUPERADMIN_ROLE_ID))).toBe(true);
   });
 });

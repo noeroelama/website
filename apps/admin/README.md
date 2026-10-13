@@ -11,14 +11,16 @@ Staff administration for content, events, members, users and audit.
 
 ## Structure
 
-| Path                           | Purpose                                                                                                      |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `src/app/`                     | Pages (App Router). Partial Prerendering: data-free shell; session parts stream in `<Suspense>`.             |
-| `src/proxy.ts`                 | Runs before every request: origin check, per-IP rate limit, private caching (`src/server/request-guard.ts`). |
-| `src/app/api/session/route.ts` | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                      |
-| `src/server/context.ts`        | `getPrincipal()` — session → Firebase → roles in Firestore; staff only.                                      |
-| `src/server/guarded-action.ts` | `createGuardedAction()` — the only way to write an admin mutation.                                           |
-| `src/server/user-directory.ts` | Looks up a user's roles (fails closed until implemented).                                                    |
+| Path                           | Purpose                                                                                                              |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `src/app/`                     | Pages (App Router). Partial Prerendering: data-free shell; session parts stream in `<Suspense>`.                     |
+| `src/app/(panel)/layout.tsx`   | Every staff page: the side panel (`src/components/admin-sidebar.tsx`), see [docs/side-panel.md](docs/side-panel.md). |
+| `src/navigation.ts`            | Side panel pages, in order, with the permission each one needs.                                                      |
+| `src/proxy.ts`                 | Runs before every request: origin check, per-IP rate limit, private caching (`src/server/request-guard.ts`).         |
+| `src/app/api/session/route.ts` | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                              |
+| `src/server/context.ts`        | `getAdminViewer()` / `getPrincipal()` — session → Firebase → roles in Firestore; staff only.                         |
+| `src/server/guarded-action.ts` | `createGuardedAction()` — the only way to write an admin mutation.                                                   |
+| `src/server/user-directory.ts` | Looks up a user's roles (fails closed until implemented).                                                            |
 
 ## Rules
 

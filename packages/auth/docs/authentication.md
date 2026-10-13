@@ -47,28 +47,43 @@ sign in: POST /api/passkeys/login-options → browser signs → POST /api/passke
 1. Anyone may create an account. On first sign-in the server creates `users/{uid}` with
    the default role `user` (self-service only).
 2. Completing the member profile + approval by a `chapter_admin`/`admin` adds `member`.
-3. Staff roles are granted only by holders of `users.manage` (superadmin), never by sign-up.
+3. Staff roles are granted only by holders of `users.edit` who hold every permission of that role (superadmin only by a superadmin), never by sign-up.
    **There is no way to self-register into the admin area.**
 
 ## Sessions
 
+**One session for every app** (DEC-13): sign in once on the web app and you are signed in on
+admin and shop too; signing out in any app signs you out of all of them.
+
 ```text
-browser (Firebase client SDK) ─ ID token ─▶ POST /api/session on the SAME app (same-origin)
+browser (Firebase client SDK) ─ ID token ─▶ POST /api/session (same-origin, any app)
    server: verifyIdToken(checkRevoked) + require fresh sign-in (≤ 5 min)
          → createSessionCookie (8 h default, max 12)
-         → Set-Cookie: __Host-session; HttpOnly; Secure; SameSite=Lax; Path=/
-every request: cookie → verifySessionCookie(checkRevoked) → users/{uid} roles → Principal
+         → Set-Cookie: __Secure-session; Domain=<SESSION_COOKIE_DOMAIN>; HttpOnly; Secure; SameSite=Lax; Path=/
+every request, every app: cookie → verifySessionCookie(checkRevoked) → users/{uid} roles → Principal
 ```
 
-- Same accounts everywhere, but **separate cookies per app** (`__Host-` = host-only):
-  a session on `shop.` or `web.` is never sent to `admin.`.
-- Admin additionally requires a staff role (`canAccessAdmin`); members get "not authorized".
+- The cookie is set on the parent domain (`SESSION_COOKIE_DOMAIN`, e.g. `ppiasiania.id`), so web,
+  admin and shop all receive it. It stays HttpOnly (scripts cannot read it), Secure and
+  SameSite=Lax. Without a domain (local development) it is host-only; `localhost` apps still share
+  it because cookies ignore the port.
+- Sharing the session does **not** share permissions: admin still requires a staff role
+  (`canAccessAdmin`), staff need MFA, and sensitive actions need a recent sign-in.
+- Sign-in happens on the web app. A signed-out visitor who opens a login-required page in any app
+  is redirected (307) to `WEB_URL/login?next=<that page's URL>` (`signInUrl`). After signing in the
+  web app returns there only if `safeReturnUrl` accepts the target (a relative path, or a URL on
+  WEB_URL / ADMIN_URL / SHOP_URL — no open redirect). Admin needs `WEB_URL` and `ADMIN_URL` set for
+  the redirect; without them it shows "sign-in required" instead.
 - Endpoint (web, admin, shop): `POST /api/session` with `{ "idToken": "<Firebase ID token>" }` →
   `204` + cookie; invalid body `400`; invalid/expired token `401` (reason not disclosed).
-  `DELETE /api/session` → revokes all sessions of the user and clears the cookie.
+  `DELETE /api/session` → revokes all sessions of the user and clears the cookie (same Domain).
   Implemented once in `packages/auth/src/session-routes.ts`; each app's `src/app/api/session/route.ts` wires it.
+- Use the same `SESSION_MAX_AGE_HOURS` and `SESSION_COOKIE_DOMAIN` in web, admin and shop.
 - The body accepts only `idToken` — the uid always comes from the verified token.
-- Sign-out and role changes revoke refresh tokens (`revokeSessions`).
+- Sign-out and role changes revoke refresh tokens (`revokeSessions`), which ends the session in
+  every app.
 - Sensitive actions require a recent sign-in (`isRecentSignIn`, ≤ 15 min).
 - `proxy.ts` (middleware) is never relied on for authentication or authorization.
 - Custom Claims are not used for authorization.
+- Keep DNS clean: every subdomain of `SESSION_COOKIE_DOMAIN` receives the cookie, so remove
+  records that point to services we no longer control (subdomain takeover).

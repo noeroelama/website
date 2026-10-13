@@ -31,8 +31,26 @@ export const firebaseClientEnv = z.object({
 });
 
 export const sessionEnv = z.object({
-  /** Session lifetime for staff sessions, in hours (max 12 by policy). */
+  /** Session lifetime in hours (max 12 by policy). Use the same value in web, admin and shop. */
   SESSION_MAX_AGE_HOURS: z.coerce.number().int().min(1).max(12).default(8),
+  /**
+   * Parent domain on which the ONE session cookie is shared by web, admin and shop
+   * (e.g. `ppiasiania.id`). Empty = host-only (local development).
+   */
+  SESSION_COOKIE_DOMAIN: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .transform((value) => value.replace(/^\./, ""))
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+          "Plain parent domain, e.g. ppiasiania.id",
+        ),
+    )
+    .optional(),
 });
 
 /** HMAC key for per-IP rate-limit counters. Required in staging/production (checked at startup). */

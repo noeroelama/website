@@ -8,14 +8,16 @@ Shared presentational React components.
 
 ## Structure
 
-| Export        | Purpose                |
-| ------------- | ---------------------- |
-| `AppShell`    | Page layout with title |
-| `StatusBadge` | Small status label     |
+| Export         | Purpose                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `AppShell`     | Page layout with title                                        |
+| `StatusBadge`  | Small status label                                            |
+| `./styles.css` | Design tokens and base styles ([docs](docs/design-tokens.md)) |
 
 ## Rules
 
 - Components never fetch data, read env or make authorization decisions.
+- Colours, type, spacing, radius and shadows come from `styles.css` tokens — no hardcoded values.
 
 ## Commands
 

@@ -16,7 +16,11 @@ export const identity = lazyEnv(() => {
 });
 
 export const sessionRoutes = lazyEnv(() =>
-  createSessionRoutes({ identity: identity(), maxAgeHours: getWebEnv().SESSION_MAX_AGE_HOURS }),
+  createSessionRoutes({
+    identity: identity(),
+    maxAgeHours: getWebEnv().SESSION_MAX_AGE_HOURS,
+    cookieDomain: getWebEnv().SESSION_COOKIE_DOMAIN,
+  }),
 );
 
 /** The signed-in user (verified session cookie, revocation checked), or null. */

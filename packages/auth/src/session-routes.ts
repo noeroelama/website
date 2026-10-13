@@ -11,8 +11,9 @@ import { SESSION_COOKIE, type IdentityProvider } from "./session";
  */
 const SignInBody = z.object({ idToken: z.string().min(1).max(4096) }).strict();
 
-function cookieHeader(value: string, maxAgeSeconds: number): string {
-  return `${SESSION_COOKIE}=${value}; Max-Age=${maxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+function cookieHeader(value: string, maxAgeSeconds: number, domain: string | undefined): string {
+  const scope = domain ? `; Domain=${domain}` : "";
+  return `${SESSION_COOKIE}=${value}; Max-Age=${maxAgeSeconds}; Path=/${scope}; HttpOnly; Secure; SameSite=Lax`;
 }
 
 export function readCookie(request: Request, name: string): string | null {
@@ -23,8 +24,14 @@ export function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
-export function createSessionRoutes(options: { identity: IdentityProvider; maxAgeHours: number }) {
+export function createSessionRoutes(options: {
+  identity: IdentityProvider;
+  maxAgeHours: number;
+  /** Parent domain shared by web, admin and shop (SESSION_COOKIE_DOMAIN); omit for host-only. */
+  cookieDomain?: string | undefined;
+}) {
   const maxAgeSeconds = options.maxAgeHours * 3600;
+  const domain = options.cookieDomain;
   return {
     /** POST /api/session — sign in. */
     async POST(request: Request): Promise<Response> {
@@ -41,18 +48,21 @@ export function createSessionRoutes(options: { identity: IdentityProvider; maxAg
       }
       return new Response(null, {
         status: 204,
-        headers: { "Set-Cookie": cookieHeader(cookie, maxAgeSeconds), "Cache-Control": "no-store" },
+        headers: {
+          "Set-Cookie": cookieHeader(cookie, maxAgeSeconds, domain),
+          "Cache-Control": "no-store",
+        },
       });
     },
 
-    /** DELETE /api/session — sign out everywhere: revoke refresh tokens and clear the cookie. */
+    /** DELETE /api/session — sign out of every app: revoke refresh tokens and clear the cookie. */
     async DELETE(request: Request): Promise<Response> {
       const cookie = readCookie(request, SESSION_COOKIE);
       const identity = cookie ? await options.identity.verifySessionCookie(cookie) : null;
       if (identity) await options.identity.revokeSessions(identity.uid);
       return new Response(null, {
         status: 204,
-        headers: { "Set-Cookie": cookieHeader("", 0), "Cache-Control": "no-store" },
+        headers: { "Set-Cookie": cookieHeader("", 0, domain), "Cache-Control": "no-store" },
       });
     },
   };

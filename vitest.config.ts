@@ -12,6 +12,7 @@ export default defineConfig({
         "packages/security/src/**/*.ts",
         "packages/auth/src/session-routes.ts",
         "packages/auth/src/passkeys.ts",
+        "packages/auth/src/return-url.ts",
         "packages/db/src/firestore/passkeys.ts",
         "packages/db/src/memory/passkeys.ts",
         "apps/web/src/lib/auth-errors.ts",
