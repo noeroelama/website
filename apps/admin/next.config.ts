@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const securityHeaders = [
@@ -8,6 +9,14 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   // A nonce-based Content-Security-Policy is added via proxy.ts in the next phase (docs/security.md).
 ];
+
+// cPanel: `NEXT_OUTPUT=standalone` emits a self-contained server (docs/deployment.md#cpanel).
+// Unset (Vercel, `next start`) nothing changes. The tracing root is the monorepo root so the
+// workspace packages are copied too.
+const standalone: NextConfig =
+  process.env["NEXT_OUTPUT"] === "standalone"
+    ? { output: "standalone", outputFileTracingRoot: path.resolve(import.meta.dirname, "../..") }
+    : {};
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -30,6 +39,7 @@ const nextConfig: NextConfig = {
     "@website/ui",
   ],
   serverExternalPackages: ["firebase-admin"],
+  ...standalone,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

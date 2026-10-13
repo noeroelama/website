@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    # Use the Node version selected for the apps in cPanel (Setup Node.js App); adjust the path.
+    - PATH=/opt/alt/alt-nodejs22/root/usr/bin:$PATH /bin/bash scripts/deploy-cpanel.sh

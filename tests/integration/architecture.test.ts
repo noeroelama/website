@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { describe, expect, it } from "vitest";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import adminConfig from "../../apps/admin/next.config";
 import shopConfig from "../../apps/shop/next.config";
 import webConfig from "../../apps/web/next.config";
@@ -22,4 +23,34 @@ describe("rendering", () => {
       expect(config.cacheComponents, app).toBe(true);
     }
   });
+});
+
+describe("standalone build (cPanel)", () => {
+  // `NEXT_OUTPUT=standalone` makes each Next app emit a self-contained `server.js`, which cPanel's
+  // Node.js app runs (docs/deployment.md#cpanel). Without it nothing changes (Vercel, `next start`).
+  const repoRoot = path.resolve(import.meta.dirname, "../..");
+  const loaders = {
+    web: () => import("../../apps/web/next.config"),
+    admin: () => import("../../apps/admin/next.config"),
+    shop: () => import("../../apps/shop/next.config"),
+  };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it.each(Object.keys(loaders) as (keyof typeof loaders)[])(
+    "%s builds standalone only when NEXT_OUTPUT=standalone",
+    async (app) => {
+      expect((await loaders[app]()).default.output).toBeUndefined();
+
+      vi.stubEnv("NEXT_OUTPUT", "standalone");
+      vi.resetModules();
+      const config = (await loaders[app]()).default;
+      expect(config.output).toBe("standalone");
+      // The monorepo root, so the workspace packages are copied into the standalone folder.
+      expect(config.outputFileTracingRoot).toBe(repoRoot);
+    },
+  );
 });
