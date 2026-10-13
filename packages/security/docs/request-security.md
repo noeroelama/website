@@ -39,7 +39,8 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
   (letters, digits, `_`, `-`; blocks `a/b`, `..`, `__reserved__`). Schemas are `.strict()`
   (unknown keys such as `__proto__`, `uid` or `role` are rejected).
 - **Errors**: clients receive `{ "error": "<code>", "message": "<generic text>" }` (or RFC 9457 in
-  the gateway). Stack traces and internal messages are only logged.
+  the gateway). Stack traces and internal messages are only logged. Pages show the generic error
+  pages instead ([error-pages.md](../../ui/docs/error-pages.md)).
 - Cost: each guarded request performs one Firestore transaction in staging/production (~1 read + 1 write).
   A delayed request keeps its server function running for the extra 500 ms (billed time).
 

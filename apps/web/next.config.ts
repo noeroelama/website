@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   // Partial Prerendering: a static shell is prerendered at build; request-time parts stream in
   // behind <Suspense>. See docs/architecture.md#rendering.
   cacheComponents: true,
+  // Enables forbidden()/unauthorized() and their 403/401 pages (src/app/{forbidden,unauthorized}.tsx).
+  experimental: { authInterrupts: true },
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: [
     "@website/audit",

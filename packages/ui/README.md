@@ -12,6 +12,7 @@ Shared presentational React components.
 | -------------- | ------------------------------------------------------------- |
 | `AppShell`     | Page layout with title                                        |
 | `StatusBadge`  | Small status label                                            |
+| `ErrorPage`    | Generic 401/403/404/500 page ([docs](docs/error-pages.md))    |
 | `./styles.css` | Design tokens and base styles ([docs](docs/design-tokens.md)) |
 
 ## Rules

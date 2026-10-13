@@ -63,7 +63,7 @@ export function createFirebaseIdentityProvider(config: FirebaseAdminConfig): Ide
         return {
           uid: decoded.uid,
           email: decoded.email ?? null,
-          name: typeof decoded["name"] === "string" ? (decoded["name"] as string) : null,
+          name: typeof decoded["name"] === "string" ? decoded["name"] : null,
           emailVerified: decoded.email_verified ?? false,
           signInProvider: decoded.firebase.sign_in_provider ?? null,
           authTime: decoded.auth_time,

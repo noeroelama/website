@@ -23,3 +23,13 @@ test("internal APIs refuse requests from other websites and non-browser clients"
   expect(await crossSite.json()).toEqual({ error: "forbidden", message: "Request not allowed." });
   expect((await request.get("/api/session")).status()).toBe(403);
 });
+
+test("unknown pages show the generic 404 page", async ({ request, baseURL }) => {
+  test.skip(
+    baseURL?.endsWith(":3003") ?? false,
+    "gateway returns RFC 9457 problems (covered by integration tests)",
+  );
+  const response = await request.get("/this-page-does-not-exist");
+  expect(response.status()).toBe(404);
+  expect(await response.text()).toContain("Page not found");
+});

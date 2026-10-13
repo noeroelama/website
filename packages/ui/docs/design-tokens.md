@@ -30,13 +30,13 @@ const poppins = Poppins({
 
 In CSS, always use a token: `color: var(--color-text); padding: var(--space-4);`.
 
-| Group      | Tokens                                                                                             |
-| ---------- | -------------------------------------------------------------------------------------------------- |
-| Brand      | `--color-brand-950` #220709, `-800` #551D22, `-600` #A63232, `-200` #E8D8CB, `-50` #FBF3EC         |
-| Semantic   | `--color-bg`, `-surface`, `-text`, `-text-muted`, `-primary`, `-border`, `-danger`, panel colours… |
-| Type       | `--text-xs` … `--text-6xl` with matching `--leading-*`; classes `.text-xs` … `.text-6xl`           |
-| Layout     | `--space-*`, `--radius-*`, `--size-*`, `--shadow-popover`, `--duration-*`, `--ease-out`            |
-| Components | `.ui-shell`, `.ui-form`, `.ui-field`, `.ui-input`, `.ui-button`, `.ui-message`, `.ui-status`       |
+| Group      | Tokens                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------- |
+| Brand      | `--color-brand-950` #220709, `-800` #551D22, `-600` #A63232, `-200` #E8D8CB, `-50` #FBF3EC                  |
+| Semantic   | `--color-bg`, `-surface`, `-text`, `-text-muted`, `-primary`, `-border`, `-danger`, panel colours…          |
+| Type       | `--text-xs` … `--text-6xl` with matching `--leading-*`; classes `.text-xs` … `.text-6xl`                    |
+| Layout     | `--space-*`, `--radius-*`, `--size-*`, `--shadow-popover`, `--duration-*`, `--ease-out`                     |
+| Components | `.ui-shell`, `.ui-form`, `.ui-field`, `.ui-input`, `.ui-button`, `.ui-message`, `.ui-status`, `.ui-error-*` |
 
 Type scale (Poppins): 6xl 60/1.0 (PPIDK Asiania) · 5xl 48/1.0 (big title) · 4xl 36/1.2 (page title,
 hero) · 3xl 30/1.2 (hero subtitle) · 2xl 24/1.3 (section/card title) · xl 20/1.4 (small title) ·

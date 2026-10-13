@@ -33,6 +33,7 @@ and link to it from the others.
 | Audit logging                                            | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
 | Admin side panel                                         | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
 | Design tokens (colours, Poppins type scale, spacing)     | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
+| Error pages (401, 403, 404, 500)                         | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
 
 Add a row here when you add a feature doc.
 

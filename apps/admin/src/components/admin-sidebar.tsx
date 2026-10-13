@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   useEffect,
   useId,
@@ -155,6 +155,7 @@ export function AdminSidebar(props: {
 function UserMenu(props: { user: SidebarUser; onNavigate: () => void }) {
   const [open, setOpen] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const router = useRouter();
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -191,7 +192,8 @@ function UserMenu(props: { user: SidebarUser; onNavigate: () => void }) {
     try {
       const response = await fetch("/api/session", { method: "DELETE" });
       if (!response.ok) throw new Error(String(response.status));
-      window.location.assign("/");
+      router.push("/"); // the page sends signed-out visitors to the web sign-in
+      router.refresh(); // drop server components rendered with the old session
     } catch {
       setSignOutFailed(true);
     }
