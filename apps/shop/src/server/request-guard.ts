@@ -30,7 +30,6 @@ const getGuard = lazyEnv(() => {
           projectId: fb.FIREBASE_PROJECT_ID,
           clientEmail: fb.FIREBASE_CLIENT_EMAIL,
           privateKey: fb.FIREBASE_PRIVATE_KEY,
-          emulatorHost: fb.FIRESTORE_EMULATOR_HOST,
         }),
       );
     },

@@ -50,3 +50,20 @@ percentage rollouts are needed.
 
 Vercel environment variables (Sensitive), separate per environment. Prefer Vercel OIDC →
 GCP Workload Identity Federation over JSON keys. Rotate on schedule and when anyone leaves.
+
+## Environment set-up (owner checklist)
+
+One-time console work before the organisation-management features are built. Tick each item
+here when it is done; never write secret values in this file (they live in Vercel and the
+password manager).
+
+- [ ] Vercel **Pro** plan for the admin project (minute-level cron, DEC-4 in `architecture.md`).
+- [ ] Firebase Authentication: **multi-factor authentication** enabled (needs the Identity
+      Platform upgrade) — staff roles require MFA.
+- [ ] Firebase Storage: default bucket exists; its name is in `FIREBASE_STORAGE_BUCKET`.
+- [ ] Firestore: **point-in-time recovery**, **scheduled backups** and **delete protection**
+      enabled (`disaster-recovery.md`).
+- [ ] Per-app service accounts, or Vercel OIDC → GCP Workload Identity Federation, for web,
+      admin, shop and gateway (see "Secrets" above).
+- [ ] Generate `CRON_SECRET`, `FIELD_ENCRYPTION_KEY` and `SIGNED_LINK_SECRET` and store them in
+      the password manager. They are added to Vercel when the step that uses them is built.

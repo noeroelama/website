@@ -116,7 +116,38 @@ sign-in state streamed; web `/account` uses `instant = false`. Next.js guide:
 
 ## Asynchronous work
 
-There is no job system by design. Side effects (email, Zoom) are synchronous with timeouts;
-failures are recorded with a status and retried manually from admin. Scheduled publishing is a
-read-time rule (`isPubliclyVisible`). Newsletter campaigns use Resend Broadcasts. If automatic
-retries become necessary, add a **managed** HTTP queue at that time — not a self-hosted worker.
+There is no job system by design. Side effects (email, Zoom) are synchronous with timeouts and
+run after the database transaction commits; failures are recorded with a status and retried from
+admin. Time-based rules are read-time rules wherever possible (`isPubliclyVisible`, offer expiry,
+overdue deadlines). Newsletter campaigns use Resend Broadcasts.
+
+Work that must happen without a visitor (reminders, retries, archiving) uses **Vercel Cron**
+(managed, DEC-4): the admin project calls `GET /cron/<job>` (outside `/api/`) with
+`Authorization: Bearer CRON_SECRET`. Each job is idempotent, short and logs a summary.
+Minute-level schedules need the Vercel Pro plan. No self-hosted worker or queue.
+
+## Incoming webhooks
+
+Third-party callbacks (Zoom, WhatsApp) arrive in admin at `/webhooks/<provider>` (DEC-5). The
+request guard skips **only** the origin check for an explicit allowlist of these paths; rate
+limiting and private caching still apply. Each handler verifies the provider signature and
+timestamp first, de-duplicates by provider event id (`webhookEvents/{provider}_{eventId}`,
+created in a transaction), and answers with a generic body.
+
+## Decisions
+
+Recorded 2026-10-12. Changing one of these is an architecture decision (same PR updates the code
+guard, the boundary script/ESLint config if needed, and this file).
+
+| #      | Decision                                                                                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DEC-1  | Organisation management lives in the existing apps: staff screens in `apps/admin`; member self-service and public pages (verification, public forms) in `apps/web`. The gateway exposes none of it yet. |
+| DEC-2  | Role scopes gain `orgUnit` (covers the unit and every unit below it) and assignments gain `periodId` (only the active period counts) and `source` (appointment or manual). `can()` stays pure.          |
+| DEC-3  | New domain modules are added under `packages/domain/src/` as they are built; each module step updates the dependency matrix for `web` when it needs the module. Domain stays framework-free.            |
+| DEC-4  | Scheduled work: read-time rules first; otherwise Vercel Cron → admin `/cron/<job>` with a bearer `CRON_SECRET` (Vercel Pro for minute-level jobs).                                                      |
+| DEC-5  | Webhooks: admin `/webhooks/<provider>`, origin check skipped only for an explicit allowlist, signature + timestamp verified, event-id de-duplication.                                                   |
+| DEC-6  | Documents: `pdf-lib` (create and stamp PDFs) and `qrcode`, added when the documents phase starts; one renderer and one QR generator behind ports, used only from `src/server/**`.                       |
+| DEC-7  | Messaging: one messaging port; email (Resend) first, then WhatsApp — Cloud API for chatbot replies inside the 24-hour window, WAHA for proactive notifications and polls, on one number.                |
+| DEC-8  | `Money` (integer minor units + ISO 4217) moves from `domain/shop` to `domain/shared` so finance can use it without importing the shop module.                                                           |
+| DEC-9  | Search is menu search + lower-case prefix fields (no external search service). No database log viewer: structured logs go to stdout and the Vercel log drain.                                           |
+| DEC-10 | Letters and certificates issued before the platform are imported once (numbers, verification codes, counters) by a local script with a dry-run mode, before the verification page goes live.            |

@@ -35,7 +35,7 @@ pnpm dev
 | gateway | http://localhost:3003/health · http://localhost:3003/v1/openapi.json |
 
 No `.env.local` is needed for the smoke pages. When you need real services, copy
-`apps/<app>/.env.example` to `apps/<app>/.env.local` and fill in **staging** or emulator values.
+`apps/<app>/.env.example` to `apps/<app>/.env.local` and fill in real values (one Firebase project for every environment; never set emulator variables).
 
 Run one app: `pnpm --filter web dev` (or `admin`, `shop`, `gateway`).
 

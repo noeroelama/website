@@ -5,17 +5,12 @@ Templates only. Nothing here is deployed automatically.
 | File                               | Purpose                                                                                                             |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `.firebaserc`                      | The one project (`default`). **Must match** `WEBSITE_FIREBASE_PROJECT_ID` in `packages/config/src/environments.ts`. |
-| `firebase.json`                    | Rules/indexes paths and local emulator ports.                                                                       |
+| `firebase.json`                    | Rules and indexes paths.                                                                                            |
 | `firestore.rules`, `storage.rules` | Deny-all for clients. All access is server-side via the Admin SDK.                                                  |
 
-Local emulators (optional, requires the Firebase CLI and Java):
-
-```bash
-cd infrastructure/firebase
-firebase emulators:start --project demo-ppidk-website
-```
-
-`demo-*` project IDs never touch real cloud resources. Deploy rules explicitly and per alias:
+Firebase emulators are not used: every app refuses to start when an emulator variable
+(`FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST`, `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`)
+is set. Tests use in-memory adapters instead. Deploy rules explicitly:
 
 ```bash
 firebase deploy --only firestore:rules,storage

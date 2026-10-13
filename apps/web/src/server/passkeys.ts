@@ -17,7 +17,6 @@ export const passkeyRoutes = lazyEnv(() => {
         projectId: env.FIREBASE_PROJECT_ID,
         clientEmail: env.FIREBASE_CLIENT_EMAIL,
         privateKey: env.FIREBASE_PRIVATE_KEY,
-        emulatorHost: env.FIRESTORE_EMULATOR_HOST,
       }),
     ),
     identity: identity(),

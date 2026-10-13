@@ -23,7 +23,6 @@ export interface FirebaseAdminConfig {
   readonly projectId: string;
   readonly clientEmail?: string | undefined;
   readonly privateKey?: string | undefined;
-  readonly authEmulatorHost?: string | undefined;
 }
 
 const APP_NAME = "website-auth";
@@ -32,7 +31,7 @@ function adminApp(config: FirebaseAdminConfig): App {
   assertEnvironmentIsolation({
     appEnv: config.appEnv,
     firebaseProjectId: config.projectId,
-    emulatorHost: config.authEmulatorHost,
+    env: process.env,
   });
   if (getApps().some((a) => a.name === APP_NAME)) return getApp(APP_NAME);
   // Prefer Workload Identity Federation / ADC; JSON key fields are a fallback.

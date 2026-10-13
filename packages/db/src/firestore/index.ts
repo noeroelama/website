@@ -30,7 +30,6 @@ export interface FirestoreConfig {
   /** Per-role service account (least privilege). Omit to use Workload Identity / ADC. */
   readonly clientEmail?: string | undefined;
   readonly privateKey?: string | undefined;
-  readonly emulatorHost?: string | undefined;
 }
 
 /**
@@ -42,7 +41,7 @@ export function getFirestoreForRole(config: FirestoreConfig): Firestore {
   assertEnvironmentIsolation({
     appEnv: config.appEnv,
     firebaseProjectId: config.projectId,
-    emulatorHost: config.emulatorHost,
+    env: process.env,
   });
   const name = `website-db-${config.role}`;
   const app: App = getApps().some((a) => a.name === name)

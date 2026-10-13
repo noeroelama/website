@@ -20,8 +20,6 @@ export const firebaseAdminEnv = z.object({
   FIREBASE_CLIENT_EMAIL: z.email().optional(),
   FIREBASE_PRIVATE_KEY: nonEmpty.optional(),
   FIREBASE_STORAGE_BUCKET: nonEmpty.optional(),
-  FIREBASE_AUTH_EMULATOR_HOST: nonEmpty.optional(),
-  FIRESTORE_EMULATOR_HOST: nonEmpty.optional(),
 });
 
 /** Firebase web config. Public by design — never put secrets here. */

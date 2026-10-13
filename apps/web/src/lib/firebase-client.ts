@@ -1,11 +1,5 @@
 import { getApps, initializeApp } from "firebase/app";
-import {
-  connectAuthEmulator,
-  getAuth,
-  inMemoryPersistence,
-  setPersistence,
-  type Auth,
-} from "firebase/auth";
+import { getAuth, inMemoryPersistence, setPersistence, type Auth } from "firebase/auth";
 import { firebaseClientEnv } from "@website/config/env";
 
 let auth: Promise<Auth> | undefined;
@@ -32,8 +26,6 @@ export function clientAuth(): Promise<Auth> {
         appId: env.NEXT_PUBLIC_FIREBASE_APP_ID,
       });
     const instance = getAuth(app);
-    const emulator = process.env["NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST"];
-    if (emulator) connectAuthEmulator(instance, `http://${emulator}`, { disableWarnings: true });
     await setPersistence(instance, inMemoryPersistence);
     return instance;
   })();

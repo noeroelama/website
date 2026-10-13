@@ -18,25 +18,36 @@ export class EnvironmentIsolationError extends Error {
 }
 
 /**
- * Deployed environments (staging, production) must use the website's Firebase project and never
- * the local emulators. Development/test may also use emulators with a `demo-*` project.
- * Called by every env loader and every Firebase adapter.
+ * Firebase emulators are not used (decision 2026-10-08). The Firebase SDKs read these variables
+ * straight from the process environment, so setting one would silently redirect traffic.
+ */
+export const FIREBASE_EMULATOR_VARIABLES = [
+  "FIREBASE_AUTH_EMULATOR_HOST",
+  "FIRESTORE_EMULATOR_HOST",
+  "NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST",
+] as const;
+
+/**
+ * Every environment refuses Firebase emulator variables; deployed environments (staging,
+ * production) must also use the website's Firebase project.
+ * Called by every env loader (with its source) and every Firebase adapter (with process.env).
  */
 export function assertEnvironmentIsolation(input: {
   appEnv: AppEnvironment;
   firebaseProjectId: string | undefined;
-  emulatorHost: string | undefined;
+  env: Readonly<Record<string, string | undefined>>;
 }): void {
-  const { appEnv, firebaseProjectId, emulatorHost } = input;
+  const { appEnv, firebaseProjectId, env } = input;
+  const emulatorVariable = FIREBASE_EMULATOR_VARIABLES.find((name) => env[name]?.trim());
+  if (emulatorVariable) {
+    throw new EnvironmentIsolationError(
+      `${emulatorVariable} is set, but Firebase emulators are not used. Remove it (APP_ENV=${appEnv}).`,
+    );
+  }
   if (appEnv !== "staging" && appEnv !== "production") return;
   if (firebaseProjectId !== WEBSITE_FIREBASE_PROJECT_ID) {
     throw new EnvironmentIsolationError(
       `APP_ENV=${appEnv} must use the website Firebase project (${WEBSITE_FIREBASE_PROJECT_ID}).`,
-    );
-  }
-  if (emulatorHost) {
-    throw new EnvironmentIsolationError(
-      `Firebase emulators are only allowed in development/test (APP_ENV=${appEnv}).`,
     );
   }
 }

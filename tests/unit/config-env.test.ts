@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { EnvironmentIsolationError } from "@website/config";
+import {
+  APP_ENVIRONMENTS,
+  assertEnvironmentIsolation,
+  EnvironmentIsolationError,
+  FIREBASE_EMULATOR_VARIABLES,
+} from "@website/config";
 import { baseEnv, EnvValidationError, firebaseAdminEnv, loadEnv } from "@website/config/env";
 
 const schema = baseEnv.extend(firebaseAdminEnv.shape);
@@ -20,28 +25,48 @@ describe("environment validation", () => {
     }
   });
 
-  it("deployed environments refuse any other project and the emulators", () => {
+  it("deployed environments refuse any other project", () => {
     for (const appEnv of ["staging", "production"]) {
       expect(() =>
         loadEnv(schema, { APP_ENV: appEnv, FIREBASE_PROJECT_ID: "someone-elses-project" }),
       ).toThrow(EnvironmentIsolationError);
-      expect(() =>
-        loadEnv(schema, {
-          APP_ENV: appEnv,
-          FIREBASE_PROJECT_ID: "ppidk-website-prod",
-          FIRESTORE_EMULATOR_HOST: "localhost:8080",
-        }),
-      ).toThrow(EnvironmentIsolationError);
     }
   });
 
-  it("lets development use the local emulators (demo-* projects)", () => {
-    expect(
-      loadEnv(schema, {
-        APP_ENV: "development",
-        FIREBASE_PROJECT_ID: "demo-website",
-        FIRESTORE_EMULATOR_HOST: "localhost:8080",
-      }).FIREBASE_PROJECT_ID,
-    ).toBe("demo-website");
+  it("refuses Firebase emulator variables in every environment (emulators are not used)", () => {
+    for (const appEnv of APP_ENVIRONMENTS) {
+      for (const variable of FIREBASE_EMULATOR_VARIABLES) {
+        expect(() =>
+          loadEnv(schema, {
+            APP_ENV: appEnv,
+            FIREBASE_PROJECT_ID: "ppidk-website-prod",
+            [variable]: "127.0.0.1:8080",
+          }),
+        ).toThrow(EnvironmentIsolationError);
+        expect(() =>
+          assertEnvironmentIsolation({
+            appEnv,
+            firebaseProjectId: "ppidk-website-prod",
+            env: { [variable]: "127.0.0.1:8080" },
+          }),
+        ).toThrow(EnvironmentIsolationError);
+      }
+    }
+  });
+
+  it("refuses emulator variables even when no Firebase project is configured", () => {
+    expect(() =>
+      loadEnv(baseEnv, { APP_ENV: "development", FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080" }),
+    ).toThrow(EnvironmentIsolationError);
+  });
+
+  it("ignores emulator variables that are present but blank", () => {
+    expect(() =>
+      assertEnvironmentIsolation({
+        appEnv: "production",
+        firebaseProjectId: "ppidk-website-prod",
+        env: { FIRESTORE_EMULATOR_HOST: "  " },
+      }),
+    ).not.toThrow();
   });
 });

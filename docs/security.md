@@ -26,6 +26,8 @@
 | Security test suite                                                 | `pnpm test:security`; `pnpm test` fails below 100% coverage of security code                                                                                                                              |
 | Install scripts                                                     | Denied by default; explicit `allowBuilds` in `pnpm-workspace.yaml`                                                                                                                                        |
 | Fresh-release hijacks                                               | `minimumReleaseAge: 1440` (24 h)                                                                                                                                                                          |
+| Cron routes                                                         | `GET /cron/<job>` in admin only with `Authorization: Bearer CRON_SECRET` (constant-time compare); jobs are idempotent (architecture.md, DEC-4)                                                            |
+| Signed webhooks                                                     | `/webhooks/<provider>` only: origin check skipped by explicit allowlist, provider signature + timestamp verified, event-id de-duplication (DEC-5)                                                         |
 
 ## Threat model summary
 
@@ -42,7 +44,8 @@
 | SSRF                       | No server-side fetch of user URLs without an allowlist/IP check                                                                                              |
 | Rate limiting / bots       | Per-IP limit on every request (100/min, 10k/day, then 500 ms delay per request) + per-key limit in the gateway; public forms add reCAPTCHA and double opt-in |
 | Replay / duplicate writes  | `Idempotency-Key` required on gateway writes; webhook event-ID dedupe                                                                                        |
-| Webhook forgery            | Signature + timestamp verification, dedupe, re-fetch state from provider                                                                                     |
+| Webhook forgery            | Only allowlisted `/webhooks/<provider>` paths skip the origin check; signature + timestamp verification, dedupe, re-fetch state from provider                |
+| Forged cron trigger        | Jobs only via `GET /cron/<job>` with bearer `CRON_SECRET` (constant-time compare); every job idempotent, so a replay changes nothing                         |
 | Audit tampering            | No mutation API; append-only store permissions; hash chain; off-project export                                                                               |
 | API key leakage            | Only HMAC(secret, pepper) stored; shown once; per-key scopes/expiry/revocation; env-specific prefixes                                                        |
 

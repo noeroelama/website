@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createFirestoreRateLimitStore,
   getDocumentsByIds,
   getFirestoreForRole,
 } from "@website/db/firestore";
+import { EnvironmentIsolationError } from "@website/config";
 import { DEFAULT_RATE_LIMIT } from "@website/security";
 import { fakeFirestore as createFakeFirestore } from "../support/fake-firestore";
 
@@ -96,15 +97,22 @@ describe("N+1 prevention: batched reads", () => {
 
 describe("connection pooling: one Firestore client per role, reused", () => {
   it("returns the same pooled client on every call and separate clients per role", () => {
-    const config = {
-      appEnv: "test" as const,
-      projectId: "demo-ppidk-website",
-      emulatorHost: "127.0.0.1:8080",
-    };
+    const config = { appEnv: "test" as const, projectId: "demo-ppidk-website" };
     const a = getFirestoreForRole({ ...config, role: "web_ro" });
     const b = getFirestoreForRole({ ...config, role: "web_ro" });
     const c = getFirestoreForRole({ ...config, role: "admin_rw" });
     expect(a).toBe(b);
     expect(c).not.toBe(a);
+  });
+});
+
+describe("no Firebase emulators: adapters refuse emulator variables in the process environment", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("getFirestoreForRole throws when FIRESTORE_EMULATOR_HOST is set", () => {
+    vi.stubEnv("FIRESTORE_EMULATOR_HOST", "127.0.0.1:8080");
+    expect(() =>
+      getFirestoreForRole({ appEnv: "test", projectId: "demo-ppidk-website", role: "web_ro" }),
+    ).toThrow(EnvironmentIsolationError);
   });
 });

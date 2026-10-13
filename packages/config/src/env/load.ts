@@ -1,5 +1,9 @@
 import { type z } from "zod";
-import { assertEnvironmentIsolation, type AppEnvironment } from "../environments";
+import {
+  assertEnvironmentIsolation,
+  FIREBASE_EMULATOR_VARIABLES,
+  type AppEnvironment,
+} from "../environments";
 
 export class EnvValidationError extends Error {
   override readonly name = "EnvValidationError";
@@ -14,7 +18,7 @@ type EnvSource = Readonly<Record<string, string | undefined>>;
 /**
  * Validates `source` against `schema`. Empty strings are treated as unset so
  * that blank lines copied from .env.example fail loudly instead of passing.
- * Runs the environment-isolation guard whenever a Firebase project is configured.
+ * Runs the environment-isolation guard (project id + no emulator variables).
  */
 export function loadEnv<
   S extends z.ZodObject<z.ZodRawShape & { APP_ENV: z.ZodType<AppEnvironment> }>,
@@ -35,10 +39,9 @@ export function loadEnv<
   const appEnv = env["APP_ENV"] as AppEnvironment;
   const projectId = (env["FIREBASE_PROJECT_ID"] ?? env["NEXT_PUBLIC_FIREBASE_PROJECT_ID"]) as
     string | undefined;
-  const emulatorHost = (env["FIREBASE_AUTH_EMULATOR_HOST"] ?? env["FIRESTORE_EMULATOR_HOST"]) as
-    string | undefined;
-  if (projectId !== undefined || emulatorHost !== undefined) {
-    assertEnvironmentIsolation({ appEnv, firebaseProjectId: projectId, emulatorHost });
+  const emulatorVariableSet = FIREBASE_EMULATOR_VARIABLES.some((name) => name in cleaned);
+  if (projectId !== undefined || emulatorVariableSet) {
+    assertEnvironmentIsolation({ appEnv, firebaseProjectId: projectId, env: cleaned });
   }
 
   return result.data;
