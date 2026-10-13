@@ -1,0 +1,53 @@
+name: Deploy cPanel
+
+# Builds web, admin and shop with NEXT_OUTPUT=standalone and uploads them to the cPanel host
+# (docs/deployment.md#cpanel). `prod` only changes through a PR that passed CI.
+# The gateway is built on the server by cPanel Git Version Control (.cpanel.yml).
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: false
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  deploy:
+    name: Build and upload web, admin, shop
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Set up SSH
+        env:
+          CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          CPANEL_KNOWN_HOSTS: ${{ vars.CPANEL_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$CPANEL_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$CPANEL_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key
+          printf 'Host *\n  IdentityFile ~/.ssh/deploy_key\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Build and upload
+        env:
+          DEPLOY_HOST: ${{ vars.CPANEL_HOST }}
+          DEPLOY_SSH_PORT: ${{ vars.CPANEL_SSH_PORT }}
+          # Public values: the browser bundles are built with them.
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ vars.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+        run: bash scripts/deploy-cpanel.sh apps

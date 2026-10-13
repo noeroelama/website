@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import adminConfig from "../../apps/admin/next.config";
@@ -34,6 +35,15 @@ describe("standalone build (cPanel)", () => {
     admin: () => import("../../apps/admin/next.config"),
     shop: () => import("../../apps/shop/next.config"),
   };
+
+  // Turborepo drops env vars that are not declared, so `pnpm build` only sees NEXT_OUTPUT when the
+  // build task lists it (it also keeps standalone and normal builds apart in the turbo cache).
+  it("turbo passes NEXT_OUTPUT to the build task", () => {
+    const turbo = JSON.parse(readFileSync(path.join(repoRoot, "turbo.json"), "utf8")) as {
+      tasks: { build: { env: string[] } };
+    };
+    expect(turbo.tasks.build.env).toContain("NEXT_OUTPUT");
+  });
 
   afterEach(() => {
     vi.unstubAllEnvs();
