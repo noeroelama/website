@@ -30,6 +30,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          # setup-node would cache pnpm (from packageManager) but pnpm is not installed here;
+          # the deploy script runs pnpm through npx.
+          package-manager-cache: false
       - name: Set up SSH
         env:
           CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
