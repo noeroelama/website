@@ -4,7 +4,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, signInUrl, type VerifiedIdentity } from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
-import { canAccessAdmin, type Principal } from "@website/permissions";
+import {
+  canAccessAdmin,
+  canInSomeScope,
+  type PagePermission,
+  type Principal,
+} from "@website/permissions";
 import { getAdminEnv, getAppUrls } from "./env";
 import { denyAllUserDirectory, type UserDirectory } from "./user-directory";
 
@@ -51,18 +56,23 @@ export async function getPrincipal(): Promise<Principal | null> {
 
 /**
  * For every login-required page. Not signed in → straight to the web sign-in page (307), which
- * brings the visitor back to `path` with the shared session. Signed in without staff access →
- * "no-access" (redirecting would loop). "signed-out" is only returned when WEB_URL/ADMIN_URL
+ * brings the visitor back to `path` with the shared session. Signed in without staff access, or
+ * without `permission` in any scope (the page's `<page>.read`) → "no-access" (redirecting would
+ * loop). The page still filters its data by scope with `can()`. "signed-out" is only returned when WEB_URL/ADMIN_URL
  * are not configured (e.g. CI), so the page can show a message instead.
  * Use with `export const instant = false` so the redirect is a real 307.
  */
 export async function requireAdminViewer(
   path: string,
+  permission?: PagePermission,
 ): Promise<AdminViewer | "signed-out" | "no-access"> {
   if (!(await getIdentity())) {
     const { WEB_URL, ADMIN_URL } = getAppUrls();
     if (WEB_URL && ADMIN_URL) redirect(signInUrl(WEB_URL, `${ADMIN_URL}${path}`));
     return "signed-out";
   }
-  return (await getAdminViewer()) ?? "no-access";
+  const viewer = await getAdminViewer();
+  if (!viewer) return "no-access";
+  if (permission !== undefined && !canInSomeScope(viewer.principal, permission)) return "no-access";
+  return viewer;
 }

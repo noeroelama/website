@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   normalizePermissions,
@@ -93,6 +95,19 @@ describe("admin side panel navigation", () => {
     const hrefs = ADMIN_NAVIGATION.map((entry) => entry.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
     for (const href of hrefs) expect(href.startsWith("/")).toBe(true);
+  });
+
+  it("gives every entry a page that checks the session and the entry's permission", () => {
+    const panel = join(import.meta.dirname, "../../apps/admin/src/app/(panel)");
+    for (const { href, permission } of ADMIN_NAVIGATION) {
+      const source = readFileSync(join(panel, href, "page.tsx"), "utf8");
+      expect(source, href).toContain("export const instant = false;");
+      expect(source, href).toContain(
+        permission === null
+          ? `requireAdminViewer("${href}")`
+          : `requireAdminViewer("${href}", "${permission}")`,
+      );
+    }
   });
 });
 

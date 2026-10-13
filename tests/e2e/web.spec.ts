@@ -8,6 +8,21 @@ test("web home responds with security headers", async ({ request }) => {
   expect(await response.text()).toContain("web: ok");
 });
 
+test("public pages are available without signing in", async ({ request }) => {
+  for (const [path, title] of [
+    ["/", "Home"],
+    ["/articles", "Articles"],
+    ["/map", "Map"],
+    ["/events", "Events"],
+    ["/gallery", "Gallery"],
+    ["/about", "About"],
+  ] as const) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(200);
+    expect(await response.text(), path).toContain(`<h1 class="ui-shell-title">${title}</h1>`);
+  }
+});
+
 test("sign-in, sign-up and password-reset pages are available", async ({ request }) => {
   for (const [path, text] of [
     ["/login", "Sign in"],

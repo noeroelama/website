@@ -29,7 +29,7 @@ page under `src/app/(panel)/` so it gets the panel, and gate its content in the 
 export const instant = false;
 
 export default async function Page() {
-  const viewer = await requireAdminViewer("/events"); // signed out → redirect to web sign-in
+  const viewer = await requireAdminViewer("/events", "events.read"); // signed out → web sign-in
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />; // "no-access"
   // … check can(viewer.principal, …) for the data, then render
 }
@@ -44,7 +44,10 @@ export default async function Page() {
   known), otherwise Next.js cannot validate instant navigation ("instant-unrendered-segment"). So
   the layout is not the gate: each page calls `requireAdminViewer`, which redirects signed-out
   visitors to `WEB_URL/login?next=ADMIN_URL/<path>` and returns `"no-access"` for accounts without
-  a staff role.
+  a staff role or without the page's permission. A unit test checks that every menu entry has a
+  page calling `requireAdminViewer` with the same href and permission.
+- The pages Tools, Event, Gallery, Article, Newsletter, Organizations and Audit Log exist as blank
+  pages (heading only); each feature fills its page in its own phase.
 - The name comes from the sign-in provider (Google); otherwise the email is shown.
 - Profile, Account and Emails link to `/profile`, `/account` and `/emails`; those pages are built in
   later steps. Log out calls `DELETE /api/session`.

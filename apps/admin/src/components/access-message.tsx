@@ -7,7 +7,7 @@ export function AccessMessage({ reason }: { reason: "signed-out" | "no-access" }
     <p data-testid="auth-state">
       {reason === "signed-out"
         ? "Not signed in — sign-in required."
-        : "This account has no staff access. Ask an administrator for a role."}
+        : "Your role does not include this page. Ask an administrator for access."}
     </p>
   );
 }

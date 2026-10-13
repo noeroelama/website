@@ -5,11 +5,10 @@ import { AppShell, StatusBadge } from "@website/ui";
 
 export default function HomePage() {
   return (
-    <AppShell title="Public website">
+    <AppShell title="Home">
       <p>
         <StatusBadge label="web: ok" status="ok" />
       </p>
-      <p>News, articles, events, gallery, organization and chapters will live here.</p>
     </AppShell>
   );
 }

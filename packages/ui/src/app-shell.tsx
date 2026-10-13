@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
  * authorization decisions — they render what server code already decided.
  * Styling comes from `@website/ui/styles.css` (design tokens), imported once per app.
  */
-export function AppShell(props: { title: string; children: ReactNode }) {
+export function AppShell(props: { title: string; children?: ReactNode }) {
   return (
     <main className="ui-shell">
       <h1 className="ui-shell-title">{props.title}</h1>
