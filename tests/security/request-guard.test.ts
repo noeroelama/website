@@ -66,6 +66,22 @@ describe("origin restriction (requests must come from our own site)", () => {
     ).toBeNull();
   });
 
+  it("behind a reverse proxy (cPanel/Passenger) compares against the Host header, not the internal URL", async () => {
+    // Next.js standalone behind Passenger sees http://localhost:<port> as request.url.
+    const proxied = (headers: Record<string, string>) =>
+      new Request("http://localhost:3000/api/session", {
+        method: "POST",
+        headers: { host: "web.example.org", ...headers },
+      });
+    expect((await guardRequest(proxied({ origin: SITE }), opts())).blocked).toBeNull();
+    expect(
+      (await guardRequest(proxied({ origin: "https://evil.example" }), opts())).blocked?.status,
+    ).toBe(403);
+    expect(
+      (await guardRequest(proxied({ origin: SITE }), opts({ mode: "public-api" }))).blocked,
+    ).toBeNull();
+  });
+
   it("public-api mode (gateway): server-to-server allowed, cross-origin browsers blocked", async () => {
     const o = opts({ mode: "public-api" });
     expect((await guardRequest(req("/v1/events"), o)).blocked).toBeNull();

@@ -45,20 +45,36 @@ export function clientIp(headers: Headers): string {
   );
 }
 
-function isOwnOrigin(request: Request, ownOrigin: string): boolean {
+/**
+ * Our public host. Behind a reverse proxy (cPanel/Passenger) `request.url` is the internal
+ * address (http://localhost:<port>), so the forwarded/Host header is used — the same check
+ * Next.js applies to Server Actions. Browsers cannot forge these headers cross-site.
+ */
+function ownHost(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    request.headers.get("host") ||
+    new URL(request.url).host
+  );
+}
+
+function isSameHost(origin: string, request: Request): boolean {
+  return URL.canParse(origin) && new URL(origin).host === ownHost(request);
+}
+
+function isOwnOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
-  if (origin !== null) return origin === ownOrigin;
+  if (origin !== null) return isSameHost(origin, request);
   return request.headers.get("sec-fetch-site") === "same-origin";
 }
 
 function originAllowed(request: Request, mode: GuardOptions["mode"], path: string): boolean {
-  const ownOrigin = new URL(request.url).origin;
   if (mode === "public-api") {
     const origin = request.headers.get("origin");
-    return origin === null || origin === ownOrigin;
+    return origin === null || isSameHost(origin, request);
   }
   const mustBeOwn = path.startsWith("/api/") || !SAFE_METHODS.has(request.method);
-  return !mustBeOwn || isOwnOrigin(request, ownOrigin);
+  return !mustBeOwn || isOwnOrigin(request);
 }
 
 /** Runs before every request: origin restriction, per-IP rate limit, private caching headers. */

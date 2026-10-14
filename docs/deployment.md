@@ -132,5 +132,9 @@ Every release: merge to `prod` (PR from `staging`, as above).
 Rollback: revert the change on `prod` through a PR; the workflow redeploys web, admin and shop,
 then deploy the gateway again.
 
+Behind Passenger, `request.url` is the internal address (`http://localhost:<port>`), so the
+origin check in `packages/security/src/request-guard.ts` compares the `Origin` header with the
+`Host`/`X-Forwarded-Host` header instead. A 403 on `/api/session` after sign-in means that check failed.
+
 There are no Preview or Staging deployments on cPanel; test on `dev`/`staging` locally or on Vercel.
 Scheduled jobs (DEC-4) use Vercel Cron; on cPanel they need **Cron Jobs** calling `/cron/<job>`.
