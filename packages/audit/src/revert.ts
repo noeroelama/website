@@ -2,8 +2,14 @@ import type { AuditActor, AuditEvent, AuditRequestMeta } from "./types";
 
 export const REVERT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
-export type RevertRejection =
-  "not_revertible" | "window_expired" | "already_reverted" | "is_revert" | "version_conflict";
+export const REVERT_REJECTIONS = [
+  "not_revertible",
+  "window_expired",
+  "already_reverted",
+  "is_revert",
+  "version_conflict",
+] as const;
+export type RevertRejection = (typeof REVERT_REJECTIONS)[number];
 
 export type RevertDecision =
   { readonly allowed: true } | { readonly allowed: false; readonly reason: RevertRejection };

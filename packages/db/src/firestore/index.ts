@@ -16,7 +16,15 @@ import { assertEnvironmentIsolation, type AppEnvironment } from "@website/config
 import type { DatabaseRole } from "../roles";
 
 export { createFirestoreRateLimitStore } from "./rate-limit";
-export { createFirestoreAuditWriter, type FirestoreAuditWriter } from "./audit";
+export {
+  createFirestoreAuditStore,
+  createFirestoreAuditWriter,
+  type AuditListQuery,
+  type FirestoreAuditStore,
+  type FirestoreAuditWriter,
+  type RevertibleCollections,
+  type RevertOutcome,
+} from "./audit";
 export { getDocumentsByIds } from "./batch";
 export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";

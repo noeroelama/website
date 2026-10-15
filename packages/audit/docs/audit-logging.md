@@ -69,12 +69,35 @@ const rename = createGuardedAction({
 - Tests: `tests/integration/audit-writer.test.ts`, `tests/security/guarded-action.test.ts`,
   `tests/unit/audit.test.ts`.
 
+## Audit Log page and revert
+
+Admin `/audit` (`audit.read`, global): one card per entry, newest first, 20 per page ("Load
+more"), filters admin e-mail, page (module), action and date range (UTC). Headline
+`[ACTION] [Page] [title] - #[id]`, chips with the admin e-mail and the time, and the changed-field
+table (Field, Before, After). Read-only: there is no edit or delete route.
+
+**Revert** (`audit.revert`, sign-in in the last 15 minutes): the button is disabled with the
+reason as tooltip — "Revert window expired" (> 14 days), "Already reverted", "A revert cannot be
+reverted", "The record changed after this entry", or "This change cannot be reverted" (sends,
+uploads, role and account changes, and any record type not registered for revert). Otherwise a
+confirm dialog shows the same table, then ONE transaction re-checks everything
+(`evaluateRevert`), writes the Before values of only the listed fields back (a create is moved to
+trash, a delete is restored) with version + 1, and appends a NEW `REVERT` entry
+(`buildRevertEvent`, `revertOf` = the original). A security event `audit.revert` is logged.
+
+- Code: `apps/admin/src/app/(panel)/audit/**`, `apps/admin/src/server/audit-log.ts`
+  (`REVERTIBLE_COLLECTIONS`), `packages/db/src/firestore/audit.ts` (`createFirestoreAuditStore`).
+- A module makes its records revertible by adding `resourceType: "collection"` to
+  `REVERTIBLE_COLLECTIONS` (its documents must carry `version`, `updatedAt`, `deletedAt`). The map
+  is empty until the content modules (news, events, gallery) add theirs.
+- Tests: `tests/integration/audit-log.test.ts`.
+
 ## Integrity
 
 - Every entry has `seq`, `prevHash` and `hash = sha256(prevHash + canonicalJson(event))`
   (`prevHash` empty for the first entry); `auditChain/head` holds the newest `{ hash, seq }`.
   Because every audited transaction reads and writes the head, entries get a strict order and
   a gap or an edited entry breaks the chain.
-- Only `packages/db/src/firestore/audit.ts` references `auditLogs`, and it only creates
-  (architecture test). Planned: nightly chain verification and a daily export to a
+- Only `packages/db/src/firestore/audit.ts` references `auditLogs`, and entries are only ever
+  created inside a transaction (architecture test). Planned: nightly chain verification and a daily export to a
   retention-locked bucket in a separate project.

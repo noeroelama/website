@@ -1,4 +1,9 @@
-import { AUDIT_ACTIONS, type AuditAction } from "@website/audit";
+import {
+  AUDIT_ACTIONS,
+  REVERT_REJECTIONS,
+  type AuditAction,
+  type RevertRejection,
+} from "@website/audit";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 
 /**
@@ -35,6 +40,21 @@ export const AUDIT_ACTION_LABELS = {
   REVERT: { id: "Kembalikan", en: "Revert" },
 } as const satisfies Record<AuditAction, Label>;
 
+/** Why a REVERT button is disabled (tooltip) or a revert was refused. */
+export const REVERT_REJECTION_LABELS = {
+  window_expired: { id: "Batas waktu pengembalian sudah lewat", en: "Revert window expired" },
+  already_reverted: { id: "Sudah dikembalikan", en: "Already reverted" },
+  is_revert: { id: "Pengembalian tidak dapat dikembalikan", en: "A revert cannot be reverted" },
+  version_conflict: {
+    id: "Data sudah berubah setelah entri ini",
+    en: "The record changed after this entry",
+  },
+  not_revertible: {
+    id: "Perubahan ini tidak dapat dikembalikan (e-mail terkirim, unggahan, atau peran)",
+    en: "This change cannot be reverted (e-mail sent, upload or role change)",
+  },
+} as const satisfies Record<RevertRejection, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -45,6 +65,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "scope", keys: ["global", "chapter"], labels: SCOPE_LABELS },
   { name: "role type", keys: ["builtIn", "custom"], labels: ROLE_TYPE_LABELS },
   { name: "audit action", keys: AUDIT_ACTIONS, labels: AUDIT_ACTION_LABELS },
+  { name: "revert rejection", keys: REVERT_REJECTIONS, labels: REVERT_REJECTION_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

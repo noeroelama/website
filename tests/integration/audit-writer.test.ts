@@ -87,12 +87,13 @@ describe("Firestore audit writer (append-only, hash chain, same transaction)", (
 });
 
 describe("architecture: the audit log has no update or delete path", () => {
-  it("the writer only creates entries and only sets the chain head", () => {
+  it("audit entries are only ever created, inside a transaction", () => {
     const source = readFileSync("packages/db/src/firestore/audit.ts", "utf8");
-    expect(source).toMatch(/tx\.create\(/);
-    expect(source).not.toMatch(
-      /tx\.(update|delete)\(|\.doc\([^)]*\)\.(set|update|delete)\(|recursiveDelete|bulkWriter/,
-    );
+    expect(source).toMatch(/tx\.create\(logs\.doc\(/);
+    // `logs` (the auditLogs collection) is never set, updated or deleted, in or out of a transaction.
+    expect(source).not.toMatch(/tx\.(set|update|delete)\(\s*logs\b/);
+    expect(source).not.toMatch(/logs\.doc\([^)]*\)\.(set|update|delete|create)\(/);
+    expect(source).not.toMatch(/recursiveDelete|bulkWriter|batch\(\)/);
     // No other database code touches the audit collection.
     const others = execFileSync(
       "git",

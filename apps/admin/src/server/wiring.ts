@@ -2,7 +2,10 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
+import type { AuditListQuery } from "@website/db/firestore";
+import { logSecurityEvent } from "@website/observability";
 import { createAccountActions } from "./accounts";
+import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createImageUploads } from "./images";
 import { createRoleActions } from "./roles";
 import { adminStores, imageStorage } from "./stores";
@@ -23,11 +26,23 @@ export const imageUploads = lazyEnv(() =>
   }),
 );
 
+/** Audit Log page: revert status per entry and the revert action. */
+export const auditLogActions = lazyEnv(() =>
+  createAuditLogActions({
+    audit: adminStores().auditLog,
+    revertible: REVERTIBLE_COLLECTIONS,
+    now: () => new Date(),
+    logSecurityEvent: (actorId, details) =>
+      logSecurityEvent(adminStores().logger, { type: "audit.revert", actorId, details }),
+  }),
+);
+
 /** Reads for the Users and Roles pages. Callers check `users.read` / `roles.read` first. */
 export const adminReads = {
   listUsers: (query: UserListQuery) => adminStores().accounts.list(query),
   getUser: (uid: string) => adminStores().accounts.get(uid),
   listRoles: () => adminStores().roles.list(),
+  listAudit: (query: AuditListQuery) => adminStores().auditLog.list(query),
   getRole: (id: string) => adminStores().roles.get(id),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {

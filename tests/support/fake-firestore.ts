@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 
 type Data = Record<string, unknown>;
+
+/** "actor.email" → data.actor.email (Firestore field paths). */
+const at = (data: Data, field: string): unknown =>
+  field.split(".").reduce<unknown>((value, key) => (value as Data | undefined)?.[key], data);
 type Doc = {
   id: string;
   exists: boolean;
@@ -18,13 +22,15 @@ function asStored(data: Data): Data {
 }
 
 const sortable = (value: unknown): string | number =>
-  typeof value === "number"
-    ? value
-    : value && typeof value === "object" && "toDate" in value
-      ? (value as { toDate(): Date }).toDate().getTime()
-      : typeof value === "string"
-        ? value
-        : JSON.stringify(value ?? "");
+  value instanceof Date
+    ? value.getTime()
+    : typeof value === "number"
+      ? value
+      : value && typeof value === "object" && "toDate" in value
+        ? (value as { toDate(): Date }).toDate().getTime()
+        : typeof value === "string"
+          ? value
+          : JSON.stringify(value ?? "");
 
 /**
  * Minimal in-memory stand-in for the parts of the Firestore Admin SDK our adapters use:
@@ -75,15 +81,22 @@ export function fakeFirestore(options: { failWith?: Error } = {}) {
         .filter(({ data }) => filters.every((f) => f(data)));
       const compare = (a: Data, b: Data) => {
         for (const [i, field] of order.entries()) {
-          const x = sortable(a[field]);
-          const y = sortable(b[field]);
+          const x = sortable(at(a, field));
+          const y = sortable(at(b, field));
           if (x !== y) return (x < y ? -1 : 1) * (directions[i] === "desc" ? -1 : 1);
         }
         return 0;
       };
       if (order.length > 0) rows.sort((a, b) => compare(a.data, b.data));
       if (after) {
-        const cursor = Object.fromEntries(order.map((f, i) => [f, after[i]]));
+        const cursor: Data = {};
+        order.forEach((field, i) => {
+          field.split(".").reduce<Data>((node, key, j, keys) => {
+            if (j === keys.length - 1) node[key] = after[i];
+            else node[key] ??= {};
+            return node[key] as Data;
+          }, cursor);
+        });
         rows = rows.filter(({ data }) => compare(data, cursor) > 0);
       }
       if (max !== null) rows = rows.slice(0, max);
@@ -98,7 +111,7 @@ export function fakeFirestore(options: { failWith?: Error } = {}) {
       __query: run,
       where(field: string, op: string, value: unknown) {
         const test: Filter = (data) => {
-          const v = data[field];
+          const v = at(data, field);
           if (op === "==") return JSON.stringify(v) === JSON.stringify(value);
           if (op === "array-contains") return Array.isArray(v) && v.includes(value);
           if (op === "in") return (value as unknown[]).includes(v);
