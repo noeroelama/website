@@ -10,7 +10,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run start",
-    "lint": "turbo run lint && eslint tests scripts --max-warnings=0 && node scripts/check-boundaries.mjs",
+    "lint": "turbo run lint && eslint tests scripts infrastructure/scripts --max-warnings=0 && node scripts/check-boundaries.mjs",
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "typecheck": "turbo run typecheck && tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage",

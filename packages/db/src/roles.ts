@@ -3,6 +3,7 @@ import type { ContentReader, ContentWriter } from "@website/domain/content";
 import type { EventReader } from "@website/domain/events";
 import type { MemberProfileRepository } from "@website/domain/members";
 import type { ChapterReader } from "@website/domain/organizations";
+import type { RoleReader, SignInRecorder, UserDirectory } from "./users";
 
 /**
  * Each deployable gets ONE role and only the repositories that role may use.
@@ -20,6 +21,8 @@ export interface WebRepositories {
   readonly chapters: ChapterReader;
   /** Self-service only: callers must check `profile.*_own` with ownerId = principal.userId. */
   readonly memberProfiles: MemberProfileRepository;
+  /** Records the signed-in user's own sign-in (uid from the verified session). */
+  readonly users: SignInRecorder;
 }
 
 export interface AdminRepositories {
@@ -27,6 +30,8 @@ export interface AdminRepositories {
   readonly events: EventReader;
   readonly chapters: ChapterReader;
   readonly memberProfiles: MemberProfileRepository;
+  readonly users: UserDirectory;
+  readonly roles: RoleReader;
 }
 
 export interface GatewayRepositories {

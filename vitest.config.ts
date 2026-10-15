@@ -18,6 +18,8 @@ export default defineConfig({
         "apps/web/src/lib/auth-errors.ts",
         "packages/db/src/firestore/rate-limit.ts",
         "packages/db/src/firestore/batch.ts",
+        "packages/db/src/users.ts",
+        "packages/db/src/firestore/users.ts",
         "apps/*/src/server/request-guard.ts",
         "apps/gateway/src/middleware/request-guard.ts",
         "apps/admin/src/server/guarded-action.ts",

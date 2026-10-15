@@ -18,6 +18,7 @@ import type { DatabaseRole } from "../roles";
 export { createFirestoreRateLimitStore } from "./rate-limit";
 export { getDocumentsByIds } from "./batch";
 export { createFirestorePasskeyStore } from "./passkeys";
+export { createFirestoreRoleStore, createFirestoreUserStore } from "./users";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");
@@ -63,6 +64,6 @@ export function getFirestoreForRole(config: FirestoreConfig): Firestore {
   return getFirestore(app);
 }
 
-// Repository implementations (events, content, chapters, apiKeys, audit) are added
-// in the next phase, after the data model is validated. They implement the ports
-// declared in @website/domain and are exposed per role via ../roles.ts.
+// Further repository implementations (events, content, chapters, apiKeys) are added module by
+// module. They implement the ports declared in @website/domain (or ../users.ts) and are exposed
+// per role via ../roles.ts.

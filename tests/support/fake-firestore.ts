@@ -47,6 +47,12 @@ export function fakeFirestore(options: { failWith?: Error } = {}) {
   const db = {
     collection: (name: string) => ({
       doc: (id: string) => ref(name, id),
+      get: () =>
+        Promise.resolve({
+          docs: [...docs.entries()]
+            .filter(([path]) => path.startsWith(`${name}/`))
+            .map(([path, data]) => ({ id: path.slice(name.length + 1), data: () => data })),
+        }),
       where: (field: string, _op: "==", value: unknown) => ({
         get: () =>
           Promise.resolve({

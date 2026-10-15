@@ -6,3 +6,10 @@ export type {
   GatewayRepositories,
   ShopRepositories,
 } from "./roles";
+export type {
+  RoleReader,
+  SignInIdentity,
+  SignInRecorder,
+  UserDirectory,
+  UserStatus,
+} from "./users";

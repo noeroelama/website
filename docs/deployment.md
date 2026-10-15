@@ -204,5 +204,5 @@ file (they live in the cPanel app screens and the password manager).
       password manager; they are added to the app screens when the step that uses them is built.
 - [ ] Decide the main domain name and whether to run a `staging.*` set of apps (DEC-17); then
       DNS + AutoSSL for the main domain, `admin.`, `shop.` and `api.` (later `verif.ppiasiania.id`).
-- [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, added with the users
-      directory).
+- [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, see
+      `packages/auth/docs/authentication.md` → Account lifecycle).

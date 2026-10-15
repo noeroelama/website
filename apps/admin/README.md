@@ -21,7 +21,7 @@ Staff administration for content, events, members, users and audit.
 | `src/app/api/session/route.ts` | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                                                                 |
 | `src/server/context.ts`        | `getAdminViewer()` / `getPrincipal()` — session → Firebase → roles in Firestore; staff only. `requireAdminViewer(path, permission)` gates each page.    |
 | `src/server/guarded-action.ts` | `createGuardedAction()` — the only way to write an admin mutation.                                                                                      |
-| `src/server/user-directory.ts` | Looks up a user's roles (fails closed until implemented).                                                                                               |
+| `src/server/user-directory.ts` | uid → account status + roles from Firestore (`@website/db`); no record or no staff role = no access.                                                    |
 
 ## Rules
 

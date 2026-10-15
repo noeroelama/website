@@ -148,7 +148,7 @@ vi.mock("../../apps/admin/src/server/env", () => ({
   getAppUrls: () => ({ WEB_URL: "https://web.example", ADMIN_URL: "https://admin.example" }),
 }));
 vi.mock("../../apps/admin/src/server/user-directory", () => ({
-  denyAllUserDirectory: { findPrincipalByUid: () => Promise.resolve(adminSession.principal) },
+  userDirectory: () => ({ findPrincipalByUid: () => Promise.resolve(adminSession.principal) }),
 }));
 
 describe("admin page gate (requireAdminViewer)", () => {

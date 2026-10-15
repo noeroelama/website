@@ -7,7 +7,6 @@ import {
   type Principal,
 } from "@website/permissions";
 import { createGuardedAction } from "../../apps/admin/src/server/guarded-action";
-import { denyAllUserDirectory } from "../../apps/admin/src/server/user-directory";
 
 const publishNews = createGuardedAction({
   permission: "articles.publish",
@@ -62,9 +61,5 @@ describe("admin guarded actions (server-side enforcement)", () => {
       ok: true,
       data: { published: "n1" },
     });
-  });
-
-  it("a Firebase login alone grants nothing (no user record → no principal)", async () => {
-    expect(await denyAllUserDirectory.findPrincipalByUid("any-firebase-uid")).toBeNull();
   });
 });

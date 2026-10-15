@@ -11,9 +11,7 @@ import {
   type Principal,
 } from "@website/permissions";
 import { getAdminEnv, getAppUrls } from "./env";
-import { denyAllUserDirectory, type UserDirectory } from "./user-directory";
-
-const userDirectory: UserDirectory = denyAllUserDirectory;
+import { userDirectory } from "./user-directory";
 
 /** The signed-in staff member: who they are (for display) and what they may do. */
 export interface AdminViewer {
@@ -44,7 +42,7 @@ const getIdentity = cache(async (): Promise<VerifiedIdentity | null> => {
 export const getAdminViewer = cache(async (): Promise<AdminViewer | null> => {
   const identity = await getIdentity();
   if (!identity) return null;
-  const principal = await userDirectory.findPrincipalByUid(identity.uid);
+  const principal = await userDirectory().findPrincipalByUid(identity.uid);
   if (!principal || !canAccessAdmin(principal)) return null;
   return { principal, name: identity.name ?? null, email: identity.email };
 });

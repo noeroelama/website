@@ -519,6 +519,9 @@ importers:
       '@website/domain':
         specifier: workspace:*
         version: link:../domain
+      '@website/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       '@website/security':
         specifier: workspace:*
         version: link:../security

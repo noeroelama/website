@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { jsonError } from "@website/security";
-import { SESSION_COOKIE, type IdentityProvider } from "./session";
+import { SESSION_COOKIE, type IdentityProvider, type VerifiedIdentity } from "./session";
 
 /**
  * OAuth sign-in, server side. The browser signs in with Google through the Firebase client SDK
@@ -29,6 +29,12 @@ export function createSessionRoutes(options: {
   maxAgeHours: number;
   /** Parent domain shared by web, admin and shop (SESSION_COOKIE_DOMAIN); omit for host-only. */
   cookieDomain?: string | undefined;
+  /**
+   * Runs after the session cookie is created, with the identity read back from that verified
+   * cookie (never from the body) — e.g. to create the user record on first sign-in. An error
+   * fails the sign-in (no cookie is set).
+   */
+  onSignIn?: ((identity: VerifiedIdentity) => Promise<void>) | undefined;
 }) {
   const maxAgeSeconds = options.maxAgeHours * 3600;
   const domain = options.cookieDomain;
@@ -45,6 +51,11 @@ export function createSessionRoutes(options: {
         );
       } catch {
         return jsonError("unauthenticated"); // reason (expired, revoked, forged) is not disclosed
+      }
+      if (options.onSignIn) {
+        const identity = await options.identity.verifySessionCookie(cookie);
+        if (!identity) return jsonError("unauthenticated");
+        await options.onSignIn(identity);
       }
       return new Response(null, {
         status: 204,
