@@ -168,3 +168,28 @@ export function canAssignRole(principal: Principal | null, role: RoleDefinition)
   }
   return holdsGlobally(principal, role.permissions);
 }
+
+/** Why an account change is refused; null = allowed. */
+export type AccountChangeRefusal = "self" | "forbidden" | "last_superadmin";
+
+/**
+ * Users page rules for adding/removing a role or changing an account's status:
+ * nobody changes their own account; `users.edit` + `canAssignRole` for the role concerned
+ * (you cannot add or remove what you could not grant; superadmin only by a superadmin);
+ * the organisation never ends up without an active global superadmin.
+ */
+export function accountChangeRefusal(input: {
+  readonly actor: Principal | null;
+  readonly targetUserId: string;
+  /** The role added or removed; omit for a status change. */
+  readonly role?: RoleDefinition;
+  /** Active global superadmins once the change is applied (read in the same transaction). */
+  readonly superadminsAfter: number;
+}): AccountChangeRefusal | null {
+  const { actor, targetUserId, role, superadminsAfter } = input;
+  if (actor !== null && actor.userId === targetUserId) return "self";
+  const allowed = role ? canAssignRole(actor, role) : can(actor, "users.edit");
+  if (!allowed) return "forbidden";
+  if (superadminsAfter === 0) return "last_superadmin";
+  return null;
+}

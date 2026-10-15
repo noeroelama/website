@@ -38,9 +38,35 @@ export interface IdentityProvider {
 
 /** Sensitive actions (role changes, exports, refunds) require a recent sign-in. */
 export function isRecentSignIn(
-  identity: VerifiedIdentity,
+  identity: Pick<VerifiedIdentity, "authTime">,
   nowSeconds: number,
   maxAgeSeconds = 15 * 60,
 ): boolean {
   return nowSeconds - identity.authTime <= maxAgeSeconds;
+}
+
+/** How an account can sign in (Firebase Auth record + our passkeys). */
+export interface SignInMethods {
+  /** Firebase provider ids, e.g. "google.com", "password". */
+  readonly providers: readonly string[];
+  /** Enrolled multi-factor authentication factors. */
+  readonly mfaFactors: number;
+  readonly passkeys: number;
+}
+
+/**
+ * Staff need a second way to prove who they are before a staff role is written (PPIDK rule
+ * "two sign-in methods"): an enrolled MFA factor, or a passkey plus another sign-in method.
+ */
+export function hasTwoSignInMethods(methods: SignInMethods): boolean {
+  return methods.mfaFactors > 0 || (methods.passkeys > 0 && methods.providers.length > 0);
+}
+
+/** Firebase Auth account operations used by the admin Users page and the web account page. */
+export interface AccountAdmin {
+  /** Provider ids and MFA factor count (passkeys are counted from our own store). */
+  signInMethods(uid: string): Promise<Pick<SignInMethods, "providers" | "mfaFactors">>;
+  /** Disabled accounts cannot sign in or refresh tokens. */
+  setDisabled(uid: string, disabled: boolean): Promise<void>;
+  revokeSessions(uid: string): Promise<void>;
 }

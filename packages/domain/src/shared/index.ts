@@ -30,6 +30,14 @@ export class ConcurrencyConflictError extends Error {
   override readonly name = "ConcurrencyConflictError";
 }
 
+/**
+ * A business rule refused the change. The message is written for staff and is safe to show
+ * (e.g. "You cannot change your own roles."); never put internal details in it.
+ */
+export class RuleViolationError extends Error {
+  override readonly name = "RuleViolationError";
+}
+
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function isValidSlug(slug: string): boolean {
   return slug.length > 0 && slug.length <= 120 && SLUG.test(slug);

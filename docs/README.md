@@ -32,6 +32,7 @@ and link to it from the others.
 | Request security                                         | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
 | Audit logging                                            | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
 | Admin side panel                                         | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
+| Users and Roles pages (staff second sign-in method)      | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
 | Design tokens (colours, Poppins type scale, spacing)     | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
 | Error pages (401, 403, 404, 500)                         | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
 

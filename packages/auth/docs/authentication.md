@@ -14,7 +14,9 @@ is; _what_ they may do comes only from RBAC role assignments in Firestore (`user
 | Forgot password  | —                                                                           | `/forgot-password` → Firebase reset email → back to `/login` | Firebase              |
 
 - Email must be verified before a member profile can be saved.
-- Staff accounts (any role with `admin.access`) must have MFA enabled before the role is granted.
+- Staff roles (any role that opens an admin page) are only granted to accounts with **two sign-in
+  methods**: an MFA factor, or a passkey plus Google/password (`hasTwoSignInMethods`). Web
+  `/account` lists the account's methods (`createFirebaseAccountAdmin` + our passkeys).
 - Pages live in `apps/web/src/app/{login,signup,forgot-password,account}`; browser logic in
   `apps/web/src/lib/auth-client.ts`. Firebase keeps nothing in the browser (in-memory persistence):
   after each sign-in the ID token is exchanged for the session cookie and the browser signs out of Firebase.

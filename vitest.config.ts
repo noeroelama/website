@@ -24,6 +24,8 @@ export default defineConfig({
         "apps/*/src/server/request-guard.ts",
         "apps/gateway/src/middleware/request-guard.ts",
         "apps/admin/src/server/guarded-action.ts",
+        "apps/admin/src/server/accounts.ts",
+        "apps/admin/src/server/roles.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
       reporter: ["text-summary"],

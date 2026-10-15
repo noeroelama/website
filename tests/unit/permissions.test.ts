@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { hasTwoSignInMethods } from "@website/auth";
 import {
+  accountChangeRefusal,
   ADMIN_PAGES,
   can,
   canAccessAdmin,
@@ -224,5 +226,53 @@ describe("no privilege escalation through the Roles page", () => {
       false,
     );
     expect(canAssignRole(superadmin, role(SUPERADMIN_ROLE_ID))).toBe(true);
+  });
+});
+
+describe("Users page rules (accountChangeRefusal)", () => {
+  const superadmin = principal([{ roleId: SUPERADMIN_ROLE_ID }]);
+  const manager = principal([{ roleId: "role_manager" }]);
+
+  it("nobody changes their own account", () => {
+    expect(
+      accountChangeRefusal({ actor: superadmin, targetUserId: "u1", superadminsAfter: 2 }),
+    ).toBe("self");
+  });
+
+  it("adding or removing a role needs every permission of that role; superadmin only by a superadmin", () => {
+    const base = { targetUserId: "u2", superadminsAfter: 1 };
+    expect(accountChangeRefusal({ ...base, actor: manager, role: role("editor") })).toBe(
+      "forbidden",
+    );
+    expect(accountChangeRefusal({ ...base, actor: manager, role: role(SUPERADMIN_ROLE_ID) })).toBe(
+      "forbidden",
+    );
+    expect(
+      accountChangeRefusal({ ...base, actor: superadmin, role: role(SUPERADMIN_ROLE_ID) }),
+    ).toBeNull();
+    expect(accountChangeRefusal({ ...base, actor: superadmin, role: role("editor") })).toBeNull();
+  });
+
+  it("a status change needs users.edit; the last active superadmin is protected", () => {
+    const viewer = principal([{ roleId: "viewer" }]);
+    expect(accountChangeRefusal({ actor: viewer, targetUserId: "u2", superadminsAfter: 1 })).toBe(
+      "forbidden",
+    );
+    expect(accountChangeRefusal({ actor: null, targetUserId: "u2", superadminsAfter: 1 })).toBe(
+      "forbidden",
+    );
+    expect(accountChangeRefusal({ actor: manager, targetUserId: "u2", superadminsAfter: 0 })).toBe(
+      "last_superadmin",
+    );
+  });
+});
+
+describe("staff second sign-in method (hasTwoSignInMethods)", () => {
+  it("needs an MFA factor, or a passkey plus another sign-in method", () => {
+    const none = { providers: ["google.com"], mfaFactors: 0, passkeys: 0 };
+    expect(hasTwoSignInMethods(none)).toBe(false);
+    expect(hasTwoSignInMethods({ ...none, mfaFactors: 1 })).toBe(true);
+    expect(hasTwoSignInMethods({ ...none, passkeys: 1 })).toBe(true);
+    expect(hasTwoSignInMethods({ providers: [], mfaFactors: 0, passkeys: 2 })).toBe(false);
   });
 });

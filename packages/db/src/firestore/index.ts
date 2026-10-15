@@ -19,7 +19,13 @@ export { createFirestoreRateLimitStore } from "./rate-limit";
 export { createFirestoreAuditWriter, type FirestoreAuditWriter } from "./audit";
 export { getDocumentsByIds } from "./batch";
 export { createFirestorePasskeyStore } from "./passkeys";
-export { createFirestoreRoleStore, createFirestoreUserStore } from "./users";
+export {
+  createFirestoreAccountStore,
+  createFirestoreRoleStore,
+  createFirestoreUserStore,
+  type FirestoreAccountStore,
+  type FirestoreRoleStore,
+} from "./users";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");

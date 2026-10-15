@@ -63,7 +63,12 @@ describe("audit helper handed to every admin mutation", () => {
   it("takes the actor from the server-side principal and context, never from the input", async () => {
     const result = await rename(
       () => Promise.resolve(editor),
-      () => Promise.resolve({ actorEmail: "editor@example.org", requestId: "req-12345678" }),
+      () =>
+        Promise.resolve({
+          actorEmail: "editor@example.org",
+          requestId: "req-12345678",
+          authTime: null,
+        }),
     )({ id: "n1", title: "New" });
     expect(result).toMatchObject({
       ok: true,

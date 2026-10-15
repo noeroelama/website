@@ -12,7 +12,7 @@ import {
 } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { assertEnvironmentIsolation, type AppEnvironment } from "@website/config";
-import type { IdentityProvider, VerifiedIdentity } from "./session";
+import type { AccountAdmin, IdentityProvider, VerifiedIdentity } from "./session";
 
 if ("window" in globalThis) {
   throw new Error("@website/auth/firebase-admin must never be bundled into browser code.");
@@ -78,6 +78,25 @@ export function createFirebaseIdentityProvider(config: FirebaseAdminConfig): Ide
     createCustomToken(uid) {
       // Needs a service-account key (or the "Service Account Token Creator" role with ADC).
       return auth().createCustomToken(uid);
+    },
+  };
+}
+
+export function createFirebaseAccountAdmin(config: FirebaseAdminConfig): AccountAdmin {
+  const auth = () => getAuth(adminApp(config));
+  return {
+    async signInMethods(uid) {
+      const user = await auth().getUser(uid);
+      return {
+        providers: user.providerData.map((p) => p.providerId),
+        mfaFactors: user.multiFactor?.enrolledFactors.length ?? 0,
+      };
+    },
+    async setDisabled(uid, disabled) {
+      await auth().updateUser(uid, { disabled });
+    },
+    async revokeSessions(uid) {
+      await auth().revokeRefreshTokens(uid);
     },
   };
 }

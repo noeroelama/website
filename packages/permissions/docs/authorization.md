@@ -37,6 +37,7 @@ canInSomeScope(principal, "audit.read"); // what to SHOW (navigation), never an 
 requirePermission(principal, "articles.publish");
 canSaveRole(principal, draft, previous); // Roles page
 canAssignRole(principal, role); // Users page
+accountChangeRefusal({ actor, targetUserId, role, superadminsAfter }); // Users page: why not
 ```
 
 ## Rules
@@ -47,7 +48,13 @@ canAssignRole(principal, role); // Users page
 - **No privilege escalation**: saving or deleting a role needs `roles.edit` and every permission
   the role has (and had) in a **global** assignment; assigning a role needs `users.edit` and every
   permission of that role; only a superadmin assigns `superadmin`; built-in roles cannot be saved
-  or deleted. Keep 2–3 superadmins; the last one cannot be demoted.
-- Role changes are audited and emit security events.
+  or deleted. Keep 2–3 superadmins; the last active one cannot be demoted or deactivated
+  (`accountChangeRefusal`, counted inside the same transaction).
+- Nobody changes their own roles or status.
+- A role that opens any admin page is only written when the account has **two sign-in methods**
+  (`hasTwoSignInMethods` in `@website/auth`: an MFA factor, or a passkey plus Google/password).
+- Role changes and deactivation need a sign-in in the last 15 minutes, are audited (not
+  revertible: they always go through these rules), revoke the account's sessions and emit the
+  `staff.role_changed` security event. Pages: `apps/admin/docs/users-and-roles.md`.
 - Third-party API scopes (`events.read`, `registrations.write`) are a separate vocabulary in
   `@website/apikeys`.

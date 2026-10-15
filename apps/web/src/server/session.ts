@@ -4,6 +4,7 @@ import { createSessionRoutes, SESSION_COOKIE, type VerifiedIdentity } from "@web
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
 import { lazyEnv } from "@website/config/env";
 import { createFirestoreUserStore, getFirestoreForRole } from "@website/db/firestore";
+import { createLogger, logSecurityEvent } from "@website/observability";
 import { getWebEnv } from "./env";
 
 export const identity = lazyEnv(() => {
@@ -15,6 +16,8 @@ export const identity = lazyEnv(() => {
     privateKey: env.FIREBASE_PRIVATE_KEY,
   });
 });
+
+const logger = lazyEnv(() => createLogger({ service: "web", level: getWebEnv().LOG_LEVEL }));
 
 /** Sign-in records (`users/{uid}`): web only ever writes the signed-in user's own record. */
 const users = lazyEnv(() => {
@@ -36,7 +39,13 @@ export const sessionRoutes = lazyEnv(() =>
     maxAgeHours: getWebEnv().SESSION_MAX_AGE_HOURS,
     cookieDomain: getWebEnv().SESSION_COOKIE_DOMAIN,
     // Every sign-in method ends here: creates users/{uid} on the first one, then lastSignInAt.
-    onSignIn: (signedIn) => users().recordSignIn(signedIn, new Date()),
+    onSignIn: async (signedIn) => {
+      const { roleIds } = await users().recordSignIn(signedIn, new Date());
+      // Staff sign-ins are security events (DEC-16); the Users page shows "last sign-in".
+      if (roleIds.some((id) => id !== "user" && id !== "member")) {
+        logSecurityEvent(logger(), { type: "staff.login", actorId: signedIn.uid });
+      }
+    },
   }),
 );
 

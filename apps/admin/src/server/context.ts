@@ -60,6 +60,7 @@ export async function getAuditContext(): Promise<AuditContext> {
   return {
     actorEmail: viewer?.email ?? null,
     requestId: resolveRequestId((await headers()).get("x-request-id")),
+    authTime: (await getIdentity())?.authTime ?? null,
   };
 }
 
@@ -86,4 +87,10 @@ export async function requireAdminViewer(
   if (!viewer) forbidden();
   if (permission !== undefined && !canInSomeScope(viewer.principal, permission)) return "no-access";
   return viewer;
+}
+
+/** Web sign-in link that returns to `path` — shown when an action needs a fresh sign-in. */
+export function signInAgainUrl(path: string): string | null {
+  const { WEB_URL, ADMIN_URL } = getAppUrls();
+  return WEB_URL && ADMIN_URL ? signInUrl(WEB_URL, `${ADMIN_URL}${path}`) : null;
 }

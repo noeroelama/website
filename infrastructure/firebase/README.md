@@ -8,12 +8,16 @@ Templates only. Nothing here is deployed automatically.
 | `firebase.json`                    | Rules and indexes paths.                                                                                            |
 | `firestore.rules`, `storage.rules` | Deny-all for clients. All access is server-side via the Admin SDK.                                                  |
 
+`firestore.indexes.json` holds the composite indexes the queries need (e.g. the admin Users list:
+`roleIds` / `status` + `email` + `uid`). Deploy them with `firebase deploy --only firestore:indexes`
+whenever the file changes.
+
 Firebase emulators are not used: every app refuses to start when an emulator variable
 (`FIREBASE_AUTH_EMULATOR_HOST`, `FIRESTORE_EMULATOR_HOST`, `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`)
 is set. Tests use in-memory adapters instead. Deploy rules explicitly:
 
 ```bash
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
 Rate-limit counters expire automatically once a TTL policy exists (one time):

@@ -6,6 +6,7 @@ import {
   type AuditEvent,
   type Snapshot,
 } from "@website/audit";
+import { isRecentSignIn } from "@website/auth";
 import { toPublicError } from "@website/security";
 import {
   canAccessAdmin,
@@ -28,7 +29,15 @@ export type GuardedResult<T> =
   | { readonly ok: true; readonly data: T }
   | {
       readonly ok: false;
-      readonly error: "unauthenticated" | "forbidden" | "invalid_input" | "conflict";
+      readonly error:
+        | "unauthenticated"
+        | "forbidden"
+        | "invalid_input"
+        | "conflict"
+        /** A business rule refused it; `issues[0]` is a message written for staff. */
+        | "refused"
+        /** The action needs a sign-in in the last 15 minutes. */
+        | "reauthenticate";
       readonly issues?: readonly string[];
     };
 
@@ -36,6 +45,8 @@ export type GuardedResult<T> =
 export interface AuditContext {
   readonly actorEmail: string | null;
   readonly requestId: string;
+  /** Seconds since epoch of the last real sign-in (session); null when unknown. */
+  readonly authTime: number | null;
 }
 
 /** What a handler says about one change; the rest of the AuditEvent is filled in for it. */
@@ -58,12 +69,14 @@ export interface AuditInput {
 export type AuditBuilder = (input: AuditInput) => AuditEvent;
 
 const noContext = (): Promise<AuditContext> =>
-  Promise.resolve({ actorEmail: null, requestId: randomUUID() });
+  Promise.resolve({ actorEmail: null, requestId: randomUUID(), authTime: null });
 
 export function createGuardedAction<S extends z.ZodType, T>(definition: {
   permission: Permission;
   input: S;
   resource?: (input: z.infer<S>) => ResourceContext;
+  /** Sensitive actions (role changes, revert): refuse unless signed in within 15 minutes. */
+  recentSignIn?: boolean;
   handler: (input: z.infer<S>, principal: Principal, audit: AuditBuilder) => Promise<T>;
 }) {
   return (
@@ -92,6 +105,13 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
         return { ok: false, error: "forbidden" };
       }
       const context = await getAuditContext();
+      if (
+        definition.recentSignIn &&
+        (context.authTime === null ||
+          !isRecentSignIn({ authTime: context.authTime }, Date.now() / 1000))
+      ) {
+        return { ok: false, error: "reauthenticate" };
+      }
       // One operation id per mutation: entries written by it are reverted as a unit.
       const operationId = randomUUID();
       const audit: AuditBuilder = ({ revertible = true, ...change }) => ({
@@ -112,6 +132,10 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
       } catch (error) {
         // Race condition: the document changed since it was read (optimistic concurrency).
         if (toPublicError(error).code === "conflict") return { ok: false, error: "conflict" };
+        // A business rule refused it with a message written for staff.
+        if (error instanceof Error && error.name === "RuleViolationError") {
+          return { ok: false, error: "refused", issues: [error.message] };
+        }
         throw error; // unexpected: Next.js logs it and shows the client a generic error
       }
     };

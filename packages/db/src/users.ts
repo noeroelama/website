@@ -7,6 +7,7 @@ import {
   type RoleAssignment,
   type RoleDefinition,
 } from "@website/permissions";
+import type { AuditEvent, Snapshot } from "@website/audit";
 import { safeId } from "@website/security/validation";
 
 /**
@@ -24,7 +25,8 @@ export interface SignInIdentity {
 
 /** web: records its own sign-ins (creates `users/{uid}` on the first one). */
 export interface SignInRecorder {
-  recordSignIn(identity: SignInIdentity, now: Date): Promise<void>;
+  /** Returns the account's role ids (e.g. to log staff sign-ins as security events). */
+  recordSignIn(identity: SignInIdentity, now: Date): Promise<{ roleIds: string[] }>;
 }
 
 /** admin: maps a verified uid to the account's status and resolved role assignments. */
@@ -37,6 +39,53 @@ export interface RoleReader {
   list(): Promise<RoleDefinition[]>;
   get(id: string): Promise<RoleDefinition | null>;
   getMany(ids: readonly string[]): Promise<Map<string, RoleDefinition>>;
+}
+
+/** One account as the admin Users page sees it (no personal data beyond e-mail and name). */
+export interface UserSummary {
+  readonly uid: string;
+  readonly email: string | null;
+  readonly name: string | null;
+  readonly status: UserStatus;
+  readonly roleAssignments: readonly RoleAssignment[];
+  readonly createdAt: Date | null;
+  readonly lastSignInAt: Date | null;
+  readonly version: number;
+}
+
+export interface UserListQuery {
+  readonly roleId?: string | undefined;
+  readonly status?: UserStatus | undefined;
+  /** `nextCursor` of the previous page. */
+  readonly cursor?: string | undefined;
+  readonly limit: number;
+}
+
+export interface Page<T> {
+  readonly items: T[];
+  readonly nextCursor: string | null;
+}
+
+/** A custom role as stored (built-in roles are never stored). */
+export interface StoredRole extends RoleDefinition {
+  readonly version: number;
+}
+
+/** Audit snapshots handed to the caller's audit builder (see createGuardedAction). */
+export interface AuditChange {
+  readonly before: Snapshot | null;
+  readonly after: Snapshot | null;
+  readonly versionBefore: number | null;
+  readonly versionAfter: number | null;
+}
+
+/** Builds the audit entry for a change; the store appends it in the same transaction. */
+export type AuditFactory = (change: AuditChange) => AuditEvent;
+
+/** What an account change may set; assignments are computed from the record read in the transaction. */
+export interface AccountChange {
+  readonly roleAssignmentsFrom?: (current: UserSummary) => readonly RoleAssignment[];
+  readonly status?: UserStatus;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -87,3 +136,43 @@ export function toPrincipal(
     assignments: resolveAssignments(parseAssignments(data["roleAssignments"]), customRoles),
   };
 }
+
+const toDate = (value: unknown): Date | null =>
+  isRecord(value) && typeof value["toDate"] === "function"
+    ? (value as { toDate(): Date }).toDate()
+    : null;
+
+export function toUserSummary(uid: string, data: Record<string, unknown>): UserSummary {
+  return {
+    uid,
+    email: typeof data["email"] === "string" ? data["email"] : null,
+    name: typeof data["name"] === "string" ? data["name"] : null,
+    status: data["status"] === "active" ? "active" : "inactive",
+    roleAssignments: parseAssignments(data["roleAssignments"]),
+    createdAt: toDate(data["createdAt"]),
+    lastSignInAt: toDate(data["lastSignInAt"]),
+    version: typeof data["version"] === "number" ? data["version"] : 0,
+  };
+}
+
+/** Role ids stored next to the assignments so lists and counts can query by role. */
+export const roleIdsOf = (assignments: readonly RoleAssignment[]): string[] => [
+  ...new Set(assignments.map((a) => a.roleId)),
+];
+
+/** True for an active account that holds superadmin globally. */
+export const isActiveSuperadmin = (user: UserSummary): boolean =>
+  user.status === "active" &&
+  user.roleAssignments.some((a) => a.roleId === "superadmin" && a.scope.type === "global");
+
+/** What an account change looks like in the audit log (roles and status only). */
+export const accountSnapshot = (
+  user: Pick<UserSummary, "roleAssignments" | "status">,
+): Snapshot => ({
+  status: user.status,
+  roleAssignments: user.roleAssignments.map((a) =>
+    a.scope.type === "global"
+      ? { roleId: a.roleId, scope: { type: "global" } }
+      : { roleId: a.roleId, scope: { type: "chapter", chapterId: a.scope.chapterId } },
+  ),
+});
