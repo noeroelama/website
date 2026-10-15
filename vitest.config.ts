@@ -28,6 +28,8 @@ export default defineConfig({
         "apps/admin/src/server/roles.ts",
         "apps/admin/src/server/images.ts",
         "apps/admin/src/server/audit-log.ts",
+        "apps/admin/src/server/cron.ts",
+        "packages/db/src/firestore/webhooks.ts",
         "packages/domain/src/shared/images.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },

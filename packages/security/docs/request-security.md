@@ -51,3 +51,14 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 | `RATE_LIMIT_SECRET`                     | every app        | ≥ 32 chars, different per environment. Required in staging/production (the app refuses to serve without it). |
 | `FIREBASE_*`                            | web, admin, shop | Counter store (staging/production only)                                                                      |
 | Firestore TTL on `rateLimits.expiresAt` | Firebase         | Deletes old counters automatically (`infrastructure/firebase/README.md`)                                     |
+
+## Cron secret and webhook signatures
+
+- `bearerTokenMatches(header, secret)` — constant-time `Authorization: Bearer` check for
+  `GET /cron/<job>` (admin). An empty secret never matches.
+- `verifyHmacSignature({ payload, signature, secret, prefix, timestamp, now, toleranceSeconds })`
+  — hex HMAC-SHA256 in constant time, optional `v0=`/`sha256=` prefix, timestamp tolerance
+  against replays.
+- `GuardOptions.signedWebhookPaths` — the only paths that skip the origin check (a path matches
+  itself and its sub-paths, never look-alikes such as `/webhooks/zoomer`). See
+  `apps/admin/docs/cron.md`.

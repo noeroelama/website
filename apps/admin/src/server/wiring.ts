@@ -6,6 +6,8 @@ import type { AuditListQuery } from "@website/db/firestore";
 import { logSecurityEvent } from "@website/observability";
 import { createAccountActions } from "./accounts";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
+import { createCronRoute, CRON_JOBS } from "./cron";
+import { getAdminEnv } from "./env";
 import { createImageUploads } from "./images";
 import { createRoleActions } from "./roles";
 import { adminStores, imageStorage } from "./stores";
@@ -34,6 +36,18 @@ export const auditLogActions = lazyEnv(() =>
     now: () => new Date(),
     logSecurityEvent: (actorId, details) =>
       logSecurityEvent(adminStores().logger, { type: "audit.revert", actorId, details }),
+  }),
+);
+
+/** GET /cron/<job> (src/app/cron/[job]/route.ts). */
+export const cronRoute = lazyEnv(() =>
+  createCronRoute({
+    secret: getAdminEnv().CRON_SECRET,
+    jobs: CRON_JOBS,
+    log: ({ message, ...fields }) =>
+      message === "cron_job_failed"
+        ? adminStores().logger.error(String(message), fields)
+        : adminStores().logger.info(String(message), fields),
   }),
 );
 

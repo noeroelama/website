@@ -12,6 +12,9 @@ import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/
 import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 
+/** Incoming webhook paths that skip only the origin check (none yet). */
+export const ADMIN_WEBHOOK_PATHS: readonly string[] = [];
+
 // `next dev` without a .env.local runs as development; deployments must set APP_ENV.
 const getEnv = lazyEnv(() =>
   loadEnv(
@@ -33,6 +36,8 @@ const getGuard = lazyEnv(() => {
     secret: env.RATE_LIMIT_SECRET,
     mode: "same-site",
     privatePrefixes: ["/"],
+    // Each provider step adds its path here (e.g. "/webhooks/zoom"); see docs/architecture.md DEC-5.
+    signedWebhookPaths: ADMIN_WEBHOOK_PATHS,
     // Staging/production: counters shared by all server instances (Firestore, pooled client).
     sharedStore: () => {
       const fb = loadEnv(baseEnv.extend(firebaseAdminEnv.shape), process.env);
@@ -63,7 +68,9 @@ export function guardRequest(request: Request): Promise<GuardResult> {
  */
 export function signInRedirect(request: Request): string | null {
   const { pathname, search } = new URL(request.url);
-  if (pathname.startsWith("/api/") || pathname === "/health") return null;
+  // Machine endpoints authenticate themselves (cron secret, provider signature), never a session.
+  const machine = ["/api/", "/cron/", "/webhooks/"].some((prefix) => pathname.startsWith(prefix));
+  if (machine || pathname === "/health") return null;
   if (readCookie(request, SESSION_COOKIE)) return null;
   const { WEB_URL, ADMIN_URL } = getEnv();
   return WEB_URL && ADMIN_URL ? signInUrl(WEB_URL, `${ADMIN_URL}${pathname}${search}`) : null;

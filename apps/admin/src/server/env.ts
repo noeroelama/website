@@ -1,6 +1,7 @@
 import "server-only";
 import {
   baseEnv,
+  cronEnv,
   firebaseAdminEnv,
   lazyEnv,
   loadEnv,
@@ -13,6 +14,7 @@ import {
 const adminEnvSchema = baseEnv
   .extend(firebaseAdminEnv.shape)
   .extend(sessionEnv.shape)
+  .extend(cronEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(zoomEnv.partial().shape);
 

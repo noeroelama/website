@@ -132,7 +132,7 @@ curl -fsS --max-time 50 -H "Authorization: Bearer $(cat ~/.config/ppidk/cron-sec
   the crontab line itself.
 - Each job is idempotent, handles one bounded batch per call (target < 30 s) and returns a JSON
   summary; the next call continues. The job list and their crontab lines are in
-  `apps/admin/docs/cron.md` (added with the first job).
+  `apps/admin/docs/cron.md` (call `noop` once after set-up to check the secret and the route).
 - The shortest interval the hosting plan allows is in [Limits](#limits).
 
 ## Logs

@@ -53,6 +53,11 @@ export const sessionEnv = z.object({
     .optional(),
 });
 
+/** Bearer secret for GET /cron/<job> (admin, cPanel Cron Jobs). Without it every cron call is 401. */
+export const cronEnv = z.object({
+  CRON_SECRET: nonEmpty.min(32).optional(),
+});
+
 /** HMAC key for per-IP rate-limit counters. Required in staging/production (checked at startup). */
 export const rateLimitEnv = z.object({
   RATE_LIMIT_SECRET: nonEmpty.min(32).optional(),

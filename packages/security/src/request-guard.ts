@@ -19,6 +19,12 @@ export interface GuardOptions {
   readonly mode: "same-site" | "public-api";
   /** Path prefixes whose responses must never be stored by shared caches. */
   readonly privatePrefixes: readonly string[];
+  /**
+   * Incoming webhook paths (`/webhooks/<provider>`) that skip ONLY the origin check: providers
+   * post from their own servers. Rate limiting and private caching still apply, and each handler
+   * must verify the provider signature (DEC-5). A path matches itself and its sub-paths.
+   */
+  readonly signedWebhookPaths?: readonly string[];
   readonly policy?: RateLimitPolicy;
   readonly now?: () => Date;
   /** Waits before continuing a throttled request (injectable for tests). */
@@ -68,7 +74,9 @@ function isOwnOrigin(request: Request): boolean {
   return request.headers.get("sec-fetch-site") === "same-origin";
 }
 
-function originAllowed(request: Request, mode: GuardOptions["mode"], path: string): boolean {
+function originAllowed(request: Request, options: GuardOptions, path: string): boolean {
+  const { mode, signedWebhookPaths = [] } = options;
+  if (signedWebhookPaths.some((p) => path === p || path.startsWith(`${p}/`))) return true;
   if (mode === "public-api") {
     const origin = request.headers.get("origin");
     return origin === null || isSameHost(origin, request);
@@ -85,7 +93,7 @@ export async function guardRequest(request: Request, options: GuardOptions): Pro
     headers["Cache-Control"] = "private, no-store";
   }
 
-  if (!originAllowed(request, options.mode, path)) {
+  if (!originAllowed(request, options, path)) {
     return { blocked: jsonError("forbidden"), headers };
   }
 

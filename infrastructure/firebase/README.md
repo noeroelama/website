@@ -24,8 +24,9 @@ Rate-limit counters expire automatically once a TTL policy exists (one time):
 
 ```bash
 gcloud firestore fields ttls update expiresAt --collection-group=rateLimits --enable-ttl --project=ppidk-website-prod
-# same for passkey challenges:
+# same for passkey challenges and webhook de-duplication rows:
 gcloud firestore fields ttls update expiresAt --collection-group=webauthnChallenges --enable-ttl --project=ppidk-website-prod
+gcloud firestore fields ttls update expiresAt --collection-group=webhookEvents --enable-ttl --project=ppidk-website-prod
 ```
 
 Authentication settings (Firebase console → Authentication):
