@@ -60,7 +60,9 @@ export function DataTable<T>({ columns, rows, rowKey, emptyText, hideHeader }: D
             <tr key={rowKey(row)}>
               {columns.map((col) => (
                 <td key={col.key} style={{ textAlign: col.align ?? "left" }}>
-                  {col.render ? col.render(row) : cellText((row as Record<string, unknown>)[col.key])}
+                  {col.render
+                    ? col.render(row)
+                    : cellText((row as Record<string, unknown>)[col.key])}
                 </td>
               ))}
             </tr>

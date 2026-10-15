@@ -9,7 +9,13 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
-import { INITIAL_LINKS, PREFIX, PAGE_SIZE_OPTIONS, formatDate, type ShortLink } from "@/data/mock/short-links";
+import {
+  INITIAL_LINKS,
+  PREFIX,
+  PAGE_SIZE_OPTIONS,
+  formatDate,
+  type ShortLink,
+} from "@/data/mock/short-links";
 
 /* ==================================================================
    Tools — QR Generator (left ~30%) & URL Shortener (right ~70%)
@@ -181,7 +187,11 @@ function QrPreview({
             <div className="admin-qr-preview__logo" style={{ width: logoPx, height: logoPx }}>
               {/* Brand mark from the admin public folder; content only — see admin-logo. */}
               {/* eslint-disable-next-line @next/next/no-img-element -- static packed asset */}
-              <img src="/icon.png" alt="PPIDK Asiania logo" className="admin-qr-preview__logo-img" />
+              <img
+                src="/icon.png"
+                alt="PPIDK Asiania logo"
+                className="admin-qr-preview__logo-img"
+              />
             </div>
           ) : null}
           {onClear ? (
@@ -197,10 +207,24 @@ function QrPreview({
         </div>
       </div>
       <div className="admin-qr-preview__actions">
-        <Button variant="primary" size="sm" className="admin-btn--black" icon="download" onClick={downloadPng} disabled={!ready}>
+        <Button
+          variant="primary"
+          size="sm"
+          className="admin-btn--black"
+          icon="download"
+          onClick={downloadPng}
+          disabled={!ready}
+        >
           Download PNG
         </Button>
-        <Button variant="primary" size="sm" className="admin-btn--black" icon="download" onClick={() => void downloadSvg()} disabled={!ready}>
+        <Button
+          variant="primary"
+          size="sm"
+          className="admin-btn--black"
+          icon="download"
+          onClick={() => void downloadSvg()}
+          disabled={!ready}
+        >
           Download SVG
         </Button>
       </div>
@@ -220,9 +244,7 @@ type DeleteConfirm = { kind: "one"; link: ShortLink } | { kind: "many"; count: n
 
 /** Button look for a result banner: maroon on cream, light-on-dark ghost otherwise. */
 function bannerButtonProps(isCream: boolean): { variant: "maroon" | "ghost"; className?: string } {
-  return isCream
-    ? { variant: "maroon" }
-    : { variant: "ghost", className: "admin-btn--light" };
+  return isCream ? { variant: "maroon" } : { variant: "ghost", className: "admin-btn--light" };
 }
 
 function LinkResultBanner({
@@ -242,38 +264,32 @@ function LinkResultBanner({
 }) {
   const isCream = tone === "cream";
   return (
-    <div className={isCream ? "admin-link-result admin-link-result--cream" : "admin-link-result admin-link-result--dark"}>
+    <div
+      className={
+        isCream
+          ? "admin-link-result admin-link-result--cream"
+          : "admin-link-result admin-link-result--dark"
+      }
+    >
       <div className="admin-link-result__main">
         <div className="admin-link-result__title">
           <Icon name="check" size={14} />
           {title}
         </div>
-        <div className="admin-link-result__link">https://{PREFIX}{link.slug}</div>
+        <div className="admin-link-result__link">
+          https://{PREFIX}
+          {link.slug}
+        </div>
         <div className="admin-link-result__meta">Redirect to {link.original}</div>
       </div>
       <div className="admin-link-result__actions">
-        <Button
-          {...bannerButtonProps(isCream)}
-          icon="qr"
-          size="sm"
-          onClick={onGenerateQr}
-        >
+        <Button {...bannerButtonProps(isCream)} icon="qr" size="sm" onClick={onGenerateQr}>
           Generate QR
         </Button>
-        <Button
-          {...bannerButtonProps(isCream)}
-          icon="copy"
-          size="sm"
-          onClick={onCopy}
-        >
+        <Button {...bannerButtonProps(isCream)} icon="copy" size="sm" onClick={onCopy}>
           Copy
         </Button>
-        <Button
-          {...bannerButtonProps(isCream)}
-          icon="external"
-          size="sm"
-          onClick={onVisit}
-        >
+        <Button {...bannerButtonProps(isCream)} icon="external" size="sm" onClick={onVisit}>
           Visit URL
         </Button>
       </div>
@@ -481,9 +497,7 @@ export function ToolsPage() {
       setDeleteConfirm(null);
       toast.show("Link deleted");
     } else {
-      const ids = new Set(
-        Array.from(selected).filter((id) => links.some((l) => l.id === id)),
-      );
+      const ids = new Set(Array.from(selected).filter((id) => links.some((l) => l.id === id)));
       setLinks((prev) => prev.filter((l) => !ids.has(l.id)));
       setSelected(new Set());
       if (editingLink && ids.has(editingLink.id)) {
@@ -585,7 +599,8 @@ export function ToolsPage() {
         <div>
           <div className="admin-table__title admin-table__title--row">
             <Icon name="link" size={14} />
-            {PREFIX}{r.slug}
+            {PREFIX}
+            {r.slug}
           </div>
           <div className="admin-table__sub">{r.original}</div>
         </div>
@@ -604,10 +619,39 @@ export function ToolsPage() {
       width: "30%",
       render: (r) => (
         <div className="admin-table__actions">
-          <Button variant="ghost" size="icon" className="admin-table__delete" icon="trash" aria-label="Delete" onClick={() => deleteLink(r)} title="Delete" />
-          <Button variant="ghost" size="icon" icon="edit" aria-label="Edit" onClick={() => openEdit(r)} title="Edit" />
-          <Button variant="ghost" size="icon" icon="copy" aria-label="Copy" onClick={() => copyShort(r)} title="Copy" />
-          <Button variant="ghost" size="icon" icon="external" aria-label="Go to URL" onClick={() => goToLink(r)} title="Go to URL" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="admin-table__delete"
+            icon="trash"
+            aria-label="Delete"
+            onClick={() => deleteLink(r)}
+            title="Delete"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            icon="edit"
+            aria-label="Edit"
+            onClick={() => openEdit(r)}
+            title="Edit"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            icon="copy"
+            aria-label="Copy"
+            onClick={() => copyShort(r)}
+            title="Copy"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            icon="external"
+            aria-label="Go to URL"
+            onClick={() => goToLink(r)}
+            title="Go to URL"
+          />
         </div>
       ),
     },
@@ -724,12 +768,20 @@ export function ToolsPage() {
               />
               <span className="admin-qr-switch__track" aria-hidden="true" />
               <span className="admin-qr-switch__text">
-                <span className="admin-qr-switch__label">Add PPIDK Asiania logo in the centre.</span>
+                <span className="admin-qr-switch__label">
+                  Add PPIDK Asiania logo in the centre.
+                </span>
                 <span className="admin-qr-switch__hint">Turn this off for long content.</span>
               </span>
             </label>
 
-            <Button variant="maroon" size="lg" icon="qr" className="admin-btn--regular" onClick={generateQr}>
+            <Button
+              variant="maroon"
+              size="lg"
+              icon="qr"
+              className="admin-btn--regular"
+              onClick={generateQr}
+            >
               Generate QR
             </Button>
 
@@ -860,7 +912,12 @@ export function ToolsPage() {
                     }}
                   />
                 </div>
-                <Button variant="maroon" icon="link" onClick={generateLink} style={{ whiteSpace: "nowrap" }}>
+                <Button
+                  variant="maroon"
+                  icon="link"
+                  onClick={generateLink}
+                  style={{ whiteSpace: "nowrap" }}
+                >
                   Generate Link
                 </Button>
               </div>

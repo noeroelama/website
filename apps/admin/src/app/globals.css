@@ -483,7 +483,8 @@
   border-radius: var(--radius-lg);
   color: inherit;
   text-decoration: none;
-  transition: border-color var(--duration-fast) var(--ease-out),
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
 
@@ -593,8 +594,10 @@ a.admin-stat-card:hover {
   line-height: var(--admin-leading-tight);
   cursor: pointer;
   text-decoration: none;
-  transition: background-color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .admin-btn:disabled {
@@ -782,7 +785,8 @@ a.admin-stat-card:hover {
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   outline: none;
-  transition: border-color var(--duration-fast) var(--ease-out),
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
@@ -797,7 +801,8 @@ a.admin-stat-card:hover {
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   outline: none;
-  transition: border-color var(--duration-fast) var(--ease-out),
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
@@ -885,7 +890,8 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-full);
   background: var(--color-brand-200);
   border: 1px solid var(--color-border-subtle);
-  transition: background var(--duration-base) var(--ease-out),
+  transition:
+    background var(--duration-base) var(--ease-out),
     border-color var(--duration-base) var(--ease-out);
 }
 
@@ -1524,7 +1530,9 @@ a.admin-stat-card:hover {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .admin-darkbar__btn:hover:not(:disabled):not(.admin-darkbar__btn--active) {

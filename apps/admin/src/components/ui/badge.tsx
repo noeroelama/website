@@ -42,7 +42,11 @@ export function StatCard({ label, value, icon, trend, trendDir = "up", href }: S
         {icon ? <Icon name={icon} size={18} className="admin-stat-card__icon" /> : null}
       </span>
       <span className="admin-stat-card__value">{value}</span>
-      {trend ? <span className={`admin-stat-card__trend admin-stat-card__trend--${trendDir}`}>{trend}</span> : null}
+      {trend ? (
+        <span className={`admin-stat-card__trend admin-stat-card__trend--${trendDir}`}>
+          {trend}
+        </span>
+      ) : null}
     </>
   );
 
