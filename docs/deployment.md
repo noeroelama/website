@@ -202,6 +202,7 @@ file (they live in the cPanel app screens and the password manager).
       only in that app's Setup Node.js App screen and the password manager.
 - [ ] Generate `CRON_SECRET`, `FIELD_ENCRYPTION_KEY` and `SIGNED_LINK_SECRET` and store them in the
       password manager; they are added to the app screens when the step that uses them is built.
-- [ ] DNS + AutoSSL for the main domain, `admin.`, `shop.` and `api.` (later `verif.ppiasiania.id`).
+- [ ] Decide the main domain name and whether to run a `staging.*` set of apps (DEC-17); then
+      DNS + AutoSSL for the main domain, `admin.`, `shop.` and `api.` (later `verif.ppiasiania.id`).
 - [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, added with the users
       directory).
