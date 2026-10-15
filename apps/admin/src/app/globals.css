@@ -10,6 +10,10 @@
   --brand-name-measure: 18ch;
   --content-padding: var(--space-4);
   --content-padding-desktop: var(--space-8) var(--space-10);
+  --admin-leading-wide: 1.7; /* welcome copy */
+  --admin-leading-tight: 1.2; /* buttons / tight stacks */
+  --admin-leading-label: 1.3; /* radio stack / dropzone / slug / meta */
+  --admin-leading-badge: 1.6; /* badge rows */
 }
 
 /* ===================== Side panel (components/admin-sidebar.tsx) ===================== */
@@ -339,4 +343,1776 @@
     margin-left: var(--sidebar-width);
     padding: var(--content-padding-desktop);
   }
+}
+
+/* ===================== Page content (Dashboard · Tools · shared) ===================== */
+/* All colours/type/spacing/radius come from @website/ui/styles.css tokens. */
+
+/* ---- Page header ---- */
+.admin-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.admin-page-header__title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+  color: var(--color-text);
+}
+
+.admin-page-header__desc {
+  margin: var(--space-0-5) 0 0;
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+/* ---- Card ---- */
+.admin-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.admin-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-0-5);
+}
+
+.admin-card__title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  line-height: var(--leading-3xl);
+}
+
+.admin-card__title--lg {
+  font-size: var(--text-xl);
+}
+
+.admin-card__subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.admin-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.admin-card__body {
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+.admin-card__body--flush {
+  padding: 0;
+}
+
+/* ---- Account / profile / emails content ---- */
+.admin-account__line {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.admin-account__verify {
+  margin: 0 0 var(--space-3);
+  color: var(--color-warning);
+  font-size: var(--text-sm);
+}
+
+.admin-account__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.admin-account__dl {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.admin-account__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.admin-account__row:last-child {
+  border-bottom: 0;
+}
+
+.admin-account__row dt {
+  width: var(--space-16);
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-weight: var(--font-semibold);
+}
+
+.admin-account__row dd {
+  margin: 0;
+}
+
+/* ---- Stat cards ---- */
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-4) var(--space-4-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+a.admin-stat-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+.admin-stat-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.admin-stat-card__label {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-sm);
+}
+
+.admin-stat-card__icon {
+  color: var(--color-primary);
+}
+
+.admin-stat-card__value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-5xl);
+  color: var(--color-text);
+}
+
+.admin-stat-card__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-xs);
+}
+
+.admin-stat-card__trend--up {
+  color: var(--color-success);
+}
+
+.admin-stat-card__trend--down {
+  color: var(--color-danger);
+}
+
+/* ---- Welcome card ---- */
+.admin-welcome-card {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+}
+
+.admin-welcome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.admin-welcome__avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-950);
+  color: var(--color-white);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+}
+
+.admin-welcome__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-welcome__text .admin-card__subtitle {
+  margin-top: var(--space-0-5);
+}
+
+.admin-welcome__body {
+  margin: var(--space-3-5) 0 0;
+  max-width: 42rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--admin-leading-wide);
+}
+
+/* ---- Buttons ---- */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-3-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  line-height: var(--admin-leading-tight);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.admin-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-btn--primary {
+  background: var(--color-accent);
+  color: var(--color-white);
+}
+
+.admin-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 88%, var(--color-black));
+}
+
+.admin-btn--maroon {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.admin-btn--maroon:hover:not(:disabled) {
+  background: var(--color-brand-950);
+}
+
+.admin-btn--ghost {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.admin-btn--ghost:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+/* Row-action delete: always the danger colour, even in the ghost/icon look. */
+.admin-table__delete {
+  color: var(--color-danger);
+}
+
+.admin-btn--outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+}
+
+.admin-btn--outline:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.admin-btn--success {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.admin-btn--danger {
+  background: var(--color-danger-bright);
+  color: var(--color-white);
+}
+
+.admin-btn--sm {
+  min-height: var(--size-control-sm);
+  padding: var(--space-1) var(--space-2-5);
+  font-size: var(--text-xs);
+}
+
+.admin-btn--lg {
+  padding: var(--space-2-5) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* Buttons whose label should read as regular weight, not semibold. */
+.admin-btn--regular {
+  font-weight: var(--font-regular);
+}
+
+.admin-btn--icon {
+  width: var(--size-control-sm);
+  height: var(--size-control-sm);
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+/* Light variant for use on dark surfaces (result banners, dark modals). */
+.admin-btn--light {
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+}
+
+.admin-btn--light:hover:not(:disabled) {
+  background: var(--color-brand-200);
+}
+
+/* ---- Badges ---- */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2-5);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  line-height: var(--admin-leading-badge);
+  white-space: nowrap;
+}
+
+.admin-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.admin-badge--success {
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-white));
+  color: var(--color-success);
+}
+
+.admin-badge--warn {
+  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-white));
+  color: var(--color-warning);
+}
+
+.admin-badge--danger {
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-white));
+  color: var(--color-danger);
+}
+
+.admin-badge--neutral {
+  background: var(--color-brand-200);
+  color: var(--color-text-muted);
+}
+
+.admin-badge--primary {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-white));
+  color: var(--color-primary);
+}
+
+/* ---- Page-level tools layout ---- */
+.admin-tools-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* ---- Fields & inputs ---- */
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.admin-field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  line-height: var(--leading-sm);
+}
+
+.admin-field__row {
+  display: flex;
+  gap: 0;
+  align-items: center;
+}
+
+/* "Generate Link" sits flush against the slug box; flatten its inner corners.
+   Height matches the slug/textbox so the row reads as one control. */
+.admin-field__row .admin-btn {
+  height: calc(var(--size-control-sm) + var(--space-1-5));
+  font-size: var(--text-xs);
+  font-weight: var(--font-regular);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.admin-input,
+.admin-select {
+  width: 100%;
+  height: calc(var(--size-control-sm) + var(--space-1-5));
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.admin-textarea {
+  width: 100%;
+  padding: var(--space-1-5) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-border-subtle);
+}
+
+.admin-input--dark {
+  background: var(--color-brand-950);
+  border-color: var(--color-brand-950);
+  color: var(--color-brand-50);
+}
+
+.admin-input--dark::placeholder {
+  color: var(--color-on-panel-muted);
+}
+
+/* Radio rows (QR size / type) */
+.admin-radio-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.admin-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-sm);
+  color: var(--color-text);
+}
+
+/* QR/type radios keep a plain black dot. */
+.admin-radio input {
+  accent-color: var(--color-black);
+}
+
+.admin-radio__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  line-height: var(--admin-leading-label);
+}
+
+/* Compact QR-size radios: "Small" over "For Screens" — same size as the other QR labels. */
+.admin-radio__stack strong,
+.admin-radio__stack .admin-card__subtitle {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+/* The hint under each size stays regular — only the label text is emphasized. */
+.admin-radio__stack .admin-card__subtitle {
+  font-weight: var(--font-regular);
+}
+
+/* Logo switch (pill; off = knob right, on = knob left + brand-950 track) */
+.admin-qr-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-qr-switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-qr-switch__track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-200);
+  border: 1px solid var(--color-border-subtle);
+  transition: background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.admin-qr-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--color-white);
+  transform: translateX(20px);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.admin-qr-switch__input:checked + .admin-qr-switch__track {
+  background: var(--color-brand-950);
+  border-color: var(--color-brand-950);
+}
+
+.admin-qr-switch__input:checked + .admin-qr-switch__track::after {
+  transform: translateX(0);
+}
+
+.admin-qr-switch__input:focus-visible + .admin-qr-switch__track {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.admin-qr-switch__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.admin-qr-switch__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  line-height: var(--leading-xs);
+}
+
+.admin-qr-switch__hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+/* QR preview */
+.admin-qr-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Dashed container around the generated QR. Lives in the same flex column as the
+   Generate QR button, so it stretches to the exact same width automatically —
+   no fixed width to drift out of sync. Transparent surface, black dashed frame
+   shared with the upload dropzone below (see .admin-dropzone).
+   FIXED height (not min-height) sized for the largest QR so the frame never
+   resizes as the size/Small|Medium|Large changes — the outline stays put. */
+.admin-qr-preview__container {
+  display: grid;
+  place-items: center;
+  /* minmax(0,1fr) forces the track to the content-box width/height, so the tile's
+     max-width/max-height:100% resolve to the interior — a Large QR is clamped to
+     fit inside the fixed frame instead of overflowing it. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+  height: 264px;
+  padding: var(--space-4);
+  box-sizing: border-box;
+  border: 2px dashed var(--color-black);
+  border-radius: var(--radius-lg);
+  background: transparent;
+}
+
+/* The QR tile fits the fixed frame: capped to the interior (so a Large QR is
+   centred inside, not overflowing) and square via aspect-ratio — Small/Medium
+   keep their natural size. Height is derived from width (see the inline width
+   on the element). */
+.admin-qr-preview__tile {
+  position: relative;
+  flex: none;
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  background: var(--color-white);
+  outline: 1px solid var(--color-border-subtle);
+}
+
+.admin-qr-preview__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-qr-preview__empty {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.admin-qr-preview__logo {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  border: 1px solid var(--color-border-subtle);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-popover);
+}
+
+.admin-qr-preview__logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: var(--space-0-5);
+}
+
+/* Download actions under the dashed QR container: two black buttons on one row. */
+.admin-qr-preview__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Black variant for the QR download buttons. Higher specificity than the base
+   variant/theme rules so it stays black in every context (incl. preview-dark). */
+.admin-qr-preview__actions .admin-btn--black {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.admin-qr-preview__actions .admin-btn--black:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-black) 82%, var(--color-white));
+  color: var(--color-white);
+}
+
+.admin-qr-preview__actions .admin-btn--black:disabled {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+/* Dropzone (before a QR is generated) — base look (also used by events-page). */
+.admin-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 190px;
+  border: 1.5px dashed var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-brand-50);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  text-align: center;
+}
+
+/* QR tool dropzone: transparent + thick black dashed frame, matching the
+   generated-QR container (.admin-qr-preview__container) — same fixed height and
+   stretch-to-card width, so the outline is identical before and after
+   generation. Scoped to the QR branch so events-page's banner dropzone keeps
+   its cream well, and higher specificity than the theme overrides that repaint
+   dropzones cream. */
+.admin-tools-grid .admin-dropzone {
+  border: 2px dashed var(--color-black);
+  background: transparent;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 264px;
+  min-height: 0;
+}
+
+.admin-dropzone__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-dropzone__badge {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2-5);
+  color: var(--color-white);
+  background: color-mix(in srgb, var(--color-brand-950) 72%, transparent);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+/* Remove button: small floating chip at the top-right corner while an image
+   is uploaded, so it never conflicts with the "Click to change" badge below.
+   Shared cream look with the QR "Clear" button (see .admin-qr-clear). */
+.admin-dropzone .admin-dropzone__remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+/* QR preview "Clear" button: a circular X chip at the top-right corner of the
+   QR tile itself (the tile is position:relative and exactly the image size +
+   its 8px padding), styled exactly like the upload dropzone's remove X. */
+.admin-qr-preview__tile .admin-qr-clear {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  border-radius: var(--radius-full);
+}
+
+/* Both QR buttons share the same cream chip background and maroon ink. A hair
+   border keeps them visible when they sit on cream surfaces (cards, dropzone). */
+.admin-dropzone .admin-dropzone__remove,
+.admin-qr-preview__tile .admin-qr-clear {
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+  border: 1px solid color-mix(in srgb, var(--color-brand-950) 18%, transparent);
+}
+
+.admin-dropzone .admin-dropzone__remove:hover:not(:disabled),
+.admin-qr-preview__tile .admin-qr-clear:hover:not(:disabled) {
+  background: var(--color-brand-200);
+  color: var(--color-brand-950);
+}
+
+.admin-dropzone__title {
+  color: var(--color-text);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-2xs);
+  padding: 0 var(--space-3);
+}
+
+/* "Any image format • …" hint under the dropzone title. */
+.admin-dropzone .admin-card__subtitle {
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+  padding: 0 var(--space-3);
+}
+
+/* URL slug (readonly prefix + editable slug) */
+.admin-url-slug {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: calc(var(--size-control-sm) + var(--space-1-5));
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: var(--color-brand-950);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.admin-url-slug__prefix {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 var(--space-3);
+  color: var(--color-brand-50);
+  font-weight: var(--font-regular);
+  font-size: var(--text-xs);
+  line-height: var(--admin-leading-label);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.admin-url-slug__slug {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: var(--color-brand-200);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  padding: 0 var(--space-2);
+  height: calc(100% + 2px);
+  margin: calc(var(--space-0-5) * -0.5) 0; /* overlap the 1px slug-box border */
+}
+
+.admin-url-slug__slug:focus {
+  box-shadow: inset 0 0 0 2px var(--color-focus);
+}
+
+/* Tools form + long-url/title fields */
+.admin-tools-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+}
+
+/* Tools short-URL row: only the goppi.id/ prefix chip is taller (40px) so it
+   reads as a panel; the slug input and Generate Link button keep the base
+   34px height and centre vertically, so no black shows behind them. The
+   modal's row keeps the base look. */
+.admin-tools-form .admin-field__row .admin-url-slug {
+  height: calc(var(--size-control) - var(--space-1) - var(--space-0-5) * 0.5);
+  gap: 0;
+  background: transparent;
+  border: 0;
+}
+
+.admin-tools-form .admin-url-slug__prefix {
+  align-self: stretch;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: var(--color-brand-950);
+}
+
+/* Middle segment of the flush chip–slug–button control: square corners so
+   it meets the rounded chip (left) and rounded Generate Link button (right)
+   with no seam or gap. */
+.admin-tools-form .admin-url-slug__slug {
+  height: calc(var(--size-control-sm) + var(--space-1-5));
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Toolbar (search + delete) */
+.admin-toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3-5) var(--space-4);
+}
+
+/* Top divider inset to the toolbar's horizontal padding so it lines up with
+   the search box (left) and the Delete button (right) instead of spanning
+   the full card width. */
+.admin-toolbar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--space-4);
+  right: var(--space-4);
+  height: 1px;
+  background: var(--color-border-subtle);
+}
+
+.admin-searchbox {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 220px;
+  max-width: 340px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-50);
+  overflow: hidden;
+}
+
+.admin-searchbox__icon {
+  align-self: center;
+  margin-left: var(--space-3);
+  color: var(--color-text-muted);
+  flex: 0 0 auto;
+}
+
+.admin-searchbox__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  height: var(--size-control-sm);
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.admin-searchbox__submit {
+  background: var(--color-brand-950);
+  color: var(--color-white);
+  border: 0;
+  height: var(--size-control-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  flex: 0 0 auto;
+  line-height: var(--size-control-sm);
+}
+
+/* Table */
+.admin-table-wrap {
+  overflow-x: auto;
+  margin-inline: var(--space-4);
+}
+
+/* URL table on the Tools page: rounded outer corners (the horizontal scroll
+   stays; overflow-y clips the header/rows to the radius). Raised above the
+   pagination bar (z-index) so the last row tucks over the bar's pulled-up top,
+   making the table and footer read as one connected block. */
+.admin-tools-grid .admin-table-wrap {
+  border-radius: var(--radius-lg);
+  overflow-y: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* URL table footer (pagination bar): rounded to match the table and pulled up
+   behind the last record, so its top edge is hidden and only the rounded
+   bottom shows — connected to the table. */
+.admin-tools-grid .admin-darkbar {
+  border-radius: var(--radius-lg);
+  margin-top: calc(-1 * var(--space-3));
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-2xs);
+}
+
+.admin-table th {
+  background: var(--color-brand-50);
+  color: var(--color-primary);
+  text-align: left;
+  font-weight: var(--font-semibold);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  padding: var(--space-2-5) var(--space-4);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: var(--space-2-5) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: middle;
+  color: var(--color-text);
+  font-weight: var(--font-regular);
+}
+
+/* First column (row checkboxes) stays narrow — nudge the checkboxes to the right. */
+.admin-table th:first-child,
+.admin-table td:first-child {
+  padding-left: var(--space-3);
+  padding-right: var(--space-1);
+}
+
+/* URL column hugs the checkbox so check + short link read as one left-aligned group. */
+.admin-table th:nth-child(2),
+.admin-table td:nth-child(2) {
+  padding-left: var(--space-1);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table tbody tr:hover td {
+  background: var(--color-brand-50);
+}
+
+.admin-table__title {
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+
+.admin-table__title--row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-table__sub {
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table__actions {
+  display: inline-flex;
+  gap: var(--space-0-5);
+  align-items: center;
+}
+
+/* Custom checkbox (row + select-all): native input is visually hidden;
+   the sibling <span> draws the box, and a hidden mark shows on :checked. */
+.admin-checkbox {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-3-5);
+  height: var(--space-3-5);
+  cursor: pointer;
+}
+
+.admin-checkbox .admin-table__checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+.admin-checkbox span {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-3-5);
+  height: var(--space-3-5);
+  border: 1px solid var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+/* Checked: solid black checkmark appears; the box itself keeps its border (no black fill). */
+.admin-table__checkbox:checked + span::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--color-black);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+/* Select-all in a partial state: black dash, no fill. */
+.admin-table__checkbox:indeterminate + span::after {
+  content: "";
+  width: 10px;
+  height: 2px;
+  background: var(--color-black);
+}
+
+.admin-table__checkbox:focus-visible + span {
+  box-shadow: 0 0 0 2px var(--color-focus);
+}
+
+/* Empty state */
+.admin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.admin-empty__icon {
+  font-size: var(--text-3xl);
+}
+
+.admin-empty__title {
+  color: var(--color-text);
+  font-weight: var(--font-semibold);
+}
+
+.admin-empty__hint {
+  font-size: var(--text-sm);
+}
+
+/* Dark bar (table footer — rows-per-page + page numbers) */
+.admin-darkbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  margin-inline: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-4-5);
+  background: var(--color-brand-950);
+  border-top: 1px solid var(--color-panel-line);
+  color: var(--color-brand-50);
+}
+
+.admin-darkbar__info {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+}
+
+.admin-darkbar__select {
+  width: 64px;
+  height: var(--size-control-sm);
+  padding: var(--space-0-5) var(--space-1-5);
+  font-size: var(--text-2xs);
+  background: var(--color-brand-950);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-brand-50);
+}
+
+.admin-darkbar__spacer {
+  flex: 1;
+}
+
+/* Nudge the "Showing … of N" summary a little off the left edge. */
+.admin-darkbar > .admin-darkbar__info:first-child {
+  margin-left: var(--space-2);
+}
+
+.admin-darkbar__btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-950);
+  color: var(--color-brand-200);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.admin-darkbar__btn:hover:not(:disabled):not(.admin-darkbar__btn--active) {
+  background: var(--color-panel-hover);
+  color: var(--color-white);
+}
+
+.admin-darkbar__btn--active {
+  background: var(--color-white);
+  color: var(--color-brand-950);
+}
+
+.admin-darkbar__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Result banner (created/updated link) */
+.admin-link-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-2-5) var(--space-3);
+}
+
+.admin-link-result--dark {
+  background: var(--color-brand-950);
+  color: var(--color-brand-50);
+}
+
+.admin-link-result--cream {
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.admin-link-result__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-link-result__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-link-result--dark .admin-link-result__title {
+  color: color-mix(in srgb, var(--color-success) 68%, var(--color-white));
+}
+
+.admin-link-result--cream .admin-link-result__title {
+  color: var(--color-success);
+}
+
+.admin-link-result__link {
+  font-weight: var(--font-semibold);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-link-result__meta {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: inherit;
+  opacity: 0.72;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-link-result__actions {
+  display: flex;
+  gap: var(--space-1-5);
+  flex: 0 0 auto;
+}
+
+/* Modal */
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--color-overlay);
+}
+
+.admin-modal {
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  max-height: min(90dvh, 100%);
+  overflow-y: auto;
+}
+
+.admin-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.admin-modal__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.admin-modal__subtitle {
+  margin-top: var(--space-0-5);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-text-muted);
+}
+
+.admin-modal__close {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-control);
+  height: var(--size-control);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.admin-modal__close:hover {
+  background: var(--color-hover);
+}
+
+.admin-modal__body {
+  padding: var(--space-5);
+}
+
+.admin-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2-5);
+  padding: var(--space-3-5) var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.admin-modal__footer-row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: var(--space-2-5);
+}
+
+/* Compact confirm dialogs (delete): action buttons hugging the right edge. */
+.admin-modal__footer-row--end {
+  justify-content: flex-end;
+}
+
+/* Modal footer buttons (Back / Save Draft): smaller type, snug horizontal
+   padding, and the same height as the modal's URL row controls (34px). */
+.admin-modal__footer-row .admin-btn {
+  font-size: var(--text-xs);
+  padding: 0 var(--space-2-5);
+  height: calc(var(--size-control-sm) + var(--space-1-5));
+}
+
+/* Dark modal variant (edit short link) */
+.admin-modal--dark {
+  background: var(--color-brand-950);
+  border: 1px solid var(--color-panel-line);
+}
+
+/* Edit link modal: the title and the action bar are flush — no divider lines
+   above the Back / Save Draft buttons or under the "Edit Link" title. */
+.admin-modal--dark .admin-modal__header {
+  border-bottom: 0;
+}
+
+.admin-modal--dark .admin-modal__subtitle {
+  color: var(--color-on-panel-muted);
+}
+
+.admin-modal--dark .admin-modal__footer {
+  border-top: 0;
+}
+
+.admin-modal--dark .admin-modal__title {
+  color: var(--color-brand-50);
+}
+
+.admin-modal--dark .admin-modal__close {
+  color: var(--color-brand-50);
+}
+
+.admin-modal--dark .admin-modal__close:hover {
+  background: var(--color-panel-hover);
+}
+
+.admin-modal--dark .admin-modal__body {
+  color: var(--color-brand-50);
+}
+
+.admin-modal--dark .admin-modal__footer {
+  border-top-color: var(--color-panel-line);
+}
+
+.admin-modal--dark .admin-field__label {
+  color: var(--color-brand-50);
+}
+
+.admin-modal--dark .admin-input {
+  background: var(--color-brand-200);
+  color: var(--color-brand-600);
+  border-color: var(--color-brand-200);
+}
+
+.admin-modal--dark .admin-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Delete confirmation text inside the dark modal (inherits the cream body ink). */
+.admin-delete-confirm__message {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+/* Delete confirm modal: the "Delete link" title matches the Tools page header
+   size, not the default modal title. */
+.admin-modal--delete .admin-modal__title {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+}
+
+/* Delete confirm modal: tighter vertical rhythm — the three stacked rows
+   (title, message, actions) sit closer together. */
+.admin-modal--delete .admin-modal__header {
+  padding: var(--space-2-5) var(--space-5);
+}
+
+.admin-modal--delete .admin-modal__body {
+  padding: var(--space-2-5) var(--space-5);
+}
+
+.admin-modal--delete .admin-modal__footer {
+  padding: var(--space-2-5) var(--space-5);
+}
+
+.admin-modal--dark .admin-url-slug__prefix {
+  color: var(--color-brand-50);
+}
+
+/* Form grid (2 columns → 1 on small screens) */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.admin-form-grid__full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tools-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Toast — matches the side panel look (same surface, ink and type as the
+   sidebar links): maroon pill with cream text, medium weight (not bold). */
+.admin-toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%);
+  z-index: 2000;
+  padding: var(--space-2-5) var(--space-5);
+  border-radius: var(--radius-full);
+  background: var(--color-panel);
+  border: 1px solid var(--color-panel-line);
+  color: var(--color-on-panel);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  box-shadow: var(--shadow-popover);
+  animation: admin-toast-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes admin-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(var(--space-2));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ==================================================================
+   Events — tabs, bulk action bar, list chips (Figma "EVENT ADMIN")
+   ================================================================== */
+
+/* Tab row (All / Upcoming / Past / Drafts): underline style, sits above the table. */
+.admin-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-4);
+}
+
+.admin-tabs__btn {
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: var(--space-2) var(--space-1);
+  margin: 0 var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-xs);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-tabs__btn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * var(--space-2));
+  height: 2px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.admin-tabs__btn--active {
+  color: var(--color-text);
+}
+
+.admin-tabs__btn--active::after {
+  background: var(--color-primary);
+}
+
+.admin-tabs__btn:hover:not(.admin-tabs__btn--active) {
+  color: var(--color-text);
+}
+
+.admin-tabs__count {
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  margin-left: var(--space-0-5);
+}
+
+/* Title cell: small type chip (avatar stand-in) + title + type subtitle. */
+.admin-event-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+}
+
+.admin-event-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Bulk action bar — replaces the dark pagination bar while rows are selected.
+   Mirrors the Figma "Bulk action bar" (cream bg, near-black text). */
+.admin-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-inline: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2-5) var(--space-4-5);
+  background: var(--color-brand-50);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.admin-bulkbar__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.admin-bulkbar__select-all {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.admin-bulkbar__select-all:hover {
+  color: var(--color-text);
+}
+
+.admin-bulkbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* The Figma "Publish" / "Make private" bulk buttons are near-black (brand-950),
+   unlike the generic primary (accent) — scope that override to this bar only. */
+.admin-bulkbar .admin-btn--primary {
+  background: var(--color-brand-950);
+}
+
+.admin-bulkbar .admin-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-brand-950) 88%, var(--color-white));
+}
+
+/* Row "more" menu (Publish / Make Private / Copy Link / Delete event) */
+.admin-row-menu {
+  position: relative;
+}
+
+.admin-row-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 50;
+  min-width: 200px;
+  padding: var(--space-1);
+  background: var(--color-brand-50);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.admin-row-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-row-menu__item:hover {
+  background: var(--color-brand-200);
+}
+
+.admin-row-menu__item--danger {
+  color: var(--color-danger);
+}
+
+.admin-row-menu__item--danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* Dismiss backdrop behind an open row menu */
+.admin-row-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+/* Toggle filter panel (below the toolbar) */
+.admin-filter-panel {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4) var(--space-1);
+}
+
+.admin-filter-panel .admin-field {
+  min-width: 180px;
+}
+
+.admin-filter-panel__clear {
+  border: 0;
+  background: transparent;
+  padding: var(--space-1) var(--space-0-5);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.admin-filter-panel__clear:hover {
+  text-decoration: underline;
+}
+
+/* Right cluster of the list toolbar (Filters + Delete) */
+.admin-toolbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Filters button showing an active count */
+.admin-btn--filter-on {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Form footer actions (Back · Save draft · Publish) */
+.admin-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.admin-form-actions__right {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Labelled editable-string section (Guest/Speakers, Rundown, Sponsors) */
+.admin-form-separator {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.admin-form-separator__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.admin-form-separator__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
