@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { forbidden, redirect } from "next/navigation";
 import { SESSION_COOKIE, signInUrl, type VerifiedIdentity } from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
@@ -10,7 +10,9 @@ import {
   type PagePermission,
   type Principal,
 } from "@website/permissions";
+import { resolveRequestId } from "@website/observability";
 import { getAdminEnv, getAppUrls } from "./env";
+import type { AuditContext } from "./guarded-action";
 import { userDirectory } from "./user-directory";
 
 /** The signed-in staff member: who they are (for display) and what they may do. */
@@ -50,6 +52,15 @@ export const getAdminViewer = cache(async (): Promise<AdminViewer | null> => {
 /** The principal alone, for createGuardedAction. */
 export async function getPrincipal(): Promise<Principal | null> {
   return (await getAdminViewer())?.principal ?? null;
+}
+
+/** Second argument of createGuardedAction: the staff e-mail and request id for audit entries. */
+export async function getAuditContext(): Promise<AuditContext> {
+  const viewer = await getAdminViewer();
+  return {
+    actorEmail: viewer?.email ?? null,
+    requestId: resolveRequestId((await headers()).get("x-request-id")),
+  };
 }
 
 /**

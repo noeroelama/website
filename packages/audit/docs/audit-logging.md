@@ -2,9 +2,14 @@
 
 ## Record
 
-`packages/audit/src/types.ts → AuditEvent`: `actor`, `action`, `resourceType`, `resourceId`,
-`occurredAt`, `operationId`, `before`, `after`, `versionBefore/After`, `revertible`, `revertOf`,
-request metadata (`requestId`, hashed IP, user agent), and `prevHash`/`hash` for a tamper-evident chain.
+`packages/audit/src/types.ts → AuditEvent`: `actor` (staff uid + e-mail snapshot), `action`
+(`AUDIT_ACTIONS`: CREATE, UPDATE, DELETE, PUBLISH, UNPUBLISH, SEND, UPLOAD, REVERT), `module`
+(admin page id), `title` (record title at that time), `resourceType`, `resourceId`, `occurredAt`,
+`operationId`, `before`, `after` (**only the top-level fields that changed**, `onlyChangedFields`),
+`versionBefore/After`, `revertible`, `revertOf`, request metadata (`requestId`), and
+`prevHash`/`hash` for a tamper-evident chain.
+
+The Figma flowchart calls the collection `adminLogs`; here it is `auditLogs`.
 
 ## Guarantees
 
@@ -23,6 +28,53 @@ request metadata (`requestId`, hashed IP, user agent), and `prevHash`/`hash` for
 - **Diffs** (`diffSnapshots`) are for display; full snapshots are the source of truth.
 - **Personal data**: minimize registrant PII in snapshots; never snapshot secrets.
 
-## Integrity (implementation phase)
+## Writing an entry (admin mutations)
 
-Hash chain verified nightly; daily export to a retention-locked bucket in a separate project.
+```ts
+const rename = createGuardedAction({
+  permission: "articles.edit",
+  input: RenameInput,
+  handler: (input, principal, audit) =>
+    db.runTransaction(async (tx) => {
+      const current = await tx.get(ref); // 1. the transaction's own reads
+      const log = await auditWriter.begin(tx); // 2. reads the chain head
+      tx.update(ref, { title: input.title, version: current.get("version") + 1 }); // 3. writes
+      log.append(
+        audit({
+          module: "articles",
+          action: "UPDATE",
+          resourceType: "content",
+          resourceId: input.id,
+          title: input.title,
+          before: { title: current.get("title") },
+          after: { title: input.title },
+          versionBefore: current.get("version"),
+          versionAfter: current.get("version") + 1,
+        }),
+      );
+    }),
+});
+// in a server action: rename(getPrincipal, getAuditContext)(formInput)
+```
+
+- `audit(...)` (from `createGuardedAction`, `apps/admin/src/server/guarded-action.ts`) fills in the
+  id, time, actor (the server-side principal + e-mail, never the input), request id and the
+  operation id shared by every entry of that mutation, and keeps only the changed fields.
+- `createFirestoreAuditWriter(db).begin(tx)` (`packages/db/src/firestore/audit.ts`) must be called
+  after the transaction's reads and before its writes (Firestore runs all reads first). Its
+  `append` queues `tx.create(auditLogs/{id})` and moves `auditChain/head`; a failed transaction
+  leaves no entry.
+- Personal data: build `before`/`after` with `profileAuditSnapshots` (`@website/domain/members`),
+  which writes restricted fields only as `[changed]`/`[unchanged]`.
+- Tests: `tests/integration/audit-writer.test.ts`, `tests/security/guarded-action.test.ts`,
+  `tests/unit/audit.test.ts`.
+
+## Integrity
+
+- Every entry has `seq`, `prevHash` and `hash = sha256(prevHash + canonicalJson(event))`
+  (`prevHash` empty for the first entry); `auditChain/head` holds the newest `{ hash, seq }`.
+  Because every audited transaction reads and writes the head, entries get a strict order and
+  a gap or an edited entry breaks the chain.
+- Only `packages/db/src/firestore/audit.ts` references `auditLogs`, and it only creates
+  (architecture test). Planned: nightly chain verification and a daily export to a
+  retention-locked bucket in a separate project.

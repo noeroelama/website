@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@website/apikeys": "workspace:*",
+    "@website/audit": "workspace:*",
     "@website/auth": "workspace:*",
     "@website/config": "workspace:*",
     "@website/domain": "workspace:*",

@@ -1,8 +1,16 @@
+import { randomUUID } from "node:crypto";
 import type { z } from "zod";
+import {
+  onlyChangedFields,
+  type AuditAction,
+  type AuditEvent,
+  type Snapshot,
+} from "@website/audit";
 import { toPublicError } from "@website/security";
 import {
   canAccessAdmin,
   requirePermission,
+  type AdminPageId,
   type Permission,
   type Principal,
   type ResourceContext,
@@ -10,8 +18,9 @@ import {
 
 /**
  * The ONLY way to define an admin mutation. Order is fixed:
- * authenticate (+ staff role) → validate → authorize → business logic (which writes the audit record
- * in the same transaction).
+ * authenticate (+ staff role) → validate → authorize → business logic. The handler gets an
+ * `audit` builder (actor = the server-side principal, never the input) and writes the entry with
+ * `createFirestoreAuditWriter(db).begin(tx)` in the SAME transaction as the record change.
  *
  * Kept free of `server-only` so it is unit-testable; it is wired in ./context.ts.
  */
@@ -23,13 +32,44 @@ export type GuardedResult<T> =
       readonly issues?: readonly string[];
     };
 
+/** Who and which request, resolved on the server (context.ts → getAuditContext). */
+export interface AuditContext {
+  readonly actorEmail: string | null;
+  readonly requestId: string;
+}
+
+/** What a handler says about one change; the rest of the AuditEvent is filled in for it. */
+export interface AuditInput {
+  readonly module: AdminPageId;
+  readonly action: AuditAction;
+  readonly resourceType: string;
+  readonly resourceId: string;
+  readonly title: string;
+  /** Full snapshots; only the changed top-level fields are kept. Redact personal data first. */
+  readonly before: Snapshot | null;
+  readonly after: Snapshot | null;
+  readonly versionBefore: number | null;
+  readonly versionAfter: number | null;
+  /** false for side effects that cannot be undone (e-mail sent). Default true. */
+  readonly revertible?: boolean;
+}
+
+/** Builds an audit entry for this mutation; write it with the transaction's AuditAppender. */
+export type AuditBuilder = (input: AuditInput) => AuditEvent;
+
+const noContext = (): Promise<AuditContext> =>
+  Promise.resolve({ actorEmail: null, requestId: randomUUID() });
+
 export function createGuardedAction<S extends z.ZodType, T>(definition: {
   permission: Permission;
   input: S;
   resource?: (input: z.infer<S>) => ResourceContext;
-  handler: (input: z.infer<S>, principal: Principal) => Promise<T>;
+  handler: (input: z.infer<S>, principal: Principal, audit: AuditBuilder) => Promise<T>;
 }) {
-  return (getPrincipal: () => Promise<Principal | null>) =>
+  return (
+      getPrincipal: () => Promise<Principal | null>,
+      getAuditContext: () => Promise<AuditContext> = noContext,
+    ) =>
     async (rawInput: unknown): Promise<GuardedResult<T>> => {
       const principal = await getPrincipal();
       if (principal === null || !principal.active) return { ok: false, error: "unauthenticated" };
@@ -51,8 +91,24 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
       } catch {
         return { ok: false, error: "forbidden" };
       }
+      const context = await getAuditContext();
+      // One operation id per mutation: entries written by it are reverted as a unit.
+      const operationId = randomUUID();
+      const audit: AuditBuilder = ({ revertible = true, ...change }) => ({
+        ...change,
+        ...onlyChangedFields(change.before, change.after),
+        id: randomUUID(),
+        occurredAt: new Date(),
+        actor: { type: "staff", id: principal.userId, email: context.actorEmail },
+        operationId,
+        revertible,
+        revertOf: null,
+        request: { requestId: context.requestId },
+        prevHash: null,
+        hash: null,
+      });
       try {
-        return { ok: true, data: await definition.handler(parsed.data, principal) };
+        return { ok: true, data: await definition.handler(parsed.data, principal, audit) };
       } catch (error) {
         // Race condition: the document changed since it was read (optimistic concurrency).
         if (toPublicError(error).code === "conflict") return { ok: false, error: "conflict" };

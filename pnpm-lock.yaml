@@ -510,6 +510,9 @@ importers:
       '@website/apikeys':
         specifier: workspace:*
         version: link:../apikeys
+      '@website/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@website/auth':
         specifier: workspace:*
         version: link:../auth

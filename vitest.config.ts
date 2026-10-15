@@ -20,6 +20,7 @@ export default defineConfig({
         "packages/db/src/firestore/batch.ts",
         "packages/db/src/users.ts",
         "packages/db/src/firestore/users.ts",
+        "packages/db/src/firestore/audit.ts",
         "apps/*/src/server/request-guard.ts",
         "apps/gateway/src/middleware/request-guard.ts",
         "apps/admin/src/server/guarded-action.ts",

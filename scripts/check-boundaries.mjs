@@ -69,7 +69,7 @@ const ALLOWED = {
   observability: [],
   ui: [],
   auth: ["config", "security"],
-  db: ["apikeys", "auth", "config", "domain", "permissions", "security"],
+  db: ["apikeys", "audit", "auth", "config", "domain", "permissions", "security"],
 };
 
 /** Subpath restrictions: workspace → package → allowed subpaths. @type {Record<string, Record<string, string[]>>} */

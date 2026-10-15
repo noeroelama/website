@@ -63,17 +63,37 @@ export function fakeFirestore(options: { failWith?: Error } = {}) {
       }),
     }),
     getAll,
+    /**
+     * Like Firestore: every read must come before the first write, and the writes are applied
+     * only when the callback succeeds (an error rolls everything back).
+     */
     runTransaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
       if (options.failWith) return Promise.reject(options.failWith);
-      const run = queue.then(() =>
-        fn({
-          get: (r: { path: string; id: string }) => Promise.resolve(snapshot(r.path, r.id)),
-          set: (r: { path: string }, data: Data) => write(r.path, data),
+      const run = queue.then(async () => {
+        const pending: Array<() => void> = [];
+        const later = (apply: () => void) => {
+          pending.push(apply);
+        };
+        const result = await fn({
+          get: (r: { path: string; id: string }) => {
+            if (pending.length > 0) {
+              throw new Error("Firestore transactions require all reads before all writes.");
+            }
+            return Promise.resolve(snapshot(r.path, r.id));
+          },
+          set: (r: { path: string }, data: Data) => later(() => write(r.path, data)),
+          create: (r: { path: string }, data: Data) =>
+            later(() => {
+              if (docs.has(r.path)) throw Object.assign(new Error("ALREADY_EXISTS"), { code: 6 });
+              write(r.path, data);
+            }),
           update: (r: { path: string }, data: Data) =>
-            write(r.path, { ...docs.get(r.path), ...data }),
-          delete: (r: { path: string }) => docs.delete(r.path),
-        }),
-      );
+            later(() => write(r.path, { ...docs.get(r.path), ...data })),
+          delete: (r: { path: string }) => later(() => docs.delete(r.path)),
+        });
+        for (const apply of pending) apply();
+        return result;
+      });
       queue = run.then(
         () => undefined,
         () => undefined,

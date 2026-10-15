@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import * as audit from "@website/audit";
 import {
   buildRevertEvent,
+  canonicalJson,
   diffSnapshots,
+  onlyChangedFields,
   evaluateRevert,
   REVERT_WINDOW_MS,
   type AuditEvent,
@@ -13,7 +15,7 @@ const base: AuditEvent = {
   id: "a1",
   occurredAt: new Date("2026-10-01T00:00:00Z"),
   actor: { type: "staff", id: "s1" },
-  action: "news.update",
+  action: "UPDATE",
   resourceType: "news",
   resourceId: "n1",
   operationId: "op1",
@@ -81,11 +83,39 @@ describe("audit", () => {
     expect(revert).toMatchObject({
       id: "a2",
       revertOf: "a1",
+      action: "REVERT",
       before: base.after,
       after: base.before,
       versionAfter: 5,
     });
     expect(base).toEqual(original);
+  });
+
+  it("stores only the top-level fields that changed (create: after only, delete: before only)", () => {
+    expect(
+      onlyChangedFields(
+        { title: "Old", tags: ["a"], body: "same", meta: { x: 1 } },
+        { title: "New", tags: ["a"], body: "same", meta: { x: 2 }, summary: "added" },
+      ),
+    ).toEqual({
+      // A field that did not exist is recorded as null, so a revert can clear it again.
+      before: { title: "Old", meta: { x: 1 }, summary: null },
+      after: { title: "New", meta: { x: 2 }, summary: "added" },
+    });
+    expect(onlyChangedFields(null, { title: "A" })).toEqual({
+      before: null,
+      after: { title: "A" },
+    });
+    expect(onlyChangedFields({ title: "A" }, null)).toEqual({
+      before: { title: "A" },
+      after: null,
+    });
+  });
+
+  it("canonical JSON is stable: sorted keys, dates as ISO strings, undefined dropped", () => {
+    expect(
+      canonicalJson({ b: 1, a: { d: [2, { z: 1, y: 2 }], c: new Date(0) }, u: undefined }),
+    ).toBe('{"a":{"c":"1970-01-01T00:00:00.000Z","d":[2,{"y":2,"z":1}]},"b":1}');
   });
 
   it("exposes no mutation/deletion API", () => {
