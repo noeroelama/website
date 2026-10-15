@@ -4,6 +4,7 @@ import {
   type AuditAction,
   type RevertRejection,
 } from "@website/audit";
+import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 
 /**
@@ -55,6 +56,15 @@ export const REVERT_REJECTION_LABELS = {
   },
 } as const satisfies Record<RevertRejection, Label>;
 
+export const MESSAGE_STATUS_LABELS = {
+  queued: { id: "Dalam antrean", en: "Queued" },
+  sent: { id: "Terkirim", en: "Sent" },
+  failed: { id: "Gagal", en: "Failed" },
+  skipped: { id: "Dilewati (tanpa alamat)", en: "Skipped (no address)" },
+  logged: { id: "Hanya dicatat (mode log)", en: "Logged only (log mode)" },
+  blocked: { id: "Diblokir (bukan penerima uji)", en: "Blocked (not a test recipient)" },
+} as const satisfies Record<MessageStatus, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -66,6 +76,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "role type", keys: ["builtIn", "custom"], labels: ROLE_TYPE_LABELS },
   { name: "audit action", keys: AUDIT_ACTIONS, labels: AUDIT_ACTION_LABELS },
   { name: "revert rejection", keys: REVERT_REJECTIONS, labels: REVERT_REJECTION_LABELS },
+  { name: "message status", keys: MESSAGE_STATUSES, labels: MESSAGE_STATUS_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

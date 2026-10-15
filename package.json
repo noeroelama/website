@@ -36,6 +36,7 @@
     "@website/contracts": "workspace:*",
     "@website/db": "workspace:*",
     "@website/domain": "workspace:*",
+    "@website/email": "workspace:*",
     "@website/observability": "workspace:*",
     "@website/permissions": "workspace:*",
     "@website/security": "workspace:*",

@@ -63,6 +63,25 @@ export const rateLimitEnv = z.object({
   RATE_LIMIT_SECRET: nonEmpty.min(32).optional(),
 });
 
+/**
+ * Outgoing messages (packages/domain/src/messaging). Every environment uses the live data, so
+ * the default is `log` (record only). `live` sends in production; elsewhere only to the test
+ * recipients (comma-separated e-mail addresses).
+ */
+export const messagingEnv = z.object({
+  MESSAGING_MODE: z.enum(["log", "live"]).default("log"),
+  MESSAGING_TEST_RECIPIENTS: z
+    .string()
+    .default("")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.email())),
+});
+
 export const resendEnv = z.object({
   RESEND_API_KEY: nonEmpty,
   EMAIL_FROM_TRANSACTIONAL: nonEmpty,

@@ -29,6 +29,7 @@ export { getDocumentsByIds } from "./batch";
 export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";
+export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
 export {
   createFirestoreAccountStore,
   createFirestoreRoleStore,

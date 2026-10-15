@@ -11,7 +11,8 @@
     "./newsletter": "./src/newsletter/index.ts",
     "./shop": "./src/shop/index.ts",
     "./members": "./src/members/index.ts",
-    "./shared": "./src/shared/index.ts"
+    "./shared": "./src/shared/index.ts",
+    "./messaging": "./src/messaging/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

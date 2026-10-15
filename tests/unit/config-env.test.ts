@@ -107,3 +107,26 @@ describe("shared session cookie domain", () => {
     }
   });
 });
+
+describe("messaging env (MESSAGING_MODE, MESSAGING_TEST_RECIPIENTS)", () => {
+  it("defaults to log mode with no test recipients, and parses a comma-separated list", async () => {
+    const { messagingEnv } = await import("@website/config/env");
+    expect(messagingEnv.parse({})).toEqual({
+      MESSAGING_MODE: "log",
+      MESSAGING_TEST_RECIPIENTS: [],
+    });
+    expect(
+      messagingEnv.parse({
+        MESSAGING_MODE: "live",
+        MESSAGING_TEST_RECIPIENTS: " QA@example.org, dev@example.org ,",
+      }),
+    ).toEqual({
+      MESSAGING_MODE: "live",
+      MESSAGING_TEST_RECIPIENTS: ["qa@example.org", "dev@example.org"],
+    });
+    expect(messagingEnv.safeParse({ MESSAGING_TEST_RECIPIENTS: "not-an-email" }).success).toBe(
+      false,
+    );
+    expect(messagingEnv.safeParse({ MESSAGING_MODE: "send-everything" }).success).toBe(false);
+  });
+});

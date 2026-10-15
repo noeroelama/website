@@ -3,6 +3,7 @@ import {
   baseEnv,
   cronEnv,
   firebaseAdminEnv,
+  messagingEnv,
   lazyEnv,
   loadEnv,
   publicUrlsEnv,
@@ -15,6 +16,7 @@ const adminEnvSchema = baseEnv
   .extend(firebaseAdminEnv.shape)
   .extend(sessionEnv.shape)
   .extend(cronEnv.shape)
+  .extend(messagingEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(zoomEnv.partial().shape);
 

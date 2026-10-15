@@ -38,6 +38,7 @@ export const ADMIN_PAGES = {
   users: { label: "Users & role assignments" },
   roles: { label: "Roles & permissions" },
   audit: { label: "Audit Log", extras: { revert: "Revert changes" } },
+  messages: { label: "Messages (failed e-mails, retry)" },
   apikeys: { label: "API keys" },
   shop_products: { label: "Shop products" },
   shop_orders: { label: "Shop orders", extras: { refund: "Refund" } },

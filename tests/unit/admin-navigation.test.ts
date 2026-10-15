@@ -58,6 +58,7 @@ describe("admin side panel navigation", () => {
       "Users",
       "Roles",
       "Audit Log",
+      "Messages",
     ]);
   });
 

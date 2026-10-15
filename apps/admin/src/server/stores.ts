@@ -7,6 +7,7 @@ import {
   createFirestoreAccountStore,
   createFirestoreAuditStore,
   createFirestoreAuditWriter,
+  createFirestoreMessageLog,
   createFirestorePasskeyStore,
   createFirestoreRoleStore,
   getFirestoreForRole,
@@ -44,6 +45,7 @@ export const adminStores = lazyEnv(() => {
     passkeys: createFirestorePasskeyStore(db),
     audit: createFirestoreAuditWriter(db),
     auditLog: createFirestoreAuditStore(db),
+    messageLog: createFirestoreMessageLog(db),
     authAdmin: createFirebaseAccountAdmin({
       appEnv: env.APP_ENV,
       projectId: env.FIREBASE_PROJECT_ID,

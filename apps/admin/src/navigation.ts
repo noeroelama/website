@@ -32,6 +32,7 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "Users", href: "/users", permission: "users.read" },
   { label: "Roles", href: "/roles", permission: "roles.read" },
   { label: "Audit Log", href: "/audit", permission: "audit.read" },
+  { label: "Messages", href: "/messages", permission: "messages.read" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {

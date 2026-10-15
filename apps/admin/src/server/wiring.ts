@@ -6,9 +6,12 @@ import type { AuditListQuery } from "@website/db/firestore";
 import { logSecurityEvent } from "@website/observability";
 import { createAccountActions } from "./accounts";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
+import { createMessenger } from "@website/domain/messaging";
+import { createResendSender } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { getAdminEnv } from "./env";
 import { createImageUploads } from "./images";
+import { createMessageActions, emailChannel } from "./messaging";
 import { createRoleActions } from "./roles";
 import { adminStores, imageStorage } from "./stores";
 
@@ -51,12 +54,36 @@ export const cronRoute = lazyEnv(() =>
   }),
 );
 
+/**
+ * Outgoing messages from admin (docs: apps/admin/docs/messaging.md). Call
+ * `messenger().send(message, key)` AFTER the transaction that caused the message commits.
+ */
+export const messenger = lazyEnv(() => {
+  const env = getAdminEnv();
+  return createMessenger({
+    log: adminStores().messageLog,
+    channels: {
+      email: emailChannel(
+        env.RESEND_API_KEY ? createResendSender({ apiKey: env.RESEND_API_KEY }) : null,
+        env.EMAIL_FROM_TRANSACTIONAL,
+      ),
+    },
+    mode: env.MESSAGING_MODE,
+    appEnv: env.APP_ENV,
+    testRecipients: env.MESSAGING_TEST_RECIPIENTS,
+    now: () => new Date(),
+  });
+});
+export const messageActions = lazyEnv(() => createMessageActions({ messenger: messenger() }));
+
 /** Reads for the Users and Roles pages. Callers check `users.read` / `roles.read` first. */
 export const adminReads = {
   listUsers: (query: UserListQuery) => adminStores().accounts.list(query),
   getUser: (uid: string) => adminStores().accounts.get(uid),
   listRoles: () => adminStores().roles.list(),
   listAudit: (query: AuditListQuery) => adminStores().auditLog.list(query),
+  listFailedMessages: (cursor: string | undefined) =>
+    adminStores().messageLog.listFailed({ cursor, limit: 25 }),
   getRole: (id: string) => adminStores().roles.get(id),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {
