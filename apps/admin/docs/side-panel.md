@@ -29,8 +29,9 @@ page under `src/app/(panel)/` so it gets the panel, and gate its content in the 
 export const instant = false;
 
 export default async function Page() {
-  const viewer = await requireAdminViewer("/events", "events.read"); // signed out → web sign-in
-  if (typeof viewer === "string") return <AccessMessage reason={viewer} />; // "no-access"
+  // signed out → web sign-in; signed in without a staff role → restricted (403) page
+  const viewer = await requireAdminViewer("/events", "events.read");
+  if (typeof viewer === "string") return <AccessMessage reason={viewer} />; // no page permission
   // … check can(viewer.principal, …) for the data, then render
 }
 ```
@@ -43,8 +44,9 @@ export default async function Page() {
 - The layout always renders the page segment (in the prerendered fallback and after the session is
   known), otherwise Next.js cannot validate instant navigation ("instant-unrendered-segment"). So
   the layout is not the gate: each page calls `requireAdminViewer`, which redirects signed-out
-  visitors to `WEB_URL/login?next=ADMIN_URL/<path>` and returns `"no-access"` for accounts without
-  a staff role or without the page's permission. A unit test checks that every menu entry has a
+  visitors to `WEB_URL/login?next=ADMIN_URL/<path>`, shows the restricted (403) page
+  (`forbidden()`, `src/app/forbidden.tsx`) to signed-in accounts without any staff role, and returns
+  `"no-access"` for staff without the page's permission. A unit test checks that every menu entry has a
   page calling `requireAdminViewer` with the same href and permission.
 - The pages Tools, Event, Gallery, Article, Newsletter, Organizations and Audit Log exist as blank
   pages (heading only); each feature fills its page in its own phase.

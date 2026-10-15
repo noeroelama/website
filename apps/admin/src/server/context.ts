@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { SESSION_COOKIE, signInUrl, type VerifiedIdentity } from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
 import {
@@ -58,8 +58,9 @@ export async function getPrincipal(): Promise<Principal | null> {
  * For every login-required page. Not signed in → the web sign-in page, which brings the visitor
  * back to `path` with the shared session (without a session cookie, src/proxy.ts already sent a
  * real 307: a redirect from here is streamed as a 200 + client-side redirect). Signed in without
- * staff access, or without `permission` in any scope (the page's `<page>.read`) → "no-access"
- * (redirecting would loop). The page still filters its data by scope with `can()`. "signed-out"
+ * any staff role → the restricted page (`forbidden()`, src/app/forbidden.tsx). Staff without
+ * `permission` in any scope (the page's `<page>.read`) → "no-access", so the page shows a message
+ * inside the side panel. The page still filters its data by scope with `can()`. "signed-out"
  * is only returned when WEB_URL/ADMIN_URL are not configured (e.g. CI), so the page can show a
  * message instead.
  */
@@ -73,7 +74,7 @@ export async function requireAdminViewer(
     return "signed-out";
   }
   const viewer = await getAdminViewer();
-  if (!viewer) return "no-access";
+  if (!viewer) forbidden();
   if (permission !== undefined && !canInSomeScope(viewer.principal, permission)) return "no-access";
   return viewer;
 }

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SESSION_COOKIE } from "@website/auth";
 import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
+import { normalizePermissions, resolveAssignments, type Principal } from "@website/permissions";
 import type * as WebGuardModule from "../../apps/web/src/server/request-guard";
 
 // Staging/production use the shared Firestore store; here it is replaced by a failing fake
@@ -111,5 +112,85 @@ describe("sign-in redirect before the page renders (proxy)", () => {
     vi.stubEnv("ADMIN_URL", "");
     const { signInRedirect } = await load("admin");
     expect(signInRedirect(new Request("https://admin.example/events"))).toBeNull();
+  });
+});
+
+// Admin page gate (apps/admin/src/server/context.ts): the session cookie and the user's roles are
+// faked; redirect()/forbidden() throw like the real Next.js functions. Next.js is mocked at the
+// copy admin imports (the repository root does not depend on `next`).
+const adminSession = vi.hoisted(() => ({
+  cookie: undefined as string | undefined,
+  principal: null as Principal | null,
+}));
+vi.mock("../../apps/admin/node_modules/next/headers.js", () => ({
+  cookies: () =>
+    Promise.resolve({
+      get: () => (adminSession.cookie ? { value: adminSession.cookie } : undefined),
+    }),
+}));
+vi.mock("../../apps/admin/node_modules/next/navigation.js", () => ({
+  redirect: (url: string) => {
+    throw new Error(`redirect ${url}`);
+  },
+  forbidden: () => {
+    throw new Error("forbidden");
+  },
+}));
+vi.mock("@website/auth/firebase-admin", () => ({
+  createFirebaseIdentityProvider: () => ({
+    verifySessionCookie: () => Promise.resolve({ uid: "u", email: "u@example.org" }),
+  }),
+}));
+vi.mock("../../apps/admin/src/server/env", () => ({
+  getAdminEnv: () => ({ APP_ENV: "test" }),
+  getAppUrls: () => ({ WEB_URL: "https://web.example", ADMIN_URL: "https://admin.example" }),
+}));
+vi.mock("../../apps/admin/src/server/user-directory", () => ({
+  denyAllUserDirectory: { findPrincipalByUid: () => Promise.resolve(adminSession.principal) },
+}));
+
+describe("admin page gate (requireAdminViewer)", () => {
+  // A custom staff role with another page only (system roles superadmin/member resolve by id).
+  const roles = new Map([
+    [
+      "writer",
+      { id: "writer", name: "Writer", permissions: normalizePermissions(["articles.read"]) },
+    ],
+  ]);
+  const asRole = (roleId: string): Principal => ({
+    kind: "user",
+    userId: "u",
+    active: true,
+    assignments: resolveAssignments([{ roleId, scope: { type: "global" } }], roles),
+  });
+  const gate = async () => {
+    const { requireAdminViewer } = await import("../../apps/admin/src/server/context");
+    return requireAdminViewer("/events", "events.read");
+  };
+
+  afterEach(() => {
+    adminSession.cookie = undefined;
+    adminSession.principal = null;
+  });
+
+  it("sends a signed-out visitor to the web sign-in page", async () => {
+    await expect(gate()).rejects.toThrow(
+      `redirect https://web.example/login?next=${encodeURIComponent("https://admin.example/events")}`,
+    );
+  });
+
+  it("shows the restricted (403) page to a signed-in user without any admin role", async () => {
+    adminSession.cookie = "token";
+    await expect(gate()).rejects.toThrow("forbidden");
+    adminSession.principal = asRole("member");
+    await expect(gate()).rejects.toThrow("forbidden");
+  });
+
+  it("lets staff in, and shows the page message to staff without the page's permission", async () => {
+    adminSession.cookie = "token";
+    adminSession.principal = asRole("superadmin");
+    expect(await gate()).toMatchObject({ principal: adminSession.principal });
+    adminSession.principal = asRole("writer");
+    expect(await gate()).toBe("no-access");
   });
 });

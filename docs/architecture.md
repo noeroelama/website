@@ -114,8 +114,8 @@ validation. Pages check the session themselves.
 **Login-required pages** (any app) use `export const instant = false` and redirect a signed-out
 visitor straight to the web sign-in page with a return link: `redirect(signInUrl(WEB_URL, <this
 page's URL>))` (`signInUrl` from `@website/auth`; on web itself `signInUrl("", "/path")`). In
-admin use `requireAdminViewer(path)` from `src/server/context.ts`, which does this and returns
-`"no-access"` for signed-in accounts without a staff role.
+admin use `requireAdminViewer(path)` from `src/server/context.ts`, which does this and shows the
+restricted (403) page (`forbidden()`) to signed-in accounts without a staff role.
 The shell must never contain personal data; authentication and authorization still run on the
 server for every request (inside the `<Suspense>` part). Current pages: web `/`, `/login`,
 `/signup`, `/forgot-password` and shop `/` are fully static; admin pages (`(panel)` group) use `instant = false` and
