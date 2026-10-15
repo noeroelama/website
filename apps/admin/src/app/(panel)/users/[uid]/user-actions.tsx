@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { ActionError } from "@/components/action-error";
 import { actionMessage, type ActionFailure } from "@/components/action-message";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
-import { ActionError } from "../../roles/role-forms";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { label, SCOPE_LABELS } from "@/labels";
 import { assignRoleAction, revokeRoleAction, setStatusAction } from "../actions";
 
 type Scope = { type: "global" } | { type: "chapter"; chapterId: string };
@@ -35,7 +36,9 @@ export function UserRoleEditor(props: {
     });
   const base = { uid: props.uid, version: props.version };
   const scopeLabel = (scope: Scope) =>
-    scope.type === "global" ? "All chapters" : `Chapter ${scope.chapterId}`;
+    scope.type === "global"
+      ? label(SCOPE_LABELS, "global")
+      : `${label(SCOPE_LABELS, "chapter")} ${scope.chapterId}`;
 
   return (
     <>
@@ -107,39 +110,24 @@ export function UserRoleEditor(props: {
           </Button>
         </div>
       ) : null}
-      <Modal
+      <ConfirmDialog
         open={confirmStatus}
         title={props.status === "active" ? "Deactivate this account?" : "Reactivate this account?"}
-        onClose={() => setConfirmStatus(false)}
-        footer={
-          <div className="admin-modal__footer-row admin-modal__footer-row--end">
-            <Button variant="ghost" onClick={() => setConfirmStatus(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant={props.status === "active" ? "danger" : "success"}
-              disabled={pending}
-              onClick={() => {
-                setConfirmStatus(false);
-                run(() =>
-                  setStatusAction({
-                    ...base,
-                    status: props.status === "active" ? "inactive" : "active",
-                  }),
-                );
-              }}
-            >
-              {props.status === "active" ? "Deactivate" : "Reactivate"}
-            </Button>
-          </div>
-        }
+        confirmLabel={props.status === "active" ? "Deactivate" : "Reactivate"}
+        tone={props.status === "active" ? "danger" : "success"}
+        pending={pending}
+        onCancel={() => setConfirmStatus(false)}
+        onConfirm={() => {
+          setConfirmStatus(false);
+          run(() =>
+            setStatusAction({ ...base, status: props.status === "active" ? "inactive" : "active" }),
+          );
+        }}
       >
-        <p className="admin-delete-confirm__message">
-          {props.status === "active"
-            ? "The person is signed out everywhere and cannot sign in until the account is reactivated."
-            : "The person can sign in again with the roles the account still has."}
-        </p>
-      </Modal>
+        {props.status === "active"
+          ? "The person is signed out everywhere and cannot sign in until the account is reactivated."
+          : "The person can sign in again with the roles the account still has."}
+      </ConfirmDialog>
     </>
   );
 }

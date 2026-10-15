@@ -23,18 +23,19 @@ and link to it from the others.
 
 ## Feature docs index
 
-| Feature                                                  | Doc                                                                                         |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Member profiles                                          | [packages/domain/docs/members.md](../packages/domain/docs/members.md)                       |
-| Database                                                 | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
-| Authentication (Google, email/password, passkeys, reset) | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |
-| Authorization                                            | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |
-| Request security                                         | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
-| Audit logging                                            | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
-| Admin side panel                                         | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
-| Users and Roles pages (staff second sign-in method)      | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
-| Design tokens (colours, Poppins type scale, spacing)     | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
-| Error pages (401, 403, 404, 500)                         | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
+| Feature                                                   | Doc                                                                                         |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Member profiles                                           | [packages/domain/docs/members.md](../packages/domain/docs/members.md)                       |
+| Database                                                  | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
+| Authentication (Google, email/password, passkeys, reset)  | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |
+| Authorization                                             | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |
+| Request security                                          | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
+| Audit logging                                             | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
+| Admin side panel                                          | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
+| Admin page pattern (list, add/edit form, confirm, labels) | [apps/admin/docs/admin-shell.md](../apps/admin/docs/admin-shell.md)                         |
+| Users and Roles pages (staff second sign-in method)       | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
+| Design tokens (colours, Poppins type scale, spacing)      | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
+| Error pages (401, 403, 404, 500)                          | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
 
 Add a row here when you add a feature doc.
 

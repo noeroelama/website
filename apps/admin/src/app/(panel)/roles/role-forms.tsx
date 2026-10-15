@@ -2,29 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { ActionError } from "@/components/action-error";
 import { actionMessage } from "@/components/action-message";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FieldError } from "@/components/ui/field-error";
 import { addSuggestedRolesAction, deleteRoleAction, saveRoleAction } from "./actions";
-
-/** Error text plus, when the action needs a fresh sign-in, the link to do it. */
-export function ActionError({
-  text,
-  reauthUrl,
-}: {
-  text: string | null;
-  reauthUrl?: string | null;
-}) {
-  if (!text) return null;
-  return (
-    <p role="alert" className="admin-sign-out-error">
-      {text}{" "}
-      {reauthUrl && text.startsWith("For your security") ? (
-        <a href={reauthUrl}>Sign in again</a>
-      ) : null}
-    </p>
-  );
-}
 
 export function SuggestedRolesButton({ reauthUrl }: { reauthUrl: string | null }) {
   const router = useRouter();
@@ -76,6 +59,7 @@ export function RoleForm(props: {
   const [name, setName] = useState(props.role.name);
   const [checked, setChecked] = useState(() => new Set(props.role.permissions));
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
   const toggle = (value: string) =>
@@ -94,7 +78,10 @@ export function RoleForm(props: {
         permissions: [...checked],
         version: props.role.version,
       });
-      if (!result.ok) return setError(actionMessage(result));
+      if (!result.ok) {
+        setNameError(result.fields?.["name"] ?? null);
+        return setError(actionMessage(result));
+      }
       router.push(`/roles/${result.data.id}`);
       router.refresh();
     });
@@ -125,8 +112,11 @@ export function RoleForm(props: {
           minLength={2}
           maxLength={60}
           value={name}
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? "role-name-error" : undefined}
           onChange={(e) => setName(e.target.value)}
         />
+        <FieldError id="role-name-error" message={nameError} />
       </label>
       <p className="admin-page-header__desc">
         Edit includes read. Any extra (publish, export…) also includes read.
@@ -170,26 +160,15 @@ export function RoleForm(props: {
           </Button>
         </div>
       </div>
-      <Modal
+      <ConfirmDialog
         open={confirming}
         title="Move this role to trash?"
-        onClose={() => setConfirming(false)}
-        footer={
-          <div className="admin-modal__footer-row admin-modal__footer-row--end">
-            <Button variant="ghost" onClick={() => setConfirming(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" disabled={pending} onClick={remove}>
-              Move to trash
-            </Button>
-          </div>
-        }
+        pending={pending}
+        onConfirm={remove}
+        onCancel={() => setConfirming(false)}
       >
-        <p className="admin-delete-confirm__message">
-          Nobody holds this role. It disappears from the Roles page; the audit log keeps its
-          history.
-        </p>
-      </Modal>
+        Nobody holds this role. It disappears from the Roles page; the audit log keeps its history.
+      </ConfirmDialog>
     </form>
   );
 }

@@ -2124,3 +2124,39 @@ a.admin-stat-card:hover {
   flex-direction: column;
   gap: var(--space-2);
 }
+
+/* ── Page pattern (docs/admin-shell.md): field errors, floating add button ── */
+.admin-field__error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-input[aria-invalid="true"],
+.admin-select[aria-invalid="true"],
+.admin-textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.admin-fab {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  box-shadow: var(--shadow-popover);
+}
+
+.admin-fab:hover,
+.admin-fab:focus-visible {
+  filter: brightness(1.08);
+}

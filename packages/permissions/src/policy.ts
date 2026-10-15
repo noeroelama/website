@@ -11,6 +11,10 @@ import {
 export type Scope =
   { readonly type: "global" } | { readonly type: "chapter"; readonly chapterId: string };
 
+/** `users/{uid}.status`: an inactive account can do nothing (and cannot sign in). */
+export const ACCOUNT_STATUSES = ["active", "inactive"] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+
 /** What is stored in `users/{uid}.roleAssignments`. */
 export interface RoleAssignment {
   readonly roleId: string;

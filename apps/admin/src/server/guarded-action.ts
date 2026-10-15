@@ -39,6 +39,8 @@ export type GuardedResult<T> =
         /** The action needs a sign-in in the last 15 minutes. */
         | "reauthenticate";
       readonly issues?: readonly string[];
+      /** invalid_input: first message per top-level field, to show under that field. */
+      readonly fields?: Readonly<Record<string, string>>;
     };
 
 /** Who and which request, resolved on the server (context.ts → getAuditContext). */
@@ -93,10 +95,16 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
       // but never reveal validation details to unauthenticated callers.
       const parsed = definition.input.safeParse(rawInput);
       if (!parsed.success) {
+        const fields: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const field = issue.path[0];
+          if (typeof field === "string") fields[field] ??= issue.message;
+        }
         return {
           ok: false,
           error: "invalid_input",
           issues: parsed.error.issues.map((i) => i.message),
+          fields,
         };
       }
       try {

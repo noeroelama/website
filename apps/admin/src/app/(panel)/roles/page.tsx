@@ -1,9 +1,10 @@
 import { can, isSystemRoleId } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Fab } from "@/components/ui/fab";
 import { Card, CardBody } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
+import { label, ROLE_TYPE_LABELS } from "@/labels";
 import { requireAdminViewer, signInAgainUrl } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 import { SuggestedRolesButton } from "./role-forms";
@@ -38,9 +39,6 @@ export default async function RolesPage() {
         {canEdit ? (
           <div className="admin-toolbar__actions">
             <SuggestedRolesButton reauthUrl={signInAgainUrl("/roles")} />
-            <Button href="/roles/new" icon="plus">
-              New role
-            </Button>
           </div>
         ) : null}
       </div>
@@ -61,12 +59,17 @@ export default async function RolesPage() {
                 key: "type",
                 header: "Type",
                 render: (row) =>
-                  row.builtIn ? <Badge tone="primary">Built-in</Badge> : <Badge>Custom</Badge>,
+                  row.builtIn ? (
+                    <Badge tone="primary">{label(ROLE_TYPE_LABELS, "builtIn")}</Badge>
+                  ) : (
+                    <Badge>{label(ROLE_TYPE_LABELS, "custom")}</Badge>
+                  ),
               },
             ]}
           />
         </CardBody>
       </Card>
+      {canEdit ? <Fab href="/roles/new" label="New role" /> : null}
     </>
   );
 }

@@ -3,6 +3,7 @@ import {
   normalizePermissions,
   resolveAssignments,
   SYSTEM_ROLES,
+  type AccountStatus,
   type Principal,
   type RoleAssignment,
   type RoleDefinition,
@@ -14,7 +15,7 @@ import { safeId } from "@website/security/validation";
  * Accounts (`users/{uid}`) and custom roles (`roles/{id}`). Roles are data (DEC-11): built-in
  * roles come from code and always win over a stored document with the same id.
  */
-export type UserStatus = "active" | "inactive";
+export type UserStatus = AccountStatus;
 
 /** Who signed in, taken from the verified session (never from request input). */
 export interface SignInIdentity {

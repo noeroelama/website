@@ -1,10 +1,11 @@
-import { can } from "@website/permissions";
+import { ACCOUNT_STATUSES, can } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { formatUtc } from "@/components/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
+import { label, SCOPE_LABELS, USER_STATUS_LABELS } from "@/labels";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
@@ -32,7 +33,7 @@ export default async function UsersPage({
     adminReads.listRoles(),
     adminReads.listUsers({
       roleId,
-      status: status === "active" || status === "inactive" ? status : undefined,
+      status: ACCOUNT_STATUSES.find((s) => s === status),
       cursor,
       limit: PAGE_SIZE,
     }),
@@ -70,8 +71,11 @@ export default async function UsersPage({
           aria-label="Status"
         >
           <option value="">Any status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          {ACCOUNT_STATUSES.map((value) => (
+            <option key={value} value={value}>
+              {label(USER_STATUS_LABELS, value)}
+            </option>
+          ))}
         </select>
         <Button type="submit" variant="outline">
           Filter
@@ -97,12 +101,11 @@ export default async function UsersPage({
               {
                 key: "status",
                 header: "Status",
-                render: (row) =>
-                  row.status === "active" ? (
-                    <Badge tone="success">Active</Badge>
-                  ) : (
-                    <Badge tone="danger">Inactive</Badge>
-                  ),
+                render: (row) => (
+                  <Badge tone={row.status === "active" ? "success" : "danger"}>
+                    {label(USER_STATUS_LABELS, row.status)}
+                  </Badge>
+                ),
               },
               {
                 key: "roles",
@@ -112,7 +115,9 @@ export default async function UsersPage({
                     .map(
                       (a) =>
                         `${roleName.get(a.roleId) ?? a.roleId}${
-                          a.scope.type === "chapter" ? ` (${a.scope.chapterId})` : ""
+                          a.scope.type === "chapter"
+                            ? ` (${label(SCOPE_LABELS, "chapter")} ${a.scope.chapterId})`
+                            : ""
                         }`,
                     )
                     .join(", "),
@@ -129,7 +134,7 @@ export default async function UsersPage({
       {page.nextCursor ? (
         <p>
           <Button href={`/users?${next.toString()}`} variant="outline">
-            Next page
+            Load more
           </Button>
         </p>
       ) : null}

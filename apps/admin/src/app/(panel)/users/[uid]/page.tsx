@@ -4,6 +4,7 @@ import { AccessMessage } from "@/components/access-message";
 import { formatUtc } from "@/components/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { label, USER_STATUS_LABELS } from "@/labels";
 import { requireAdminViewer, signInAgainUrl } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 import { UserRoleEditor } from "./user-actions";
@@ -36,11 +37,9 @@ export default async function UserPage({ params }: { params: Promise<{ uid: stri
           <h1 className="admin-page-header__title">{user.name ?? user.email ?? user.uid}</h1>
           <p className="admin-page-header__desc">
             {user.email}{" "}
-            {user.status === "active" ? (
-              <Badge tone="success">Active</Badge>
-            ) : (
-              <Badge tone="danger">Inactive</Badge>
-            )}
+            <Badge tone={user.status === "active" ? "success" : "danger"}>
+              {label(USER_STATUS_LABELS, user.status)}
+            </Badge>
           </p>
         </div>
       </div>

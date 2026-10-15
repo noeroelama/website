@@ -100,3 +100,24 @@ describe("audit helper handed to every admin mutation", () => {
     expect(result.ok && result.data.request.requestId).toMatch(/^[0-9a-f-]{36}$/);
   });
 });
+
+describe("form errors per field (red fields on the add/edit form)", () => {
+  it("returns the first message for each invalid field, keyed by field name", async () => {
+    const save = createGuardedAction({
+      permission: "articles.edit",
+      input: z
+        .object({
+          title: z.string().min(3, "Title is too short."),
+          slug: z.string().regex(/^[a-z-]+$/, "Use lower-case letters and dashes."),
+        })
+        .strict(),
+      handler: () => Promise.resolve("saved"),
+    });
+    expect(await save(() => Promise.resolve(editor))({ title: "x", slug: "Bad Slug" })).toEqual({
+      ok: false,
+      error: "invalid_input",
+      issues: ["Title is too short.", "Use lower-case letters and dashes."],
+      fields: { title: "Title is too short.", slug: "Use lower-case letters and dashes." },
+    });
+  });
+});

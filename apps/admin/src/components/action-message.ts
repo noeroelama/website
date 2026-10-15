@@ -4,6 +4,7 @@ export type ActionFailure = {
   readonly error:
     "unauthenticated" | "forbidden" | "invalid_input" | "conflict" | "refused" | "reauthenticate";
   readonly issues?: readonly string[];
+  readonly fields?: Readonly<Record<string, string>>;
 };
 
 const MESSAGES: Record<ActionFailure["error"], string> = {
