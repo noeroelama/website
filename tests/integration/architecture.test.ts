@@ -28,7 +28,7 @@ describe("rendering", () => {
 
 describe("standalone build (cPanel)", () => {
   // `NEXT_OUTPUT=standalone` makes each Next app emit a self-contained `server.js`, which cPanel's
-  // Node.js app runs (docs/deployment.md#cpanel). Without it nothing changes (Vercel, `next start`).
+  // Node.js app runs (docs/deployment.md#cpanel). Without it nothing changes (`next start`).
   const repoRoot = path.resolve(import.meta.dirname, "../..");
   const loaders = {
     web: () => import("../../apps/web/next.config"),

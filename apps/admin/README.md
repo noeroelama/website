@@ -17,6 +17,7 @@ Staff administration for content, events, members, users and audit.
 | `src/app/(panel)/layout.tsx`   | Every staff page: the side panel (`src/components/admin-sidebar.tsx`), see [docs/side-panel.md](docs/side-panel.md).                                    |
 | `src/navigation.ts`            | Side panel pages, in order, with the permission each one needs.                                                                                         |
 | `src/proxy.ts`                 | Runs before every request: origin check, per-IP rate limit, private caching, sign-in redirect without a session cookie (`src/server/request-guard.ts`). |
+| `src/app/health/route.ts`      | `GET /health` → `{"status":"ok"}` for uptime checks (no database call, no sign-in).                                                                     |
 | `src/app/api/session/route.ts` | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                                                                 |
 | `src/server/context.ts`        | `getAdminViewer()` / `getPrincipal()` — session → Firebase → roles in Firestore; staff only. `requireAdminViewer(path, permission)` gates each page.    |
 | `src/server/guarded-action.ts` | `createGuardedAction()` — the only way to write an admin mutation.                                                                                      |

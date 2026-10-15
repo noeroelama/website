@@ -10,13 +10,13 @@ The only public API for third-party systems (`/v1`).
 
 ## Structure
 
-| Path                             | Purpose                                                                                |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `src/app.ts`                     | Builds the Hono app (routes, middleware, errors).                                      |
-| `src/routes/`                    | Endpoints: `GET /health`, `GET /v1/health`, `GET /v1/events`, `GET /v1/openapi.json`.  |
-| `src/middleware/`                | Request guard (per-IP rate limit, origin, no-store), API key, idempotency, request ID. |
-| `src/deps.ts`                    | Composition root (in-memory adapters in development/test).                             |
-| `src/index.ts` / `src/server.ts` | Vercel entry / local Node server.                                                      |
+| Path              | Purpose                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `src/app.ts`      | Builds the Hono app (routes, middleware, errors).                                      |
+| `src/routes/`     | Endpoints: `GET /health`, `GET /v1/health`, `GET /v1/events`, `GET /v1/openapi.json`.  |
+| `src/middleware/` | Request guard (per-IP rate limit, origin, no-store), API key, idempotency, request ID. |
+| `src/deps.ts`     | Composition root (in-memory adapters in development/test).                             |
+| `src/server.ts`   | Node server: `pnpm dev`, `pnpm start`, and cPanel (`dist/server.js`).                  |
 
 ## Rules
 

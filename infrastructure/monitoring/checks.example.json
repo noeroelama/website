@@ -2,15 +2,17 @@
   "checks": [
     {
       "name": "web",
-      "url": "https://web.example.org/",
+      "url": "https://web.example.org/health",
       "expectStatus": 200,
-      "intervalSeconds": 60
+      "intervalSeconds": 60,
+      "expectBody": "{\"status\":\"ok\"}"
     },
     {
       "name": "admin",
-      "url": "https://admin.example.org/",
+      "url": "https://admin.example.org/health",
       "expectStatus": 200,
-      "intervalSeconds": 60
+      "intervalSeconds": 60,
+      "expectBody": "{\"status\":\"ok\"}"
     },
     {
       "name": "shop",

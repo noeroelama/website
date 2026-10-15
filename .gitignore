@@ -32,7 +32,6 @@ gcp-credentials*.json
 credentials.json
 
 # deployment
-.vercel/
 tmp/
 .firebase/
 firebase-debug.log*

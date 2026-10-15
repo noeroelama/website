@@ -1,5 +1,5 @@
 /**
- * Local Node server (pnpm dev / pnpm start). Not used on Vercel.
+ * Node server: pnpm dev / pnpm start locally, `dist/server.js` on cPanel (docs/deployment.md).
  * Convenience defaults apply ONLY when APP_ENV is unset or development, so
  * `pnpm dev` works without a .env.local. Staging/production never get defaults.
  */

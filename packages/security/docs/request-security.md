@@ -33,7 +33,7 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 - **Fail-open**: if the counter store is unavailable the request is allowed and the error is
   logged (`rate_limit_store_error`) — a database outage must not take the site down.
 - **Privacy**: the key is `HMAC-SHA256(RATE_LIMIT_SECRET, ip)`; raw IPs are never stored.
-- **Client IP**: `x-real-ip`, else the first `x-forwarded-for` value (set by Vercel).
+- **Client IP**: `x-real-ip`, else the first `x-forwarded-for` value (set by the hosting reverse proxy, cPanel/Passenger).
 - **Sanitization**: every free-text input uses `safeText(max)` (Unicode NFC, control/bidi/zero-width
   characters removed, whitespace collapsed, HTML rejected); every document id uses `safeId`
   (letters, digits, `_`, `-`; blocks `a/b`, `..`, `__reserved__`). Schemas are `.strict()`

@@ -36,7 +36,7 @@ export interface GuardResult {
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-/** Client IP as set by the hosting proxy (Vercel overwrites these headers). */
+/** Client IP as set by the hosting reverse proxy (cPanel/Passenger sets these headers). */
 export function clientIp(headers: Headers): string {
   return (
     headers.get("x-real-ip")?.trim() ||

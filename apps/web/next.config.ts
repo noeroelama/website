@@ -11,7 +11,7 @@ const securityHeaders = [
 ];
 
 // cPanel: `NEXT_OUTPUT=standalone` emits a self-contained server (docs/deployment.md#cpanel).
-// Unset (Vercel, `next start`) nothing changes. The tracing root is the monorepo root so the
+// Unset (`next dev`, `next start`) nothing changes. The tracing root is the monorepo root so the
 // workspace packages are copied too.
 const standalone: NextConfig =
   process.env["NEXT_OUTPUT"] === "standalone"

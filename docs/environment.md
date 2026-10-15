@@ -1,11 +1,11 @@
 # Environments
 
-| `APP_ENV`     | Where                                  | Firebase project          |
-| ------------- | -------------------------------------- | ------------------------- |
-| `development` | Your machine                           | `ppidk-website-prod`      |
-| `test`        | CI, Playwright                         | None (in-memory adapters) |
-| `staging`     | `dev`/`staging` branches + PR previews | `ppidk-website-prod`      |
-| `production`  | `prod` branch (Vercel Production)      | `ppidk-website-prod`      |
+| `APP_ENV`     | Where                              | Firebase project          |
+| ------------- | ---------------------------------- | ------------------------- |
+| `development` | Your machine                       | `ppidk-website-prod`      |
+| `test`        | CI, Playwright                     | None (in-memory adapters) |
+| `staging`     | optional `staging.*` apps          | `ppidk-website-prod`      |
+| `production`  | `prod` branch (cPanel, DomaiNesia) | `ppidk-website-prod`      |
 
 `APP_ENV` is ours; `NODE_ENV` is "production" for every optimized build and must not be used
 to tell staging from production.
@@ -14,7 +14,7 @@ to tell staging from production.
 
 Decision (2026-10): there is **one** Firebase project — one Firestore database, one Auth user pool,
 one Storage bucket — for every environment. `APP_ENV` still separates behaviour (logging, rate-limit
-secret), but **`dev` and `staging` deployments read and write the live data**: test on
+secret), but **every deployment (and your machine) reads and writes the live data**: test on
 copies of content (drafts), never on real subscribers or members.
 
 Enforced in code (`packages/config/src/environments.ts → assertEnvironmentIsolation`), called by
@@ -45,8 +45,10 @@ first use — never at import or build time — and errors list variable names, 
 
 ## Where each value comes from
 
-Locally: copy `apps/<app>/.env.example` to `apps/<app>/.env.local` (git-ignored). Deployed: Vercel →
-project → Settings → Environment Variables (mark secrets **Sensitive**).
+Locally: copy `apps/<app>/.env.example` to `apps/<app>/.env.local` (git-ignored). Deployed: cPanel →
+**Setup Node.js App** → the app → Environment variables (runtime values), plus GitHub Actions
+**Variables** for the `NEXT_PUBLIC_*` values that are baked into the browser bundles at build time
+(see [deployment.md](deployment.md#one-time-setup)). Secrets also go into the password manager.
 
 | Variable                                                          | Value                                                                                                                                                                                                          |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

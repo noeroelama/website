@@ -56,14 +56,15 @@ export function guardRequest(request: Request): Promise<GuardResult> {
 }
 
 /**
- * Every admin page needs a session: without a session cookie → the web sign-in URL, for a real 307
+ * Every admin page (not /api/*, not the /health probe) needs a session: without a session cookie → the web sign-in URL, for a real 307
  * from the proxy (with Cache Components a page's redirect() is streamed: 200 + client-side
  * redirect). Only checks that the cookie exists; the page still verifies it and the permissions.
  * Without WEB_URL/ADMIN_URL (e.g. CI) the page shows its "sign-in required" message instead.
  */
 export function signInRedirect(request: Request): string | null {
   const { pathname, search } = new URL(request.url);
-  if (pathname.startsWith("/api/") || readCookie(request, SESSION_COOKIE)) return null;
+  if (pathname.startsWith("/api/") || pathname === "/health") return null;
+  if (readCookie(request, SESSION_COOKIE)) return null;
   const { WEB_URL, ADMIN_URL } = getEnv();
   return WEB_URL && ADMIN_URL ? signInUrl(WEB_URL, `${ADMIN_URL}${pathname}${search}`) : null;
 }

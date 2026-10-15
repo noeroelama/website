@@ -1,6 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "hono",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "ignoreCommand": "npx turbo-ignore gateway"
-}

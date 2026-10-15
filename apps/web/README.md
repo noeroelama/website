@@ -17,6 +17,7 @@ Public website of PPIDK Asia-Oseania and the member self-service area.
 | `src/app/api/session/route.ts`                    | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                                                                 |
 | `src/app/{articles,map,events,gallery,about}/`    | Public pages (blank for now; Home is `src/app/page.tsx`). Prerendered, no sign-in.                                                                      |
 | `src/app/{login,signup,forgot-password,account}/` | Sign-in pages: Google, email/password, passkeys, password reset, account (add passkey, sign out).                                                       |
+| `src/app/health/route.ts`                         | `GET /health` → `{"status":"ok"}` for uptime checks (no database call).                                                                                 |
 | `src/app/api/passkeys/[action]/route.ts`          | Passkey registration and sign-in endpoints (`src/server/passkeys.ts`).                                                                                  |
 | `src/lib/auth-client.ts`                          | Browser sign-in flows (Firebase Auth SDK + WebAuthn); ends in the session cookie.                                                                       |
 | `src/server/`                                     | Server-only code (`import "server-only"`): env, database and auth access.                                                                               |

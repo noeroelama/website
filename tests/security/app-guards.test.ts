@@ -104,6 +104,8 @@ describe("sign-in redirect before the page renders (proxy)", () => {
     );
     expect(signInRedirect(new Request("https://admin.example/events", signedIn))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/api/session"))).toBeNull();
+    // Uptime checks have no session: the health route is never sent to sign-in.
+    expect(signInRedirect(new Request("https://admin.example/health"))).toBeNull();
   });
 
   it("admin leaves signed-out visitors to the page when WEB_URL/ADMIN_URL are not set", async () => {
