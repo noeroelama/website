@@ -26,6 +26,7 @@ and link to it from the others.
 | Feature                                                   | Doc                                                                                         |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Member profiles                                           | [packages/domain/docs/members.md](../packages/domain/docs/members.md)                       |
+| Image uploads (5 MB, WebP, thumbnail, Firebase Storage)   | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
 | Database                                                  | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
 | Authentication (Google, email/password, passkeys, reset)  | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |
 | Authorization                                             | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |

@@ -57,6 +57,13 @@ describe("Firestore audit writer (append-only, hash chain, same transaction)", (
     expect(stored("a2")["hash"]).toBe(recomputed);
   });
 
+  it("an entry without a record change (an upload) is appended in its own transaction", async () => {
+    const { docs, writer } = setup();
+    await writer.appendAlone(event("u1", "banner image"));
+    expect(docs.get("auditLogs/u1")).toMatchObject({ seq: 1, prevHash: null });
+    expect(docs.get("auditChain/head")).toMatchObject({ seq: 1 });
+  });
+
   it("a failed transaction leaves no audit row and does not move the chain head", async () => {
     const { db, docs, writer } = setup();
     await expect(

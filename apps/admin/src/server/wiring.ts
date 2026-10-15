@@ -1,14 +1,26 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
 import { createAccountActions } from "./accounts";
+import { createImageUploads } from "./images";
 import { createRoleActions } from "./roles";
-import { adminStores } from "./stores";
+import { adminStores, imageStorage } from "./stores";
 
 /** Users and Roles page actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() => createAccountActions(adminStores()));
 export const roleActions = lazyEnv(() =>
   createRoleActions({ roles: adminStores().roles, now: () => new Date() }),
+);
+
+/** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
+export const imageUploads = lazyEnv(() =>
+  createImageUploads({
+    storage: imageStorage(),
+    appendAudit: (event) => adminStores().audit.appendAlone(event),
+    now: () => new Date(),
+    uuid: randomUUID,
+  }),
 );
 
 /** Reads for the Users and Roles pages. Callers check `users.read` / `roles.read` first. */

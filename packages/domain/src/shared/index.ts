@@ -42,3 +42,5 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function isValidSlug(slug: string): boolean {
   return slug.length > 0 && slug.length <= 120 && SLUG.test(slug);
 }
+
+export * from "./images";

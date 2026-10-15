@@ -192,7 +192,8 @@ file (they live in the cPanel app screens and the password manager).
 
 - [ ] DomaiNesia: fill in [Limits](#limits) from the hosting plan.
 - [ ] On the host: `ldd --version`, `ls /opt/alt`; after the first deploy that ships image uploads,
-      `node -e "require('sharp')"` in the admin app root (if it fails, install the WebAssembly build of sharp).
+      `node -e "require('sharp')"` in the admin app root (if it fails, install the WebAssembly build of sharp:
+      `packages/db/docs/files.md` → Configuration).
 - [ ] Firebase Authentication: **multi-factor authentication** enabled (Identity Platform upgrade) —
       staff roles require a second sign-in method.
 - [ ] Firebase Storage: default bucket exists; its name is in `FIREBASE_STORAGE_BUCKET`.

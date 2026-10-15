@@ -35,13 +35,3 @@ export interface ContentWriter extends ContentReader {
   /** Must fail with ConcurrencyConflictError when expectedVersion is stale. */
   save(item: ContentItem, expectedVersion: number | null): Promise<ContentItem>;
 }
-
-/** Media storage port (Firebase Storage today). */
-export interface MediaStorage {
-  createSignedUploadUrl(input: {
-    objectPath: string;
-    contentType: string;
-    maxBytes: number;
-  }): Promise<string>;
-  publicUrl(objectPath: string): string;
-}

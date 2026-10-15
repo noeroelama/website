@@ -19,6 +19,7 @@ export { createFirestoreRateLimitStore } from "./rate-limit";
 export { createFirestoreAuditWriter, type FirestoreAuditWriter } from "./audit";
 export { getDocumentsByIds } from "./batch";
 export { createFirestorePasskeyStore } from "./passkeys";
+export { createFirebaseImageStorage } from "./storage";
 export {
   createFirestoreAccountStore,
   createFirestoreRoleStore,
@@ -46,13 +47,18 @@ export interface FirestoreConfig {
  * so requests never pay to connect/disconnect. Never create a client per request.
  */
 export function getFirestoreForRole(config: FirestoreConfig): Firestore {
+  return getFirestore(appForRole(config));
+}
+
+/** One Firebase app per role per process (shared by Firestore and Storage). */
+export function appForRole(config: FirestoreConfig): App {
   assertEnvironmentIsolation({
     appEnv: config.appEnv,
     firebaseProjectId: config.projectId,
     env: process.env,
   });
   const name = `website-db-${config.role}`;
-  const app: App = getApps().some((a) => a.name === name)
+  return getApps().some((a) => a.name === name)
     ? getApp(name)
     : initializeApp(
         {
@@ -68,7 +74,6 @@ export function getFirestoreForRole(config: FirestoreConfig): Firestore {
         },
         name,
       );
-  return getFirestore(app);
 }
 
 // Further repository implementations (events, content, chapters, apiKeys) are added module by
