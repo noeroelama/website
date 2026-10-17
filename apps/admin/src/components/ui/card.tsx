@@ -44,10 +44,7 @@ export interface CardBodyProps extends HTMLAttributes<HTMLDivElement> {
 export function CardBody({ children, flush, className, ...rest }: CardBodyProps) {
   return (
     <div
-      className={[
-        flush ? "admin-card__body--flush" : "admin-card__body",
-        className,
-      ]
+      className={[flush ? "admin-card__body--flush" : "admin-card__body", className]
         .filter(Boolean)
         .join(" ")}
       {...rest}

@@ -26,6 +26,21 @@
   --color-accent: var(--color-brand-600);
   --color-danger: var(--color-brand-600);
   --color-danger-bright: #ef4444; /* vivid red — destructive emphasis (Delete selected) */
+  --color-gold: #e0b64e; /* soft gold — "… days left" countdown under Event Date */
+  --color-info: #1e40af; /* dark blue — scheduled newsletter status */
+  /* Audit-log action badge family: one dark fill + light tinted text pair per
+     action — Updated (blue), Reverted (purple), Created (green), Deleted (red)
+     — plus the row avatar green from the "AUDIT LOG ADMIN" design. */
+  --color-audit-badge-bg: #172638;
+  --color-audit-badge-text: #7fb2f0;
+  --color-audit-badge-created-bg: #123920;
+  --color-audit-badge-created-text: #8fd9a8;
+  --color-audit-badge-deleted-bg: #4a1616;
+  --color-audit-badge-deleted-text: #f9a8a8;
+  --color-audit-badge-reverted-bg: #2a1d45;
+  --color-audit-badge-reverted-text: #b7a1ea;
+  --color-audit-avatar: #3f7d4a;
+  --color-audit-add: #22c55e; /* vivid green — inserted text / added photo in the diff */
   --color-border: var(--color-brand-200);
   --color-border-subtle: color-mix(in srgb, var(--color-brand-800) 12%, transparent);
   --color-hover: color-mix(in srgb, var(--color-brand-800) 7%, transparent);
@@ -43,6 +58,7 @@
 
   /* ---- Typography (Poppins) ---- */
   --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-regular: 400;
   --font-medium: 500;
   --font-semibold: 600;
@@ -53,6 +69,8 @@
   --leading-xs: 1.5;
   --text-2xs: 0.6875rem; /* 11 — micro label (dense admin tables, QR hints) */
   --leading-2xs: 1.4;
+  --text-3xs: 0.625rem; /* 10 — smallest admin table text (events list) */
+  --leading-3xs: 1.35;
   --text-sm: 0.875rem; /* 14 — secondary text / meta */
   --leading-sm: 1.5;
   --text-base: 1rem; /* 16 — main body text */

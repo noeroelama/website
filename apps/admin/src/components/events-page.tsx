@@ -1,0 +1,1525 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { Card, CardBody } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { EditableList } from "@/components/ui/editable-list";
+import { Icon } from "@/components/ui/icon";
+import { PhotoDrop } from "@/components/ui/photo-drop";
+import { Modal } from "@/components/ui/modal";
+import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import {
+  EVENT_TYPES,
+  INITIAL_EVENTS,
+  PAGE_SIZE_OPTIONS,
+  formatDate,
+  matchesTab,
+  type EventItem,
+  type EventStatus,
+  type EventTab,
+} from "@/data/mock/events";
+
+/* ==================================================================
+   Event — list (tabs, search, filters, bulk actions) + create/edit form.
+   Ported from the Figma "EVENT ADMIN" screens; colours come from the
+   shared design tokens, no hex values outside globals.css.
+   ================================================================== */
+
+/** Public URL prefix for an event page, shown in the "URL *" field and Copy Link. */
+const EVENT_URL_PREFIX = "ppidk.asiania.id/events/";
+
+/** Small monogram chip standing in for the Figma row avatar. */
+function typeInitials(type: string): string {
+  return type.trim().slice(0, 2).toUpperCase() || "EV";
+}
+
+/** Sortable event-table columns (Location, checkbox and actions are never sorted). */
+type SortKey = "title" | "date" | "status" | "registered";
+
+/** Sortable table header: label + arrow icon. Active column shows a filled arrow. */
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`admin-th-sort${active ? " admin-th-sort--active" : ""}`}
+      onClick={onClick}
+    >
+      <span>{label}</span>
+      <Icon name={active ? (dir === "asc" ? "arrowUp" : "arrowDown") : "sort"} size={12} />
+    </button>
+  );
+}
+
+/** One guest/speaker row: optional photo, name, and a short description. */
+interface GuestSpeakerItem {
+  photo: string | null;
+  name: string;
+  description: string;
+}
+
+/** One rundown row: single time plus a title and a description. */
+interface RundownItem {
+  time: string;
+  title: string;
+  description: string;
+}
+
+/** One sponsor row: optional photo and a short tool-tip/tagline. */
+interface SponsorItem {
+  photo: string | null;
+  tip: string;
+}
+
+interface EventForm {
+  title: string;
+  type: string;
+  date: string;
+  time: string;
+  deadline: string;
+  location: string;
+  url: string;
+  description: string;
+  registrationLink: string;
+  banner: string | null;
+  guests: GuestSpeakerItem[];
+  rundown: RundownItem[];
+  sponsors: SponsorItem[];
+}
+
+const EMPTY_FORM: EventForm = {
+  title: "",
+  type: EVENT_TYPES[0],
+  date: "",
+  time: "",
+  deadline: "",
+  location: "",
+  url: "",
+  description: "",
+  registrationLink: "",
+  banner: null,
+  guests: [],
+  rundown: [],
+  sponsors: [],
+};
+
+/** Filter choices for the event-date select. */
+type DateFilter = "all" | "today" | "month" | "year" | "past";
+
+/** Filter choice for the status select: any of the mock statuses, or "all". */
+type StatusFilter = "all" | EventStatus;
+
+/** Pending delete action shown in the dark confirm modal (one event or many). */
+type DeleteConfirm = { kind: "one"; event: EventItem } | { kind: "many"; count: number };
+
+export function EventsPage() {
+  const pathname = usePathname();
+  // key={pathname} remounts the page when the events route is (re)entered, so
+  // search/tabs/filters reset to their initial empty state on every visit
+  // (same pattern as Articles & Gallery).
+  return <EventsList key={pathname} />;
+}
+
+/** Events list + create/edit screen (all state lives here; remounted by
+ *  EventsPage on navigation so it starts clean). */
+function EventsList() {
+  const toast = useToastMessage();
+
+  /* ---- list state ---- */
+  const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const [tab, setTab] = useState<EventTab>("all");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState(""); // diterapkan hanya saat Search diklik / Enter ditekan
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
+
+  /* ---- form view state ---- */
+  const [view, setView] = useState<"list" | "form">("list");
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<EventForm>(EMPTY_FORM);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const activeFilterCount =
+    (typeFilter !== "all" ? 1 : 0) +
+    (statusFilter !== "all" ? 1 : 0) +
+    (dateFilter !== "all" ? 1 : 0);
+
+  /* ---- header sort: click toggles asc → desc (first click on a new column = asc) ---- */
+  const onSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  /* Year is enough to sort statuses/modified dates with the right precedence. */
+  const sortValue = (e: EventItem, key: SortKey): string => {
+    switch (key) {
+      case "title":
+        return e.title.toLowerCase();
+      case "date":
+        return e.date;
+      case "status":
+        return e.status;
+      case "registered":
+        return e.createdAt;
+    }
+  };
+
+  /* ---- derived rows ---- */
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return events.filter((e) => {
+      if (!matchesTab(e, tab, today)) return false;
+      if (typeFilter !== "all" && e.type !== typeFilter) return false;
+      if (statusFilter !== "all" && e.status !== statusFilter) return false;
+      if (dateFilter !== "all") {
+        const d = e.date;
+        if (dateFilter === "today") {
+          if (d !== today) return false;
+        } else if (dateFilter === "month") {
+          if (!d.startsWith(today.slice(0, 7))) return false;
+        } else if (dateFilter === "year") {
+          if (!d.startsWith(today.slice(0, 4))) return false;
+        } else if (dateFilter === "past") {
+          if (d >= today) return false;
+        }
+      }
+      if (q) {
+        const hay = [e.title, e.type, e.location, e.url, e.description ?? ""]
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [events, tab, today, query, typeFilter, statusFilter, dateFilter]);
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const copy = [...filtered];
+    copy.sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [filtered, sortKey, sortDir]);
+
+  const counts = useMemo(() => {
+    const upcoming = events.filter((e) => e.status !== "draft" && e.date >= today).length;
+    const past = events.filter((e) => e.status !== "draft" && e.date < today).length;
+    const drafts = events.filter((e) => e.status === "draft").length;
+    return { all: events.length, upcoming, past, drafts };
+  }, [events, today]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageAllSelected = pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
+  const pageSomeSelected = pageRows.some((r) => selected.has(r.id));
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+
+  /* ---- selection helpers ---- */
+  const togglePage = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (pageAllSelected) pageRows.forEach((r) => next.delete(r.id));
+      else pageRows.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filtered.forEach((r) => next.delete(r.id));
+      else filtered.forEach((r) => next.add(r.id));
+      return next;
+    });
+  };
+
+  /* ---- row / bulk mutations ---- */
+  const setStatusFor = (ids: Set<string>, status: EventStatus, label: string) => {
+    if (ids.size === 0) {
+      toast.show("Select events first");
+      return;
+    }
+    setEvents((prev) => prev.map((e) => (ids.has(e.id) ? { ...e, status } : e)));
+    toast.show(`${ids.size} event${ids.size === 1 ? "" : "s"} ${label}`);
+  };
+
+  const setStatusForId = (id: string, status: EventStatus, label: string) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
+    setMenuFor(null);
+    toast.show(`Event ${label}`);
+  };
+
+  const publishSelected = () => setStatusFor(selected, "published", "published");
+  const makePrivateSelected = () => setStatusFor(selected, "private", "made private");
+
+  const deleteSelected = () => {
+    if (selected.size === 0) {
+      toast.show("Select events to delete");
+      return;
+    }
+    setDeleteConfirm({ kind: "many", count: selected.size });
+  };
+
+  const deleteEvent = (e: EventItem) => {
+    setMenuFor(null);
+    setDeleteConfirm({ kind: "one", event: e });
+  };
+
+  /* Deletes are confirmed in the dark modal (like Tools) instead of
+     window.confirm. The modal only stores *what* would be deleted; doDelete
+     applies the change once the user confirms. */
+  const doDelete = () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.kind === "one") {
+      const ev = deleteConfirm.event;
+      setEvents((prev) => prev.filter((x) => x.id !== ev.id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(ev.id);
+        return next;
+      });
+      setDeleteConfirm(null);
+      toast.show("Event deleted");
+    } else {
+      const ids = Array.from(selected);
+      setEvents((prev) => prev.filter((e) => !selected.has(e.id)));
+      setSelected(new Set());
+      setDeleteConfirm(null);
+      toast.show(`${ids.length} event${ids.length === 1 ? "" : "s"} deleted`);
+    }
+  };
+
+  const copyLink = (e: EventItem) => {
+    void navigator.clipboard?.writeText(`https://${EVENT_URL_PREFIX}${e.url}`);
+    toast.show(`Link for "${e.title}" copied`);
+    setMenuFor(null);
+  };
+
+  /* ---- form open / save ---- */
+  const toForm = (mode: "create" | "edit", ev?: EventItem) => {
+    setFormMode(mode);
+    setEditingId(ev?.id ?? null);
+    setForm(
+      ev
+        ? {
+            title: ev.title,
+            type: ev.type,
+            date: ev.date,
+            time: "",
+            deadline: ev.registrationDeadline ?? "",
+            location: ev.location,
+            url: ev.url,
+            description: ev.description ?? "",
+            registrationLink: ev.registrationLink ?? "",
+            banner: null,
+            guests: [],
+            rundown: [],
+            sponsors: [],
+          }
+        : EMPTY_FORM,
+    );
+    setView("form");
+  };
+
+  const fromForm = (status: EventStatus): EventItem | null => {
+    const title = form.title.trim();
+    if (!title || !form.date || !form.location.trim()) {
+      toast.show("Title, event date and location are required");
+      return null;
+    }
+    /* Banner is required on create; on edit the field starts empty (no banner
+       is re-uploaded unless the user adds one), so it must stay optional. */
+    if (formMode === "create" && !form.banner) {
+      toast.show("Event banner is required");
+      return null;
+    }
+    const slug =
+      form.url.trim().replace(/\s+/g, "-") || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const existing = events.find((e) => e.id === editingId);
+    // Form has no city/country inputs yet — reuse the stored ones when editing,
+    // otherwise derive the city from the location box ("Kota, Negara" convention).
+    const cityFromLocation = form.location.includes(",")
+      ? (form.location.split(",")[0] ?? form.location).trim()
+      : form.location.trim();
+    const next: EventItem = {
+      id: editingId ?? `ev-${Date.now()}`,
+      title,
+      type: form.type,
+      date: form.date,
+      location: form.location.trim(),
+      city: existing?.city ?? cityFromLocation,
+      country: existing?.country ?? "Indonesia",
+      updatedBy: "Admin",
+      url: slug,
+      status,
+      createdAt: existing?.createdAt ?? new Date().toISOString().slice(0, 10),
+    };
+    if (form.deadline.trim()) next.registrationDeadline = form.deadline.trim();
+    if (form.description.trim()) next.description = form.description.trim();
+    if (form.registrationLink.trim()) next.registrationLink = form.registrationLink.trim();
+    return next;
+  };
+
+  const saveDraft = () => {
+    const next = fromForm("draft");
+    if (!next) return;
+    setEvents((prev) => {
+      const exists = prev.some((e) => e.id === next.id);
+      return exists ? prev.map((e) => (e.id === next.id ? next : e)) : [next, ...prev];
+    });
+    toast.show("Draft saved");
+    setView("list");
+  };
+
+  const publishEvent = () => {
+    const next = fromForm("published");
+    if (!next) return;
+    setEvents((prev) => {
+      const exists = prev.some((e) => e.id === next.id);
+      return exists ? prev.map((e) => (e.id === next.id ? next : e)) : [next, ...prev];
+    });
+    toast.show("Event published");
+    setTab("all");
+    setPage(1);
+    setView("list");
+  };
+
+  const onBannerFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.show("Please choose an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.show("Image must be max 5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setForm((f) => ({ ...f, banner: reader.result as string }));
+    reader.readAsDataURL(file);
+  };
+
+  /* ---- editable lists (Guest/Speakers detail, Rundown detail, Sponsors) ---- */
+  const updateGuest = (idx: number, patch: Partial<GuestSpeakerItem>) => {
+    setForm((f) => ({
+      ...f,
+      guests: f.guests.map((g, i) => (i === idx ? { ...g, ...patch } : g)),
+    }));
+  };
+
+  const updateRundown = (idx: number, patch: Partial<RundownItem>) => {
+    setForm((f) => ({
+      ...f,
+      rundown: f.rundown.map((r, i) => (i === idx ? { ...r, ...patch } : r)),
+    }));
+  };
+
+  const updateSponsor = (idx: number, patch: Partial<SponsorItem>) => {
+    setForm((f) => ({
+      ...f,
+      sponsors: f.sponsors.map((s, i) => (i === idx ? { ...s, ...patch } : s)),
+    }));
+  };
+
+  const addGuest = () => {
+    setForm((f) => ({
+      ...f,
+      guests: [...f.guests, { photo: null, name: "", description: "" }],
+    }));
+  };
+
+  const addRundown = () => {
+    setForm((f) => ({
+      ...f,
+      rundown: [...f.rundown, { time: "", title: "", description: "" }],
+    }));
+  };
+
+  const addSponsor = () => {
+    setForm((f) => ({ ...f, sponsors: [...f.sponsors, { photo: null, tip: "" }] }));
+  };
+
+  const removeFrom = (key: "guests" | "rundown" | "sponsors", idx: number) => {
+    setForm((f) => ({ ...f, [key]: f[key].filter((_, i) => i !== idx) }));
+  };
+
+  /** Move an item within one editable list (drag & drop / up / down). */
+  const reorder = <K extends "guests" | "rundown" | "sponsors">(
+    key: K,
+    from: number,
+    to: number,
+  ) => {
+    setForm((f) => {
+      const target = f[key];
+      if (from < 0 || from >= target.length || to < 0 || to >= target.length || from === to) {
+        return f;
+      }
+      const next = [...target];
+      const [moved] = next.splice(from, 1);
+      if (moved === undefined) return f;
+      next.splice(to, 0, moved);
+      return { ...f, [key]: next };
+    });
+  };
+
+  /* ---- table columns ---- */
+  const checkboxCol: Column<EventItem> = {
+    key: "check",
+    width: "24px",
+    align: "left",
+    header: (
+      <label className="admin-checkbox">
+        <input
+          type="checkbox"
+          aria-label="Select all on page"
+          checked={pageAllSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = pageSomeSelected && !pageAllSelected;
+          }}
+          onChange={togglePage}
+          className="admin-table__checkbox"
+        />
+        <span aria-hidden="true" />
+      </label>
+    ),
+    render: (r) => (
+      <label className="admin-checkbox">
+        <input
+          type="checkbox"
+          aria-label={`Select ${r.title}`}
+          checked={selected.has(r.id)}
+          onChange={() => toggleSelect(r.id)}
+          className="admin-table__checkbox"
+        />
+        <span aria-hidden="true" />
+      </label>
+    ),
+  };
+
+  const columns: Column<EventItem>[] = [
+    checkboxCol,
+    {
+      key: "title",
+      header: (
+        <SortHeader
+          label="Event"
+          active={sortKey === "title"}
+          dir={sortDir}
+          onClick={() => onSort("title")}
+        />
+      ),
+      width: "32%",
+      render: (r) => (
+        <div className="admin-event-title">
+          <span className="admin-event-avatar" aria-hidden="true">
+            {r.image ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local packed asset (public/events)
+              <img
+                className="admin-event-avatar__img"
+                src={r.image}
+                alt=""
+                width={20}
+                height={20}
+              />
+            ) : (
+              typeInitials(r.type)
+            )}
+          </span>
+          <div>
+            <div className="admin-table__title">{r.title}</div>
+            <div className="admin-table__sub">{r.type}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "date",
+      header: (
+        <SortHeader
+          label="Event Date"
+          active={sortKey === "date"}
+          dir={sortDir}
+          onClick={() => onSort("date")}
+        />
+      ),
+      width: "14%",
+      render: (r) => (
+        <span className="admin-event-date">
+          <span className="admin-table__title">{formatDate(r.date)}</span>
+          <Countdown date={r.date} />
+        </span>
+      ),
+    },
+    {
+      key: "location",
+      header: "Location",
+      width: "22%",
+      render: (r) => (
+        <span className="admin-event-location">
+          <Icon name="mapPin" size={13} />
+          <span>
+            {r.city}, {r.country}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: (
+        <SortHeader
+          label="Status"
+          active={sortKey === "status"}
+          dir={sortDir}
+          onClick={() => onSort("status")}
+        />
+      ),
+      width: "12%",
+      render: (r) => {
+        if (r.status === "published")
+          return (
+            <span className="admin-status-badge admin-status-badge--published">
+              {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
+              <img
+                src="/globe.png"
+                alt=""
+                width={12}
+                height={12}
+                className="admin-status-badge__img"
+              />{" "}
+              Public
+            </span>
+          );
+        if (r.status === "private")
+          return (
+            <span className="admin-status-badge admin-status-badge--private">
+              <Icon name="lock" size={12} /> Private
+            </span>
+          );
+        return (
+          <span className="admin-status-badge admin-status-badge--draft">
+            <Icon name="edit" size={12} /> Draft
+          </span>
+        );
+      },
+    },
+    {
+      key: "registered",
+      header: (
+        <SortHeader
+          label="Last Modified"
+          active={sortKey === "registered"}
+          dir={sortDir}
+          onClick={() => onSort("registered")}
+        />
+      ),
+      width: "12%",
+      render: (r) => (
+        <span className="admin-event-meta">
+          <span className="admin-table__title">{formatDate(r.createdAt)}</span>
+          <span className="admin-table__sub">{r.updatedBy}</span>
+        </span>
+      ),
+    },
+    {
+      key: "aksi",
+      header: "",
+      align: "right",
+      width: "12%",
+      render: (r) => (
+        <div className="admin-table__actions">
+          <Button
+            variant="ghost"
+            size="icon"
+            icon="edit"
+            aria-label="Edit"
+            onClick={() => toForm("edit", r)}
+            title="Edit"
+          />
+          <div className="admin-row-menu">
+            {menuFor === r.id ? (
+              <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
+            ) : null}
+            <Button
+              variant="ghost"
+              size="icon"
+              icon="more"
+              aria-label="More actions"
+              title="More actions"
+              onClick={() => setMenuFor(menuFor === r.id ? null : r.id)}
+            />
+            {menuFor === r.id ? (
+              <div className="admin-row-menu__panel" role="menu">
+                <button
+                  type="button"
+                  className="admin-row-menu__item"
+                  role="menuitem"
+                  onClick={() => setStatusForId(r.id, "published", "published")}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
+                  <img
+                    src="/globe.png"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="admin-status-badge__img"
+                  />{" "}
+                  Publish
+                </button>
+                <button
+                  type="button"
+                  className="admin-row-menu__item"
+                  role="menuitem"
+                  onClick={() => setStatusForId(r.id, "private", "made private")}
+                >
+                  <Icon name="lock" size={14} /> Make Private
+                </button>
+                <button
+                  type="button"
+                  className="admin-row-menu__item"
+                  role="menuitem"
+                  onClick={() => copyLink(r)}
+                >
+                  <Icon name="copy" size={14} /> Copy Link
+                </button>
+                {/* Divider above the destructive action, separating Delete from the rest. */}
+                <div className="admin-row-menu__divider" role="separator" />
+                <button
+                  type="button"
+                  className="admin-row-menu__item admin-row-menu__item--danger"
+                  role="menuitem"
+                  onClick={() => deleteEvent(r)}
+                >
+                  <Icon name="trash" size={14} /> Delete Event
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  const shownStart = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const shownEnd = Math.min(safePage * pageSize, filtered.length);
+
+  /* ---- pagination: sliding window of 5 consecutive page numbers ---- */
+  const pageNumbers: number[] = [];
+  const winStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+  const winEnd = Math.min(totalPages, winStart + 4);
+  for (let i = winStart; i <= winEnd; i++) pageNumbers.push(i);
+
+  const switchTab = (next: EventTab) => {
+    setTab(next);
+    setPage(1);
+    setSelected(new Set());
+    setMenuFor(null);
+  };
+
+  const clearFilters = () => {
+    setQuery("");
+    setSearch("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setDateFilter("all");
+    setFiltersOpen(false);
+    setPage(1);
+    setMenuFor(null);
+  };
+
+  if (view === "form") {
+    return (
+      <>
+        <div className="admin-page-header">
+          <div>
+            <h1 className="admin-page-header__title">
+              {formMode === "create" ? "Event > Create" : "Event > Edit"}
+            </h1>
+            <p className="admin-page-header__desc">
+              {formMode === "create"
+                ? "Fill in the details to create a new event, then publish it to the public site."
+                : "Update the event details below, then publish the changes to the public site."}
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-events-form">
+          <div className="admin-form-grid">
+            {/* Title */}
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="event-title">
+                Title *
+              </label>
+              <input
+                id="event-title"
+                className="admin-input"
+                type="text"
+                placeholder="Event title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+
+            {/* Event Type */}
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="event-type">
+                Event Type *
+              </label>
+              <select
+                id="event-type"
+                className="admin-select"
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
+                {EVENT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Event Date & Time + Registration Deadline */}
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="event-date">
+                Event Date &amp; Time *
+              </label>
+              <input
+                id="event-date"
+                className="admin-input admin-input--datetime"
+                type="datetime-local"
+                value={
+                  form.date
+                    ? form.time
+                      ? `${form.date}T${form.time.slice(0, 5)}`
+                      : `${form.date}T00:00`
+                    : ""
+                }
+                onChange={(e) => {
+                  const [date = "", time = ""] = e.target.value.split("T");
+                  setForm({ ...form, date, time });
+                }}
+              />
+            </div>
+
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="event-deadline">
+                Registration Deadline
+              </label>
+              <input
+                id="event-deadline"
+                className="admin-input"
+                type="datetime-local"
+                value={
+                  form.deadline
+                    ? form.deadline.includes("T")
+                      ? form.deadline.slice(0, 16)
+                      : `${form.deadline}T00:00`
+                    : ""
+                }
+                onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+              />
+            </div>
+
+            {/* Location + URL */}
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="event-location">
+                Location *
+              </label>
+              <input
+                id="event-location"
+                className="admin-input"
+                type="text"
+                placeholder="Event location"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+              />
+            </div>
+
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="event-url">
+                URL *
+              </label>
+              <div className="admin-field__row">
+                <div className="admin-url-slug">
+                  <span className="admin-url-slug__prefix" aria-label="Event URL prefix">
+                    /events/
+                  </span>
+                  <input
+                    id="event-url"
+                    className="admin-url-slug__slug"
+                    type="text"
+                    aria-label="Event URL slug"
+                    placeholder="event-name"
+                    value={form.url}
+                    onChange={(e) => setForm({ ...form, url: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="admin-field admin-form-grid__full">
+              <label className="admin-field__label" htmlFor="event-desc">
+                Description *
+              </label>
+              <textarea
+                id="event-desc"
+                className="admin-input admin-textarea"
+                rows={4}
+                placeholder="Event description..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+
+            {/* Registration Link */}
+            <div className="admin-field admin-form-grid__full">
+              <label className="admin-field__label" htmlFor="event-reg-link">
+                Registration Link
+              </label>
+              <input
+                id="event-reg-link"
+                className="admin-input"
+                type="url"
+                placeholder="https://example.com/register"
+                value={form.registrationLink}
+                onChange={(e) => setForm({ ...form, registrationLink: e.target.value })}
+              />
+            </div>
+
+            {/* Banner */}
+            <div className="admin-field admin-form-grid__full">
+              <span className="admin-field__label">Event Banner *</span>
+              <div
+                className="admin-dropzone"
+                onClick={() => bannerInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) onBannerFile(file);
+                }}
+              >
+                {form.banner ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- data-URL upload, not optimizable */}
+                    <img
+                      src={form.banner}
+                      alt="Uploaded banner"
+                      className="admin-dropzone__image"
+                    />
+                    <span className="admin-dropzone__badge">Click to change</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      icon="x"
+                      className="admin-dropzone__remove"
+                      aria-label="Remove uploaded image"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setForm({ ...form, banner: null });
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Icon name="upload" size={34} />
+                    <span className="admin-dropzone__title">
+                      Drag &amp; drop banner image or click to browse
+                    </span>
+                    <span className="admin-card__subtitle">
+                      Any image format • Converted to WebP • Max 5MB
+                    </span>
+                  </>
+                )}
+              </div>
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onBannerFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          </div>
+
+          {/* ---- editable sections ---- */}
+          <EditableList
+            title="Guest/Speakers"
+            emptyHint="No guest/speakers added"
+            addLabel="Add Speaker"
+            count={form.guests.length}
+            onAdd={addGuest}
+            onRemove={(i) => removeFrom("guests", i)}
+            onReorder={(from, to) => reorder("guests", from, to)}
+            renderRow={(i) => {
+              const g = form.guests[i] ?? { photo: null, name: "", description: "" };
+              return (
+                <div className="admin-guest">
+                  <PhotoDrop
+                    value={g.photo}
+                    label="Guest photo"
+                    onPick={(photo) => updateGuest(i, { photo })}
+                    onClear={() => updateGuest(i, { photo: null })}
+                  />
+                  <div className="admin-field">
+                    <label className="admin-field__label" htmlFor={`guest-name-${i}`}>
+                      Name *
+                    </label>
+                    <input
+                      id={`guest-name-${i}`}
+                      className="admin-input"
+                      type="text"
+                      placeholder="Speaker's Name"
+                      value={g.name}
+                      onChange={(e) => updateGuest(i, { name: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field__label" htmlFor={`guest-desc-${i}`}>
+                      Description
+                    </label>
+                    <input
+                      id={`guest-desc-${i}`}
+                      className="admin-input"
+                      type="text"
+                      placeholder="Short Bio"
+                      value={g.description}
+                      onChange={(e) => updateGuest(i, { description: e.target.value })}
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          />
+          <EditableList
+            title="Rundown"
+            emptyHint="No rundown added"
+            addLabel="Add Rundown"
+            count={form.rundown.length}
+            onAdd={addRundown}
+            onRemove={(i) => removeFrom("rundown", i)}
+            onReorder={(from, to) => reorder("rundown", from, to)}
+            renderRow={(i) => {
+              const r = form.rundown[i] ?? { time: "", title: "", description: "" };
+              return (
+                <div className="admin-rundown">
+                  <div className="admin-field admin-field--fit">
+                    <label className="admin-field__label" htmlFor={`rundown-time-${i}`}>
+                      Time
+                    </label>
+                    <input
+                      id={`rundown-time-${i}`}
+                      className="admin-input admin-input--time"
+                      type="time"
+                      value={r.time}
+                      onChange={(e) => updateRundown(i, { time: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field__label" htmlFor={`rundown-title-${i}`}>
+                      Title *
+                    </label>
+                    <input
+                      id={`rundown-title-${i}`}
+                      className="admin-input"
+                      type="text"
+                      placeholder="Rundown Title"
+                      value={r.title}
+                      onChange={(e) => updateRundown(i, { title: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field__label" htmlFor={`rundown-desc-${i}`}>
+                      Description
+                    </label>
+                    <input
+                      id={`rundown-desc-${i}`}
+                      className="admin-input"
+                      type="text"
+                      placeholder="Rundown Description"
+                      value={r.description}
+                      onChange={(e) => updateRundown(i, { description: e.target.value })}
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          />
+          <EditableList
+            title="Sponsors"
+            emptyHint="No sponsors added"
+            addLabel="Add Sponsor"
+            count={form.sponsors.length}
+            onAdd={addSponsor}
+            onRemove={(i) => removeFrom("sponsors", i)}
+            onReorder={(from, to) => reorder("sponsors", from, to)}
+            renderRow={(i) => {
+              const s = form.sponsors[i] ?? { photo: null, tip: "" };
+              return (
+                <div className="admin-sponsor">
+                  <PhotoDrop
+                    value={s.photo}
+                    label="Sponsor logo"
+                    onPick={(photo) => updateSponsor(i, { photo })}
+                    onClear={() => updateSponsor(i, { photo: null })}
+                  />
+                  <div className="admin-field">
+                    <label className="admin-field__label" htmlFor={`sponsor-tip-${i}`}>
+                      Tool / tip *
+                    </label>
+                    <input
+                      id={`sponsor-tip-${i}`}
+                      className="admin-input"
+                      type="text"
+                      placeholder="e.g. PPIDK ASIANIA"
+                      value={s.tip}
+                      onChange={(e) => updateSponsor(i, { tip: e.target.value })}
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          />
+
+          {/* footer actions — spans the full grid (the line above reaches the
+                card edges) and pushes Save draft/Publish to the far right. */}
+          <div className="admin-form-actions admin-form-grid__full">
+            <Button variant="outline" size="sm" icon="chevronLeft" onClick={() => setView("list")}>
+              Back
+            </Button>
+            <div className="admin-form-actions__right">
+              <Button variant="outline" size="sm" icon="cloud" onClick={saveDraft}>
+                Save draft
+              </Button>
+              <Button variant="outline" size="sm" onClick={publishEvent}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
+                <img
+                  src="/globe.png"
+                  alt=""
+                  width={14}
+                  height={14}
+                  className="admin-status-badge__img"
+                />{" "}
+                Publish
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <ToastBanner message={toast.message} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="admin-page-header admin-events-header">
+        <div>
+          <h1 className="admin-page-header__title">Event</h1>
+          <p className="admin-page-header__desc">
+            Manage all upcoming and past events shown on the public Event page.
+          </p>
+        </div>
+        <div className="admin-page-header__actions">
+          {/* "Add New Event" now reads like the table's row-action buttons
+              (ghost ink) instead of a filled maroon call-to-action. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="plus"
+            className="admin-btn--events-add"
+            onClick={() => toForm("create")}
+          >
+            Add New Event
+          </Button>
+          {/* Filter moved to the header, to the right of Add New Event. */}
+          <Button
+            variant="outline"
+            size="sm"
+            icon="filter"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={activeFilterCount > 0 ? "admin-btn--filter-on" : ""}
+          >
+            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
+          </Button>
+          {/* Search bar + button sit beside the Filter button. */}
+          <form
+            className="admin-searchbox"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setQuery(search);
+              setPage(1);
+              setPageSize(10);
+              setMenuFor(null);
+            }}
+          >
+            <Icon name="search" size={16} className="admin-searchbox__icon" />
+            <input
+              className="admin-searchbox__input"
+              type="search"
+              placeholder="Search"
+              aria-label="Search events"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                // Emptying the box (✕ or clear) drops the applied query too,
+                // so the list returns to its default view.
+                if (e.target.value === "") {
+                  setQuery("");
+                  setPage(1);
+                  setMenuFor(null);
+                }
+              }}
+            />
+            <button type="submit" className="admin-searchbox__submit">
+              Search
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <Card className="admin-events-card admin-list-card">
+        <CardBody flush>
+          {/* Toggle filter panel */}
+          {filtersOpen ? (
+            <div className="admin-filter-panel">
+              <div className="admin-field">
+                <span className="admin-field__label">Event Type</span>
+                <select
+                  className="admin-select"
+                  value={typeFilter}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value);
+                    setPage(1);
+                    setMenuFor(null);
+                  }}
+                >
+                  <option value="all">All types</option>
+                  {EVENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="admin-field">
+                <span className="admin-field__label">Status</span>
+                <select
+                  className="admin-select"
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as StatusFilter);
+                    setPage(1);
+                    setMenuFor(null);
+                  }}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="published">Public</option>
+                  <option value="private">Private</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
+              <div className="admin-field">
+                <span className="admin-field__label">Event Date</span>
+                <select
+                  className="admin-select"
+                  value={dateFilter}
+                  onChange={(e) => {
+                    setDateFilter(e.target.value as DateFilter);
+                    setPage(1);
+                    setMenuFor(null);
+                  }}
+                >
+                  <option value="all">All dates</option>
+                  <option value="today">Today</option>
+                  <option value="month">This month</option>
+                  <option value="year">This year</option>
+                  <option value="past">Past events</option>
+                </select>
+              </div>
+              <button type="button" className="admin-filter-panel__clear" onClick={clearFilters}>
+                <Icon name="x" size={12} />
+                Clear filters
+              </button>
+            </div>
+          ) : null}
+
+          {/* Tabs */}
+          <div className="admin-tabs" role="tablist" aria-label="Event lists">
+            {(
+              [
+                ["all", "All"],
+                ["upcoming", "Upcoming"],
+                ["past", "Past"],
+                ["drafts", "Drafts"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                className={`admin-tabs__btn${tab === key ? " admin-tabs__btn--active" : ""}`}
+                onClick={() => switchTab(key)}
+              >
+                {label}
+                <span className="admin-tabs__count">{counts[key]}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Table — always rendered so it keeps its full height; the empty
+              message becomes one body row inside the static table. */}
+          <DataTable
+            columns={columns}
+            rows={pageRows}
+            rowKey={(r) => r.id}
+            emptyText="No events yet"
+            hideHeader={false}
+            minRows={pageSize}
+            emptyState={
+              <div className="admin-empty admin-empty--stack">
+                <span className="admin-empty__heading">
+                  <Icon name="inbox" size={16} />
+                  <span className="admin-empty__title">
+                    {query.trim()
+                      ? `No events match “${query.trim()}”`
+                      : "No events match your filters"}
+                  </span>
+                </span>
+                <span className="admin-empty__hint">
+                  {activeFilterCount > 0
+                    ? `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} are on. Try a new search or clear them.`
+                    : "Try a new search or clear them."}
+                </span>
+                <span className="admin-empty__actions">
+                  {query.trim() || activeFilterCount > 0 ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon="x"
+                      className="admin-gallery-clear"
+                      onClick={clearFilters}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : null}
+                  <Button variant="primary" size="sm" icon="plus" onClick={() => toForm("create")}>
+                    Add New Event
+                  </Button>
+                </span>
+              </div>
+            }
+          />
+
+          {/* Bulk action bar — shown in place of the pagination bar while rows are selected */}
+          {selected.size > 0 ? (
+            <div className="admin-bulkbar">
+              <span className="admin-bulkbar__summary">
+                <label className="admin-checkbox">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all matching events"
+                    checked={allFilteredSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selected.size > 0 && !allFilteredSelected;
+                    }}
+                    onChange={selectAllFiltered}
+                    className="admin-table__checkbox"
+                  />
+                  <span aria-hidden="true" />
+                </label>
+                {selected.size} selected
+              </span>
+              <button
+                type="button"
+                className="admin-bulkbar__select-all"
+                onClick={selectAllFiltered}
+              >
+                Select all {filtered.length} events
+              </button>
+              <div className="admin-bulkbar__actions">
+                <Button variant="primary" size="sm" onClick={publishSelected}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
+                  <img
+                    src="/globe.png"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="admin-status-badge__img"
+                  />{" "}
+                  Publish
+                </Button>
+                <Button variant="primary" size="sm" icon="lock" onClick={makePrivateSelected}>
+                  Make private
+                </Button>
+                <Button variant="danger" size="sm" icon="trash" onClick={deleteSelected}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Pagination: Showing … of N · Rows per page · page numbers */
+            <div className="admin-darkbar">
+              <span className="admin-darkbar__info">
+                Showing {shownStart}–{shownEnd} of {filtered.length}
+              </span>
+              <span className="admin-darkbar__info">
+                Rows per page
+                <select
+                  className="admin-darkbar__select"
+                  aria-label="Rows per page"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </span>
+              <span className="admin-darkbar__spacer" />
+              <button
+                type="button"
+                className="admin-darkbar__btn"
+                disabled={safePage <= 1}
+                onClick={() => setPage(safePage - 1)}
+                aria-label="Previous page"
+              >
+                <Icon name="chevronLeft" size={14} />
+              </button>
+              {pageNumbers.map((p) => (
+                <button
+                  type="button"
+                  key={p}
+                  className={`admin-darkbar__btn${p === safePage ? " admin-darkbar__btn--active" : ""}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="admin-darkbar__btn"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage(safePage + 1)}
+                aria-label="Next page"
+              >
+                <Icon name="chevronRight" size={14} />
+              </button>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Delete confirmation popup — dark, compact, styled like the Tools page
+          delete modal; the two actions sit flush right. */}
+      <Modal
+        open={deleteConfirm !== null}
+        title={
+          deleteConfirm?.kind === "many"
+            ? `Delete ${deleteConfirm.count} Event${deleteConfirm.count === 1 ? "" : "s"}?`
+            : deleteConfirm
+              ? `Delete "${deleteConfirm.event.title}"?`
+              : "Delete event"
+        }
+        width={420}
+        className="admin-modal--dark admin-modal--delete"
+        hideClose
+        onClose={() => setDeleteConfirm(null)}
+        footer={
+          <div className="admin-modal__footer-row admin-modal__footer-row--end">
+            <Button
+              variant="ghost"
+              className="admin-btn--light admin-modal__foot-btn"
+              icon="chevronLeft"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              className="admin-modal__foot-btn"
+              icon="trash"
+              onClick={doDelete}
+            >
+              Delete
+            </Button>
+          </div>
+        }
+      >
+        <p className="admin-delete-confirm__message">
+          {deleteConfirm ? (
+            <span className="admin-delete-confirm__hint">
+              They disappear from the public page now. You can revert deletion on the admin log
+              before 14 days.
+            </span>
+          ) : null}
+        </p>
+      </Modal>
+
+      <ToastBanner message={toast.message} />
+    </>
+  );
+}
+
+/** "N day(s) left" in gold under the Event Date (hidden once the day has passed). */
+function Countdown({ date }: { date: string }) {
+  const [now] = useState(() => Date.now());
+  const target = new Date(date.length === 10 ? `${date}T00:00:00` : date);
+  const days = Math.ceil((target.getTime() - now) / 86_400_000);
+  if (Number.isNaN(target.getTime()) || days < 1) return null;
+  return (
+    <span className="admin-event-date__count">
+      {days === 1 ? "1 day left" : `${days} days left`}
+    </span>
+  );
+}

@@ -65,7 +65,12 @@ export function Modal({
             {subtitle ? <div className="admin-modal__subtitle">{subtitle}</div> : null}
           </div>
           {!hideClose ? (
-            <button type="button" className="admin-modal__close" onClick={onClose} aria-label="Close">
+            <button
+              type="button"
+              className="admin-modal__close"
+              onClick={onClose}
+              aria-label="Close"
+            >
               <Icon name="x" size={20} />
             </button>
           ) : null}

@@ -113,7 +113,10 @@ export function AdminSidebar(props: {
         inert={!drawerVisible}
       >
         <div className="admin-brand">
-          <Image src="/icon.png" alt="" width={40} height={40} className="admin-logo" />
+          {/* unoptimized: the Next dev image optimizer returns 500 for webp of
+              this path (public/icon.png is the icon file-convention name); the
+              plain <img> path is proven to work (see tools-page QR logo). */}
+          <Image src="/icon.png" alt="" width={40} height={40} className="admin-logo" unoptimized />
           <span className="admin-brand-name">{ORGANISATION}</span>
         </div>
 
