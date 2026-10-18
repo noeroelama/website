@@ -52,6 +52,13 @@ const repos = createMemoryGatewayRepositories({
       published: true,
       capacity: 100,
       registrationClosesAt: null,
+      type: "conference",
+      description: "",
+      bannerImage: null,
+      registrationUrl: null,
+      schedule: [],
+      speakers: [],
+      sponsors: [],
     },
   ],
 });

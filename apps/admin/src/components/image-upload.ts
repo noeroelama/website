@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { FeaturedImage } from "@website/domain/content";
 import {
   checkImageFile,
   IMAGE_ERROR_MESSAGES,
@@ -17,6 +18,13 @@ export interface UploadedImage {
   readonly thumbUrl: string | null;
   readonly width: number;
   readonly height: number;
+}
+
+/** Stored form of an upload from a public preset (both URLs set); null for a private preset. */
+export function publicImage(image: UploadedImage): FeaturedImage | null {
+  if (!image.url || !image.thumbUrl) return null;
+  const { url, thumbUrl, path, thumbPath, width, height } = image;
+  return { url, thumbUrl, path, thumbPath, width, height };
 }
 
 /**

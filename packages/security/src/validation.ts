@@ -17,15 +17,15 @@ export function sanitizeText(value: string, options: { multiline?: boolean } = {
   return text.replace(/[ \u00A0]{2,}/g, " ").trim();
 }
 
-/** Required free text: sanitized, 1..max characters, no HTML. Use `.optional()` for optional fields. */
-export function safeText(max: number, options: { multiline?: boolean } = {}) {
+/** Free text: sanitized, 1..max characters (0.. with `allowEmpty`), no HTML. */
+export function safeText(max: number, options: { multiline?: boolean; allowEmpty?: boolean } = {}) {
   return z
     .string()
     .transform((value) => sanitizeText(value, options))
     .pipe(
       z
         .string()
-        .min(1)
+        .min(options.allowEmpty ? 0 : 1)
         .max(max)
         .refine((value) => !/[<>]/.test(value), "HTML is not allowed"),
     );

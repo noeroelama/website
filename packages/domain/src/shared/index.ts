@@ -44,3 +44,4 @@ export function isValidSlug(slug: string): boolean {
 }
 
 export * from "./images";
+export * from "./time";

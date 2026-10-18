@@ -19,3 +19,12 @@ export function timeAgo(iso: string, now = Date.now()): string {
   const years = Math.floor(months / 12);
   return `${years} year${years === 1 ? "" : "s"} ago`;
 }
+
+/** ISO instant shown on the clock of `timeZone`, e.g. "20 Nov 2026, 11:00" (same on server and browser). */
+export function formatInZone(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}

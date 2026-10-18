@@ -20,6 +20,8 @@ import { createGuardedAction } from "./guarded-action";
 export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
   // News (Article page): fields of content/{id}; a changed URL is never revertible.
   content: "content",
+  // Event page: fields of events/{id}; a changed URL is never revertible.
+  event: "events",
 };
 
 export interface AuditLogDeps {

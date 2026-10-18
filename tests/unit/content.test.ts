@@ -78,6 +78,7 @@ describe("news form validation (strict)", () => {
     const parsed = NewsInputSchema.parse(valid);
     expect(parsed.tags).toEqual(["simposium"]);
     expect(parsed.publishAt).toEqual(later);
+    expect(NewsInputSchema.parse({ ...valid, summary: "  " }).summary).toBe("");
   });
 
   it("refuses missing required fields, unknown keys, too many tags and bad image URLs", () => {

@@ -16,7 +16,7 @@ import {
 } from "@/app/(panel)/articles/actions";
 import { actionMessage } from "@/components/action-message";
 import { formatUtc, timeAgo } from "@/components/format";
-import { useImageUpload, type UploadedImage } from "@/components/image-upload";
+import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -48,13 +48,6 @@ import {
 
 /** Public article path on the web app (apps/web /news/[slug]). */
 const ARTICLE_PATH = "/news/";
-
-/** Featured image from an upload (the thumbnail preset is public, so both URLs are set). */
-function toFeaturedImage(image: UploadedImage): FeaturedImage | null {
-  if (!image.url || !image.thumbUrl) return null;
-  const { url, thumbUrl, path, thumbPath, width, height } = image;
-  return { url, thumbUrl, path, thumbPath, width, height };
-}
 
 /** ISO timestamp → the value of a datetime-local input, in the viewer's time zone. */
 function toLocalInput(iso: string | null): string {
@@ -1227,7 +1220,7 @@ function ArticleList({
      the uploader shows its own error message under the drop zone. */
   const onBannerFile = async (file: File) => {
     const image = await uploader.upload(file);
-    const banner = image ? toFeaturedImage(image) : null;
+    const banner = image ? publicImage(image) : null;
     if (banner) setForm((f) => ({ ...f, banner }));
   };
   const uploadInlineImage = async (file: File) => (await uploader.upload(file))?.url ?? null;

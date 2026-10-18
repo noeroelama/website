@@ -5,6 +5,7 @@ import {
   type RevertRejection,
 } from "@website/audit";
 import { NEWS_CATEGORIES, type NewsCategory } from "@website/domain/content";
+import { EVENT_TYPES, type EventType } from "@website/domain/events";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 
@@ -74,6 +75,20 @@ export const NEWS_CATEGORY_LABELS = {
   international: { id: "Internasional", en: "International" },
 } as const satisfies Record<NewsCategory, Label>;
 
+export const EVENT_TYPE_LABELS = {
+  general: { id: "Umum", en: "General" },
+  seminar: { id: "Seminar", en: "Seminar" },
+  webinar: { id: "Webinar", en: "Webinar" },
+  discussion: { id: "Diskusi", en: "Discussion" },
+  workshop: { id: "Lokakarya", en: "Workshop" },
+  launch: { id: "Peluncuran", en: "Launch" },
+  event: { id: "Acara", en: "Event" },
+  festival: { id: "Festival", en: "Festival" },
+  conference: { id: "Konferensi", en: "Conference" },
+  exhibition: { id: "Pameran", en: "Exhibition" },
+  meeting: { id: "Rapat", en: "Meeting" },
+} as const satisfies Record<EventType, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -87,6 +102,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "revert rejection", keys: REVERT_REJECTIONS, labels: REVERT_REJECTION_LABELS },
   { name: "message status", keys: MESSAGE_STATUSES, labels: MESSAGE_STATUS_LABELS },
   { name: "news category", keys: NEWS_CATEGORIES, labels: NEWS_CATEGORY_LABELS },
+  { name: "event type", keys: EVENT_TYPES, labels: EVENT_TYPE_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

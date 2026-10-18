@@ -1,4 +1,45 @@
-import type { EntityMeta } from "../shared";
+import { z } from "zod";
+import { safeText } from "@website/security/validation";
+import { FeaturedImageSchema, type FeaturedImage } from "../content";
+import { TimezoneSchema } from "../members/profile";
+import { isValidSlug, type EntityMeta } from "../shared";
+
+/** Event types (Figma EVENT DASHBOARD); labels live in the apps' label maps. */
+export const EVENT_TYPES = [
+  "general",
+  "seminar",
+  "webinar",
+  "discussion",
+  "workshop",
+  "launch",
+  "event",
+  "festival",
+  "conference",
+  "exhibition",
+  "meeting",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+
+/** Uploaded image (public preset), same shape as a news featured image. */
+export type EventImage = FeaturedImage;
+
+export interface ScheduleRow {
+  /** "HH:MM" in the event's time zone, or "" when not timed. */
+  readonly time: string;
+  readonly title: string;
+  readonly description: string;
+}
+export interface Speaker {
+  readonly name: string;
+  readonly description: string;
+  readonly photo: EventImage | null;
+}
+export interface Sponsor {
+  /** Display position (1 = first). */
+  readonly order: number;
+  readonly logo: EventImage | null;
+  readonly caption: string;
+}
 
 export interface EventEntity extends EntityMeta {
   readonly slug: string;
@@ -12,7 +53,85 @@ export interface EventEntity extends EntityMeta {
   readonly published: boolean;
   readonly capacity: number | null;
   readonly registrationClosesAt: Date | null;
+  readonly type: EventType;
+  /** Long text (plain, line breaks kept). */
+  readonly description: string;
+  readonly bannerImage: EventImage | null;
+  /** External registration form; null = the site's own registration. */
+  readonly registrationUrl: string | null;
+  readonly schedule: readonly ScheduleRow[];
+  readonly speakers: readonly Speaker[];
+  readonly sponsors: readonly Sponsor[];
 }
+
+/** Sponsors in display order. */
+export function sortedSponsors(sponsors: readonly Sponsor[]): Sponsor[] {
+  return [...sponsors].sort((a, b) => a.order - b.order);
+}
+
+/** URL slug when the editor leaves the URL empty: "event-" + 8 random hex characters. */
+export function randomEventSlug(uuid: string): string {
+  return `event-${uuid.replace(/-/g, "").slice(0, 8)}`;
+}
+
+const optionalText = (max: number) => safeText(max, { multiline: true, allowEmpty: true });
+const linkSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine((value) => value === "" || /^https?:\/\/[^\s]+$/i.test(value), "Use an http(s):// link.")
+  .transform((value) => value || null);
+
+/** The Event form (add + edit). Sponsors get their order from their position in the list. */
+export const EventInputSchema = z
+  .object({
+    title: safeText(200).pipe(z.string().min(3, "Enter a title (at least 3 characters).")),
+    type: z.enum(EVENT_TYPES, { error: "Choose an event type." }),
+    startsAt: z.coerce.date({ error: "Enter the event date and time." }),
+    timezone: TimezoneSchema,
+    registrationClosesAt: z.coerce.date().nullable(),
+    location: safeText(300).pipe(z.string().min(2, "Enter the location.")),
+    description: safeText(5000, { multiline: true }),
+    bannerImage: FeaturedImageSchema.nullable().refine((v) => v !== null, "Upload a banner."),
+    registrationUrl: linkSchema,
+    /** Empty = random. */
+    slug: z
+      .string()
+      .trim()
+      .max(120)
+      .refine((s) => s === "" || isValidSlug(s), "Use lower-case letters, numbers and dashes."),
+    schedule: z
+      .array(
+        z
+          .object({
+            time: z.string().regex(/^(|([01]\d|2[0-3]):[0-5]\d)$/, "Use HH:MM."),
+            title: safeText(200),
+            description: optionalText(500),
+          })
+          .strict(),
+      )
+      .max(50),
+    speakers: z
+      .array(
+        z
+          .object({
+            name: safeText(120),
+            description: optionalText(500),
+            photo: FeaturedImageSchema.nullable(),
+          })
+          .strict(),
+      )
+      .max(30),
+    sponsors: z
+      .array(z.object({ logo: FeaturedImageSchema.nullable(), caption: safeText(200) }).strict())
+      .max(50),
+  })
+  .strict()
+  .refine((e) => e.registrationClosesAt === null || e.registrationClosesAt <= e.startsAt, {
+    path: ["registrationClosesAt"],
+    message: "The deadline must be on or before the event date.",
+  });
+export type EventInput = z.infer<typeof EventInputSchema>;
 
 export function isRegistrationOpen(
   event: Pick<EventEntity, "published" | "deletedAt" | "startsAt" | "registrationClosesAt">,

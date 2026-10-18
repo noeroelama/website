@@ -9,6 +9,7 @@ import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createMessenger } from "@website/domain/messaging";
 import { createResendSender } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
+import { createEventActions } from "./events";
 import { getAdminEnv } from "./env";
 import { createImageUploads } from "./images";
 import { createMessageActions, emailChannel } from "./messaging";
@@ -25,6 +26,11 @@ export const roleActions = lazyEnv(() =>
 /** Article page (News) actions. */
 export const newsActions = lazyEnv(() =>
   createNewsActions({ content: adminStores().content, now: () => new Date() }),
+);
+
+/** Event page actions. */
+export const eventActions = lazyEnv(() =>
+  createEventActions({ events: adminStores().events, now: () => new Date(), uuid: randomUUID }),
 );
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
@@ -93,6 +99,7 @@ export const adminReads = {
   getRole: (id: string) => adminStores().roles.get(id),
   listNews: () => adminStores().content.listForAdmin("news"),
   getContent: (id: string) => adminStores().content.get(id),
+  listEvents: () => adminStores().events.listForAdmin(),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {
     const { authAdmin, passkeys } = adminStores();

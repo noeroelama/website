@@ -1,25 +1,34 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { EVENT_TYPES, type EventImage, type EventType } from "@website/domain/events";
+import { utcToWallTime, wallTimeToUtc } from "@website/domain/shared";
+import {
+  removeEventAction,
+  saveEventAction,
+  setEventPublishedAction,
+} from "@/app/(panel)/events/actions";
+import { actionMessage } from "@/components/action-message";
+import { formatInZone } from "@/components/format";
+import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EditableList } from "@/components/ui/editable-list";
+import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { PhotoDrop } from "@/components/ui/photo-drop";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { EVENT_TYPE_LABELS, label } from "@/labels";
 import {
-  EVENT_TYPES,
-  INITIAL_EVENTS,
   PAGE_SIZE_OPTIONS,
-  formatDate,
   matchesTab,
   type EventItem,
   type EventStatus,
   type EventTab,
-} from "@/data/mock/events";
+} from "./events-model";
 
 /* ==================================================================
    Event — list (tabs, search, filters, bulk actions) + create/edit form.
@@ -27,8 +36,11 @@ import {
    shared design tokens, no hex values outside globals.css.
    ================================================================== */
 
-/** Public URL prefix for an event page, shown in the "URL *" field and Copy Link. */
-const EVENT_URL_PREFIX = "ppidk.asiania.id/events/";
+/** Public event path on the web app (apps/web /events/[slug]). */
+const EVENT_PATH = "/events/";
+
+/** The browser's IANA time zone: the default for a new event. */
+const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /** Small monogram chip standing in for the Figma row avatar. */
 function typeInitials(type: string): string {
@@ -64,7 +76,7 @@ function SortHeader({
 
 /** One guest/speaker row: optional photo, name, and a short description. */
 interface GuestSpeakerItem {
-  photo: string | null;
+  photo: EventImage | null;
   name: string;
   description: string;
 }
@@ -78,21 +90,22 @@ interface RundownItem {
 
 /** One sponsor row: optional photo and a short tool-tip/tagline. */
 interface SponsorItem {
-  photo: string | null;
+  photo: EventImage | null;
   tip: string;
 }
 
 interface EventForm {
   title: string;
-  type: string;
-  date: string;
-  time: string;
+  type: EventType;
+  /** datetime-local values on the clock of `timezone`. */
+  start: string;
   deadline: string;
+  timezone: string;
   location: string;
   url: string;
   description: string;
   registrationLink: string;
-  banner: string | null;
+  banner: EventImage | null;
   guests: GuestSpeakerItem[];
   rundown: RundownItem[];
   sponsors: SponsorItem[];
@@ -101,9 +114,9 @@ interface EventForm {
 const EMPTY_FORM: EventForm = {
   title: "",
   type: EVENT_TYPES[0],
-  date: "",
-  time: "",
+  start: "",
   deadline: "",
+  timezone: "UTC",
   location: "",
   url: "",
   description: "",
@@ -117,28 +130,64 @@ const EMPTY_FORM: EventForm = {
 /** Filter choices for the event-date select. */
 type DateFilter = "all" | "today" | "month" | "year" | "past";
 
-/** Filter choice for the status select: any of the mock statuses, or "all". */
+/** Filter choice for the status select: any status, or "all". */
 type StatusFilter = "all" | EventStatus;
 
 /** Pending delete action shown in the dark confirm modal (one event or many). */
 type DeleteConfirm = { kind: "one"; event: EventItem } | { kind: "many"; count: number };
 
-export function EventsPage() {
+interface EventsListProps {
+  /** Rows from the server (src/app/(panel)/events/page.tsx); refreshed after every change. */
+  initial: EventItem[];
+  canEdit: boolean;
+  /** WEB_URL, for "Copy Link". */
+  publicBase: string;
+}
+
+export function EventsPage(props: EventsListProps) {
   const pathname = usePathname();
   // key={pathname} remounts the page when the events route is (re)entered, so
   // search/tabs/filters reset to their initial empty state on every visit
   // (same pattern as Articles & Gallery).
-  return <EventsList key={pathname} />;
+  return <EventsList key={pathname} {...props} />;
+}
+
+/** Form values for an existing event (times on the event's own clock). */
+function formFrom(ev: EventItem): EventForm {
+  return {
+    title: ev.title,
+    type: ev.type,
+    start: utcToWallTime(new Date(ev.startsAt), ev.timezone),
+    deadline: ev.registrationClosesAt
+      ? utcToWallTime(new Date(ev.registrationClosesAt), ev.timezone)
+      : "",
+    timezone: ev.timezone,
+    location: ev.location,
+    url: ev.url,
+    description: ev.description,
+    registrationLink: ev.registrationUrl ?? "",
+    banner: ev.banner,
+    guests: ev.speakers.map((s) => ({ ...s })),
+    rundown: ev.schedule.map((r) => ({ ...r })),
+    sponsors: ev.sponsors.map((s) => ({ photo: s.logo, tip: s.caption })),
+  };
 }
 
 /** Events list + create/edit screen (all state lives here; remounted by
  *  EventsPage on navigation so it starts clean). */
-function EventsList() {
+function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   const toast = useToastMessage();
+  const router = useRouter();
+  const bannerUpload = useImageUpload("banner");
+  /* Speaker photos and sponsor logos: the small "speaker" preset (1024 px, public). */
+  const photoUpload = useImageUpload("speaker");
+  /* A server action is running: the action buttons are disabled meanwhile. */
+  const [busy, setBusy] = useState(false);
+  /* Server validation messages per field (GuardedResult `fields`). */
+  const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
   /* ---- list state ---- */
-  const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
-  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const [today] = useState(() => new Date().toISOString());
   const [tab, setTab] = useState<EventTab>("all");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState(""); // diterapkan hanya saat Search diklik / Enter ditekan
@@ -182,11 +231,11 @@ function EventsList() {
       case "title":
         return e.title.toLowerCase();
       case "date":
-        return e.date;
+        return e.startsAt;
       case "status":
         return e.status;
       case "registered":
-        return e.createdAt;
+        return e.modifiedAt;
     }
   };
 
@@ -198,19 +247,19 @@ function EventsList() {
       if (typeFilter !== "all" && e.type !== typeFilter) return false;
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (dateFilter !== "all") {
-        const d = e.date;
+        const d = e.startsAt.slice(0, 10);
         if (dateFilter === "today") {
-          if (d !== today) return false;
+          if (d !== today.slice(0, 10)) return false;
         } else if (dateFilter === "month") {
           if (!d.startsWith(today.slice(0, 7))) return false;
         } else if (dateFilter === "year") {
           if (!d.startsWith(today.slice(0, 4))) return false;
         } else if (dateFilter === "past") {
-          if (d >= today) return false;
+          if (d >= today.slice(0, 10)) return false;
         }
       }
       if (q) {
-        const hay = [e.title, e.type, e.location, e.url, e.description ?? ""]
+        const hay = [e.title, e.typeLabel, e.location, e.url, e.description]
           .join(" ")
           .toLowerCase();
         if (!hay.includes(q)) return false;
@@ -232,8 +281,8 @@ function EventsList() {
   }, [filtered, sortKey, sortDir]);
 
   const counts = useMemo(() => {
-    const upcoming = events.filter((e) => e.status !== "draft" && e.date >= today).length;
-    const past = events.filter((e) => e.status !== "draft" && e.date < today).length;
+    const upcoming = events.filter((e) => matchesTab(e, "upcoming", today)).length;
+    const past = events.filter((e) => matchesTab(e, "past", today)).length;
     const drafts = events.filter((e) => e.status === "draft").length;
     return { all: events.length, upcoming, past, drafts };
   }, [events, today]);
@@ -273,24 +322,52 @@ function EventsList() {
     });
   };
 
-  /* ---- row / bulk mutations ---- */
-  const setStatusFor = (ids: Set<string>, status: EventStatus, label: string) => {
-    if (ids.size === 0) {
+  /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
+  type Failure = Parameters<typeof actionMessage>[0];
+  const fail = (result: Failure) => {
+    setFieldErrors(result.fields ?? {});
+    toast.show(actionMessage(result));
+  };
+
+  /* One action per event, one after the other (each has its own version check). */
+  const runForEach = async (
+    ids: readonly string[],
+    run: (e: EventItem) => Promise<{ ok: true } | Failure>,
+    done: string,
+  ) => {
+    setBusy(true);
+    setMenuFor(null);
+    let count = 0;
+    let failure: Failure | null = null;
+    for (const e of events.filter((x) => ids.includes(x.id))) {
+      const result = await run(e);
+      if (!result.ok) {
+        failure = result;
+        break;
+      }
+      count++;
+    }
+    setBusy(false);
+    setSelected(new Set());
+    router.refresh();
+    if (failure) fail(failure);
+    else toast.show(`${count} event${count === 1 ? "" : "s"} ${done}`);
+  };
+
+  const setPublishedFor = (ids: readonly string[], published: boolean) => {
+    if (ids.length === 0) {
       toast.show("Select events first");
       return;
     }
-    setEvents((prev) => prev.map((e) => (ids.has(e.id) ? { ...e, status } : e)));
-    toast.show(`${ids.size} event${ids.size === 1 ? "" : "s"} ${label}`);
+    void runForEach(
+      ids,
+      (e) => setEventPublishedAction({ id: e.id, version: e.version, published }),
+      published ? "published" : "unpublished",
+    );
   };
 
-  const setStatusForId = (id: string, status: EventStatus, label: string) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
-    setMenuFor(null);
-    toast.show(`Event ${label}`);
-  };
-
-  const publishSelected = () => setStatusFor(selected, "published", "published");
-  const makePrivateSelected = () => setStatusFor(selected, "private", "made private");
+  const publishSelected = () => setPublishedFor(Array.from(selected), true);
+  const unpublishSelected = () => setPublishedFor(Array.from(selected), false);
 
   const deleteSelected = () => {
     if (selected.size === 0) {
@@ -307,30 +384,16 @@ function EventsList() {
 
   /* Deletes are confirmed in the dark modal (like Tools) instead of
      window.confirm. The modal only stores *what* would be deleted; doDelete
-     applies the change once the user confirms. */
+     runs the soft delete (registrations are kept) once the user confirms. */
   const doDelete = () => {
     if (!deleteConfirm) return;
-    if (deleteConfirm.kind === "one") {
-      const ev = deleteConfirm.event;
-      setEvents((prev) => prev.filter((x) => x.id !== ev.id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(ev.id);
-        return next;
-      });
-      setDeleteConfirm(null);
-      toast.show("Event deleted");
-    } else {
-      const ids = Array.from(selected);
-      setEvents((prev) => prev.filter((e) => !selected.has(e.id)));
-      setSelected(new Set());
-      setDeleteConfirm(null);
-      toast.show(`${ids.length} event${ids.length === 1 ? "" : "s"} deleted`);
-    }
+    const ids = deleteConfirm.kind === "one" ? [deleteConfirm.event.id] : Array.from(selected);
+    setDeleteConfirm(null);
+    void runForEach(ids, (e) => removeEventAction({ id: e.id, version: e.version }), "deleted");
   };
 
   const copyLink = (e: EventItem) => {
-    void navigator.clipboard?.writeText(`https://${EVENT_URL_PREFIX}${e.url}`);
+    void navigator.clipboard?.writeText(`${publicBase}${EVENT_PATH}${e.url}`);
     toast.show(`Link for "${e.title}" copied`);
     setMenuFor(null);
   };
@@ -339,103 +402,56 @@ function EventsList() {
   const toForm = (mode: "create" | "edit", ev?: EventItem) => {
     setFormMode(mode);
     setEditingId(ev?.id ?? null);
-    setForm(
-      ev
-        ? {
-            title: ev.title,
-            type: ev.type,
-            date: ev.date,
-            time: "",
-            deadline: ev.registrationDeadline ?? "",
-            location: ev.location,
-            url: ev.url,
-            description: ev.description ?? "",
-            registrationLink: ev.registrationLink ?? "",
-            banner: null,
-            guests: [],
-            rundown: [],
-            sponsors: [],
-          }
-        : EMPTY_FORM,
-    );
+    setFieldErrors({});
+    setForm(ev ? formFrom(ev) : { ...EMPTY_FORM, timezone: browserZone() });
     setView("form");
   };
 
-  const fromForm = (status: EventStatus): EventItem | null => {
-    const title = form.title.trim();
-    if (!title || !form.date || !form.location.trim()) {
-      toast.show("Title, event date and location are required");
-      return null;
-    }
-    /* Banner is required on create; on edit the field starts empty (no banner
-       is re-uploaded unless the user adds one), so it must stay optional. */
-    if (formMode === "create" && !form.banner) {
-      toast.show("Event banner is required");
-      return null;
-    }
-    const slug =
-      form.url.trim().replace(/\s+/g, "-") || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const existing = events.find((e) => e.id === editingId);
-    // Form has no city/country inputs yet — reuse the stored ones when editing,
-    // otherwise derive the city from the location box ("Kota, Negara" convention).
-    const cityFromLocation = form.location.includes(",")
-      ? (form.location.split(",")[0] ?? form.location).trim()
-      : form.location.trim();
-    const next: EventItem = {
-      id: editingId ?? `ev-${Date.now()}`,
-      title,
+  /* Save draft / Publish now. Times are read on the event's clock (its time zone). */
+  const save = async (publish: boolean) => {
+    const current = events.find((e) => e.id === editingId);
+    setBusy(true);
+    const result = await saveEventAction({
+      ...(editingId ? { id: editingId } : {}),
+      version: current?.version ?? null,
+      publish,
+      title: form.title,
       type: form.type,
-      date: form.date,
-      location: form.location.trim(),
-      city: existing?.city ?? cityFromLocation,
-      country: existing?.country ?? "Indonesia",
-      updatedBy: "Admin",
-      url: slug,
-      status,
-      createdAt: existing?.createdAt ?? new Date().toISOString().slice(0, 10),
-    };
-    if (form.deadline.trim()) next.registrationDeadline = form.deadline.trim();
-    if (form.description.trim()) next.description = form.description.trim();
-    if (form.registrationLink.trim()) next.registrationLink = form.registrationLink.trim();
-    return next;
-  };
-
-  const saveDraft = () => {
-    const next = fromForm("draft");
-    if (!next) return;
-    setEvents((prev) => {
-      const exists = prev.some((e) => e.id === next.id);
-      return exists ? prev.map((e) => (e.id === next.id ? next : e)) : [next, ...prev];
+      startsAt: wallTimeToUtc(form.start, form.timezone)?.toISOString() ?? "",
+      timezone: form.timezone,
+      registrationClosesAt: wallTimeToUtc(form.deadline, form.timezone)?.toISOString() ?? null,
+      location: form.location,
+      description: form.description,
+      bannerImage: form.banner,
+      registrationUrl: form.registrationLink,
+      slug: form.url.trim(),
+      schedule: form.rundown,
+      speakers: form.guests,
+      sponsors: form.sponsors.map((sp) => ({ logo: sp.photo, caption: sp.tip })),
     });
-    toast.show("Draft saved");
+    setBusy(false);
+    if (!result.ok) {
+      fail(result);
+      return;
+    }
+    setFieldErrors({});
+    toast.show(publish ? "Event published" : "Draft saved");
+    router.refresh();
+    if (publish) {
+      setTab("all");
+      setPage(1);
+    }
     setView("list");
   };
 
-  const publishEvent = () => {
-    const next = fromForm("published");
-    if (!next) return;
-    setEvents((prev) => {
-      const exists = prev.some((e) => e.id === next.id);
-      return exists ? prev.map((e) => (e.id === next.id ? next : e)) : [next, ...prev];
-    });
-    toast.show("Event published");
-    setTab("all");
-    setPage(1);
-    setView("list");
+  const onBannerFile = async (file: File) => {
+    const image = await bannerUpload.upload(file);
+    const banner = image ? publicImage(image) : null;
+    if (banner) setForm((f) => ({ ...f, banner }));
   };
-
-  const onBannerFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.show("Please choose an image file");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.show("Image must be max 5MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, banner: reader.result as string }));
-    reader.readAsDataURL(file);
+  const uploadPhoto = async (file: File) => {
+    const image = await photoUpload.upload(file);
+    return image ? publicImage(image) : null;
   };
 
   /* ---- editable lists (Guest/Speakers detail, Rundown detail, Sponsors) ---- */
@@ -501,6 +517,13 @@ function EventsList() {
     });
   };
 
+  /* Red field + message for a server validation error (GuardedResult `fields`). */
+  const errorProps = (field: string) =>
+    fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `event-${field}-error` } : {};
+  const errorFor = (field: string) => (
+    <FieldError id={`event-${field}-error`} message={fieldErrors[field]} />
+  );
+
   /* ---- table columns ---- */
   const checkboxCol: Column<EventItem> = {
     key: "check",
@@ -551,22 +574,22 @@ function EventsList() {
       render: (r) => (
         <div className="admin-event-title">
           <span className="admin-event-avatar" aria-hidden="true">
-            {r.image ? (
-              // eslint-disable-next-line @next/next/no-img-element -- local packed asset (public/events)
+            {r.banner ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP)
               <img
                 className="admin-event-avatar__img"
-                src={r.image}
+                src={r.banner.thumbUrl}
                 alt=""
                 width={20}
                 height={20}
               />
             ) : (
-              typeInitials(r.type)
+              typeInitials(r.typeLabel)
             )}
           </span>
           <div>
             <div className="admin-table__title">{r.title}</div>
-            <div className="admin-table__sub">{r.type}</div>
+            <div className="admin-table__sub">{r.typeLabel}</div>
           </div>
         </div>
       ),
@@ -584,8 +607,8 @@ function EventsList() {
       width: "14%",
       render: (r) => (
         <span className="admin-event-date">
-          <span className="admin-table__title">{formatDate(r.date)}</span>
-          <Countdown date={r.date} />
+          <span className="admin-table__title">{formatInZone(r.startsAt, r.timezone)}</span>
+          <Countdown date={r.startsAt} />
         </span>
       ),
     },
@@ -596,9 +619,7 @@ function EventsList() {
       render: (r) => (
         <span className="admin-event-location">
           <Icon name="mapPin" size={13} />
-          <span>
-            {r.city}, {r.country}
-          </span>
+          <span>{r.location}</span>
         </span>
       ),
     },
@@ -628,12 +649,6 @@ function EventsList() {
               Public
             </span>
           );
-        if (r.status === "private")
-          return (
-            <span className="admin-status-badge admin-status-badge--private">
-              <Icon name="lock" size={12} /> Private
-            </span>
-          );
         return (
           <span className="admin-status-badge admin-status-badge--draft">
             <Icon name="edit" size={12} /> Draft
@@ -654,8 +669,7 @@ function EventsList() {
       width: "12%",
       render: (r) => (
         <span className="admin-event-meta">
-          <span className="admin-table__title">{formatDate(r.createdAt)}</span>
-          <span className="admin-table__sub">{r.updatedBy}</span>
+          <span className="admin-table__title">{formatInZone(r.modifiedAt, "UTC")} UTC</span>
         </span>
       ),
     },
@@ -666,14 +680,16 @@ function EventsList() {
       width: "12%",
       render: (r) => (
         <div className="admin-table__actions">
-          <Button
-            variant="ghost"
-            size="icon"
-            icon="edit"
-            aria-label="Edit"
-            onClick={() => toForm("edit", r)}
-            title="Edit"
-          />
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              icon="edit"
+              aria-label="Edit"
+              onClick={() => toForm("edit", r)}
+              title="Edit"
+            />
+          ) : null}
           <div className="admin-row-menu">
             {menuFor === r.id ? (
               <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
@@ -688,30 +704,33 @@ function EventsList() {
             />
             {menuFor === r.id ? (
               <div className="admin-row-menu__panel" role="menu">
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => setStatusForId(r.id, "published", "published")}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </button>
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => setStatusForId(r.id, "private", "made private")}
-                >
-                  <Icon name="lock" size={14} /> Make Private
-                </button>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="admin-row-menu__item"
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => setPublishedFor([r.id], r.status === "draft")}
+                  >
+                    {r.status === "draft" ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
+                        <img
+                          src="/globe.png"
+                          alt=""
+                          width={14}
+                          height={14}
+                          className="admin-status-badge__img"
+                        />{" "}
+                        Publish
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="lock" size={14} /> Unpublish
+                      </>
+                    )}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="admin-row-menu__item"
@@ -720,16 +739,20 @@ function EventsList() {
                 >
                   <Icon name="copy" size={14} /> Copy Link
                 </button>
-                {/* Divider above the destructive action, separating Delete from the rest. */}
-                <div className="admin-row-menu__divider" role="separator" />
-                <button
-                  type="button"
-                  className="admin-row-menu__item admin-row-menu__item--danger"
-                  role="menuitem"
-                  onClick={() => deleteEvent(r)}
-                >
-                  <Icon name="trash" size={14} /> Delete Event
-                </button>
+                {canEdit ? (
+                  <>
+                    {/* Divider above the destructive action, separating Delete from the rest. */}
+                    <div className="admin-row-menu__divider" role="separator" />
+                    <button
+                      type="button"
+                      className="admin-row-menu__item admin-row-menu__item--danger"
+                      role="menuitem"
+                      onClick={() => deleteEvent(r)}
+                    >
+                      <Icon name="trash" size={14} /> Delete Event
+                    </button>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -795,7 +818,9 @@ function EventsList() {
                 placeholder="Event title"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+                {...errorProps("title")}
               />
+              {errorFor("title")}
             </div>
 
             {/* Event Type */}
@@ -807,11 +832,11 @@ function EventsList() {
                 id="event-type"
                 className="admin-select"
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}
               >
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {label(EVENT_TYPE_LABELS, t)}
                   </option>
                 ))}
               </select>
@@ -826,18 +851,11 @@ function EventsList() {
                 id="event-date"
                 className="admin-input admin-input--datetime"
                 type="datetime-local"
-                value={
-                  form.date
-                    ? form.time
-                      ? `${form.date}T${form.time.slice(0, 5)}`
-                      : `${form.date}T00:00`
-                    : ""
-                }
-                onChange={(e) => {
-                  const [date = "", time = ""] = e.target.value.split("T");
-                  setForm({ ...form, date, time });
-                }}
+                value={form.start}
+                onChange={(e) => setForm({ ...form, start: e.target.value })}
+                {...errorProps("startsAt")}
               />
+              {errorFor("startsAt")}
             </div>
 
             <div className="admin-field">
@@ -848,14 +866,33 @@ function EventsList() {
                 id="event-deadline"
                 className="admin-input"
                 type="datetime-local"
-                value={
-                  form.deadline
-                    ? form.deadline.includes("T")
-                      ? form.deadline.slice(0, 16)
-                      : `${form.deadline}T00:00`
-                    : ""
-                }
+                value={form.deadline}
                 onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+                {...errorProps("registrationClosesAt")}
+              />
+              {errorFor("registrationClosesAt")}
+            </div>
+
+            {/* Time zone of the event: both times above are on this clock. */}
+            <div className="admin-field admin-form-grid__full">
+              <label className="admin-field__label" htmlFor="event-timezone">
+                Time Zone *
+              </label>
+              <input
+                id="event-timezone"
+                className="admin-input"
+                type="text"
+                placeholder="Asia/Tokyo"
+                value={form.timezone}
+                onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                {...errorProps("timezone")}
+              />
+              <FieldError
+                id="event-timezone-error"
+                message={
+                  fieldErrors["timezone"] ??
+                  "Where the event happens (IANA name). The date, time and deadline are on this clock."
+                }
               />
             </div>
 
@@ -871,12 +908,14 @@ function EventsList() {
                 placeholder="Event location"
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
+                {...errorProps("location")}
               />
+              {errorFor("location")}
             </div>
 
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="event-url">
-                URL *
+                URL
               </label>
               <div className="admin-field__row">
                 <div className="admin-url-slug">
@@ -888,12 +927,14 @@ function EventsList() {
                     className="admin-url-slug__slug"
                     type="text"
                     aria-label="Event URL slug"
-                    placeholder="event-name"
+                    placeholder="random when empty"
                     value={form.url}
                     onChange={(e) => setForm({ ...form, url: e.target.value })}
+                    {...errorProps("slug")}
                   />
                 </div>
               </div>
+              {errorFor("slug")}
             </div>
 
             {/* Description */}
@@ -908,7 +949,9 @@ function EventsList() {
                 placeholder="Event description..."
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
+                {...errorProps("description")}
               />
+              {errorFor("description")}
             </div>
 
             {/* Registration Link */}
@@ -923,7 +966,9 @@ function EventsList() {
                 placeholder="https://example.com/register"
                 value={form.registrationLink}
                 onChange={(e) => setForm({ ...form, registrationLink: e.target.value })}
+                {...errorProps("registrationUrl")}
               />
+              {errorFor("registrationUrl")}
             </div>
 
             {/* Banner */}
@@ -936,14 +981,16 @@ function EventsList() {
                 onDrop={(e) => {
                   e.preventDefault();
                   const file = e.dataTransfer.files?.[0];
-                  if (file) onBannerFile(file);
+                  if (file) void onBannerFile(file);
                 }}
               >
-                {form.banner ? (
+                {bannerUpload.busy ? (
+                  <span className="admin-dropzone__title">Uploading…</span>
+                ) : form.banner ? (
                   <>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- data-URL upload, not optimizable */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
                     <img
-                      src={form.banner}
+                      src={form.banner.thumbUrl}
                       alt="Uploaded banner"
                       className="admin-dropzone__image"
                     />
@@ -979,9 +1026,13 @@ function EventsList() {
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) onBannerFile(file);
+                  if (file) void onBannerFile(file);
                   e.target.value = "";
                 }}
+              />
+              <FieldError
+                id="event-bannerImage-error"
+                message={bannerUpload.error ?? fieldErrors["bannerImage"]}
               />
             </div>
           </div>
@@ -1000,9 +1051,11 @@ function EventsList() {
               return (
                 <div className="admin-guest">
                   <PhotoDrop
-                    value={g.photo}
+                    value={g.photo?.thumbUrl ?? null}
                     label="Guest photo"
-                    onPick={(photo) => updateGuest(i, { photo })}
+                    onFile={(file) =>
+                      void uploadPhoto(file).then((photo) => photo && updateGuest(i, { photo }))
+                    }
                     onClear={() => updateGuest(i, { photo: null })}
                   />
                   <div className="admin-field">
@@ -1102,14 +1155,16 @@ function EventsList() {
               return (
                 <div className="admin-sponsor">
                   <PhotoDrop
-                    value={s.photo}
+                    value={s.photo?.thumbUrl ?? null}
                     label="Sponsor logo"
-                    onPick={(photo) => updateSponsor(i, { photo })}
+                    onFile={(file) =>
+                      void uploadPhoto(file).then((photo) => photo && updateSponsor(i, { photo }))
+                    }
                     onClear={() => updateSponsor(i, { photo: null })}
                   />
                   <div className="admin-field">
                     <label className="admin-field__label" htmlFor={`sponsor-tip-${i}`}>
-                      Tool / tip *
+                      Caption *
                     </label>
                     <input
                       id={`sponsor-tip-${i}`}
@@ -1127,15 +1182,30 @@ function EventsList() {
 
           {/* footer actions — spans the full grid (the line above reaches the
                 card edges) and pushes Save draft/Publish to the far right. */}
+          <FieldError id="event-photo-error" message={photoUpload.error} />
+          {["schedule", "speakers", "sponsors"].map((field) => (
+            <FieldError key={field} id={`event-${field}-error`} message={fieldErrors[field]} />
+          ))}
           <div className="admin-form-actions admin-form-grid__full">
             <Button variant="outline" size="sm" icon="chevronLeft" onClick={() => setView("list")}>
               Back
             </Button>
             <div className="admin-form-actions__right">
-              <Button variant="outline" size="sm" icon="cloud" onClick={saveDraft}>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="cloud"
+                disabled={busy || bannerUpload.busy || photoUpload.busy}
+                onClick={() => void save(false)}
+              >
                 Save draft
               </Button>
-              <Button variant="outline" size="sm" onClick={publishEvent}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || bannerUpload.busy || photoUpload.busy}
+                onClick={() => void save(true)}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
                 <img
                   src="/globe.png"
@@ -1167,15 +1237,17 @@ function EventsList() {
         <div className="admin-page-header__actions">
           {/* "Add New Event" now reads like the table's row-action buttons
               (ghost ink) instead of a filled maroon call-to-action. */}
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="plus"
-            className="admin-btn--events-add"
-            onClick={() => toForm("create")}
-          >
-            Add New Event
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="plus"
+              className="admin-btn--events-add"
+              onClick={() => toForm("create")}
+            >
+              Add New Event
+            </Button>
+          ) : null}
           {/* Filter moved to the header, to the right of Add New Event. */}
           <Button
             variant="outline"
@@ -1241,7 +1313,7 @@ function EventsList() {
                   <option value="all">All types</option>
                   {EVENT_TYPES.map((t) => (
                     <option key={t} value={t}>
-                      {t}
+                      {label(EVENT_TYPE_LABELS, t)}
                     </option>
                   ))}
                 </select>
@@ -1259,7 +1331,6 @@ function EventsList() {
                 >
                   <option value="all">All statuses</option>
                   <option value="published">Public</option>
-                  <option value="private">Private</option>
                   <option value="draft">Draft</option>
                 </select>
               </div>
@@ -1348,9 +1419,16 @@ function EventsList() {
                       Clear filters
                     </Button>
                   ) : null}
-                  <Button variant="primary" size="sm" icon="plus" onClick={() => toForm("create")}>
-                    Add New Event
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="plus"
+                      onClick={() => toForm("create")}
+                    >
+                      Add New Event
+                    </Button>
+                  ) : null}
                 </span>
               </div>
             }
@@ -1383,23 +1461,39 @@ function EventsList() {
                 Select all {filtered.length} events
               </button>
               <div className="admin-bulkbar__actions">
-                <Button variant="primary" size="sm" onClick={publishSelected}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </Button>
-                <Button variant="primary" size="sm" icon="lock" onClick={makePrivateSelected}>
-                  Make private
-                </Button>
-                <Button variant="danger" size="sm" icon="trash" onClick={deleteSelected}>
-                  Delete
-                </Button>
+                {canEdit ? (
+                  <>
+                    <Button variant="primary" size="sm" disabled={busy} onClick={publishSelected}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
+                      <img
+                        src="/globe.png"
+                        alt=""
+                        width={14}
+                        height={14}
+                        className="admin-status-badge__img"
+                      />{" "}
+                      Publish
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="lock"
+                      disabled={busy}
+                      onClick={unpublishSelected}
+                    >
+                      Unpublish
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon="trash"
+                      disabled={busy}
+                      onClick={deleteSelected}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : (

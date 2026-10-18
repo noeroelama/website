@@ -124,7 +124,7 @@ export const NewsInputSchema = z
     author: safeText(120).pipe(z.string().min(2, "Enter the author.")),
     category: z.enum(NEWS_CATEGORIES, { error: "Choose a category." }),
     publishAt: z.coerce.date().nullable(),
-    summary: safeText(500, { multiline: true }),
+    summary: safeText(500, { multiline: true, allowEmpty: true }),
     tags: z
       .array(z.string().max(30))
       .max(10, "At most 10 tags.")

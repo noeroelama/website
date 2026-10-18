@@ -5,22 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 
 /** Small square photo uploader used in the guest/speaker, sponsor and unit
- *  member panels. Reads the picked file as a data-URL (max 5 MB); the well
+ *  member panels. With `onFile` the picked file goes to the caller (upload it with
+ *  `useImageUpload`); otherwise it is read as a data-URL (max 5 MB). The well
  *  shows the image once set, with a small clear button on the corner. */
 export function PhotoDrop({
   value,
   label,
   onPick,
+  onFile,
   onClear,
 }: {
   value: string | null;
   label: string;
-  onPick: (dataUrl: string) => void;
+  onPick?: (dataUrl: string) => void;
+  onFile?: (file: File) => void;
   onClear: () => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const handleFile = (file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
+    if (file && onFile) {
+      onFile(file);
+      return;
+    }
+    if (!file || !onPick || !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
     const reader = new FileReader();
     reader.onload = () => onPick(reader.result as string);
     reader.readAsDataURL(file);

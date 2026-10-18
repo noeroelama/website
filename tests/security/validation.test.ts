@@ -19,6 +19,13 @@ describe("input sanitization", () => {
     expect(name.safeParse(42).success).toBe(false);
   });
 
+  it("safeText allows an empty value only for optional fields (still no HTML)", () => {
+    const optional = safeText(10, { allowEmpty: true });
+    expect(optional.parse("   ")).toBe("");
+    expect(optional.safeParse("<b>").success).toBe(false);
+    expect(safeText(10).safeParse("").success).toBe(false);
+  });
+
   it("safeText keeps line breaks only when multiline", () => {
     expect(safeText(50, { multiline: true }).parse("a\nb")).toBe("a\nb");
     expect(safeText(50).parse("a\nb")).toBe("a b");
