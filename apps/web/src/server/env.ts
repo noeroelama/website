@@ -6,6 +6,7 @@ import {
   lazyEnv,
   loadEnv,
   messagingEnv,
+  newsletterEnv,
   publicUrlsEnv,
   resendEnv,
   sessionEnv,
@@ -21,6 +22,7 @@ const webEnvSchema = baseEnv
   .extend(captchaEnv.partial().shape)
   .extend(messagingEnv.shape)
   .extend(resendEnv.partial().shape)
+  .extend(newsletterEnv.partial().shape)
   .extend(publicUrlsEnv.pick({ WEB_URL: true }).shape);
 
 export const getWebEnv = lazyEnv(() => loadEnv(webEnvSchema, process.env));

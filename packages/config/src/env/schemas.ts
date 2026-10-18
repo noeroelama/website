@@ -106,6 +106,16 @@ export const zoomEnv = z.object({
   ZOOM_CLIENT_SECRET: nonEmpty,
 });
 
+/**
+ * Newsletter (web sign-up, admin campaigns). SUBSCRIBER_HASH_SECRET turns an e-mail address into
+ * the subscriber id — never rotate it. LINK_SIGNING_SECRET signs unsubscribe links. Both ≥ 32
+ * characters and different per environment.
+ */
+export const newsletterEnv = z.object({
+  SUBSCRIBER_HASH_SECRET: nonEmpty.min(32),
+  LINK_SIGNING_SECRET: nonEmpty.min(32),
+});
+
 export const calendarEnv = z.object({
   CALENDAR_FEED_SIGNING_SECRET: nonEmpty.min(32),
 });

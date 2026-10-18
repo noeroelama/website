@@ -41,6 +41,16 @@ test("old /articles links go to /news; unknown articles show the 404 page", asyn
   }
 });
 
+test("newsletter: the field is on Home; links do nothing until a button is pressed", async ({
+  request,
+}) => {
+  expect(await (await request.get("/")).text()).toContain('type="email"');
+  const confirm = await (await request.get("/newsletter/confirm")).text();
+  expect(confirm).toContain("Tautan ini tidak berlaku.");
+  const unsubscribe = await (await request.get("/newsletter/unsubscribe?t=abc")).text();
+  expect(unsubscribe).toContain("Berhenti berlangganan");
+});
+
 test("sign-in, sign-up and password-reset pages are available", async ({ request }) => {
   for (const [path, text] of [
     ["/login", "Sign in"],

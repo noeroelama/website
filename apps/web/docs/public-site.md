@@ -32,6 +32,10 @@ member's own registrations.
 photos** (external album, new tab, `rel="noopener noreferrer"`). Rules:
 `packages/domain/docs/gallery.md`.
 
+**Newsletter**: the field on Home and in the footer subscribes with double opt-in; the
+confirm and unsubscribe pages act only when their button is pressed. Rules:
+`packages/domain/docs/newsletter.md`.
+
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one
 marker per chapter; selecting it shows the chapter card) and lists them below; About lists the
 same chapters with their count. Rules: `packages/domain/docs/organization.md`.

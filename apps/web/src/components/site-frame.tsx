@@ -1,6 +1,7 @@
 import type { Dictionary, Language } from "@/i18n/dictionaries";
 import { LEGAL_VERSION } from "@/i18n/dictionaries";
 import { LanguageSwitch } from "./language-switch";
+import { NewsletterField } from "./newsletter-field";
 
 /** Header navigation of every public page (no personal data: it is in the prerendered shell). */
 export function SiteHeader({ t, language }: { t: Dictionary; language: Language }) {
@@ -44,6 +45,7 @@ export function SiteHeader({ t, language }: { t: Dictionary; language: Language 
 export function SiteFooter({ t }: { t: Dictionary }) {
   return (
     <footer className="site-footer">
+      <NewsletterField t={t.newsletter} />
       <span>{t.footer.rights}</span>
       <nav className="site-footer__links">
         <a href="/terms">{t.footer.terms}</a>

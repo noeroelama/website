@@ -30,6 +30,7 @@ export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";
 export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
+export { createFirestoreSubscriberStore, type FirestoreSubscriberStore } from "./subscribers";
 export {
   chapterSnapshot,
   createFirestoreChapterReader,

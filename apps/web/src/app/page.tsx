@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { NewsCards } from "@/components/news-cards";
+import { NewsletterField } from "@/components/newsletter-field";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { Localized } from "@/i18n/localized";
 import { publicNews } from "@/server/news";
@@ -40,6 +41,10 @@ export default function HomePage() {
             <section>
               <h2>{t.home.purposeHeading}</h2>
               <p>{t.home.purpose}</p>
+            </section>
+            <section>
+              <h2>{t.newsletter.label}</h2>
+              <NewsletterField t={t.newsletter} />
             </section>
           </>
         )}
