@@ -3,10 +3,13 @@ import type { Firestore } from "firebase-admin/firestore";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import {
   isPubliclyVisible,
+  toPublicNews,
   type ContentItem,
   type ContentKind,
   type FeaturedImage,
   type NewsCategory,
+  type PublicNews,
+  type PublicNewsDetail,
 } from "@website/domain/content";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
@@ -176,3 +179,33 @@ export function createFirestoreContentStore(db: Firestore) {
 }
 
 export type FirestoreContentStore = ReturnType<typeof createFirestoreContentStore>;
+
+/**
+ * Public news for the website (role web_ro): visible items only, as public DTOs. The list holds
+ * the newest `limit` items by publish date; the site filters and pages them (cached minutes).
+ */
+export function createFirestoreNewsReader(db: Firestore) {
+  const store = createFirestoreContentStore(db);
+  return {
+    async listVisible(now: Date, limit = 300): Promise<PublicNews[]> {
+      const snapshot = await db
+        .collection("content")
+        .where("kind", "==", "news")
+        .where("publishAt", "<=", now.toISOString())
+        .orderBy("publishAt", "desc")
+        .limit(limit)
+        .get();
+      return snapshot.docs
+        .map((doc) => toItem(doc.id, doc.data() as Record<string, unknown>))
+        .filter((item) => isPubliclyVisible(item, now))
+        .map(toPublicNews);
+    },
+
+    async findBySlug(slug: string, now: Date): Promise<PublicNewsDetail | null> {
+      const item = await store.findPublishedBySlug("news", slug, now);
+      return item && { ...toPublicNews(item), body: item.body };
+    },
+  };
+}
+
+export type FirestoreNewsReader = ReturnType<typeof createFirestoreNewsReader>;

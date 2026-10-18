@@ -32,9 +32,11 @@ export { createFirestoreWebhookEventStore } from "./webhooks";
 export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
 export {
   contentSnapshot,
+  createFirestoreNewsReader,
   createFirestoreContentStore,
   type ContentFields,
   type FirestoreContentStore,
+  type FirestoreNewsReader,
 } from "./content";
 export {
   createFirestoreAccountStore,

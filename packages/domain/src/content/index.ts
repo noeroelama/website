@@ -135,6 +135,52 @@ export const NewsInputSchema = z
   .strict();
 export type NewsInput = z.infer<typeof NewsInputSchema>;
 
+/** What visitors may see of a news item (list cards); the detail page adds the body. */
+export interface PublicNews {
+  readonly slug: string;
+  readonly title: string;
+  readonly author: string;
+  readonly category: NewsCategory;
+  readonly summary: string;
+  readonly tags: readonly string[];
+  /** When it went public (for published items saved without a date: the last change). */
+  readonly publishAt: Date;
+  readonly featuredImage: FeaturedImage | null;
+}
+export interface PublicNewsDetail extends PublicNews {
+  /** Stored sanitised HTML; sanitise again when rendering. */
+  readonly body: string;
+}
+
+export function toPublicNews(item: ContentItem): PublicNews {
+  return {
+    slug: item.slug,
+    title: item.title,
+    author: item.author,
+    category: item.category,
+    summary: item.summary,
+    tags: item.tags,
+    publishAt: item.publishAt ?? item.updatedAt,
+    featuredImage: item.featuredImage,
+  };
+}
+
+/** Related articles: up to `limit` others with the same category or a shared tag, newest first. */
+export function relatedNews(
+  current: PublicNews,
+  all: readonly PublicNews[],
+  limit = 3,
+): PublicNews[] {
+  return all
+    .filter(
+      (n) =>
+        n.slug !== current.slug &&
+        (n.category === current.category || n.tags.some((tag) => current.tags.includes(tag))),
+    )
+    .sort((a, b) => b.publishAt.getTime() - a.publishAt.getTime())
+    .slice(0, limit);
+}
+
 /** Repository port — implemented in @website/db. */
 export interface ContentReader {
   findPublishedBySlug(kind: ContentKind, slug: string, now: Date): Promise<ContentItem | null>;

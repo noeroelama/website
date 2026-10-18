@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreContentStore } from "@website/db/firestore";
+import { createFirestoreContentStore, createFirestoreNewsReader } from "@website/db/firestore";
 import { isPubliclyVisible } from "@website/domain/content";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { REVERTIBLE_COLLECTIONS } from "../../apps/admin/src/server/audit-log";
@@ -272,5 +272,29 @@ describe("content store reads", () => {
         intent: "draft",
       }),
     ).toMatchObject({ error: "refused", issues: ["This item does not exist."] });
+  });
+});
+
+describe("public news reader (web)", () => {
+  it("lists only visible news, newest first, and finds the detail by slug", async () => {
+    const reader = createFirestoreNewsReader(fake.db as unknown as Db);
+    const save = (slug: string, intent: "draft" | "publish", publishAt: string | null) =>
+      actions().save(...as(publisher))({ ...article, slug, publishAt, version: null, intent });
+    await save("draft", "draft", "2026-10-01T00:00:00.000Z");
+    await save("future", "publish", "2026-10-30T00:00:00.000Z");
+    await save("older", "publish", "2026-10-02T00:00:00.000Z");
+    await save("newer", "publish", null);
+    const gone = await save("deleted", "publish", "2026-10-03T00:00:00.000Z");
+    await actions().remove(...as(publisher))({ id: gone.ok ? gone.data.id : "", version: 1 });
+
+    const list = await reader.listVisible(now);
+    expect(list.map((n) => n.slug)).toEqual(["newer", "older"]);
+    expect(list[0]).not.toHaveProperty("body");
+    expect(await reader.findBySlug("draft", now)).toBeNull();
+    expect(await reader.findBySlug("future", now)).toBeNull();
+    expect(await reader.findBySlug("newer", now)).toMatchObject({
+      slug: "newer",
+      body: '<p>Isi <a rel="noopener noreferrer">x</a></p>',
+    });
   });
 });

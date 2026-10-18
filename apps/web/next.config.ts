@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   ],
   serverExternalPackages: ["firebase-admin"],
   ...standalone,
+  // The news list moved from /articles to /news (step 2.3); keep old links working.
+  async redirects() {
+    return [{ source: "/articles", destination: "/news", permanent: true }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

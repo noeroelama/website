@@ -17,7 +17,7 @@ export const identity = lazyEnv(() => {
   });
 });
 
-const logger = lazyEnv(() => createLogger({ service: "web", level: getWebEnv().LOG_LEVEL }));
+export const logger = lazyEnv(() => createLogger({ service: "web", level: getWebEnv().LOG_LEVEL }));
 
 /** Sign-in records (`users/{uid}`): web only ever writes the signed-in user's own record. */
 const users = lazyEnv(() => {

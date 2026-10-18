@@ -6,7 +6,7 @@ import { LanguageSwitch } from "./language-switch";
 export function SiteHeader({ t, language }: { t: Dictionary; language: Language }) {
   const links = [
     ["/", t.nav.home],
-    ["/articles", t.nav.news],
+    ["/news", t.nav.news],
     ["/events", t.nav.events],
     ["/gallery", t.nav.gallery],
     ["/map", t.nav.map],

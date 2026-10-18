@@ -5,7 +5,10 @@ import {
   NewsInputSchema,
   normalizeTags,
   publishState,
+  relatedNews,
   slugify,
+  toPublicNews,
+  type PublicNews,
 } from "@website/domain/content";
 
 const now = new Date("2026-10-18T05:00:00Z");
@@ -104,5 +107,65 @@ describe("news form validation (strict)", () => {
         },
       }),
     ).toContain("featuredImage");
+  });
+});
+
+describe("public news (DTO and related articles)", () => {
+  const base: PublicNews = {
+    slug: "a",
+    title: "A",
+    author: "Media",
+    category: "academic",
+    summary: "",
+    tags: ["riset"],
+    publishAt: now,
+    featuredImage: null,
+  };
+  const at = (slug: string, day: number, extra: Partial<PublicNews> = {}): PublicNews => ({
+    ...base,
+    slug,
+    publishAt: new Date(Date.UTC(2026, 9, day)),
+    ...extra,
+  });
+
+  it("keeps only public fields (no id, version, status, chapter or body)", () => {
+    const dto = toPublicNews({
+      id: "n1",
+      version: 3,
+      kind: "news",
+      slug: "a",
+      title: "A",
+      body: "<p>x</p>",
+      status: "published",
+      publishAt: null,
+      chapterId: "jp",
+      author: "Media",
+      category: "academic",
+      summary: "",
+      tags: ["riset"],
+      featuredImage: null,
+      createdAt: earlier,
+      updatedAt: now,
+      deletedAt: null,
+    });
+    expect(Object.keys(dto).sort()).toEqual(Object.keys(base).sort());
+    expect(dto.publishAt).toEqual(now);
+  });
+
+  it("related: up to 3 others with the same category OR a shared tag, newest first", () => {
+    const current = at("current", 10);
+    const all = [
+      at("old-same-category", 1),
+      at("shared-tag", 5, { category: "general" }),
+      at("unrelated", 9, { category: "general", tags: ["olahraga"] }),
+      current,
+      at("newest-same-category", 12, { tags: [] }),
+      at("same-category", 3, { tags: [] }),
+    ];
+    expect(relatedNews(current, all).map((n) => n.slug)).toEqual([
+      "newest-same-category",
+      "shared-tag",
+      "same-category",
+    ]);
   });
 });

@@ -23,24 +23,24 @@ and link to it from the others.
 
 ## Feature docs index
 
-| Feature                                                          | Doc                                                                                         |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Public site (frame, language ID/EN, Home, About, Terms, Privacy) | [apps/web/docs/public-site.md](../apps/web/docs/public-site.md)                             |
-| News CMS (Article page, publish/schedule, rich text, preview)    | [packages/domain/docs/content.md](../packages/domain/docs/content.md)                       |
-| Member profiles                                                  | [packages/domain/docs/members.md](../packages/domain/docs/members.md)                       |
-| Image uploads (5 MB, WebP, thumbnail, Firebase Storage)          | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
-| Database                                                         | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
-| Authentication (Google, email/password, passkeys, reset)         | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |
-| Authorization                                                    | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |
-| Request security                                                 | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
-| Audit logging                                                    | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
-| Messaging (message log, e-mail, Messages page)                   | [apps/admin/docs/messaging.md](../apps/admin/docs/messaging.md)                             |
-| Cron jobs (cPanel) and incoming webhooks                         | [apps/admin/docs/cron.md](../apps/admin/docs/cron.md)                                       |
-| Admin side panel                                                 | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
-| Admin page pattern (list, add/edit form, confirm, labels)        | [apps/admin/docs/admin-shell.md](../apps/admin/docs/admin-shell.md)                         |
-| Users and Roles pages (staff second sign-in method)              | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
-| Design tokens (colours, Poppins type scale, spacing)             | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
-| Error pages (401, 403, 404, 500)                                 | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
+| Feature                                                                | Doc                                                                                         |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Public site (frame, language ID/EN, Home, News, About, Terms, Privacy) | [apps/web/docs/public-site.md](../apps/web/docs/public-site.md)                             |
+| News CMS (Article page, publish/schedule, rich text, preview)          | [packages/domain/docs/content.md](../packages/domain/docs/content.md)                       |
+| Member profiles                                                        | [packages/domain/docs/members.md](../packages/domain/docs/members.md)                       |
+| Image uploads (5 MB, WebP, thumbnail, Firebase Storage)                | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
+| Database                                                               | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
+| Authentication (Google, email/password, passkeys, reset)               | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |
+| Authorization                                                          | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |
+| Request security                                                       | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
+| Audit logging                                                          | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
+| Messaging (message log, e-mail, Messages page)                         | [apps/admin/docs/messaging.md](../apps/admin/docs/messaging.md)                             |
+| Cron jobs (cPanel) and incoming webhooks                               | [apps/admin/docs/cron.md](../apps/admin/docs/cron.md)                                       |
+| Admin side panel                                                       | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
+| Admin page pattern (list, add/edit form, confirm, labels)              | [apps/admin/docs/admin-shell.md](../apps/admin/docs/admin-shell.md)                         |
+| Users and Roles pages (staff second sign-in method)                    | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
+| Design tokens (colours, Poppins type scale, spacing)                   | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
+| Error pages (401, 403, 404, 500)                                       | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
 
 Add a row here when you add a feature doc.
 

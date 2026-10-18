@@ -41,9 +41,12 @@ job.
   CREATE / UPDATE / PUBLISH / UNPUBLISH / DELETE. Delete is a soft delete and can be reverted
   for 14 days on the Audit Log page; an edit that changed the URL is not revertible.
 - The admin list loads the 500 most recently changed articles and filters them in the browser.
-- The public site (separate app) refreshes cached news within minutes (`cacheLife("minutes")`).
+- Public site: `createFirestoreNewsReader` returns `PublicNews` DTOs (no id, version, status or
+  chapter); `relatedNews` picks up to 3 others with the same category or a shared tag. Pages:
+  `apps/web/docs/public-site.md`. Cached for minutes.
 
 ## Configuration
 
-Firestore index `content (kind asc, updatedAt desc)` in
+Firestore indexes `content (kind asc, updatedAt desc)` (admin list) and
+`content (kind asc, publishAt desc)` (public list) in
 `infrastructure/firebase/firestore.indexes.json`. Image uploads need `FIREBASE_STORAGE_BUCKET`.

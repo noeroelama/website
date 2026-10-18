@@ -15,7 +15,7 @@ test("public pages are available without signing in", async ({ request }) => {
   for (const [path, title] of [
     // Without a `lang` cookie the site is in Indonesian.
     ["/", "PPIDK Asia-Oseania"],
-    ["/articles", "Berita"],
+    ["/news", "Berita"],
     ["/map", "Peta"],
     ["/events", "Acara"],
     ["/gallery", "Galeri"],
@@ -27,6 +27,16 @@ test("public pages are available without signing in", async ({ request }) => {
     expect(response.status(), path).toBe(200);
     expect(await response.text(), path).toContain(`<h1 class="ui-shell-title">${title}</h1>`);
   }
+});
+
+test("old /articles links go to /news; unknown articles show the 404 page", async ({ request }) => {
+  const moved = await request.get("/articles", { maxRedirects: 0 });
+  expect(moved.status()).toBe(308);
+  expect(moved.headers()["location"]).toBe("/news");
+  // Streamed (Cache Components): soft 404 with the not-found page and noindex.
+  const html = await (await request.get("/news/Not A Slug")).text();
+  expect(html).toContain("Page not found");
+  expect(html).toContain('<meta name="robots" content="noindex"/>');
 });
 
 test("sign-in, sign-up and password-reset pages are available", async ({ request }) => {

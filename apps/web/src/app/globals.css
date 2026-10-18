@@ -81,3 +81,38 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
 }
+
+/* News cards (Home, /news, related) and list controls */
+.site-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
+.site-card__title {
+  margin: var(--space-1) 0;
+}
+
+.site-card__title a {
+  color: var(--color-text);
+}
+
+.site-filters,
+.site-pager,
+.site-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
