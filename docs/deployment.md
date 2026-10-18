@@ -207,3 +207,6 @@ file (they live in the cPanel app screens and the password manager).
       DNS + AutoSSL for the main domain, `admin.`, `shop.` and `api.` (later `verif.ppiasiania.id`).
 - [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, see
       `packages/auth/docs/authentication.md` → Account lifecycle).
+- [ ] Universities imported once the PPI chapters are active
+      (`infrastructure/scripts/import-ror-universities.mjs`, dry run first; see
+      `packages/domain/docs/members.md` → Universities). Run again when chapters are added.

@@ -58,6 +58,11 @@ export {
 } from "./chapters";
 export { createFirestoreMemberProfileStore } from "./member-profiles";
 export {
+  createFirestoreUniversityStore,
+  type FirestoreUniversityStore,
+  type UniversityDecision,
+} from "./universities";
+export {
   createFirestoreOrgUnitStore,
   orgUnitSnapshot,
   type FirestoreOrgUnitStore,

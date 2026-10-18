@@ -19,6 +19,7 @@ import {
   createFirestorePasskeyStore,
   createFirestorePeriodStore,
   createFirestoreRoleStore,
+  createFirestoreUniversityStore,
   createFirestoreSubscriberReader,
   getFirestoreForRole,
 } from "@website/db/firestore";
@@ -63,6 +64,7 @@ export const adminStores = lazyEnv(() => {
     periods: createFirestorePeriodStore(db),
     orgUnits: createFirestoreOrgUnitStore(db),
     memberProfiles: createFirestoreMemberProfileStore(db),
+    universities: createFirestoreUniversityStore(db),
     campaigns: createFirestoreCampaignStore(db),
     subscribers: createFirestoreSubscriberReader(db),
     dashboardCounts: createFirestoreDashboardCounts(db),

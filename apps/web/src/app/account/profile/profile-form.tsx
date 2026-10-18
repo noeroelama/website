@@ -10,6 +10,7 @@ import {
 } from "@website/domain/members";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { saveProfileAction } from "./actions";
+import { CampusPicker } from "./campus-picker";
 
 /** The stored answers (everything but the consent, which is given again on every save). */
 export type ProfileFormValues = Omit<MemberProfileInput, "consent">;
@@ -26,6 +27,7 @@ function toInput(f: Flat): Record<string, unknown> {
     dateOfBirth: f["dateOfBirth"],
     ppiCountry: f["ppiCountry"],
     university: f["university"],
+    universityId: f["universityId"] || null,
     educationLevel: f["educationLevel"],
     majors: [f["major1"], f["major2"], f["major3"]].filter((m) => m?.trim()),
     yearOfEntry: Number(f["yearOfEntry"]),
@@ -63,6 +65,7 @@ function fromValues(v: ProfileFormValues | null): Flat {
     dateOfBirth: v?.dateOfBirth ?? "",
     ppiCountry: v?.ppiCountry ?? "",
     university: v?.university ?? "",
+    universityId: v?.universityId ?? "",
     educationLevel: v?.educationLevel ?? "",
     major1: v?.majors[0] ?? "",
     major2: v?.majors[1] ?? "",
@@ -221,7 +224,6 @@ export function ProfileForm(props: {
       {section(
         t.study,
         field("ppiCountry") ??
-          field("university") ??
           field("educationLevel") ??
           field("majors") ??
           field("yearOfEntry") ??
@@ -234,7 +236,15 @@ export function ProfileForm(props: {
                 props.chapters.map((c) => [c.countryCode, c.name] as const),
               )
             : input("ppiCountry", t.ppiCountry)}
-          {input("university", t.university)}
+          <CampusPicker
+            t={t}
+            countryCode={form["ppiCountry"] ?? ""}
+            value={{ id: form["universityId"] || null, name: form["university"] ?? "" }}
+            onChange={({ id, name }) =>
+              setForm((f) => ({ ...f, universityId: id ?? "", university: name }))
+            }
+            error={fields["universityId"] ?? fields["university"]}
+          />
           {select(
             "educationLevel",
             t.educationLevel,

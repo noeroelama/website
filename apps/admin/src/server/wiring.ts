@@ -23,6 +23,7 @@ import { createNewsActions } from "./news";
 import { createOrgUnitActions } from "./org-units";
 import { createPeriodActions } from "./periods";
 import { createRoleActions } from "./roles";
+import { createUniversityActions } from "./universities";
 import { adminStores, imageStorage } from "./stores";
 
 /** Users and Roles page actions with the real stores (server actions call these). */
@@ -63,6 +64,11 @@ export const periodActions = lazyEnv(() =>
 /** Organizations → Period → Structure (org units) actions. */
 export const orgUnitActions = lazyEnv(() =>
   createOrgUnitActions({ units: adminStores().orgUnits, now: () => new Date() }),
+);
+
+/** Universities page: review of proposed campuses. */
+export const universityActions = lazyEnv(() =>
+  createUniversityActions({ universities: adminStores().universities, now: () => new Date() }),
 );
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
@@ -172,6 +178,9 @@ export const adminReads = {
   listPeriods: () => adminStores().periods.listForAdmin(),
   getPeriod: (id: string) => adminStores().periods.get(id),
   listOrgUnits: (periodId: string) => adminStores().orgUnits.listForPeriod(periodId),
+  listPendingUniversities: () => adminStores().universities.listPending(),
+  listApprovedUniversities: (countryCode: string) =>
+    adminStores().universities.listApproved(countryCode),
   listCampaigns: () => adminStores().campaigns.listForAdmin(),
   listSubscribers: () => adminStores().subscribers.listForAdmin(),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),

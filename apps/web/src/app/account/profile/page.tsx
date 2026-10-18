@@ -26,6 +26,7 @@ const toFormValues = (p: MemberProfile | null): ProfileFormValues | null =>
     dateOfBirth: p.dateOfBirth,
     ppiCountry: p.ppiCountry,
     university: p.university,
+    universityId: p.universityId ?? null,
     educationLevel: p.educationLevel,
     majors: [...p.majors],
     yearOfEntry: p.yearOfEntry,

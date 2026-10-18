@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { safeText } from "@website/security/validation";
+import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
 
 /**
@@ -96,6 +96,8 @@ export function memberProfileInputSchema(now: Date) {
       dateOfBirth: z.iso.date(), // YYYY-MM-DD
       ppiCountry: CountryCodeSchema,
       university: trimmed(200),
+      /** The campus picked from the universities master (the name is then taken from it). */
+      universityId: safeId.nullable().optional(),
       educationLevel: z.enum(EDUCATION_LEVELS),
       majors: z.array(trimmed(150)).min(1).max(3),
       yearOfEntry: z
@@ -170,6 +172,7 @@ export const PROFILE_FIELD_CLASS = {
   fullName: "basic",
   ppiCountry: "basic",
   university: "basic",
+  universityId: "basic",
   educationLevel: "basic",
   majors: "basic",
   yearOfEntry: "basic",
@@ -282,6 +285,7 @@ export function ownProfile(
   const sameConsent = current?.consent.privacyPolicyVersion === PRIVACY_POLICY_VERSION;
   return {
     ...input,
+    universityId: input.universityId ?? null,
     userId: owner.userId,
     email: owner.email,
     consent: {

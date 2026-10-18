@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreMemberProfileStore } from "@website/db/firestore";
+import {
+  createFirestoreMemberProfileStore,
+  createFirestoreUniversityStore,
+} from "@website/db/firestore";
 import {
   INDONESIA_PROVINCES,
   isProfileComplete,
@@ -31,7 +34,9 @@ const siti = { uid: "siti", email: "siti@example.org", emailVerified: true };
 
 let fake: ReturnType<typeof fakeFirestore>;
 let store: ReturnType<typeof createFirestoreMemberProfileStore>;
-const own = () => createOwnProfile({ profiles: store, now: () => now });
+const universities = () => createFirestoreUniversityStore(fake.db as unknown as Db);
+const own = () =>
+  createOwnProfile({ profiles: store, universities: universities(), now: () => now });
 
 beforeEach(() => {
   fake = fakeFirestore();
@@ -69,7 +74,11 @@ describe("member profile on the website (B3)", () => {
     expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: "ch-jp", version: 3 });
 
     // Edits keep the first consent date unless the policy changed; a move updates the chapter.
-    const later = createOwnProfile({ profiles: store, now: () => new Date("2026-11-01") });
+    const later = createOwnProfile({
+      profiles: store,
+      universities: universities(),
+      now: () => new Date("2026-11-01"),
+    });
     expect(await later.save(siti, { version: 1, profile: { ...input, ppiCountry: "KR" } })).toEqual(
       { ok: true, version: 2 },
     );

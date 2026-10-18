@@ -45,6 +45,32 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 - Tests: `tests/integration/member-profile.test.ts`, `tests/security/app-guards.test.ts`,
   `tests/integration/web-registration.test.ts`.
 
+## Universities (A3)
+
+- Master `universities/{id}` (`packages/domain/src/members/universities.ts`,
+  `packages/db/src/firestore/universities.ts`): campuses from the ROR dump (`approved`, id
+  `{rorKey}_{country}`) and campuses members propose (`pending`).
+- Import (owner, once, and again when chapters are added):
+  `infrastructure/scripts/import-ror-universities.mjs` reads the official ROR dump (CC0, from
+  Zenodo — the ROR API pages are incomplete, PPIDK §7) for the countries of the active chapters;
+  one row per country (§7b). Dry run unless `--apply`; safe to run again. It imports the domain
+  code with Node type stripping (`--import ./infrastructure/scripts/ts-register.mjs`).
+- Profile: the picker lists the approved campuses of the chosen PPI country (cached for minutes)
+  plus the member's own pending proposals, filtered in the browser on the name and aliases.
+  `memberProfiles/{uid}.universityId` points at the campus and `university` holds its name; a
+  pick must be approved (or the member's own proposal) in the PPI country. Without a pick the
+  typed name is kept (`universityId` null).
+- "My campus is not listed" proposes one. Obvious duplicates are refused in the same country:
+  the same `normalizeUniversityName` (deliberately conservative, PPIDK §6) of a listed or
+  proposed campus, or of an alias of a listed one. ALL CAPS / lower case names are tidied.
+- Review queue: admin **Universities** page (`universities.read` / `universities.edit`). Approve;
+  merge into a listed campus of the same country (the proposal is kept as `rejected` with
+  `mergedInto`, and every profile pointing at it moves to that campus); or reject with a reason
+  (profiles lose the pick and choose again). Merge suggestions share a distinctive word
+  (`mergeCandidates`). Audited (module `universities`), not revertible. At most 400 profiles per
+  decision.
+- Tests: `tests/unit/universities.test.ts`, `tests/integration/universities.test.ts`.
+
 ## Access
 
 - **The member**: reads/edits their own profile (`profile.read_own` / `profile.write_own`).

@@ -46,10 +46,10 @@ export default async function Page() {
   the layout is not the gate: each page calls `requireAdminViewer`, which redirects signed-out
   visitors to `WEB_URL/login?next=ADMIN_URL/<path>`, shows the restricted (403) page
   (`forbidden()`, `src/app/forbidden.tsx`) to signed-in accounts without any staff role, and returns
-  `"no-access"` for staff without the page's permission. A unit test checks that every menu entry has a
+  `"no-access"` for staff without the page's permission. Staff whose member profile is not
+  complete are sent to `WEB_URL/account/profile?next=ADMIN_URL/<path>` first, and their actions
+  are refused (`packages/domain/docs/members.md`). A unit test checks that every menu entry has a
   page calling `requireAdminViewer` with the same href and permission.
-- The pages Tools, Event, Gallery, Article, Newsletter, Organizations and Audit Log exist as blank
-  pages (heading only); each feature fills its page in its own phase.
 - The name comes from the sign-in provider (Google); otherwise the email is shown.
 - Profile, Account and Emails link to `/profile`, `/account` and `/emails`; those pages are built in
   later steps. Log out calls `DELETE /api/session`.

@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import type { FirestoreUniversityStore } from "@website/db/firestore";
 import {
   memberProfileInputSchema,
   ownProfile,
@@ -10,6 +11,8 @@ import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/sh
 
 export interface ProfileDeps {
   readonly profiles: MemberProfileRepository;
+  /** The picked campus is checked and its name used (A3). */
+  readonly universities: Pick<FirestoreUniversityStore, "get">;
   readonly now: () => Date;
 }
 
@@ -57,10 +60,25 @@ export function createOwnProfile(deps: ProfileDeps) {
         }
         return { ok: false, error: "invalid", fields };
       }
+      // A picked campus must be approved (or the member's own proposal) in the PPI country.
+      const { universityId } = parsed.data;
+      const campus = universityId ? await deps.universities.get(universityId) : null;
+      const usable =
+        campus !== null &&
+        campus.countryCode === parsed.data.ppiCountry &&
+        (campus.status === "approved" ||
+          (campus.status === "pending" && campus.submittedBy === owner.uid));
+      if (universityId && !usable) {
+        return {
+          ok: false,
+          error: "invalid",
+          fields: { universityId: "Choose your campus from the list of your PPI country." },
+        };
+      }
       try {
         const current = await deps.profiles.findByUserId(owner.uid);
         const profile = ownProfile(
-          parsed.data,
+          { ...parsed.data, university: campus?.name ?? parsed.data.university },
           { userId: owner.uid, email: owner.email },
           current,
           now,
