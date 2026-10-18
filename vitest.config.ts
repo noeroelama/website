@@ -38,6 +38,8 @@ export default defineConfig({
         "packages/db/src/firestore/subscribers.ts",
         "packages/db/src/firestore/campaigns.ts",
         "apps/admin/src/server/newsletter.ts",
+        "apps/admin/src/server/dashboard.ts",
+        "packages/db/src/firestore/dashboard.ts",
         "packages/domain/src/messaging/index.ts",
         "packages/db/src/firestore/messages.ts",
         "packages/db/src/firestore/webhooks.ts",

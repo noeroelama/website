@@ -31,6 +31,11 @@ export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";
 export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
 export {
+  createFirestoreDashboardCounts,
+  type DashboardCounter,
+  type FirestoreDashboardCounts,
+} from "./dashboard";
+export {
   createFirestoreSubscriberReader,
   createFirestoreSubscriberStore,
   type FirestoreSubscriberReader,

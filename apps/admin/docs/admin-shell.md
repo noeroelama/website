@@ -66,6 +66,10 @@ router.push("/things"); router.refresh();
 - `DataTable` options: `minRows` keeps the table height fixed with blank rows, `emptyState`
   replaces the empty message, `expandedRow` renders a detail row under a row (the caller owns
   the open/closed state).
+- **Dashboard** (`/`, every staff member): counters for events, albums, news articles and
+  confirmed subscribers — each only when the viewer can read that page (Firestore `count()`,
+  `src/server/dashboard.ts`, `packages/db/src/firestore/dashboard.ts`) — and the 10 newest
+  audit entries with `audit.read`. Tests: `tests/integration/dashboard.test.ts`.
 - **UI-only pages.** Organizations (Period and Structure tabs; the PPI tab is
   data-backed, `packages/domain/docs/organization.md`), Account, Emails,
   Profile and the Tools short-link list are design ports that run on `src/data/mock/*` in the

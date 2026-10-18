@@ -12,6 +12,7 @@ import { createChapterActions } from "./chapters";
 import { createMessenger } from "@website/domain/messaging";
 import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
+import { createDashboard } from "./dashboard";
 import { createEventActions } from "./events";
 import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
@@ -133,6 +134,14 @@ export const newsletterActions = lazyEnv(() =>
 );
 
 export const messageActions = lazyEnv(() => createMessageActions({ messenger: messenger() }));
+
+/** Dashboard: counters for the pages the viewer can read, newest audit entries with audit.read. */
+export const dashboard = lazyEnv(() =>
+  createDashboard({
+    counts: adminStores().dashboardCounts,
+    listAudit: (query) => adminStores().auditLog.list(query),
+  }),
+);
 
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
