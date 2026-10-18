@@ -23,6 +23,7 @@ export const ADMIN_UPLOAD_PRESETS = {
   banner: "events.edit",
   speaker: "events.edit",
   thumbnail: "articles.edit",
+  newsletter: "newsletter.edit",
   gallery: "gallery.edit",
   logo: "organizations.edit",
   ktm: "members.edit",

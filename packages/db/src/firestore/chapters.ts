@@ -58,8 +58,7 @@ export function chapterSnapshot(c: ChapterFields): Snapshot {
 const chapters = (db: Firestore) =>
   createSluggedStore<Chapter>(db, {
     collection: "chapters",
-    slugCollection: "chapterSlugs",
-    slugKey: (c) => c.slug,
+    slug: { collection: "chapterSlugs", key: (c) => c.slug },
     fromDoc: toChapter,
     snapshot: chapterSnapshot,
     fixed: () => ({}),

@@ -9,7 +9,7 @@
   | ------------- | ------------------------------------------ |
   | `registrants` | `export`                                   |
   | `articles`    | `publish`                                  |
-  | `newsletter`  | `send`                                     |
+  | `newsletter`  | `send`, `export`                           |
   | `members`     | `pii` (personal data), `export`, `approve` |
   | `audit`       | `revert`                                   |
   | `shop_orders` | `refund`                                   |

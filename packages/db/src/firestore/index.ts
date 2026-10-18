@@ -30,7 +30,19 @@ export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";
 export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
-export { createFirestoreSubscriberStore, type FirestoreSubscriberStore } from "./subscribers";
+export {
+  createFirestoreSubscriberReader,
+  createFirestoreSubscriberStore,
+  type FirestoreSubscriberReader,
+  type FirestoreSubscriberStore,
+  type SubscriberRow,
+} from "./subscribers";
+export {
+  campaignSnapshot,
+  createFirestoreCampaignStore,
+  type CampaignFields,
+  type FirestoreCampaignStore,
+} from "./campaigns";
 export {
   chapterSnapshot,
   createFirestoreChapterReader,

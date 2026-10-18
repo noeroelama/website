@@ -81,8 +81,7 @@ export function eventSnapshot(e: EventFields): Snapshot {
 export function createFirestoreEventStore(db: Firestore) {
   const store = createSluggedStore<EventEntity>(db, {
     collection: "events",
-    slugCollection: "eventSlugs",
-    slugKey: (e) => e.slug,
+    slug: { collection: "eventSlugs", key: (e) => e.slug },
     fromDoc: toEvent,
     snapshot: eventSnapshot,
     fixed: (e) => ({ chapterId: e.chapterId }),

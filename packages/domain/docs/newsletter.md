@@ -1,4 +1,4 @@
-# Newsletter sign-up (double opt-in)
+# Newsletter: sign-up (double opt-in) and campaigns
 
 ## What it does
 
@@ -35,7 +35,33 @@ a confirmation e-mail; the subscription is active only after they open the link 
   so mail scanners that open links cannot confirm or unsubscribe for someone.
 - Unsubscribe links are signed with `LINK_SIGNING_SECRET` (no expiry); a changed link is refused.
 
+## Campaigns and the subscriber list (admin Newsletter page)
+
+- Code: rules in `packages/domain/src/newsletter/index.ts` (`Campaign`, `CampaignInputSchema`,
+  `sendState`, `canChangeCampaign`, `isDue`, `maskEmail`, `unsubscribeLinkData`); store
+  `packages/db/src/firestore/campaigns.ts` (`campaigns/{id}`), subscriber reader in
+  `subscribers.ts`; actions and the cron job in `apps/admin/src/server/newsletter.ts`; page
+  `apps/admin/src/components/newsletter-page.tsx`. Tests: `tests/integration/newsletter-campaigns.test.ts`.
+- Composer (`newsletter.edit`): subject + rich text (same editor and sanitiser as news; inline
+  images use the upload preset `newsletter`). Drafts and scheduled campaigns can be edited and
+  deleted (soft delete); a sending or sent one cannot.
+- Send (`newsletter.send`): now (status `sending`) or at a chosen time (status `scheduled`);
+  audited `SEND`, not revertible. **Send Test** mails the saved campaign to the signed-in staff
+  member's own address only.
+- Delivery: cron job `newsletter-send` (`apps/admin/docs/cron.md`) takes the next 100 confirmed
+  subscribers (stable id order, `cursor` on the campaign) of the oldest due campaign. Every e-mail
+  has the key `newsletter:{campaignId}:{subscriberId}` and its own signed unsubscribe link, so a
+  run that crashed half-way repeats its batch and the message log refuses the duplicates.
+  Only confirmed subscribers are ever mailed.
+- Subscriber list (`newsletter.read`): addresses are masked (`s***@example.org`) unless the
+  viewer has `newsletter.edit`. **Export CSV** needs `newsletter.export` and is logged as the
+  security event `data.export`. There is no manual add or import: everyone joins through double
+  opt-in.
+- Open and click rates are not collected.
+
 ## Configuration
 
 `SUBSCRIBER_HASH_SECRET` (never rotate) and `LINK_SIGNING_SECRET`, ≥ 32 characters each, plus the
-captcha and e-mail settings in `apps/web/.env.example`.
+captcha and e-mail settings in `apps/web/.env.example`. Admin needs the same
+`LINK_SIGNING_SECRET` and `WEB_URL` for unsubscribe links. Firestore index
+`subscribers (status, subscriberId)`.

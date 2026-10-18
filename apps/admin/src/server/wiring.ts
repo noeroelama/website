@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
 import type { AuditListQuery } from "@website/db/firestore";
+import { unsubscribeLinkData } from "@website/domain/newsletter";
 import { logSecurityEvent } from "@website/observability";
+import { signLink } from "@website/security";
 import { createAccountActions } from "./accounts";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createChapterActions } from "./chapters";
@@ -12,9 +14,10 @@ import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { createEventActions } from "./events";
 import { createGalleryActions } from "./gallery";
-import { getAdminEnv } from "./env";
+import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
 import { createMessageActions } from "./messaging";
+import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
 import { createRoleActions } from "./roles";
 import { adminStores, imageStorage } from "./stores";
@@ -74,7 +77,7 @@ export const auditLogActions = lazyEnv(() =>
 export const cronRoute = lazyEnv(() =>
   createCronRoute({
     secret: getAdminEnv().CRON_SECRET,
-    jobs: CRON_JOBS,
+    jobs: { ...CRON_JOBS, "newsletter-send": () => newsletterActions().runBatch() },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
         ? adminStores().logger.error(String(message), fields)
@@ -102,6 +105,33 @@ export const messenger = lazyEnv(() => {
     now: () => new Date(),
   });
 });
+/**
+ * Newsletter page actions and the "newsletter-send" cron job. Unsubscribe links need
+ * LINK_SIGNING_SECRET (the same value as apps/web) and WEB_URL.
+ */
+export const newsletterActions = lazyEnv(() =>
+  createNewsletterActions({
+    campaigns: adminStores().campaigns,
+    subscribers: adminStores().subscribers,
+    send: (message, key) => messenger().send(message, key),
+    unsubscribeUrl: (subscriberId) => {
+      const secret = getAdminEnv().LINK_SIGNING_SECRET;
+      const web = getAppUrls().WEB_URL;
+      if (!secret || !web) throw new Error("LINK_SIGNING_SECRET and WEB_URL are required.");
+      return `${web}/newsletter/unsubscribe?t=${signLink(unsubscribeLinkData(subscriberId), secret)}`;
+    },
+    staffEmail: async (uid) => (await adminStores().accounts.get(uid))?.email ?? null,
+    logExport: (actorId, rows) =>
+      logSecurityEvent(adminStores().logger, {
+        type: "data.export",
+        actorId,
+        details: { dataset: "newsletter_subscribers", rows },
+      }),
+    now: () => new Date(),
+    batchSize: 100,
+  }),
+);
+
 export const messageActions = lazyEnv(() => createMessageActions({ messenger: messenger() }));
 
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
@@ -118,6 +148,8 @@ export const adminReads = {
   listEvents: () => adminStores().events.listForAdmin(),
   listAlbums: () => adminStores().galleries.listForAdmin(),
   listChapters: () => adminStores().chapters.listForAdmin(),
+  listCampaigns: () => adminStores().campaigns.listForAdmin(),
+  listSubscribers: () => adminStores().subscribers.listForAdmin(),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {
     const { authAdmin, passkeys } = adminStores();

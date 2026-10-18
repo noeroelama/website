@@ -7,6 +7,7 @@ import {
   createFirestoreAccountStore,
   createFirestoreAuditStore,
   createFirestoreAuditWriter,
+  createFirestoreCampaignStore,
   createFirestoreChapterStore,
   createFirestoreContentStore,
   createFirestoreEventStore,
@@ -14,6 +15,7 @@ import {
   createFirestoreMessageLog,
   createFirestorePasskeyStore,
   createFirestoreRoleStore,
+  createFirestoreSubscriberReader,
   getFirestoreForRole,
 } from "@website/db/firestore";
 import { createLogger } from "@website/observability";
@@ -54,6 +56,8 @@ export const adminStores = lazyEnv(() => {
     events: createFirestoreEventStore(db),
     galleries: createFirestoreGalleryStore(db),
     chapters: createFirestoreChapterStore(db),
+    campaigns: createFirestoreCampaignStore(db),
+    subscribers: createFirestoreSubscriberReader(db),
     authAdmin: createFirebaseAccountAdmin({
       appEnv: env.APP_ENV,
       projectId: env.FIREBASE_PROJECT_ID,

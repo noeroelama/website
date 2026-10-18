@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeRichText } from "@website/security/html";
+import { htmlToText, sanitizeRichText } from "@website/security/html";
 
 describe("rich text sanitiser (news body, campaigns): allowlist on write AND render", () => {
   it("keeps headings, paragraphs, emphasis, lists, links and https images", () => {
@@ -58,5 +58,15 @@ describe("rich text sanitiser (news body, campaigns): allowlist on write AND ren
   it("is stable: sanitising clean output again changes nothing", () => {
     const once = sanitizeRichText('<p><a href="https://a.example">a</a> <b>b</b></p>');
     expect(sanitizeRichText(once)).toBe(once);
+  });
+});
+
+describe("plain-text part of an e-mail", () => {
+  it("drops every tag and keeps the words", () => {
+    expect(
+      htmlToText(
+        '<h2>Halo</h2><p>Isi <a href="https://a.example">tautan</a></p><script>x()</script>',
+      ),
+    ).toBe("HaloIsi tautan");
   });
 });

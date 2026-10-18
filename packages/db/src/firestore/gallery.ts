@@ -39,8 +39,7 @@ export function albumSnapshot(a: AlbumFields): Snapshot {
 const galleries = (db: Firestore) =>
   createSluggedStore<Album>(db, {
     collection: "galleries",
-    slugCollection: "gallerySlugs",
-    slugKey: (a) => a.slug,
+    slug: { collection: "gallerySlugs", key: (a) => a.slug },
     fromDoc: toAlbum,
     snapshot: albumSnapshot,
     fixed: () => ({}),

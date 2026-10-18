@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Firestore } from "firebase-admin/firestore";
+import type { CollectionReference, Firestore } from "firebase-admin/firestore";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import {
   ConcurrencyConflictError,
@@ -18,12 +18,17 @@ export const toDate = (value: unknown): Date | null => {
 
 type Meta = "id" | "version" | "createdAt" | "updatedAt";
 
-export interface SluggedConfig<T extends EntityMeta & { slug: string }> {
+export interface SluggedConfig<T extends EntityMeta> {
   /** Main collection, e.g. "content" or "events". */
   readonly collection: string;
-  /** Index collection: `<slugCollection>/{slugKey}` → { id }, keeps URLs unique. */
-  readonly slugCollection: string;
-  readonly slugKey: (item: Omit<T, Meta>) => string;
+  /**
+   * Unique URL: index `<collection>/{key}` → { id } and the key of an item. Null for documents
+   * without a public URL (newsletter campaigns).
+   */
+  readonly slug: {
+    readonly collection: string;
+    readonly key: (item: Omit<T, Meta>) => string;
+  } | null;
   readonly fromDoc: (id: string, data: Record<string, unknown>) => T;
   /** Stored fields; the helper adds version and timestamps. Revert writes `snapshot` back. */
   readonly snapshot: (item: Omit<T, Meta>) => Snapshot;
@@ -32,18 +37,17 @@ export interface SluggedConfig<T extends EntityMeta & { slug: string }> {
 }
 
 /**
- * Documents with a unique URL slug, a version and soft delete (content, events). `write` is ONE
- * transaction: read (version check, trash refused) → `build` (throw to refuse) → slug reserved →
- * document + audit entry written. The audit `after` is null for a delete.
+ * Versioned documents with soft delete and, usually, a unique URL slug (content, events, albums,
+ * chapters, campaigns). `write` is ONE transaction: read (version check, trash refused) → `build`
+ * (throw to refuse) → slug reserved → document + audit entry written. The audit `after` is null
+ * for a delete.
  */
-export function createSluggedStore<T extends EntityMeta & { slug: string }>(
-  db: Firestore,
-  config: SluggedConfig<T>,
-) {
+export function createSluggedStore<T extends EntityMeta>(db: Firestore, config: SluggedConfig<T>) {
   const docs = db.collection(config.collection);
-  const slugs = db.collection(config.slugCollection);
   const audit = createFirestoreAuditWriter(db);
-  const slugRef = (key: string) => slugs.doc(safeId.parse(key));
+  const slugs = config.slug ? db.collection(config.slug.collection) : null;
+  // Only called when config.slug is set (key !== null below).
+  const slugRef = (key: string) => (slugs as CollectionReference).doc(safeId.parse(key));
   const read = (id: string, data: unknown) => config.fromDoc(id, data as Record<string, unknown>);
 
   return {
@@ -90,9 +94,9 @@ export function createSluggedStore<T extends EntityMeta & { slug: string }>(
         }
         if (current?.deletedAt) throw new RuleViolationError("This item is in the trash.");
         const fields = build(current);
-        const key = config.slugKey(fields);
-        const oldKey = current && config.slugKey(current);
-        if (key !== oldKey) {
+        const key = config.slug ? config.slug.key(fields) : null;
+        const oldKey = current && config.slug ? config.slug.key(current) : null;
+        if (key !== null && key !== oldKey) {
           const taken = await tx.get(slugRef(key));
           if (taken.exists && taken.get("id") !== ref.id) {
             throw new RuleViolationError(
@@ -116,7 +120,7 @@ export function createSluggedStore<T extends EntityMeta & { slug: string }>(
           updatedAt: now,
           deletedAt: next.deletedAt,
         });
-        if (key !== oldKey) {
+        if (key !== null && key !== oldKey) {
           tx.set(slugRef(key), { id: ref.id });
           if (oldKey) tx.delete(slugRef(oldKey));
         }

@@ -41,6 +41,7 @@ export function createFirestoreSubscriberStore(db: Firestore) {
         if (optInDecision(current, now) === "nothing") return null;
         const optIn = (current?.optIns ?? 0) + 1;
         tx.set(ref(id), {
+          subscriberId: id,
           email,
           status: "pending",
           confirmedAt: null,
@@ -88,5 +89,43 @@ export function createFirestoreSubscriberStore(db: Firestore) {
     },
   };
 }
+
+/** A subscriber row for the admin list and the campaign sender. */
+export interface SubscriberRow {
+  readonly id: string;
+  readonly email: string;
+  readonly status: SubscriptionStatus;
+  readonly createdAt: Date;
+  readonly confirmedAt: Date | null;
+}
+
+const toRow = (data: Record<string, unknown>): SubscriberRow => ({
+  id: data["subscriberId"] as string,
+  email: data["email"] as string,
+  status: data["status"] as SubscriptionStatus,
+  createdAt: toDate(data["createdAt"]) as Date,
+  confirmedAt: toDate(data["confirmedAt"]),
+});
+
+/** Admin list and campaign delivery (role admin_rw). */
+export function createFirestoreSubscriberReader(db: Firestore) {
+  const subscribers = db.collection("subscribers");
+  return {
+    async listForAdmin(limit = 2000): Promise<SubscriberRow[]> {
+      const snapshot = await subscribers.orderBy("createdAt", "desc").limit(limit).get();
+      return snapshot.docs.map((doc) => toRow(doc.data()));
+    },
+
+    /** The next `limit` confirmed subscribers after `cursor` (stable id order, for batches). */
+    async confirmedAfter(cursor: string | null, limit: number): Promise<SubscriberRow[]> {
+      let query = subscribers.where("status", "==", "confirmed").orderBy("subscriberId");
+      if (cursor) query = query.startAfter(cursor);
+      const snapshot = await query.limit(limit).get();
+      return snapshot.docs.map((doc) => toRow(doc.data()));
+    },
+  };
+}
+
+export type FirestoreSubscriberReader = ReturnType<typeof createFirestoreSubscriberReader>;
 
 export type FirestoreSubscriberStore = ReturnType<typeof createFirestoreSubscriberStore>;

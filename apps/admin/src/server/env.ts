@@ -4,6 +4,7 @@ import {
   cronEnv,
   firebaseAdminEnv,
   messagingEnv,
+  newsletterEnv,
   lazyEnv,
   loadEnv,
   publicUrlsEnv,
@@ -18,6 +19,7 @@ const adminEnvSchema = baseEnv
   .extend(cronEnv.shape)
   .extend(messagingEnv.shape)
   .extend(resendEnv.partial().shape)
+  .extend(newsletterEnv.pick({ LINK_SIGNING_SECRET: true }).partial().shape)
   .extend(zoomEnv.partial().shape);
 
 export const getAdminEnv = lazyEnv(() => loadEnv(adminEnvSchema, process.env));

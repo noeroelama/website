@@ -51,3 +51,8 @@ const OPTIONS: sanitizeHtml.IOptions = {
 export function sanitizeRichText(html: string): string {
   return sanitizeHtml(html, OPTIONS);
 }
+
+/** Text only (no tags, no scripts): the plain-text part of an HTML e-mail. */
+export function htmlToText(html: string): string {
+  return sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).trim();
+}

@@ -29,7 +29,10 @@ export const ADMIN_PAGES = {
   registrants: { label: "Event registrants", extras: { export: "Export registrants" } },
   gallery: { label: "Gallery" },
   articles: { label: "Article", extras: { publish: "Publish" } },
-  newsletter: { label: "Newsletter", extras: { send: "Send campaigns" } },
+  newsletter: {
+    label: "Newsletter",
+    extras: { send: "Send campaigns", export: "Export subscribers" },
+  },
   organizations: { label: "Organizations" },
   members: {
     label: "Members",

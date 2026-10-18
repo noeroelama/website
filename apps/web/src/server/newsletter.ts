@@ -3,7 +3,11 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { FirestoreSubscriberStore } from "@website/db/firestore";
 import type { Message } from "@website/domain/messaging";
-import { NewsletterEmailSchema, OPTIN_TTL_MS } from "@website/domain/newsletter";
+import {
+  NewsletterEmailSchema,
+  OPTIN_TTL_MS,
+  unsubscribeLinkData,
+} from "@website/domain/newsletter";
 import { keyedHash, signLink, verifyLink } from "@website/security";
 import { safeId } from "@website/security/validation";
 import { DICTIONARIES, type Language } from "../i18n/dictionaries";
@@ -37,7 +41,7 @@ export function createNewsletter(deps: NewsletterDeps) {
   const subscriberId = (email: string) => keyedHash("subscriber", email, deps.hashSecret);
 
   const unsubscribeUrl = (id: string) =>
-    `${deps.webUrl}/newsletter/unsubscribe?t=${signLink({ a: "unsubscribe", s: id }, deps.linkSecret)}`;
+    `${deps.webUrl}/newsletter/unsubscribe?t=${signLink(unsubscribeLinkData(id), deps.linkSecret)}`;
 
   return {
     async subscribe(

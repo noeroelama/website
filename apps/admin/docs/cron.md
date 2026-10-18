@@ -31,11 +31,13 @@ shortest interval the hosting plan allows, see `docs/deployment.md#limits`):
 curl -fsS --max-time 50 -H "Authorization: Bearer $(cat ~/.config/ppidk/cron-secret)" https://admin.<domain>/cron/<job> >/dev/null
 ```
 
-| Job    | Schedule                    | What it does                                   |
-| ------ | --------------------------- | ---------------------------------------------- |
-| `noop` | once, by hand, after set-up | Answers `{ processed: 0 }`: checks the wiring. |
+| Job               | Schedule                    | What it does                                                                                                                                 |
+| ----------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `noop`            | once, by hand, after set-up | Answers `{ processed: 0 }`: checks the wiring.                                                                                               |
+| `newsletter-send` | every 5 minutes             | Sends the next 100 recipients of the oldest due campaign (scheduled time reached, or already sending); `packages/domain/docs/newsletter.md`. |
 
-Adding a job: write it as `() => Promise<summary>` in `CRON_JOBS`, idempotent (use meaningful
+Adding a job: write it as `() => Promise<summary>` in `CRON_JOBS` (or, when it needs stores or
+the messenger, next to `newsletter-send` in the `cronRoute` jobs of `src/server/wiring.ts`), idempotent (use meaningful
 keys so a repeated call changes nothing), one bounded batch per call (target < 30 s), progress
 stored in Firestore; then add its row above and its crontab line on the server.
 

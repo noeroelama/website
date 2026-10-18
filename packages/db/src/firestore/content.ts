@@ -60,8 +60,7 @@ export function contentSnapshot(item: ContentFields): Snapshot {
 export function createFirestoreContentStore(db: Firestore) {
   const store = createSluggedStore<ContentItem>(db, {
     collection: "content",
-    slugCollection: "contentSlugs",
-    slugKey: (item) => `${item.kind}_${item.slug}`,
+    slug: { collection: "contentSlugs", key: (item) => `${item.kind}_${item.slug}` },
     fromDoc: toItem,
     snapshot: contentSnapshot,
     fixed: (item) => ({ kind: item.kind, chapterId: item.chapterId }),

@@ -47,6 +47,7 @@ export const IMAGE_PRESETS = {
   banner: { folder: "events/banners", maxPx: 2400, visibility: "public" },
   speaker: { folder: "events/speakers", maxPx: 1024, visibility: "public" },
   thumbnail: { folder: "content/images", maxPx: 2400, visibility: "public" },
+  newsletter: { folder: "newsletter/images", maxPx: 1600, visibility: "public" },
   gallery: { folder: "galleries", maxPx: 2400, visibility: "public" },
   logo: { folder: "chapters/logos", maxPx: 1024, visibility: "public" },
   ktm: { folder: "members/ktm", maxPx: 2400, visibility: "private" },

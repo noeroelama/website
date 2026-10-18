@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeText } from "@website/security/validation";
 import type { EntityMeta } from "../shared";
 
 export type SubscriptionStatus = "pending" | "confirmed" | "unsubscribed" | "suppressed";
@@ -61,4 +62,65 @@ export function confirmDecision(
 ): "confirmed" | "expired" | "invalid" {
   if (current?.status !== "pending" || current.tokenHash !== tokenHash) return "invalid";
   return (current.tokenExpiresAt ?? now) <= now ? "expired" : "confirmed";
+}
+
+/** Who a campaign goes to. Only "all confirmed subscribers" exists today. */
+export const CAMPAIGN_SEGMENTS = ["all"] as const;
+export type CampaignSegment = (typeof CAMPAIGN_SEGMENTS)[number];
+export type CampaignStatus = "draft" | "scheduled" | "sending" | "sent";
+
+/** A newsletter campaign; the cron job "newsletter-send" delivers it in batches. */
+export interface Campaign extends EntityMeta {
+  readonly subject: string;
+  /** Sanitised rich text (same allowlist as news). */
+  readonly body: string;
+  readonly segment: CampaignSegment;
+  readonly status: CampaignStatus;
+  readonly sendAt: Date | null;
+  /** Last subscriber id handed to the messenger (batches resume after it). */
+  readonly cursor: string | null;
+  readonly sentCount: number;
+  readonly sentAt: Date | null;
+}
+
+/** The campaign composer (draft). */
+export const CampaignInputSchema = z
+  .object({
+    subject: safeText(200),
+    body: z.string().max(200_000),
+    segment: z.enum(CAMPAIGN_SEGMENTS),
+  })
+  .strict();
+export type CampaignInput = z.infer<typeof CampaignInputSchema>;
+
+/** Send now (status sending) or schedule for a later time. */
+export function sendState(
+  sendAt: Date | null,
+  now: Date,
+): { status: "scheduled" | "sending"; sendAt: Date } {
+  return sendAt !== null && sendAt > now
+    ? { status: "scheduled", sendAt }
+    : { status: "sending", sendAt: now };
+}
+
+/** Drafts and scheduled campaigns can be edited, sent or deleted; a sending or sent one cannot. */
+export function canChangeCampaign(status: CampaignStatus): boolean {
+  return status === "draft" || status === "scheduled";
+}
+
+/** What the cron job works on: a scheduled campaign whose time has come, or one already sending. */
+export function isDue(campaign: Pick<Campaign, "status" | "sendAt">, now: Date): boolean {
+  if (campaign.status === "sending") return true;
+  return campaign.status === "scheduled" && campaign.sendAt !== null && campaign.sendAt <= now;
+}
+
+/** "s***@example.org" — subscriber lists for staff without newsletter.edit. */
+export function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  return at < 1 ? "***" : `${email[0]}***${email.slice(at)}`;
+}
+
+/** Data signed into an unsubscribe link (`signLink`), used by web and admin alike. */
+export function unsubscribeLinkData(subscriberId: string): { a: string; s: string } {
+  return { a: "unsubscribe", s: subscriberId };
 }

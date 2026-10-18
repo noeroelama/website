@@ -66,13 +66,14 @@ router.push("/things"); router.refresh();
 - `DataTable` options: `minRows` keeps the table height fixed with blank rows, `emptyState`
   replaces the empty message, `expandedRow` renders a detail row under a row (the caller owns
   the open/closed state).
-- **UI-only pages.** Newsletter, Organizations (Period and Structure tabs; the PPI tab is
+- **UI-only pages.** Organizations (Period and Structure tabs; the PPI tab is
   data-backed, `packages/domain/docs/organization.md`), Account, Emails,
   Profile and the Tools short-link list are design ports that run on `src/data/mock/*` in the
   browser: nothing is saved and nothing is audited. When a feature gets its backend, replace
   its mock import with a server read and its buttons with guarded actions (pattern above), then
   delete the mock file. Articles (`packages/domain/docs/content.md`), Events
-  (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Audit Log and Users/Roles are the real, data-backed pages.
+  (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
+  (`packages/domain/docs/newsletter.md`), Audit Log and Users/Roles are the real, data-backed pages.
 
 ## Configuration
 

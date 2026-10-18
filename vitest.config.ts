@@ -36,6 +36,8 @@ export default defineConfig({
         "apps/web/src/server/newsletter.ts",
         "packages/domain/src/newsletter/index.ts",
         "packages/db/src/firestore/subscribers.ts",
+        "packages/db/src/firestore/campaigns.ts",
+        "apps/admin/src/server/newsletter.ts",
         "packages/domain/src/messaging/index.ts",
         "packages/db/src/firestore/messages.ts",
         "packages/db/src/firestore/webhooks.ts",

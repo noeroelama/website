@@ -7,35 +7,38 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  exportSubscribersAction,
+  removeCampaignAction,
+  saveCampaignAction,
+  sendCampaignAction,
+  sendTestAction,
+} from "@/app/(panel)/newsletter/actions";
+import { actionMessage } from "@/components/action-message";
+import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
-import {
-  INITIAL_NEWSLETTERS,
-  INITIAL_SUBSCRIBERS,
-  formatDate,
-  formatDateTime,
-  type CampaignStatus,
-  type CampaignStatusFilter,
-  type NewsletterItem,
-  type SubscriberItem,
-  type SubscriberStatus,
-} from "@/data/mock/newsletters";
-import { timeAgo } from "@/components/format";
+import type { CampaignStatus } from "@website/domain/newsletter";
+import { formatInZone, timeAgo } from "@/components/format";
+import type { CampaignItem as NewsletterItem, SubscriberItem } from "./newsletter-model";
 import { Modal } from "@/components/ui/modal";
 
 /** Filter choices for the subscriber "Joined" date select. */
 type JoinedFilter = "all" | "today" | "month" | "year";
+type CampaignStatusFilter = "all" | CampaignStatus;
+type SubscriberStatus = SubscriberItem["status"];
+
+/** Dates on this page: UTC, same text on the server and in the browser. */
+const formatDate = (iso: string) => formatInZone(iso, "UTC").split(",")[0] ?? iso;
+const formatDateTime = (iso: string) => `${formatInZone(iso, "UTC")} UTC`;
 
 /** Pending delete action shown in the dark confirm modal (one campaign,
     one subscriber, or a selected batch — like the Events/Articles pages). */
-type DeleteConfirm =
-  | { kind: "campaign"; item: NewsletterItem }
-  | { kind: "subscriber"; item: SubscriberItem }
-  | { kind: "many"; count: number };
+type DeleteConfirm = { kind: "campaign"; item: NewsletterItem } | { kind: "many"; count: number };
 
 /* ==================================================================
    Newsletter — campaigns + subscribers. Tabs "Campaign" / "Subscribers"
@@ -45,14 +48,11 @@ type DeleteConfirm =
    tokens, no hex values outside globals.css.
    ================================================================== */
 
-/** Public URL prefix for a campaign, shown in Copy Link. */
-const NEWS_URL_PREFIX = "ppidk.asiania.id/news/";
-
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 /* ---- Sortable table header: label + arrow (gold when active). Same
         pattern as the Events/Gallery list pages. ---- */
-type CampaignSortKey = "subject" | "status" | "recipients" | "opens" | "clicks" | "sent";
+type CampaignSortKey = "subject" | "status" | "recipients" | "sent";
 type SubscriberSortKey = "name" | "country" | "subscribed";
 
 function SortHeader({
@@ -111,56 +111,6 @@ function EditorButton({
   );
 }
 
-/** Escape plain text so it can be injected as the initial contentEditable HTML. */
-function escapeHtml(text: string): string {
-  return text.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
-  );
-}
-
-/** Minimal CSV parser: splits lines and fields, honours double-quoted fields
-    (with "" escapes). Returns only non-empty rows. */
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        field += ch;
-      }
-    } else if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ",") {
-      row.push(field);
-      field = "";
-    } else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      row.push(field);
-      field = "";
-      if (row.some((cell) => cell.trim() !== "")) rows.push(row);
-      row = [];
-    } else {
-      field += ch;
-    }
-  }
-  if (field.trim() !== "" || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
-}
-
 /* ==================================================================
    ComposerEditor — the Content Blocks * rich-text area.
 
@@ -168,7 +118,7 @@ function parseCsv(text: string): string[][] {
    body), same command set as the article type boxes: alignment cycle,
    image, blockquote, heading 1/2, divider, lists, link popover, code.
    `value` seeds the body once on mount; typed text flows out via
-   `onChange` (plain text).
+   `onChange` (HTML; the server sanitises it).
    ================================================================== */
 function ComposerEditor({
   value,
@@ -183,9 +133,12 @@ function ComposerEditor({
   onDragLeave,
   onDrop,
   onDragEnd,
+  uploadImage,
 }: {
   value: string;
   onChange: (text: string) => void;
+  /** Uploads an inline image (preset "newsletter"); resolves to its public URL. */
+  uploadImage: (file: File) => Promise<string | null>;
   /** When true the composer is review-only: toolbar disabled and the body
       not editable (used for sent campaigns opened from the list). */
   readOnly?: boolean;
@@ -217,7 +170,7 @@ function ComposerEditor({
   useEffect(() => {
     const el = editorRef.current;
     if (el && !editorSeededRef.current && value) {
-      el.innerHTML = escapeHtml(value);
+      el.innerHTML = value;
       editorSeededRef.current = true;
     }
   }, [value]);
@@ -238,7 +191,7 @@ function ComposerEditor({
 
   const syncEditorText = () => {
     const el = editorRef.current;
-    if (el) onChange(el.innerText ?? "");
+    if (el) onChange(el.innerHTML);
   };
 
   const onEditorInput = () => syncEditorText();
@@ -654,13 +607,12 @@ function ComposerEditor({
         style={{ display: "none" }}
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result === "string") exec("insertImage", reader.result);
-          };
-          reader.readAsDataURL(file);
           e.target.value = "";
+          if (!file) return;
+          /* uploaded first: the campaign stores the https URL, never a data URL */
+          void uploadImage(file).then((url) => {
+            if (url) exec("insertImage", url);
+          });
         }}
       />
       <div
@@ -745,30 +697,43 @@ const nextBoxId = () => `box-${BOX_SEQ++}`;
 /* ==================================================================
    NewsletterPage — the page itself: campaigns list + composer form.
    ================================================================== */
-export function NewsletterPage() {
+interface NewsletterProps {
+  /** Rows from the server (src/app/(panel)/newsletter/page.tsx); refreshed after every change. */
+  campaigns: NewsletterItem[];
+  /** Subscribers; addresses arrive masked unless the viewer has newsletter.edit. */
+  subscribers: SubscriberItem[];
+  canEdit: boolean;
+  canSend: boolean;
+  canExport: boolean;
+}
+
+export function NewsletterPage(props: NewsletterProps) {
   const pathname = usePathname();
   // key={pathname} remounts the page when the newsletter route is (re)entered,
   // so search/tab/filter state resets on every visit (same pattern as
   // Events / Articles / Gallery).
-  return <NewsletterList key={pathname} />;
+  return <NewsletterList key={pathname} {...props} />;
 }
 
 /** Newsletter list + composer form (all state lives here; remounted by
  *  NewsletterPage on navigation so it starts clean). */
-function NewsletterList() {
+function NewsletterList({ campaigns, subscribers, canEdit, canSend, canExport }: NewsletterProps) {
   const toast = useToastMessage();
+  const router = useRouter();
+  const upload = useImageUpload("newsletter");
+  const [busy, setBusy] = useState(false);
+  /* Send / schedule popup: which campaign, and the chosen time (datetime-local, viewer zone). */
+  const [sendFor, setSendFor] = useState<NewsletterItem | null>(null);
+  const [sendAt, setSendAt] = useState("");
+  const [previewFor, setPreviewFor] = useState<NewsletterItem | null>(null);
   const [view, setView] = useState<"list" | "form">("list");
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<NewsletterForm>(EMPTY_FORM);
 
-  const [campaigns, setCampaigns] = useState<NewsletterItem[]>(INITIAL_NEWSLETTERS);
-  const [subscribers, setSubscribers] = useState<SubscriberItem[]>(INITIAL_SUBSCRIBERS);
-  const importCsvInputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<"campaign" | "subscriber">("campaign");
   const [statusFilter, setStatusFilter] = useState<CampaignStatusFilter>("all");
   const [subStatusFilter, setSubStatusFilter] = useState<"all" | SubscriberStatus>("all");
-  const [countryFilter, setCountryFilter] = useState<string>("all");
   const [joinedFilter, setJoinedFilter] = useState<JoinedFilter>("all");
   const [subFiltersOpen, setSubFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -804,14 +769,9 @@ function NewsletterList() {
       case "status":
         return c.status;
       case "recipients":
-        return c.subscribers;
-      case "opens":
-      case "clicks": {
-        const n = Number.parseFloat(c[key]);
-        return Number.isNaN(n) ? -1 : n;
-      }
+        return c.sentCount;
       case "sent":
-        return c.sentAt ?? c.scheduledFor ?? "9999-99-99";
+        return c.sentAt ?? c.sendAt ?? "9999-99-99";
     }
   };
 
@@ -832,9 +792,9 @@ function NewsletterList() {
   const subSortValue = (s: SubscriberItem, key: SubscriberSortKey): string | number => {
     switch (key) {
       case "name":
-        return s.name.toLowerCase();
+        return s.email.toLowerCase();
       case "country":
-        return s.country.toLowerCase();
+        return s.status;
       case "subscribed":
         return s.subscribed;
     }
@@ -867,12 +827,10 @@ function NewsletterList() {
     const today = new Date().toISOString().slice(0, 10);
     const list = subscribers.filter((s) => {
       if (subStatusFilter !== "all" && s.status !== subStatusFilter) return false;
-      if (countryFilter !== "all" && s.country !== countryFilter) return false;
       if (joinedFilter === "today" && s.subscribed !== today) return false;
       if (joinedFilter === "month" && !s.subscribed.startsWith(today.slice(0, 7))) return false;
       if (joinedFilter === "year" && !s.subscribed.startsWith(today.slice(0, 4))) return false;
-      if (q && !s.name.toLowerCase().includes(q) && !s.email.toLowerCase().includes(q))
-        return false;
+      if (q && !s.email.toLowerCase().includes(q)) return false;
       return true;
     });
     if (!subSortKey) return list;
@@ -885,20 +843,13 @@ function NewsletterList() {
       return subSortDir === "asc" ? cmp : -cmp;
     });
     return copy;
-  }, [subscribers, subStatusFilter, countryFilter, joinedFilter, query, subSortKey, subSortDir]);
+  }, [subscribers, subStatusFilter, joinedFilter, query, subSortKey, subSortDir]);
 
   const filtered = isCampaign ? filteredCampaigns : filteredSubs;
 
   const counts = useMemo(
     () => ({ campaign: campaigns.length, subscriber: subscribers.length }),
     [campaigns, subscribers],
-  );
-
-  /* PPI chapter names present in the subscriber list, in first-appearance
-     order — powers the "PPI Country" filter select (mirrors the column). */
-  const subCountries = useMemo(
-    () => Array.from(new Set(subscribers.map((s) => s.country))),
-    [subscribers],
   );
 
   const activeFilterCount =
@@ -908,9 +859,7 @@ function NewsletterList() {
      (status / PPI country / joined date), same as the events page (search
      is separate). */
   const subActiveFilterCount =
-    (subStatusFilter !== "all" ? 1 : 0) +
-    (countryFilter !== "all" ? 1 : 0) +
-    (joinedFilter !== "all" ? 1 : 0);
+    (subStatusFilter !== "all" ? 1 : 0) + (joinedFilter !== "all" ? 1 : 0);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
@@ -976,110 +925,63 @@ function NewsletterList() {
     setSearch("");
     setStatusFilter("all");
     setSubStatusFilter("all");
-    setCountryFilter("all");
     setJoinedFilter("all");
     setSubFiltersOpen(false);
     setPage(1);
     setMenuFor(null);
   };
 
-  /* ---- mutations ---- */
-  const setStatusForId = (id: string, status: CampaignStatus) => {
-    setCampaigns((prev) =>
-      prev.map((c) => {
-        if (c.id !== id) return c;
-        const next = { ...c, status };
-        if (status === "sent") next.sentAt = c.sentAt ?? todayIso();
-        if (status === "scheduled") next.scheduledFor = c.scheduledFor ?? todayIso();
-        return next;
-      }),
-    );
-    setMenuFor(null);
-  };
+  /* ---- mutations (server actions; the page re-reads after each) ---- */
+  type Failure = Parameters<typeof actionMessage>[0];
+  const changeable = (c: NewsletterItem) => c.status === "draft" || c.status === "scheduled";
 
-  const todayIso = () => new Date().toISOString().slice(0, 10);
-
-  /* Deletes are confirmed in the dark modal (like Events/Articles) instead
-     of deleting straight away. The handlers below only stage *what* would be
-     deleted; doDelete applies the change once the user confirms. */
   const deleteCampaign = (c: NewsletterItem) => {
     setMenuFor(null);
     setDeleteConfirm({ kind: "campaign", item: c });
   };
 
-  const publishSelected = () => {
-    setCampaigns((prev) =>
-      prev.map((c) => (selected.has(c.id) ? { ...c, status: "sent", sentAt: todayIso() } : c)),
-    );
-    toast.show(`Published ${selected.size} campaign${selected.size === 1 ? "" : "s"}`);
-    setSelected(new Set());
-  };
-
   const deleteSelected = () => {
     if (selected.size === 0) {
-      toast.show(
-        `Select ${isCampaign ? "campaign" : "subscriber"}${isCampaign ? "" : "s"} to delete`,
-      );
+      toast.show("Select campaigns to delete");
       return;
     }
     setDeleteConfirm({ kind: "many", count: selected.size });
   };
 
-  const deleteSubscriber = (s: SubscriberItem) => {
-    setDeleteConfirm({ kind: "subscriber", item: s });
-  };
-
-  const doDelete = () => {
+  /* Soft delete; drafts and scheduled campaigns only (the server refuses the rest). */
+  const doDelete = async () => {
     if (!deleteConfirm) return;
-    if (deleteConfirm.kind === "campaign") {
-      const c = deleteConfirm.item;
-      setCampaigns((prev) => prev.filter((x) => x.id !== c.id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(c.id);
-        return next;
-      });
-      setMenuFor(null);
-      toast.show("Campaign deleted");
-    } else if (deleteConfirm.kind === "subscriber") {
-      const s = deleteConfirm.item;
-      setSubscribers((prev) => prev.filter((x) => x.id !== s.id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(s.id);
-        return next;
-      });
-      toast.show("Subscriber deleted");
-    } else {
-      const n = deleteConfirm.count;
-      if (isCampaign) {
-        setCampaigns((prev) => prev.filter((c) => !selected.has(c.id)));
-        toast.show(`Deleted ${n} campaign${n === 1 ? "" : "s"}`);
-      } else {
-        setSubscribers((prev) => prev.filter((s) => !selected.has(s.id)));
-        toast.show(`Deleted ${n} subscriber${n === 1 ? "" : "s"}`);
-      }
-      setSelected(new Set());
-    }
+    const rows =
+      deleteConfirm.kind === "campaign"
+        ? [deleteConfirm.item]
+        : campaigns.filter((c) => selected.has(c.id));
     setDeleteConfirm(null);
+    setBusy(true);
+    let failure: Failure | null = null;
+    for (const c of rows) {
+      const result = await removeCampaignAction({ id: c.id, version: c.version });
+      if (!result.ok) {
+        failure = result;
+        break;
+      }
+    }
+    setBusy(false);
+    setSelected(new Set());
+    setMenuFor(null);
+    router.refresh();
+    toast.show(failure ? actionMessage(failure) : "Deleted");
   };
 
-  const exportCsv = () => {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const rows = [
-      ["Name", "Email", "Status", "Subscribed", "Last open", "Open rate", "Country"],
-      ...subscribers.map((s) => [
-        esc(s.name),
-        esc(s.email),
-        s.status,
-        s.subscribed,
-        s.lastOpen ?? "",
-        s.opensRate,
-        s.country,
-      ]),
-    ];
-    const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n") + "\r\n";
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  /* Export CSV (newsletter.export): built on the server, logged as a security event. */
+  const exportCsv = async () => {
+    const result = await exportSubscribersAction();
+    if (!result.ok) {
+      toast.show(actionMessage(result));
+      return;
+    }
+    const url = URL.createObjectURL(
+      new Blob(["\uFEFF" + result.data.csv + "\r\n"], { type: "text/csv;charset=utf-8;" }),
+    );
     const a = document.createElement("a");
     a.href = url;
     a.download = `subscribers-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -1090,64 +992,25 @@ function NewsletterList() {
     toast.show(`Exported ${subscribers.length} subscribers`);
   };
 
-  const onImportFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== "string") return;
-      const text = reader.result;
-      if (!text.trim()) {
-        toast.show("No data to import");
-        return;
-      }
-      const rows = parseCsv(text);
-      const headerIndex = rows.findIndex((r) => {
-        if (r.length < 2) return false;
-        const firstCell = r[0] ?? "";
-        const secondCell = r[1] ?? "";
-        return /name/i.test(firstCell) && /email/i.test(secondCell);
-      });
-      const dataRows = headerIndex === -1 ? rows : rows.slice(headerIndex + 1);
-      const added: SubscriberItem[] = [];
-      dataRows.forEach((r, i) => {
-        const name = (r[0] ?? "").trim();
-        const email = (r[1] ?? "").trim();
-        if (!name || !email) return;
-        added.push({
-          id: `imp-${Date.now()}-${i}`,
-          name,
-          email,
-          country: (r[6] ?? "").trim(),
-          status: /unsubscribed/i.test(r[2] ?? "") ? "unsubscribed" : "active",
-          subscribed: (r[3] ?? "").trim() || new Date().toISOString().slice(0, 10),
-          lastOpen: (r[4] ?? "").trim() || null,
-          opensRate: (r[5] ?? "").trim() || "—",
-        });
-      });
-      if (added.length === 0) {
-        toast.show("No valid rows to import");
-        return;
-      }
-      setSubscribers((prev) => [...prev, ...added]);
-      // Jump to the imported rows: clear any filter and land on the last page.
-      setQuery("");
-      setSearch("");
-      setSubStatusFilter("all");
-      setMenuFor(null);
-      setPage(Math.max(1, Math.ceil((subscribers.length + added.length) / pageSize)));
-      toast.show(`Imported ${added.length} subscriber${added.length === 1 ? "" : "s"}`);
-    };
-    reader.onerror = () => toast.show("Could not read the file");
-    reader.readAsText(file);
-  };
-
-  const copyLink = async (c: NewsletterItem) => {
-    try {
-      await navigator.clipboard.writeText(`https://${NEWS_URL_PREFIX}${c.id}`);
-      toast.show("Link copied");
-    } catch {
-      toast.show("Could not copy link");
+  /* Send now (empty time) or schedule (newsletter.send); audited SEND. */
+  const doSend = async () => {
+    if (!sendFor) return;
+    setBusy(true);
+    const result = await sendCampaignAction({
+      id: sendFor.id,
+      version: sendFor.version,
+      sendAt: sendAt ? new Date(sendAt).toISOString() : null,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      toast.show(actionMessage(result));
+      return;
     }
-    setMenuFor(null);
+    setSendFor(null);
+    setSendAt("");
+    setView("list");
+    router.refresh();
+    toast.show(result.data.status === "scheduled" ? "Campaign scheduled" : "Sending started");
   };
 
   /* ---- form ---- */
@@ -1155,7 +1018,7 @@ function NewsletterList() {
     setFormMode(mode);
     setEditingId(item?.id ?? null);
     setForm(
-      item ? { subject: item.subject, bodies: [{ id: "box-0", text: item.body }] } : EMPTY_FORM,
+      item ? { subject: item.subject, bodies: [{ id: nextBoxId(), text: item.body }] } : EMPTY_FORM,
     );
     setSelected(new Set());
     setView("form");
@@ -1163,7 +1026,7 @@ function NewsletterList() {
 
   /* ---- content blocks: add, edit, reorder ---- */
   /* The campaign body is a stack of composer boxes. Each box edits its own
-     string in form.bodies; the + button inserts a fresh empty box right below
+     HTML in form.bodies; the + button inserts a fresh empty box right below
      the one it was pressed on. */
   const addBoxAfter = (index: number) => {
     setForm((f) => {
@@ -1181,9 +1044,7 @@ function NewsletterList() {
     });
   };
 
-  /* Remove a type box. The last remaining box can't be removed (the UI hides
-     the trash button when only one box is left), but guard here too so the
-     campaign always keeps at least one body. */
+  /* Remove a type box (the last one stays). */
   const removeBox = (index: number) => {
     setForm((f) => {
       if (f.bodies.length <= 1) return f;
@@ -1203,83 +1064,63 @@ function NewsletterList() {
     });
   };
 
-  const requireSubject = (): boolean => {
-    if (!form.subject.trim()) {
-      toast.show("Subject is required");
-      return false;
+  /* Save draft (newsletter.edit). Returns the saved row's id and version, or null. */
+  const saveDraft = async (): Promise<{ id: string; version: number } | null> => {
+    const current = campaigns.find((c) => c.id === editingId);
+    setBusy(true);
+    const result = await saveCampaignAction({
+      ...(editingId ? { id: editingId } : {}),
+      version: current?.version ?? null,
+      subject: form.subject,
+      body: form.bodies.map((b) => b.text).join(""),
+      segment: "all",
+    });
+    setBusy(false);
+    if (!result.ok) {
+      toast.show(actionMessage(result));
+      return null;
     }
-    return true;
+    setEditingId(result.data.id);
+    router.refresh();
+    return result.data;
   };
 
-  /** Build the item from the form (create keeps the author fixed to the
-      signed-in preview user). */
-  const buildItem = (status: CampaignStatus): NewsletterItem | null => {
-    const existing = campaigns.find((c) => c.id === editingId);
-    const now = todayIso();
-    const item: NewsletterItem = {
-      id: editingId ?? `nl-${Date.now()}`,
-      subject: form.subject.trim(),
-      to: existing?.to ?? "All subscribers",
-      subscribers: existing?.subscribers ?? 1_186,
-      status,
-      author: existing?.author ?? "Admin",
-      createdAt: existing?.createdAt ?? now,
-      opens: existing?.opens ?? "—",
-      clicks: existing?.clicks ?? "—",
-      body: form.bodies
-        .map((b) => b.text.trim())
-        .filter(Boolean)
-        .join("\n\n"),
-    };
-    /* exactOptionalPropertyTypes: drop keys we should not carry over. */
-    if (status === "sent") item.sentAt = now;
-    if (status === "scheduled") item.scheduledFor = now;
-    return item;
+  const saveAndClose = async () => {
+    if (await saveDraft()) {
+      toast.show("Draft saved");
+      setView("list");
+    }
   };
 
-  const upsertCampaign = (item: NewsletterItem) => {
-    setCampaigns((prev) => {
-      const exists = prev.some((c) => c.id === item.id);
-      return exists ? prev.map((c) => (c.id === item.id ? item : c)) : [item, ...prev];
+  /* Publish = save, then open the send / schedule popup for the saved version. */
+  const publishCampaign = async () => {
+    const saved = await saveDraft();
+    if (!saved) return;
+    setSendFor({
+      id: saved.id,
+      version: saved.version,
+      subject: form.subject,
+      body: "",
+      status: "draft",
+      sendAt: null,
+      sentAt: null,
+      sentCount: 0,
+      modifiedAt: new Date().toISOString(),
     });
   };
 
-  const saveDraft = () => {
-    if (!requireSubject()) return;
-    const next = buildItem("draft");
-    if (!next) return;
-    upsertCampaign(next);
-    toast.show("Draft saved");
-    setView("list");
+  /* Send Test: saves, then mails the saved campaign to your own address only. */
+  const sendTest = async () => {
+    const saved = await saveDraft();
+    if (!saved) return;
+    const result = await sendTestAction({ id: saved.id });
+    toast.show(result.ok ? "Test e-mail sent to your address" : actionMessage(result));
   };
 
-  const publishCampaign = () => {
-    if (!requireSubject()) return;
-    if (!form.bodies.some((b) => b.text.trim())) {
-      toast.show("Content Blocks is required");
-      return;
-    }
-    const next = buildItem("sent");
-    if (!next) return;
-    upsertCampaign(next);
-    toast.show("Campaign published");
-    setPage(1);
-    setView("list");
-  };
-
-  const handlePreview = () => {
-    /* Preview respects the same required rules as Publish/Send Test. */
-    if (!requireSubject()) return;
-    toast.show("Preview — campaign rendered as an email");
-  };
-
-  const sendTest = () => {
-    if (!requireSubject()) return;
-    if (!form.bodies.some((b) => b.text.trim())) {
-      toast.show("Content Blocks is required");
-      return;
-    }
-    toast.show("Send Test — email sent to admin@ppidk.asiania.id");
+  const uploadImage = async (file: File) => {
+    const image = await upload.upload(file);
+    if (!image) toast.show(upload.error ?? "Upload failed");
+    return image ? (publicImage(image)?.url ?? null) : null;
   };
 
   /* ---- table columns ---- */
@@ -1324,7 +1165,6 @@ function NewsletterList() {
   });
 
   const checkboxCol = makeCheckboxCol<NewsletterItem>((r) => `Select ${r.subject}`, "3%");
-  const subCheckboxCol = makeCheckboxCol<SubscriberItem>((r) => `Select ${r.name}`, "3%");
 
   const columns: Column<NewsletterItem>[] = [
     checkboxCol,
@@ -1344,7 +1184,7 @@ function NewsletterList() {
           <div className="admin-table__title">{r.subject}</div>
           <div className="admin-table__sub admin-table__sub--logo">
             <span className="admin-table__sub-logo" aria-hidden="true" />
-            <span className="admin-table__sub-text">All subscribers</span>
+            <span className="admin-table__sub-text">All confirmed subscribers</span>
           </div>
         </div>
       ),
@@ -1364,12 +1204,18 @@ function NewsletterList() {
         <span className={`admin-newsletter-badge admin-newsletter-badge--${r.status}`}>
           {r.status === "sent" ? (
             <Icon name="check" size={11} />
-          ) : r.status === "scheduled" ? (
-            <Icon name="clock" size={11} />
-          ) : (
+          ) : r.status === "draft" ? (
             <Icon name="dot" size={12} />
+          ) : (
+            <Icon name="clock" size={11} />
           )}
-          {r.status === "sent" ? "Sent" : r.status === "scheduled" ? "Scheduled" : "Draft"}
+          {r.status === "sent"
+            ? "Sent"
+            : r.status === "sending"
+              ? "Sending"
+              : r.status === "scheduled"
+                ? "Scheduled"
+                : "Draft"}
         </span>
       ),
     },
@@ -1388,38 +1234,8 @@ function NewsletterList() {
       render: (r) => (
         /* Same class as the Open/Click rate cells so font + style always match,
            including the "—" placeholder on draft rows. */
-        <span className="admin-newsletter-rate">
-          {r.status === "draft" ? "—" : r.subscribers.toLocaleString()}
-        </span>
+        <span className="admin-newsletter-rate">{r.status === "draft" ? "—" : r.sentCount}</span>
       ),
-    },
-    {
-      key: "opens",
-      header: (
-        <SortHeader
-          label="Open Rate"
-          active={sortKey === "opens"}
-          dir={sortDir}
-          onClick={() => onSort("opens")}
-        />
-      ),
-      width: "11%",
-      align: "right",
-      render: (r) => <span className="admin-newsletter-rate">{r.opens}</span>,
-    },
-    {
-      key: "clicks",
-      header: (
-        <SortHeader
-          label="Click Rate"
-          active={sortKey === "clicks"}
-          dir={sortDir}
-          onClick={() => onSort("clicks")}
-        />
-      ),
-      width: "11%",
-      align: "right",
-      render: (r) => <span className="admin-newsletter-rate">{r.clicks}</span>,
     },
     {
       key: "sent",
@@ -1435,7 +1251,7 @@ function NewsletterList() {
       render: (r) => {
         /* Date-only for sent + draft; scheduled keeps its send time too. */
         const when =
-          r.status === "sent" ? r.sentAt : r.status === "scheduled" ? r.scheduledFor : r.createdAt;
+          r.status === "sent" ? r.sentAt : r.status === "draft" ? r.modifiedAt : r.sendAt;
         return when ? (
           <span className="admin-event-meta">
             <span
@@ -1445,7 +1261,6 @@ function NewsletterList() {
             >
               {r.status === "scheduled" ? formatDateTime(when) : formatDate(when)}
             </span>
-            <span className="admin-table__sub">{r.author}</span>
           </span>
         ) : (
           <span className="admin-table__muted">—</span>
@@ -1462,13 +1277,13 @@ function NewsletterList() {
           {/* Sent campaigns can still be opened for review — the form renders
               that campaign read-only. Draft/scheduled rows open the editable
               composer; both are plain-icon buttons (no label). */}
-          {r.status === "sent" ? (
+          {!changeable(r) || !canEdit ? (
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Edit"
+              aria-label="Open"
               onClick={() => toForm("edit", r)}
-              title="Edit"
+              title="Open (read only)"
             >
               {/* Same bar glyph as the "Avg. click rate · last 5" KPI card
                   (chart.png). Here it sits on a dark row, so the PNG's own
@@ -1499,47 +1314,30 @@ function NewsletterList() {
             />
             {menuFor === r.id ? (
               <div className="admin-row-menu__panel" role="menu">
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  disabled={r.status === "sent"}
-                  onClick={() => setStatusForId(r.id, "sent")}
-                >
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </button>
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={handlePreview}
-                >
-                  <Icon name="eye" size={14} /> Preview
-                </button>
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => toast.show("Schedule — pick a date & time")}
-                >
-                  <Icon name="calendar" size={14} /> Schedule…
-                </button>
+                {canSend ? (
+                  <button
+                    type="button"
+                    className="admin-row-menu__item"
+                    role="menuitem"
+                    disabled={!changeable(r) || busy}
+                    onClick={() => {
+                      setMenuFor(null);
+                      setSendFor(r);
+                    }}
+                  >
+                    <Icon name="send" size={14} /> Send / Schedule…
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="admin-row-menu__item"
                   role="menuitem"
                   onClick={() => {
-                    void copyLink(r);
+                    setMenuFor(null);
+                    setPreviewFor(r);
                   }}
                 >
-                  <Icon name="copy" size={14} /> Copy Link
+                  <Icon name="eye" size={14} /> Preview
                 </button>
                 {/* Divider above the destructive action, separating Delete from the rest. */}
                 <div className="admin-row-menu__divider" role="separator" />
@@ -1547,9 +1345,10 @@ function NewsletterList() {
                   type="button"
                   className="admin-row-menu__item admin-row-menu__item--danger"
                   role="menuitem"
+                  disabled={!canEdit || !changeable(r)}
                   onClick={() => deleteCampaign(r)}
                 >
-                  <Icon name="trash" size={14} /> Delete Event
+                  <Icon name="trash" size={14} /> Delete Campaign
                 </button>
               </div>
             ) : null}
@@ -1563,7 +1362,6 @@ function NewsletterList() {
      the users logo like the Active-subscribers KPI), PPI Country, Joined
      (subscription date), row delete. All three data columns are sortable. */
   const subscriberColumns: Column<SubscriberItem>[] = [
-    subCheckboxCol,
     {
       key: "name",
       header: (
@@ -1577,7 +1375,6 @@ function NewsletterList() {
       width: "33%",
       render: (r) => (
         <div>
-          <div className="admin-table__title">{r.name}</div>
           <div className="admin-table__sub admin-table__sub--logo">
             {/* Same users glyph as the "Active subscribers" KPI, repainted in
                 the email's ink (PNG is maroon; CSS paints it via alpha mask). */}
@@ -1591,14 +1388,14 @@ function NewsletterList() {
       key: "country",
       header: (
         <SortHeader
-          label="PPI Country"
+          label="Status"
           active={subSortKey === "country"}
           dir={subSortDir}
           onClick={() => onSubSort("country")}
         />
       ),
       width: "26%",
-      render: (r) => <span>{r.country || "—"}</span>,
+      render: (r) => <span>{r.status}</span>,
     },
     {
       key: "subscribed",
@@ -1618,32 +1415,49 @@ function NewsletterList() {
         </span>
       ),
     },
-    {
-      key: "aksi",
-      header: "",
-      align: "right",
-      width: "10%",
-      render: (r) => (
-        <div className="admin-table__actions">
-          <Button
-            variant="ghost"
-            size="icon"
-            icon="trash"
-            className="admin-table__delete"
-            aria-label={`Delete ${r.name}`}
-            title="Delete"
-            onClick={() => deleteSubscriber(r)}
-          />
-        </div>
-      ),
-    },
   ];
+
+  /* Send / schedule popup (also opened by Publish in the form). */
+  const sendModal = (
+    <Modal
+      open={sendFor !== null}
+      title={sendFor ? `Send "${sendFor.subject}"` : "Send"}
+      width={440}
+      onClose={() => setSendFor(null)}
+      footer={
+        <div className="admin-modal__footer-row admin-modal__footer-row--end">
+          <Button variant="ghost" onClick={() => setSendFor(null)}>
+            Cancel
+          </Button>
+          <Button variant="primary" icon="send" disabled={busy} onClick={() => void doSend()}>
+            {sendAt ? "Schedule" : "Send now"}
+          </Button>
+        </div>
+      }
+    >
+      <div className="admin-field">
+        <label className="admin-field__label" htmlFor="campaign-send-at">
+          Send at (your time zone; empty = now)
+        </label>
+        <input
+          id="campaign-send-at"
+          className="admin-input"
+          type="datetime-local"
+          value={sendAt}
+          onChange={(e) => setSendAt(e.target.value)}
+        />
+        <p className="admin-card__subtitle">
+          Goes to every confirmed subscriber, about 100 per cron run. It cannot be undone.
+        </p>
+      </div>
+    </Modal>
+  );
 
   /* ---- form view ---- */
   /* Sent campaigns open in review mode: the composer and actions are locked
      (a broadcast newsletter can't be un-sent), only Back/Preview stay live. */
   const editingCampaign = formMode === "edit" ? campaigns.find((c) => c.id === editingId) : null;
-  const formReadonly = editingCampaign?.status === "sent";
+  const formReadonly = !canEdit || (editingCampaign ? !changeable(editingCampaign) : false);
 
   if (view === "form") {
     return (
@@ -1716,6 +1530,7 @@ function NewsletterList() {
                       setDragSource(null);
                       setDragOver(null);
                     }}
+                    uploadImage={uploadImage}
                   />
                 ))}
               </div>
@@ -1729,15 +1544,12 @@ function NewsletterList() {
               Back
             </Button>
             <div className="admin-form-actions__right">
-              <Button variant="outline" size="sm" icon="eye" onClick={handlePreview}>
-                Preview
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 icon="send"
-                onClick={sendTest}
-                disabled={formReadonly}
+                onClick={() => void sendTest()}
+                disabled={formReadonly || busy || upload.busy}
               >
                 Send Test
               </Button>
@@ -1745,12 +1557,17 @@ function NewsletterList() {
                 variant="outline"
                 size="sm"
                 icon="cloud"
-                onClick={saveDraft}
-                disabled={formReadonly}
+                onClick={() => void saveAndClose()}
+                disabled={formReadonly || busy || upload.busy}
               >
                 Save draft
               </Button>
-              <Button variant="outline" size="sm" onClick={publishCampaign} disabled={formReadonly}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void publishCampaign()}
+                disabled={formReadonly || !canSend || busy || upload.busy}
+              >
                 <img
                   src="/globe.png"
                   alt=""
@@ -1764,6 +1581,7 @@ function NewsletterList() {
           </div>
         </div>
 
+        {sendModal}
         <ToastBanner message={toast.message} />
       </>
     );
@@ -1782,15 +1600,17 @@ function NewsletterList() {
         <div className="admin-page-header__actions">
           {isCampaign ? (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="plus"
-                className="admin-btn--events-add"
-                onClick={() => toForm("create")}
-              >
-                Add New Campaign
-              </Button>
+              {canEdit ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="plus"
+                  className="admin-btn--events-add"
+                  onClick={() => toForm("create")}
+                >
+                  Add New Campaign
+                </Button>
+              ) : null}
               <label className="admin-newsletter-status" htmlFor="campaign-status-filter">
                 <span className="admin-newsletter-status__label">Status</span>
                 <select
@@ -1805,6 +1625,7 @@ function NewsletterList() {
                 >
                   <option value="all">All</option>
                   <option value="sent">Sent</option>
+                  <option value="sending">Sending</option>
                   <option value="scheduled">Scheduled</option>
                   <option value="draft">Draft</option>
                 </select>
@@ -1845,45 +1666,17 @@ function NewsletterList() {
             </>
           ) : (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="download"
-                className="admin-btn--events-add"
-                onClick={exportCsv}
-              >
-                Export CSV
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="upload"
-                className="admin-btn--events-add"
-                onClick={() => importCsvInputRef.current?.click()}
-              >
-                Import CSV
-              </Button>
-              <input
-                ref={importCsvInputRef}
-                type="file"
-                accept=".csv,text/csv"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onImportFile(file);
-                  // Reset so picking the same file again re-triggers change.
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="plus"
-                className="admin-btn--events-add"
-                onClick={() => toast.show("Add New Subscriber — form coming soon")}
-              >
-                Add New Subscriber
-              </Button>
+              {canExport ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="download"
+                  className="admin-btn--events-add"
+                  onClick={() => void exportCsv()}
+                >
+                  Export CSV
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"
@@ -1908,7 +1701,7 @@ function NewsletterList() {
                   className="admin-searchbox__input"
                   type="search"
                   placeholder="Search"
-                  aria-label="Search subscribers"
+                  aria-label="Search subscribers by e-mail"
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
@@ -1958,55 +1751,16 @@ function NewsletterList() {
         ))}
       </div>
 
-      {/* KPI strip — active subscribers + last-5 open/click rates */}
+      {/* KPI strip — confirmed subscribers (open/click tracking is not collected). */}
       <div className="admin-newsletter-kpis">
         <div className="admin-newsletter-kpi">
           <span className="admin-newsletter-kpi__label">
             <img src="/icon-users.png" width={14} height={14} alt="" aria-hidden="true" />
-            Active subscribers
+            Confirmed subscribers
           </span>
           <span className="admin-newsletter-kpi__row">
-            <span className="admin-newsletter-kpi__value">1,186</span>
-            <span className="admin-newsletter-kpi__delta admin-newsletter-kpi__delta--up">
-              +38 this month
-            </span>
-          </span>
-        </div>
-        <div className="admin-newsletter-kpi">
-          <span className="admin-newsletter-kpi__label">
-            <img
-              src="/chart.png"
-              className="admin-newsletter-kpi__glyph--invert"
-              width={14}
-              height={14}
-              alt=""
-              aria-hidden="true"
-            />
-            Avg. open rate · last 5
-          </span>
-          <span className="admin-newsletter-kpi__row">
-            <span className="admin-newsletter-kpi__value">49.9%</span>
-            <span className="admin-newsletter-kpi__delta admin-newsletter-kpi__delta--up">
-              +3.1 pts
-            </span>
-          </span>
-        </div>
-        <div className="admin-newsletter-kpi">
-          <span className="admin-newsletter-kpi__label">
-            <img
-              src="/chart.png"
-              className="admin-newsletter-kpi__glyph--invert"
-              width={14}
-              height={14}
-              alt=""
-              aria-hidden="true"
-            />
-            Avg. click rate · last 5
-          </span>
-          <span className="admin-newsletter-kpi__row">
-            <span className="admin-newsletter-kpi__value">9.6%</span>
-            <span className="admin-newsletter-kpi__delta admin-newsletter-kpi__delta--down">
-              −0.4 pts
+            <span className="admin-newsletter-kpi__value">
+              {subscribers.filter((s) => s.status === "confirmed").length}
             </span>
           </span>
         </div>
@@ -2031,27 +1785,9 @@ function NewsletterList() {
                   }}
                 >
                   <option value="all">All statuses</option>
-                  <option value="active">Active</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Pending</option>
                   <option value="unsubscribed">Unsubscribed</option>
-                </select>
-              </div>
-              <div className="admin-field">
-                <span className="admin-field__label">PPI Country</span>
-                <select
-                  className="admin-select"
-                  value={countryFilter}
-                  onChange={(e) => {
-                    setCountryFilter(e.target.value);
-                    setPage(1);
-                    setMenuFor(null);
-                  }}
-                >
-                  <option value="all">All countries</option>
-                  {subCountries.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
                 </select>
               </div>
               <div className="admin-field">
@@ -2118,14 +1854,16 @@ function NewsletterList() {
                           Clear filters
                         </Button>
                       ) : null}
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon="plus"
-                        onClick={() => toForm("create")}
-                      >
-                        Add New Campaign
-                      </Button>
+                      {canEdit ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon="plus"
+                          onClick={() => toForm("create")}
+                        >
+                          Add New Campaign
+                        </Button>
+                      ) : null}
                     </span>
                   </div>
                 }
@@ -2178,7 +1916,7 @@ function NewsletterList() {
           )}
 
           {/* Bulk action bar — shown in place of the pagination bar while rows are selected */}
-          {selected.size > 0 ? (
+          {isCampaign && selected.size > 0 ? (
             <div className="admin-bulkbar">
               <span className="admin-bulkbar__summary">
                 <label className="admin-checkbox">
@@ -2204,21 +1942,17 @@ function NewsletterList() {
                 Select all {filtered.length} {isCampaign ? "campaigns" : "subscribers"}
               </button>
               <div className="admin-bulkbar__actions">
-                {isCampaign ? (
-                  <Button variant="primary" size="sm" onClick={publishSelected}>
-                    <img
-                      src="/globe.png"
-                      alt=""
-                      width={14}
-                      height={14}
-                      className="admin-status-badge__img"
-                    />{" "}
-                    Publish
+                {canEdit ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon="trash"
+                    disabled={busy}
+                    onClick={deleteSelected}
+                  >
+                    Delete
                   </Button>
                 ) : null}
-                <Button variant="danger" size="sm" icon="trash" onClick={deleteSelected}>
-                  Delete
-                </Button>
               </div>
             </div>
           ) : (
@@ -2285,12 +2019,10 @@ function NewsletterList() {
         open={deleteConfirm !== null}
         title={
           deleteConfirm?.kind === "many"
-            ? `Delete ${deleteConfirm.count} ${isCampaign ? "Campaign" : "Subscriber"}${deleteConfirm.count === 1 ? "" : "s"}?`
+            ? `Delete ${deleteConfirm.count} Campaign${deleteConfirm.count === 1 ? "" : "s"}?`
             : deleteConfirm?.kind === "campaign"
               ? `Delete "${deleteConfirm.item.subject}"?`
-              : deleteConfirm?.kind === "subscriber"
-                ? `Delete "${deleteConfirm.item.name}"?`
-                : "Delete"
+              : "Delete"
         }
         width={420}
         className="admin-modal--dark admin-modal--delete"
@@ -2310,7 +2042,7 @@ function NewsletterList() {
               variant="danger"
               className="admin-modal__foot-btn"
               icon="trash"
-              onClick={doDelete}
+              onClick={() => void doDelete()}
             >
               Delete
             </Button>
@@ -2320,11 +2052,22 @@ function NewsletterList() {
         <p className="admin-delete-confirm__message">
           {deleteConfirm ? (
             <span className="admin-delete-confirm__hint">
-              They disappear from the public page now. You can revert deletion on the admin log
-              before 14 days.
+              Only drafts and scheduled campaigns can be deleted. You can revert deletion on the
+              admin log before 14 days.
             </span>
           ) : null}
         </p>
+      </Modal>
+
+      {sendModal}
+      <Modal
+        open={previewFor !== null}
+        title={previewFor?.subject ?? "Preview"}
+        width={640}
+        onClose={() => setPreviewFor(null)}
+      >
+        {/* Stored body was sanitised by the server (allowlist) when it was saved. */}
+        <div dangerouslySetInnerHTML={{ __html: previewFor?.body ?? "" }} />
       </Modal>
 
       <ToastBanner message={toast.message} />
