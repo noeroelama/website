@@ -49,6 +49,8 @@ const fromChapter = (c: ChapterItem | null): Form => ({
  */
 export function ChapterForm(props: {
   chapter: ChapterItem | null;
+  /** Chapter admin: only the contact fields can change (the server enforces it too). */
+  contactOnly?: boolean;
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
@@ -62,7 +64,7 @@ export function ChapterForm(props: {
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const field = (key: keyof Form, label: string, hint?: string, type = "text") => (
+  const field = (key: keyof Form, label: string, hint?: string, type = "text", board = false) => (
     <div className="admin-field">
       <label className="admin-field__label" htmlFor={`chapter-${key}`}>
         {label}
@@ -71,6 +73,7 @@ export function ChapterForm(props: {
         id={`chapter-${key}`}
         className="admin-input"
         type={type}
+        disabled={board && props.contactOnly}
         value={form[key] as string}
         onChange={(e) => set(key, e.target.value as never)}
         aria-invalid={errors[key] ? true : undefined}
@@ -121,12 +124,12 @@ export function ChapterForm(props: {
       }
     >
       <div className="admin-form-grid">
-        {field("name", "Name *", "e.g. PPI Jepang")}
-        {field("countryCode", "Country *", "2-letter ISO code, e.g. JP")}
-        {field("timezone", "Time zone *", "IANA name, e.g. Asia/Tokyo")}
-        {field("slug", "URL", "Built from the name when empty")}
-        {field("latitude", "Map latitude *", "Marker position, e.g. 36.2", "number")}
-        {field("longitude", "Map longitude *", "e.g. 138.25", "number")}
+        {field("name", "Name *", "e.g. PPI Jepang", "text", true)}
+        {field("countryCode", "Country *", "2-letter ISO code, e.g. JP", "text", true)}
+        {field("timezone", "Time zone *", "IANA name, e.g. Asia/Tokyo", "text", true)}
+        {field("slug", "URL", "Built from the name when empty", "text", true)}
+        {field("latitude", "Map latitude *", "Marker position, e.g. 36.2", "number", true)}
+        {field("longitude", "Map longitude *", "e.g. 138.25", "number", true)}
         {field("contactName", "Contact person", "Shown publicly")}
         {field("contactPublic", "Public contact", "E-mail or phone the contact allows to publish")}
         {field("website", "Website", "https://…", "url")}
@@ -199,12 +202,12 @@ export function ChapterForm(props: {
               variant="outline"
               size="sm"
               icon="upload"
-              disabled={logo.busy}
+              disabled={logo.busy || props.contactOnly}
               onClick={() => logoInput.current?.click()}
             >
               {logo.busy ? "Uploading…" : form.logo ? "Replace logo" : "Upload logo"}
             </Button>
-            {form.logo && (
+            {form.logo && !props.contactOnly && (
               <Button variant="ghost" size="sm" onClick={() => set("logo", null)}>
                 Remove
               </Button>

@@ -46,6 +46,7 @@ can(principal, "users.edit", { orgUnitPath: ["board", "media"] }); // unit and d
 can(principal, "profile.write_own", { ownerId: principal.userId });
 canAccessAdmin(principal); // any admin-page permission
 canInSomeScope(principal, "audit.read"); // what to SHOW (navigation), never an action check
+scopedChapterIds(principal, "users.read"); // "all" | chapter ids: filter list queries by it
 requirePermission(principal, "articles.publish");
 canSaveRole(principal, draft, previous); // Roles page
 canAssignRole(principal, role); // Users page
@@ -54,6 +55,9 @@ accountChangeRefusal({ actor, targetUserId, role, superadminsAfter }); // Users 
 
 ## Rules
 
+- `can()` without a resource answers for a **global** assignment only, so a chapter or unit
+  assignment never passes an unscoped check (the PPIDK §56/§73 leak cannot happen here). Lists
+  of people are filtered in the repository query with `scopedChapterIds` (A2).
 - Evaluated **server-side only**. Never trust hidden buttons, client route guards, client
   state, a Firebase login alone, URL params, or role fields in payloads (tested).
 - Every admin mutation uses `createGuardedAction` (staff → validation → permission).

@@ -15,6 +15,7 @@ import {
   PAGE_PERMISSIONS,
   requirePermission,
   resolveAssignments,
+  scopedChapterIds,
   SUPERADMIN_ROLE_ID,
   SYSTEM_ROLES,
   type Principal,
@@ -194,6 +195,26 @@ describe("can()", () => {
     expect(can(director, "events.edit", { orgUnitPath: ["root"] })).toBe(false);
     expect(can(director, "events.edit")).toBe(false);
     expect(can(director, "events.edit", { chapterId: "dir-edu" })).toBe(false);
+  });
+
+  it("lists are filtered to the chapters a principal covers; global means every chapter (A2)", () => {
+    const twoChapters = principal([
+      { roleId: "chapter_admin", scope: jp },
+      { roleId: "chapter_admin", scope: { type: "chapter", chapterId: "kr" } },
+      { roleId: "viewer", scope: { type: "orgUnit", orgUnitId: "media" } },
+    ]);
+    expect(scopedChapterIds(twoChapters, "events.edit")).toEqual(["jp", "kr"]);
+    expect(scopedChapterIds(twoChapters, "gallery.read")).toEqual([]);
+    expect(scopedChapterIds(twoChapters, "articles.read")).toEqual([]); // unit scope: no chapter
+    const national = principal([
+      { roleId: "chapter_admin", scope: jp },
+      { roleId: "chapter_admin" },
+    ]);
+    expect(scopedChapterIds(national, "events.edit")).toBe("all");
+    expect(scopedChapterIds(principal([{ roleId: "everything" }], false), "events.edit")).toEqual(
+      [],
+    );
+    expect(scopedChapterIds(null, "events.edit")).toEqual([]);
   });
 
   it("*_own permissions belong to every active account, for its own resources only", () => {

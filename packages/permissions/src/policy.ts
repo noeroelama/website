@@ -129,6 +129,23 @@ export function canInSomeScope(principal: Principal | null, permission: PagePerm
   return principal.assignments.some((a) => a.permissions.has(permission));
 }
 
+/**
+ * Which chapters' records a list may show for this permission (A2, PPIDK CakupanCabang): "all"
+ * with a global assignment, otherwise the chapter ids of its chapter assignments (empty = none).
+ * Repository queries filter by it, so a chapter admin's list never holds another chapter's people.
+ */
+export function scopedChapterIds(
+  principal: Principal | null,
+  permission: PagePermission,
+): "all" | string[] {
+  if (principal === null || !principal.active) return [];
+  const holding = principal.assignments.filter((a) => a.permissions.has(permission));
+  if (holding.some((a) => a.scope.type === "global")) return "all";
+  return [
+    ...new Set(holding.flatMap((a) => (a.scope.type === "chapter" ? [a.scope.chapterId] : []))),
+  ];
+}
+
 /** True when the principal may enter the admin area at all (any admin-page permission). */
 export function canAccessAdmin(principal: Principal | null): boolean {
   if (principal === null || !principal.active) return false;

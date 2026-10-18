@@ -314,12 +314,13 @@ describe("Users page: give and remove roles", () => {
   });
 
   it("reads accounts with missing fields safely", async () => {
-    fake.docs.set("users/bare", { status: "weird", name: 42, createdAt: {} });
+    fake.docs.set("users/bare", { status: "weird", name: 42, createdAt: {}, chapterId: "../jp" });
     expect(await deps.accounts.get("bare")).toEqual({
       uid: "bare",
       email: null,
       name: null,
       status: "inactive",
+      chapterId: null,
       roleAssignments: [],
       createdAt: null,
       lastSignInAt: null,
@@ -338,6 +339,54 @@ describe("Users page: give and remove roles", () => {
     expect(await store.countActiveSuperadmins()).toBe(1);
     expect(await store.get("nobody")).toBeNull();
     expect(await store.get("bad/id")).toBeNull();
+  });
+
+  it("chapter-scoped staff list only their chapter's accounts and cannot change roles (A2)", async () => {
+    fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), chapterId: "jp" });
+    fake.docs.set("users/kim", {
+      uid: "kim",
+      ...user(["user"]),
+      email: "kim@example.org",
+      chapterId: "kr",
+    });
+    const store = deps.accounts;
+    expect((await store.list({ limit: 10, chapterIds: ["jp"] })).items.map((u) => u.uid)).toEqual([
+      "ana",
+    ]);
+    expect(
+      (await store.list({ limit: 10, chapterIds: ["jp", "kr"], roleId: "user" })).items.map(
+        (u) => u.uid,
+      ),
+    ).toEqual(["ana", "kim"]);
+    expect(await store.list({ limit: 10, chapterIds: [] })).toEqual({
+      items: [],
+      nextCursor: null,
+    });
+    await expect(
+      store.list({ limit: 10, chapterIds: Array.from({ length: 31 }, (_, i) => `c${i}`) }),
+    ).rejects.toThrow(/30 chapters/);
+    expect(await store.get("ana")).toMatchObject({ chapterId: "jp" });
+    expect(await store.get("boss")).toMatchObject({ chapterId: null });
+
+    // users.edit for one chapter is not enough to change anyone's roles (role changes are global).
+    fake.docs.set("roles/jp_admin", {
+      name: "JP admin",
+      permissions: ["users.read", "users.edit"],
+      version: 1,
+      deletedAt: null,
+    });
+    fake.docs.set("users/jpadmin", {
+      uid: "jpadmin",
+      ...user([]),
+      roleAssignments: [{ roleId: "jp_admin", scope: { type: "chapter", chapterId: "jp" } }],
+      roleIds: ["jp_admin"],
+    });
+    expect(
+      await createAccountActions(deps).assignRole(...as("jpadmin"))({
+        ...giveEditor,
+        roleId: "user",
+      }),
+    ).toEqual({ ok: false, error: "forbidden" });
   });
 });
 

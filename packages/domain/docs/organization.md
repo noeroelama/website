@@ -48,8 +48,11 @@ fields/divisions and staff, each under its parent unit.
   equirectangular; the constants are fitted to the PPIDK map (Astana, Tokyo, Wellington).
 - One reader list (`listActive`) drives the markers, the About list and the count, so they never
   disagree; inactive chapters are hidden everywhere on the site.
-- Permission `organizations.edit` to add, edit, activate and deactivate; `organizations.read` to
-  see the page. Audit module `organizations`, resource `chapter`; revertible for 14 days except
+- Permission `organizations.edit` (global) to add, edit, activate and deactivate;
+  `organizations.read` to see the page. A chapter admin (`organizations.edit` for one chapter)
+  edits only that chapter's contact person, public contact, website, e-mail, Instagram and links;
+  name, country, time zone, logo, URL and map position stay with the national board (refused on
+  the server, disabled in the form). Audit module `organizations`, resource `chapter`; revertible for 14 days except
   edits that changed the URL. There is no delete route.
 - The gateway JSON (`/v1/chapters`, the "KSK API" in the flowchart) is not built until the owner
   confirms who uses it.

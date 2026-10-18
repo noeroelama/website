@@ -86,9 +86,21 @@ export function createFirestoreAccountStore(db: Firestore) {
   const users = db.collection("users");
   const audit = createFirestoreAuditWriter(db);
   return {
-    /** Newest e-mail order: email, then uid. Filters: one role and/or status. */
-    async list({ roleId, status, cursor, limit }: UserListQuery): Promise<Page<UserSummary>> {
+    /** E-mail order: email, then uid. Filters: one role, status and/or chapters. */
+    async list({
+      roleId,
+      status,
+      chapterIds,
+      cursor,
+      limit,
+    }: UserListQuery): Promise<Page<UserSummary>> {
       let query: Query = users;
+      if (chapterIds !== undefined) {
+        // Chapter-scoped staff: an empty scope sees nobody (fail closed).
+        if (chapterIds.length === 0) return { items: [], nextCursor: null };
+        if (chapterIds.length > 30) throw new Error("A list can filter by at most 30 chapters.");
+        query = query.where("chapterId", "in", [...chapterIds]);
+      }
       if (roleId !== undefined) query = query.where("roleIds", "array-contains", roleId);
       if (status !== undefined) query = query.where("status", "==", status);
       query = query.orderBy("email").orderBy("uid");

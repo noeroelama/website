@@ -93,6 +93,8 @@ interface OrganizationsProps {
   chapters: ChapterItem[];
   /** organizations.edit: add, edit, activate/deactivate chapters. */
   canEdit: boolean;
+  /** Chapters whose contact details this chapter admin may edit (organizations.edit there). */
+  contactEditIds: string[];
   /** Board periods from Firestore; null without periods.read (the Period tab is hidden). */
   periods: PeriodItem[] | null;
   /** periods.edit: add, edit and activate periods. */
@@ -112,6 +114,7 @@ export function OrganizationsPage(props: OrganizationsProps) {
 function OrganizationsList({
   chapters: ppis,
   canEdit,
+  contactEditIds,
   periods: periodList,
   canEditPeriods,
 }: OrganizationsProps) {
@@ -783,17 +786,19 @@ function OrganizationsList({
       align: "right",
       width: "12%",
       render: (r) =>
-        canEdit ? (
+        canEdit || contactEditIds.includes(r.id) ? (
           <div className="admin-table__actions">
-            <Button
-              variant="ghost"
-              size="icon"
-              icon={r.active ? "lock" : "globe"}
-              aria-label={r.active ? `Deactivate ${r.name}` : `Activate ${r.name}`}
-              title={r.active ? "Deactivate (hidden from the map)" : "Activate"}
-              disabled={busy}
-              onClick={() => void setActiveFor([r], !r.active)}
-            />
+            {canEdit ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                icon={r.active ? "lock" : "globe"}
+                aria-label={r.active ? `Deactivate ${r.name}` : `Activate ${r.name}`}
+                title={r.active ? "Deactivate (hidden from the map)" : "Activate"}
+                disabled={busy}
+                onClick={() => void setActiveFor([r], !r.active)}
+              />
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
@@ -913,6 +918,7 @@ function OrganizationsList({
       {chapterForm !== null ? (
         <ChapterForm
           chapter={chapterForm === "new" ? null : chapterForm}
+          contactOnly={!canEdit}
           onClose={() => setChapterForm(null)}
           onSaved={(text) => {
             setChapterForm(null);

@@ -1,4 +1,4 @@
-import { ACCOUNT_STATUSES, can } from "@website/permissions";
+import { ACCOUNT_STATUSES, scopedChapterIds } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { formatUtc } from "@/components/format";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +22,9 @@ export default async function UsersPage({
 }) {
   const viewer = await requireAdminViewer("/users", "users.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  // Account lists are global for now; chapter-scoped lists come with the chapter scope rules.
-  if (!can(viewer.principal, "users.read")) return <AccessMessage reason="no-access" />;
+  // Chapter-scoped staff see only their chapters' accounts (filtered in the query, A2).
+  const chapters = scopedChapterIds(viewer.principal, "users.read");
+  if (chapters !== "all" && chapters.length === 0) return <AccessMessage reason="no-access" />;
 
   const params = await searchParams;
   const roleId = one(params["role"]);
@@ -34,6 +35,7 @@ export default async function UsersPage({
     adminReads.listUsers({
       roleId,
       status: ACCOUNT_STATUSES.find((s) => s === status),
+      chapterIds: chapters === "all" ? undefined : chapters,
       cursor,
       limit: PAGE_SIZE,
     }),

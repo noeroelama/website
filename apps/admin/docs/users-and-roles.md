@@ -32,8 +32,11 @@ optionally for one board period only) and deactivate or reactivate the account.
   written with its audit entry in one transaction (`module` `users` / `roles`, not revertible),
   then ends the account's sessions (`revokeRefreshTokens`) and logs `staff.role_changed`.
   Deactivation also disables the Firebase Auth account.
-- Lists are global (`users.read` held globally); chapter-scoped lists come with the chapter scope
-  rules.
+- Chapter isolation (A2): with `users.read` for some chapters only, the list shows only accounts
+  whose `chapterId` is one of them (filtered in the Firestore query, `scopedChapterIds`), and an
+  account page opens only for an account of such a chapter. `users/{uid}.chapterId` comes from
+  the member profile (step 3.5); until then chapter-scoped staff see no accounts (fail closed).
+- Giving or removing roles and (de)activating need `users.edit` globally.
 - Concurrent edits: each form sends the version it showed; a stale version → "changed by someone
   else".
 

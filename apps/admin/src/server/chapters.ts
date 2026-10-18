@@ -4,6 +4,7 @@ import type { FirestoreChapterStore } from "@website/db/firestore";
 import { slugify } from "@website/domain/content";
 import { ChapterInputSchema, type Chapter } from "@website/domain/organizations";
 import { RuleViolationError } from "@website/domain/shared";
+import { can } from "@website/permissions";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
@@ -16,6 +17,20 @@ const SaveInput = ChapterInputSchema.extend({
   id: safeId.optional(),
   version: z.number().int().min(1).nullable(),
 }).strict();
+
+/**
+ * What only the national board changes. A chapter admin (organizations.edit for its chapter) may
+ * change the rest: the contact person, public contact, website, e-mail, Instagram and links.
+ */
+const BOARD_FIELDS = [
+  "name",
+  "countryCode",
+  "timezone",
+  "logo",
+  "latitude",
+  "longitude",
+  "slug",
+] as const satisfies readonly (keyof Chapter)[];
 
 /** Audit entry for one chapter change (module `organizations`, resource `chapter`). */
 const chapterAudit =
@@ -39,12 +54,19 @@ const chapterAudit =
       revertible,
     });
 
-/** Organizations → PPI actions: save (add/edit) and activate/deactivate. There is no delete. */
+/**
+ * Organizations → PPI actions: save (add/edit) and activate/deactivate. There is no delete.
+ * The national board (global organizations.edit) changes everything; a chapter admin (the
+ * permission for one chapter) only the contact fields of that chapter.
+ */
 export function createChapterActions(deps: ChapterDeps) {
   const save = createGuardedAction({
     permission: "organizations.edit",
     input: SaveInput,
-    handler: async ({ id, version, slug: typedSlug, ...input }, _principal, audit) => {
+    // Creating needs the global permission; editing is checked against the chapter itself.
+    resource: (input) => (input.id ? { chapterId: input.id } : {}),
+    handler: async ({ id, version, slug: typedSlug, ...input }, principal, audit) => {
+      const contactOnly = !can(principal, "organizations.edit");
       let revertible = true;
       const saved = await deps.chapters.write(
         id ?? null,
@@ -54,7 +76,17 @@ export function createChapterActions(deps: ChapterDeps) {
           if (!slug) throw new RuleViolationError("Use letters or numbers in the name or URL.");
           // A changed URL would leave the slug index behind on revert: never revertible.
           if (current) revertible = current.slug === slug;
-          return { ...input, slug, active: current?.active ?? true, deletedAt: null };
+          const next = { ...input, slug, active: current?.active ?? true, deletedAt: null };
+          // contactOnly always edits an existing chapter (creating needs the global permission).
+          const before = current as Chapter;
+          const changed = (key: (typeof BOARD_FIELDS)[number]) =>
+            JSON.stringify(next[key]) !== JSON.stringify(before[key]);
+          if (contactOnly && BOARD_FIELDS.some(changed)) {
+            throw new RuleViolationError(
+              "Only the contact details of your chapter can be changed here.",
+            );
+          }
+          return next;
         },
         (before, after, current, next) =>
           chapterAudit(audit, current ? "UPDATE" : "CREATE", revertible)(

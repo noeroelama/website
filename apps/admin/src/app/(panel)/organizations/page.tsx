@@ -1,4 +1,4 @@
-import { can } from "@website/permissions";
+import { can, scopedChapterIds } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { toChapterItem } from "@/components/chapters-model";
 import { OrganizationsPage } from "@/components/organizations-page";
@@ -13,6 +13,7 @@ export default async function OrganizationsRoute() {
   const viewer = await requireAdminViewer("/organizations", "organizations.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
   const canReadPeriods = can(viewer.principal, "periods.read");
+  const contactScope = scopedChapterIds(viewer.principal, "organizations.edit");
   const [chapters, periods] = await Promise.all([
     adminReads.listChapters(),
     canReadPeriods ? adminReads.listPeriods() : null,
@@ -21,6 +22,7 @@ export default async function OrganizationsRoute() {
     <OrganizationsPage
       chapters={chapters.map(toChapterItem)}
       canEdit={can(viewer.principal, "organizations.edit")}
+      contactEditIds={contactScope === "all" ? [] : contactScope}
       periods={periods?.map(toPeriodItem) ?? null}
       canEditPeriods={can(viewer.principal, "periods.edit")}
     />

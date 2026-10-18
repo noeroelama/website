@@ -100,6 +100,61 @@ describe("chapters (Organizations → PPI) and the map", () => {
     expect(REVERTIBLE_COLLECTIONS["chapter"]).toBe("chapters");
   });
 
+  it("a chapter admin edits only its own chapter, and only the contact fields (A2)", async () => {
+    const jp = await actions().save(...as(editor))({ ...chapter, version: null });
+    const kr = await actions().save(...as(editor))({
+      ...chapter,
+      name: "PPI Korea",
+      countryCode: "KR",
+      timezone: "Asia/Seoul",
+      version: null,
+    });
+    const jpId = jp.ok ? jp.data.id : "";
+    const krId = kr.ok ? kr.data.id : "";
+    const jpAdmin: Principal = {
+      ...editor,
+      assignments: [
+        {
+          roleId: "chapter_admin",
+          scope: { type: "chapter", chapterId: jpId },
+          permissions: new Set(normalizePermissions(["organizations.edit"])),
+        },
+      ],
+    };
+    const contact = {
+      contactName: "Budi",
+      contactPublic: "budi@ppijepang.org",
+      instagram: "@ppijp",
+    };
+    expect(
+      await actions().save(...as(jpAdmin))({ ...chapter, ...contact, id: jpId, version: 1 }),
+    ).toMatchObject({ ok: true, data: { version: 2 } });
+    expect(await store.get(jpId)).toMatchObject(contact);
+    // Name, country, map position and URL stay with the national board.
+    for (const change of [{ name: "PPI Nippon" }, { latitude: 35 }, { slug: "ppi-nippon" }]) {
+      expect(
+        await actions().save(...as(jpAdmin))({
+          ...chapter,
+          ...contact,
+          ...change,
+          id: jpId,
+          version: 2,
+        }),
+      ).toMatchObject({ error: "refused", issues: [expect.stringContaining("contact")] });
+    }
+    // Another chapter, a new chapter and (de)activation are out of reach.
+    expect(
+      await actions().save(...as(jpAdmin))({ ...chapter, name: "PPI Korea", id: krId, version: 1 }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    expect(await actions().save(...as(jpAdmin))({ ...chapter, version: null })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect(
+      await actions().setActive(...as(jpAdmin))({ id: jpId, version: 2, active: false }),
+    ).toEqual({ ok: false, error: "forbidden" });
+  });
+
   it("refuses a name without letters or numbers and a URL in use", async () => {
     expect(
       await actions().save(...as(editor))({ ...chapter, name: "!!!", version: null }),

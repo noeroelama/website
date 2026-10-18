@@ -49,6 +49,8 @@ export interface UserSummary {
   readonly email: string | null;
   readonly name: string | null;
   readonly status: UserStatus;
+  /** The member's PPI chapter (from the member profile); null until it is known. */
+  readonly chapterId: string | null;
   readonly roleAssignments: readonly RoleAssignment[];
   readonly createdAt: Date | null;
   readonly lastSignInAt: Date | null;
@@ -58,6 +60,8 @@ export interface UserSummary {
 export interface UserListQuery {
   readonly roleId?: string | undefined;
   readonly status?: UserStatus | undefined;
+  /** Only accounts of these chapters (chapter-scoped staff, at most 30); absent = every account. */
+  readonly chapterIds?: readonly string[] | undefined;
   /** `nextCursor` of the previous page. */
   readonly cursor?: string | undefined;
   readonly limit: number;
@@ -165,6 +169,10 @@ export function toUserSummary(uid: string, data: Record<string, unknown>): UserS
     email: typeof data["email"] === "string" ? data["email"] : null,
     name: typeof data["name"] === "string" ? data["name"] : null,
     status: data["status"] === "active" ? "active" : "inactive",
+    chapterId:
+      typeof data["chapterId"] === "string" && safeId.safeParse(data["chapterId"]).success
+        ? data["chapterId"]
+        : null,
     roleAssignments: parseAssignments(data["roleAssignments"]),
     createdAt: toDate(data["createdAt"]),
     lastSignInAt: toDate(data["lastSignInAt"]),

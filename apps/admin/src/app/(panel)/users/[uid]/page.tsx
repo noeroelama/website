@@ -20,9 +20,11 @@ export default async function UserPage({ params }: { params: Promise<{ uid: stri
   const { uid } = await params;
   const viewer = await requireAdminViewer(`/users/${uid}`, "users.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  if (!can(viewer.principal, "users.read")) return <AccessMessage reason="no-access" />;
   const user = await adminReads.getUser(uid);
   if (!user) notFound();
+  // Global users.read, or users.read for the account's chapter (A2).
+  const chapter = user.chapterId === null ? undefined : { chapterId: user.chapterId };
+  if (!can(viewer.principal, "users.read", chapter)) return <AccessMessage reason="no-access" />;
   const [roles, methods] = await Promise.all([
     adminReads.listRoles(),
     adminReads.signInMethods(uid).catch(() => null),
