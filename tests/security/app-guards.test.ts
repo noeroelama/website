@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SESSION_COOKIE } from "@website/auth";
+import { PRIVACY_POLICY_VERSION } from "@website/domain/members";
 import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
 import { normalizePermissions, resolveAssignments, type Principal } from "@website/permissions";
 import type * as WebGuardModule from "../../apps/web/src/server/request-guard";
@@ -124,10 +125,14 @@ describe("sign-in redirect before the page renders (proxy)", () => {
 // Admin page gate (apps/admin/src/server/context.ts): the session cookie and the user's roles are
 // faked; redirect()/forbidden() throw like the real Next.js functions. Next.js is mocked at the
 // copy admin imports (the repository root does not depend on `next`).
-const adminSession = vi.hoisted(() => ({
-  cookie: undefined as string | undefined,
-  principal: null as Principal | null,
-}));
+const adminSession = vi.hoisted(
+  (): {
+    cookie: string | undefined;
+    principal: Principal | null;
+    /** Consent version of the staff member's profile (null = no profile yet). */
+    profileConsent: string | null;
+  } => ({ cookie: undefined, principal: null, profileConsent: "2026-10-18" }),
+);
 vi.mock("../../apps/admin/node_modules/next/headers.js", () => ({
   cookies: () =>
     Promise.resolve({
@@ -150,6 +155,18 @@ vi.mock("@website/auth/firebase-admin", () => ({
 vi.mock("../../apps/admin/src/server/env", () => ({
   getAdminEnv: () => ({ APP_ENV: "test" }),
   getAppUrls: () => ({ WEB_URL: "https://web.example", ADMIN_URL: "https://admin.example" }),
+}));
+vi.mock("../../apps/admin/src/server/stores", () => ({
+  adminStores: () => ({
+    memberProfiles: {
+      findByUserId: () =>
+        Promise.resolve(
+          adminSession.profileConsent === null
+            ? null
+            : { consent: { privacyPolicyVersion: adminSession.profileConsent } },
+        ),
+    },
+  }),
 }));
 vi.mock("../../apps/admin/src/server/user-directory", () => ({
   userDirectory: () => ({ findPrincipalByUid: () => Promise.resolve(adminSession.principal) }),
@@ -177,6 +194,7 @@ describe("admin page gate (requireAdminViewer)", () => {
   afterEach(() => {
     adminSession.cookie = undefined;
     adminSession.principal = null;
+    adminSession.profileConsent = PRIVACY_POLICY_VERSION;
   });
 
   it("sends a signed-out visitor to the web sign-in page", async () => {
@@ -198,5 +216,19 @@ describe("admin page gate (requireAdminViewer)", () => {
     expect(await gate()).toMatchObject({ principal: adminSession.principal });
     adminSession.principal = asRole("writer");
     expect(await gate()).toBe("no-access");
+  });
+
+  it("sends staff without a complete member profile to the web profile page first (B3)", async () => {
+    adminSession.cookie = "token";
+    adminSession.principal = asRole("superadmin");
+    const { getPrincipal } = await import("../../apps/admin/src/server/context");
+    for (const consent of [null, "2020-01-01"]) {
+      adminSession.profileConsent = consent;
+      await expect(gate()).rejects.toThrow(
+        `redirect https://web.example/account/profile?next=${encodeURIComponent("https://admin.example/events")}`,
+      );
+    }
+    // Actions are refused too (createGuardedAction gets no principal).
+    expect(await getPrincipal()).toBeNull();
   });
 });

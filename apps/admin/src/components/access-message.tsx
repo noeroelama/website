@@ -3,12 +3,14 @@
  * sees this: requireAdminViewer() redirects to the web sign-in page first, and shows the
  * restricted (403) page to signed-in users without any staff role.
  */
-export function AccessMessage({ reason }: { reason: "signed-out" | "no-access" }) {
+export function AccessMessage({ reason }: { reason: "signed-out" | "no-access" | "profile" }) {
   return (
     <p data-testid="auth-state">
       {reason === "signed-out"
         ? "Not signed in — sign-in required."
-        : "Your role does not include this page. Ask an administrator for access."}
+        : reason === "profile"
+          ? "Complete your member profile on the website first (Your account → Member profile)."
+          : "Your role does not include this page. Ask an administrator for access."}
     </p>
   );
 }

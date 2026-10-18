@@ -56,6 +56,7 @@ export {
   type FirestoreChapterReader,
   type FirestoreChapterStore,
 } from "./chapters";
+export { createFirestoreMemberProfileStore } from "./member-profiles";
 export {
   createFirestoreOrgUnitStore,
   orgUnitSnapshot,

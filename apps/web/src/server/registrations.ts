@@ -16,12 +16,14 @@ export interface RegistrationDeps {
   readonly captcha: (token: string) => Promise<boolean>;
   /** Messenger send; called after the registration transaction committed. */
   readonly send: (message: Message, key: string) => Promise<unknown>;
+  /** Member-only: a complete profile (isProfileComplete) is required to register (B3). */
+  readonly profileComplete: (userId: string) => Promise<boolean>;
   readonly now: () => Date;
 }
 
 export type RegistrationResult =
   | { ok: true; status: RegistrationStatus }
-  | { ok: false; error: "signin" | "invalid" | "captcha" | "closed" };
+  | { ok: false; error: "signin" | "profile" | "invalid" | "captcha" | "closed" };
 
 const Input = z
   .object({ slug: z.string().refine(isValidSlug), token: z.string().max(4000) })
@@ -44,6 +46,7 @@ export function createEventRegistration(deps: RegistrationDeps) {
     const parsed = Input.safeParse(input);
     if (!parsed.success) return { ok: false, error: "invalid" };
     if (!(await deps.captcha(parsed.data.token))) return { ok: false, error: "captcha" };
+    if (!(await deps.profileComplete(user.uid))) return { ok: false, error: "profile" };
     const event = await deps.findEvent(parsed.data.slug);
     if (!event) return { ok: false, error: "closed" };
     let result: { status: RegistrationStatus; created: boolean };

@@ -10,6 +10,7 @@ import { createRecaptchaVerifier, passesCaptcha } from "./captcha";
 import { webDb } from "./db";
 import { getWebEnv } from "./env";
 import { messenger } from "./messaging";
+import { hasCompleteProfile } from "./profile-wiring";
 import { createEventRegistration } from "./registrations";
 
 const reader = lazyEnv(() => createFirestoreEventReader(webDb()));
@@ -47,6 +48,7 @@ export const registerForEvent = lazyEnv(() => {
         "event_register",
       ),
     send: (message, key) => messenger().send(message, key),
+    profileComplete: hasCompleteProfile,
     now: () => new Date(),
   });
 });

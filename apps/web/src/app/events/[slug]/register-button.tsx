@@ -17,10 +17,12 @@ export function RegisterButton(props: {
     captchaFailed: string;
     failed: string;
     signInToRegister: string;
+    profileNeeded: string;
   };
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [needsProfile, setNeedsProfile] = useState(false);
   const t = props.labels;
 
   const describe = (result: RegistrationResult): string => {
@@ -28,6 +30,7 @@ export function RegisterButton(props: {
     if (result.error === "captcha") return t.captchaFailed;
     if (result.error === "closed") return t.closed;
     if (result.error === "signin") return t.signInToRegister;
+    if (result.error === "profile") return t.profileNeeded;
     return t.failed;
   };
 
@@ -35,7 +38,9 @@ export function RegisterButton(props: {
     setBusy(true);
     try {
       const token = await captchaToken("event_register");
-      setMessage(describe(await registerForEventAction({ slug: props.slug, token })));
+      const result = await registerForEventAction({ slug: props.slug, token });
+      setNeedsProfile(!result.ok && result.error === "profile");
+      setMessage(describe(result));
     } catch {
       setMessage(t.failed);
     } finally {
@@ -50,7 +55,13 @@ export function RegisterButton(props: {
       </button>
       {message && (
         <p role="status" className="ui-message" data-tone="info">
-          {message}
+          {needsProfile ? (
+            <a href={`/account/profile?next=${encodeURIComponent(`/events/${props.slug}`)}`}>
+              {message}
+            </a>
+          ) : (
+            message
+          )}
         </p>
       )}
     </div>

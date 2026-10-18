@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { forbidden, redirect } from "next/navigation";
 import { SESSION_COOKIE, signInUrl, type VerifiedIdentity } from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
+import { isProfileComplete } from "@website/domain/members";
 import {
   canAccessAdmin,
   canInSomeScope,
@@ -12,6 +13,7 @@ import {
 } from "@website/permissions";
 import { resolveRequestId } from "@website/observability";
 import { getAdminEnv, getAppUrls } from "./env";
+import { adminStores } from "./stores";
 import type { AuditContext } from "./guarded-action";
 import { userDirectory } from "./user-directory";
 
@@ -20,6 +22,9 @@ export interface AdminViewer {
   readonly principal: Principal;
   readonly name: string | null;
   readonly email: string | null;
+  /** The member profile is complete (B3). Until it is, pages send staff to the web profile page
+   *  first and actions are refused. */
+  readonly profileComplete: boolean;
 }
 
 /** Shared session cookie → Firebase verification (with revocation check). Once per request. */
@@ -44,14 +49,23 @@ const getIdentity = cache(async (): Promise<VerifiedIdentity | null> => {
 export const getAdminViewer = cache(async (): Promise<AdminViewer | null> => {
   const identity = await getIdentity();
   if (!identity) return null;
-  const principal = await userDirectory().findPrincipalByUid(identity.uid);
+  const [principal, profile] = await Promise.all([
+    userDirectory().findPrincipalByUid(identity.uid),
+    adminStores().memberProfiles.findByUserId(identity.uid),
+  ]);
   if (!principal || !canAccessAdmin(principal)) return null;
-  return { principal, name: identity.name ?? null, email: identity.email };
+  return {
+    principal,
+    name: identity.name ?? null,
+    email: identity.email,
+    profileComplete: isProfileComplete(profile),
+  };
 });
 
-/** The principal alone, for createGuardedAction. */
+/** The principal alone, for createGuardedAction (none until the member profile is complete). */
 export async function getPrincipal(): Promise<Principal | null> {
-  return (await getAdminViewer())?.principal ?? null;
+  const viewer = await getAdminViewer();
+  return viewer?.profileComplete ? viewer.principal : null;
 }
 
 /** Second argument of createGuardedAction: the staff e-mail and request id for audit entries. */
@@ -77,7 +91,7 @@ export async function getAuditContext(): Promise<AuditContext> {
 export async function requireAdminViewer(
   path: string,
   permission?: PagePermission,
-): Promise<AdminViewer | "signed-out" | "no-access"> {
+): Promise<AdminViewer | "signed-out" | "no-access" | "profile"> {
   if (!(await getIdentity())) {
     const { WEB_URL, ADMIN_URL } = getAppUrls();
     if (WEB_URL && ADMIN_URL) redirect(signInUrl(WEB_URL, `${ADMIN_URL}${path}`));
@@ -85,6 +99,14 @@ export async function requireAdminViewer(
   }
   const viewer = await getAdminViewer();
   if (!viewer) forbidden();
+  if (!viewer.profileComplete) {
+    // Staff fill in their member profile on the website first, then come back here (B3).
+    const { WEB_URL, ADMIN_URL } = getAppUrls();
+    if (WEB_URL && ADMIN_URL) {
+      redirect(`${WEB_URL}/account/profile?next=${encodeURIComponent(`${ADMIN_URL}${path}`)}`);
+    }
+    return "profile";
+  }
   if (permission !== undefined && !canInSomeScope(viewer.principal, permission)) return "no-access";
   return viewer;
 }

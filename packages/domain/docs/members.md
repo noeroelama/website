@@ -23,6 +23,28 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 | Email                        | `email`                   | Copied from the verified sign-in account; not typed by the user                                  | restricted |
 | Consent                      | `consent`                 | privacy-policy version + timestamp, required                                                     | —          |
 
+## Profile page and completeness gate (B3, A4)
+
+- Members fill in `/account/profile` on the website (`apps/web/src/app/account/profile/…`,
+  rules in `apps/web/src/server/profile.ts`). The owner always comes from the session (never the
+  form); saving needs a verified e-mail, which is copied into the profile. A stale version is
+  refused ("changed elsewhere").
+- Consent: the form agrees to `PRIVACY_POLICY_VERSION` (= the date on the Privacy and Terms
+  pages, `LEGAL_VERSION`). The first consent date is kept until the policy changes.
+- `isProfileComplete(profile)`: a saved profile that agreed to the current policy. Until it is
+  complete, admin pages send staff to `/account/profile?next=<admin page>` and admin actions are
+  refused (`apps/admin/src/server/context.ts`), and event registration answers "complete your
+  profile" (member-only). Bumping `PRIVACY_POLICY_VERSION` asks everyone to agree again.
+- Saving also writes `users/{uid}.chapterId` (the active chapter whose `countryCode` is
+  `ppiCountry`, or null) so chapter-scoped staff lists are one query; no personal data goes to
+  `users`. Firestore: `packages/db/src/firestore/member-profiles.ts`.
+- Address in Indonesia: province → regency/city pick-lists from
+  `packages/domain/src/members/indonesia-regions.ts` (38 provinces, 514 regencies, Kepmendagri;
+  generated once from the npm package `idn-area-data@4.0.1`, Open Database License — keep the
+  attribution in that file). The names are stored as text; the schema is unchanged.
+- Tests: `tests/integration/member-profile.test.ts`, `tests/security/app-guards.test.ts`,
+  `tests/integration/web-registration.test.ts`.
+
 ## Access
 
 - **The member**: reads/edits their own profile (`profile.read_own` / `profile.write_own`).

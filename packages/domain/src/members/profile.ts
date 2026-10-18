@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { safeText } from "@website/security/validation";
-import type { EntityMeta } from "../shared";
+import { RuleViolationError, type EntityMeta } from "../shared";
 
 /**
  * Member profile — the personal data collected from every member/registrant.
@@ -253,4 +253,45 @@ export interface MemberProfileRepository {
   findByUserId(userId: string): Promise<MemberProfile | null>;
   /** Must fail with ConcurrencyConflictError when expectedVersion is stale. */
   save(profile: MemberProfile, expectedVersion: number | null): Promise<MemberProfile>;
+}
+
+/**
+ * Date the Privacy Policy (and Terms) last changed. Members agree to this version on their
+ * profile; after a change the profile counts as incomplete until they agree again.
+ */
+export const PRIVACY_POLICY_VERSION = "2026-10-18";
+
+/** A saved profile that agreed to the current policy (gate for admin and member-only pages). */
+export function isProfileComplete(profile: Pick<MemberProfile, "consent"> | null): boolean {
+  return profile !== null && profile.consent.privacyPolicyVersion === PRIVACY_POLICY_VERSION;
+}
+
+/**
+ * The stored profile for a member's own save. The e-mail comes from the verified session; the
+ * consent date stays the first one unless the member agrees to a newer policy.
+ */
+export function ownProfile(
+  input: MemberProfileInput,
+  owner: { readonly userId: string; readonly email: string },
+  current: MemberProfile | null,
+  now: Date,
+): MemberProfile {
+  if (input.consent.privacyPolicyVersion !== PRIVACY_POLICY_VERSION) {
+    throw new RuleViolationError("The privacy policy changed: read it and agree again.");
+  }
+  const sameConsent = current?.consent.privacyPolicyVersion === PRIVACY_POLICY_VERSION;
+  return {
+    ...input,
+    userId: owner.userId,
+    email: owner.email,
+    consent: {
+      privacyPolicyVersion: PRIVACY_POLICY_VERSION,
+      consentedAt: sameConsent ? current.consent.consentedAt : now,
+    },
+    id: owner.userId,
+    version: (current?.version ?? 0) + 1,
+    createdAt: current?.createdAt ?? now,
+    updatedAt: now,
+    deletedAt: null,
+  };
 }

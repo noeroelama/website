@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasTwoSignInMethods, signInUrl } from "@website/auth";
+import { isProfileComplete } from "@website/domain/members";
 import { AppShell } from "@website/ui";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { formatEventTime } from "@/lib/event-time";
 import { registrations } from "@/server/events";
 import { ownSignInMethods } from "@/server/passkeys";
+import { ownProfile } from "@/server/profile-wiring";
 import { getSignedInUser } from "@/server/session";
 import { AccountActions } from "./account-actions";
 
@@ -25,17 +27,23 @@ export default async function AccountPage() {
   const user = await getSignedInUser();
   if (!user) redirect(signInUrl("", "/account")); // → /login?next=%2Faccount, then back here
   // Own registrations only (registrations.read_own): the query is keyed by the session's uid.
-  const [methods, mine, jar] = await Promise.all([
+  const [methods, mine, jar, profile] = await Promise.all([
     ownSignInMethods(user.uid),
     registrations().listByUser(user.uid),
     cookies(),
+    ownProfile().load(user),
   ]);
   const language = languageFrom(jar.get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language].events;
+  const p = DICTIONARIES[language].profile;
   return (
     <AppShell title="Your account">
       <p>Signed in as {user.email ?? "your account"}.</p>
       {!user.emailVerified && <p>Please verify your email address — check your inbox.</p>}
+      <p>
+        <a href="/account/profile">{p.linkLabel}</a>
+        {isProfileComplete(profile) ? null : ` — ${p.incomplete}`}
+      </p>
       <h2>Sign-in methods</h2>
       <ul>
         {methods.providers.map((provider) => (

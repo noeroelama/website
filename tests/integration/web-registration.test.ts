@@ -29,6 +29,7 @@ const setup = (overrides: Partial<Parameters<typeof createEventRegistration>[0]>
     register,
     captcha: (token: string) => Promise.resolve(token === "good"),
     send,
+    profileComplete: (uid: string) => Promise.resolve(uid === "u1"),
     now: () => new Date("2026-10-18T00:00:00Z"),
     ...overrides,
   };
@@ -50,6 +51,14 @@ describe("event registration from the website", () => {
       ok: false,
       error: "captcha",
     });
+    // Member-only: the profile must be complete first (B3).
+    expect(
+      await run(
+        { uid: "new", email: "new@example.org" },
+        { slug: "simposium", token: "good" },
+        "id",
+      ),
+    ).toEqual({ ok: false, error: "profile" });
     expect(await run(member, { slug: "missing", token: "good" }, "id")).toEqual({
       ok: false,
       error: "closed",

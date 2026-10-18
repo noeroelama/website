@@ -113,6 +113,7 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
               confirmed: t.events.confirmed,
               waitlisted: t.events.waitlisted,
               closed: t.events.closed,
+              profileNeeded: t.events.profileNeeded,
               captchaFailed: t.events.captchaFailed,
               failed: t.events.failed,
               signInToRegister: t.events.signInToRegister,
