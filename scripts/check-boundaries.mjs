@@ -77,7 +77,16 @@ const SUBPATHS = {
   shop: { domain: ["shop", "shared"] },
   // messaging: confirmation e-mails sent by the website (event registration, newsletter opt-in).
   web: {
-    domain: ["content", "events", "organizations", "newsletter", "members", "messaging", "shared"],
+    domain: [
+      "content",
+      "events",
+      "gallery",
+      "organizations",
+      "newsletter",
+      "members",
+      "messaging",
+      "shared",
+    ],
   },
   // Personal data (domain/members) never leaves through the third-party API.
   gateway: { domain: ["content", "events", "organizations", "shared"] },

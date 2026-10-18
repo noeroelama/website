@@ -34,7 +34,7 @@ test("old /articles links go to /news; unknown articles show the 404 page", asyn
   expect(moved.status()).toBe(308);
   expect(moved.headers()["location"]).toBe("/news");
   // Streamed (Cache Components): soft 404 with the not-found page and noindex.
-  for (const path of ["/news/Not A Slug", "/events/Not A Slug"]) {
+  for (const path of ["/news/Not A Slug", "/events/Not A Slug", "/gallery/Not A Slug"]) {
     const html = await (await request.get(path)).text();
     expect(html, path).toContain("Page not found");
     expect(html, path).toContain('<meta name="robots" content="noindex"/>');

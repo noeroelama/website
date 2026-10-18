@@ -127,6 +127,16 @@ const id = {
       meeting: "Rapat",
     },
   },
+  gallery: {
+    photos: "foto",
+    seeAll: "Lihat semua foto",
+    empty: "Belum ada album.",
+    close: "Tutup",
+    previous: "Sebelumnya",
+    next: "Berikutnya",
+    open: "Buka foto",
+    eventAlbum: "Album foto acara ini",
+  },
   about: {
     title: "Tentang kami",
     intro:
@@ -335,6 +345,16 @@ const en: Dictionary = {
       exhibition: "Exhibition",
       meeting: "Meeting",
     },
+  },
+  gallery: {
+    photos: "photos",
+    seeAll: "See all photos",
+    empty: "No albums yet.",
+    close: "Close",
+    previous: "Previous",
+    next: "Next",
+    open: "Open photo",
+    eventAlbum: "Photo album of this event",
   },
   about: {
     title: "About us",

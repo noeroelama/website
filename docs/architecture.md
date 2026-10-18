@@ -35,20 +35,20 @@ Internal Server Actions and Route Handlers in web/admin/shop are same-origin onl
 
 ## Packages
 
-| Package         | Responsibility                                                                                          | Depends on                                                    |
-| --------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `security`      | Per-IP rate limiting, origin restriction, input sanitization, safe errors, private caching              | `zod`; `sanitize-html` (only in the `./html` subpath)         |
-| `config`        | Zod env schemas, environment-isolation guard, shared tsconfigs                                          | —                                                             |
-| `contracts`     | External API DTOs, errors (RFC 9457), pagination, versions (Zod → OpenAPI)                              | —                                                             |
-| `domain`        | Business rules + ports, by module: `content`, `events`, `organizations`, `newsletter`, `shop`, `shared` | —                                                             |
-| `permissions`   | Roles, permissions, scoped `can()` / `requirePermission()`                                              | —                                                             |
-| `audit`         | Append-only audit event model, diff, revert policy (14 days)                                            | —                                                             |
-| `apikeys`       | Third-party key format, hashing, verification, scopes, rate-limit port                                  | —                                                             |
-| `email`         | `EmailSender` port, Resend adapter, in-memory adapter                                                   | —                                                             |
-| `observability` | Structured logging with redaction, request IDs, security events                                         | —                                                             |
-| `ui`            | Presentational React components (no data access, no auth decisions)                                     | —                                                             |
-| `auth`          | Identity port, session cookie policy, Firebase Admin adapter                                            | `config`                                                      |
-| `db`            | Database access per role; Firestore confined to `src/firestore/`                                        | `domain`, `config`, `apikeys`, `auth`, `permissions`, `audit` |
+| Package         | Responsibility                                                                                                     | Depends on                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `security`      | Per-IP rate limiting, origin restriction, input sanitization, safe errors, private caching                         | `zod`; `sanitize-html` (only in the `./html` subpath)         |
+| `config`        | Zod env schemas, environment-isolation guard, shared tsconfigs                                                     | —                                                             |
+| `contracts`     | External API DTOs, errors (RFC 9457), pagination, versions (Zod → OpenAPI)                                         | —                                                             |
+| `domain`        | Business rules + ports, by module: `content`, `events`, `gallery`, `organizations`, `newsletter`, `shop`, `shared` | —                                                             |
+| `permissions`   | Roles, permissions, scoped `can()` / `requirePermission()`                                                         | —                                                             |
+| `audit`         | Append-only audit event model, diff, revert policy (14 days)                                                       | —                                                             |
+| `apikeys`       | Third-party key format, hashing, verification, scopes, rate-limit port                                             | —                                                             |
+| `email`         | `EmailSender` port, Resend adapter, in-memory adapter                                                              | —                                                             |
+| `observability` | Structured logging with redaction, request IDs, security events                                                    | —                                                             |
+| `ui`            | Presentational React components (no data access, no auth decisions)                                                | —                                                             |
+| `auth`          | Identity port, session cookie policy, Firebase Admin adapter                                                       | `config`                                                      |
+| `db`            | Database access per role; Firestore confined to `src/firestore/`                                                   | `domain`, `config`, `apikeys`, `auth`, `permissions`, `audit` |
 
 Audit logic lives only in `packages/audit` (not also in `domain/audit`) so there is one owner.
 
@@ -66,7 +66,7 @@ Enforced by tooling, not just this document:
 Approved matrix:
 
 ```text
-web       → auth, config, contracts, db, domain(content|events|organizations|newsletter|members|messaging|shared), email, observability, permissions, security, ui
+web       → auth, config, contracts, db, domain(content|events|gallery|organizations|newsletter|members|messaging|shared), email, observability, permissions, security, ui
 admin     → audit, auth, config, db, domain, email, observability, permissions, security, ui
 shop      → auth, config, db, domain(shop|shared), email, observability, permissions, security, ui
 gateway   → apikeys, config, contracts, db, domain(content|events|organizations|shared), observability, security

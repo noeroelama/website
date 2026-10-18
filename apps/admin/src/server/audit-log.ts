@@ -22,6 +22,8 @@ export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
   content: "content",
   // Event page: fields of events/{id}; a changed URL is never revertible.
   event: "events",
+  // Gallery page: fields of galleries/{id}; a changed URL is never revertible.
+  album: "galleries",
 };
 
 export interface AuditLogDeps {

@@ -31,6 +31,14 @@ export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";
 export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
 export {
+  albumSnapshot,
+  createFirestoreGalleryReader,
+  createFirestoreGalleryStore,
+  type AlbumFields,
+  type FirestoreGalleryReader,
+  type FirestoreGalleryStore,
+} from "./gallery";
+export {
   createFirestoreEventReader,
   createFirestoreEventStore,
   createFirestoreRegistrationStore,

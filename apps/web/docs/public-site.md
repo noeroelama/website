@@ -27,6 +27,11 @@ an external registration link opens in a new tab; without one, a signed-in membe
 sign in first. After the deadline the page says registration is closed. `/account` lists the
 member's own registrations.
 
+**Gallery**: `/gallery` shows one card per published album (cover, event title, photo count);
+`/gallery/[slug]` shows the featured images with a native `<dialog>` lightbox and **See all
+photos** (external album, new tab, `rel="noopener noreferrer"`). Rules:
+`packages/domain/docs/gallery.md`.
+
 ## Where it lives
 
 - Dictionaries: `src/i18n/dictionaries.ts` (`DICTIONARIES.id` / `.en`, `languageFrom`, `LEGAL_VERSION`).

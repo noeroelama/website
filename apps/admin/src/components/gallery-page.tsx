@@ -1,22 +1,30 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import type { FeaturedImage } from "@website/domain/content";
+import { ALBUM_MAX_IMAGES } from "@website/domain/gallery";
+import {
+  removeAlbumAction,
+  saveAlbumAction,
+  setAlbumPublishedAction,
+} from "@/app/(panel)/gallery/actions";
+import { actionMessage } from "@/components/action-message";
+import { formatInZone, timeAgo } from "@/components/format";
+import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import {
-  ALBUM_EVENT_OPTIONS,
-  INITIAL_ALBUMS,
   PAGE_SIZE_OPTIONS,
-  formatDateTime,
-  timeAgo,
+  type AlbumEventOption,
   type AlbumItem,
   type AlbumStatus,
-} from "@/data/mock/gallery";
+} from "./gallery-model";
 
 /* ==================================================================
    Gallery — album list (search, filters, bulk actions) + create/edit
@@ -32,16 +40,11 @@ import {
    globals.css.
    ================================================================== */
 
-/** Public URL prefix for an album page, shown in the "URL *" field and Copy Link. */
-const ALBUM_URL_PREFIX = "ppidk.asiania.id/photos/";
-
-/** Small monogram chip standing in for the Figma row avatar (author / event type). */
-function initialsOf(name: string): string {
-  return name.trim().slice(0, 2).toUpperCase() || "AL";
-}
+/** Public album path on the web app (apps/web /gallery/[slug]). */
+const ALBUM_PATH = "/gallery/";
 
 /** Sortable album-table columns (checkbox and actions are never sorted). */
-type SortKey = "title" | "author" | "date";
+type SortKey = "title" | "total" | "date";
 
 /** Sortable table header: label + arrow icon. Active column shows a filled arrow. */
 function SortHeader({
@@ -67,32 +70,18 @@ function SortHeader({
   );
 }
 
-/** One editable photo tile in the Edit Album 5×2 grid. */
-interface AlbumPhoto {
-  /** data URL of the picked image, or null for an empty tile. */
-  src: string | null;
-  status: "uploaded" | "processing" | "error";
-}
-
 interface AlbumForm {
-  event: string;
+  eventId: string;
   total: string;
   albumLink: string;
   url: string;
-  banner: string | null;
-  photos: AlbumPhoto[];
+  /** Featured images (1 to 10), uploaded with the "gallery" preset. */
+  photos: FeaturedImage[];
 }
 
-const EMPTY_FORM: AlbumForm = {
-  event: ALBUM_EVENT_OPTIONS[0] ?? "",
-  total: "",
-  albumLink: "",
-  url: "",
-  banner: null,
-  photos: [],
-};
+const EMPTY_FORM: AlbumForm = { eventId: "", total: "", albumLink: "", url: "", photos: [] };
 
-/** Filter choice for the status select: any of the mock statuses, or "all". */
+/** Filter choice for the status select: any status, or "all". */
 type StatusFilter = "all" | AlbumStatus;
 
 /** Filter choice for the "Last Modified" select — same bucketing as the Events
@@ -102,26 +91,40 @@ type DateFilter = "all" | "today" | "month" | "year" | "past";
 /** Pending delete action shown in the dark confirm modal (one album or many). */
 type DeleteConfirm = { kind: "one"; album: AlbumItem } | { kind: "many"; count: number };
 
-export function GalleryPage() {
+interface GalleryListProps {
+  /** Rows from the server (src/app/(panel)/gallery/page.tsx); refreshed after every change. */
+  initial: AlbumItem[];
+  /** Published events an album can belong to. */
+  events: AlbumEventOption[];
+  canEdit: boolean;
+  /** WEB_URL, for "Copy Link". */
+  publicBase: string;
+}
+
+export function GalleryPage(props: GalleryListProps) {
   const pathname = usePathname();
 
   /* Re-keying the whole screen on the current path remounts it whenever the
      gallery route is (re)entered, so navigating away and back starts from a
      clean state — empty searchbox, all data, first page, no filters — without
      needing to reset state in an effect. */
-  return <GalleryList key={pathname} />;
+  return <GalleryList key={pathname} {...props} />;
 }
 
-function GalleryList() {
+function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryListProps) {
   const toast = useToastMessage();
+  const router = useRouter();
+  const upload = useImageUpload("gallery");
+  /* A server action is running: the action buttons are disabled meanwhile. */
+  const [busy, setBusy] = useState(false);
+  /* Server validation messages per field (GuardedResult `fields`). */
+  const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
   /* ---- list state ---- */
-  const [albums, setAlbums] = useState<AlbumItem[]>(INITIAL_ALBUMS);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState(""); // diterapkan hanya saat Search diklik / Enter ditekan
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [page, setPage] = useState(1);
@@ -139,17 +142,7 @@ function GalleryList() {
   const [form, setForm] = useState<AlbumForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  const activeFilterCount =
-    (eventTypeFilter !== "all" ? 1 : 0) +
-    (statusFilter !== "all" ? 1 : 0) +
-    (dateFilter !== "all" ? 1 : 0);
-
-  /* Distinct event types across the mock albums — feed the Event Type filter
-     from the albums' own content (like the Events/Articles category filters). */
-  const albumEventTypes = useMemo(
-    () => Array.from(new Set(albums.map((a) => a.eventType))).sort(),
-    [albums],
-  );
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (dateFilter !== "all" ? 1 : 0);
 
   /* ---- header sort: click toggles asc → desc (first click on a new column = asc) ---- */
   const onSort = (key: SortKey) => {
@@ -164,9 +157,9 @@ function GalleryList() {
   const sortValue = (a: AlbumItem, key: SortKey): string => {
     switch (key) {
       case "title":
-        return a.title.toLowerCase();
-      case "author":
-        return a.createdBy.toLowerCase();
+        return a.event.toLowerCase();
+      case "total":
+        return String(a.photoCount).padStart(9, "0");
       case "date":
         return a.modifiedAt;
     }
@@ -178,7 +171,6 @@ function GalleryList() {
     const m = today.slice(0, 7); // YYYY-MM, for the "this month" filter
     const y = today.slice(0, 4); // YYYY, for the "this year" filter
     return albums.filter((a) => {
-      if (eventTypeFilter !== "all" && a.eventType !== eventTypeFilter) return false;
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (dateFilter !== "all") {
         const d = a.modifiedAt.slice(0, 10); // ISO date part of the timestamp
@@ -193,12 +185,12 @@ function GalleryList() {
         }
       }
       if (q) {
-        const hay = [a.title, a.event, a.eventType, a.url].join(" ").toLowerCase();
+        const hay = [a.event, a.url, a.albumLink].join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [albums, query, today, eventTypeFilter, statusFilter, dateFilter]);
+  }, [albums, query, today, statusFilter, dateFilter]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
@@ -247,24 +239,52 @@ function GalleryList() {
     });
   };
 
-  /* ---- row / bulk mutations ---- */
-  const setStatusFor = (ids: Set<string>, status: AlbumStatus, label: string) => {
-    if (ids.size === 0) {
+  /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
+  type Failure = Parameters<typeof actionMessage>[0];
+  const fail = (result: Failure) => {
+    setFieldErrors(result.fields ?? {});
+    toast.show(actionMessage(result));
+  };
+
+  /* One action per album, one after the other (each has its own version check). */
+  const runForEach = async (
+    ids: readonly string[],
+    run: (a: AlbumItem) => Promise<{ ok: true } | Failure>,
+    done: string,
+  ) => {
+    setBusy(true);
+    setMenuFor(null);
+    let count = 0;
+    let failure: Failure | null = null;
+    for (const a of albums.filter((x) => ids.includes(x.id))) {
+      const result = await run(a);
+      if (!result.ok) {
+        failure = result;
+        break;
+      }
+      count++;
+    }
+    setBusy(false);
+    setSelected(new Set());
+    router.refresh();
+    if (failure) fail(failure);
+    else toast.show(`${count} album${count === 1 ? "" : "s"} ${done}`);
+  };
+
+  const setPublishedFor = (ids: readonly string[], published: boolean) => {
+    if (ids.length === 0) {
       toast.show("Select albums first");
       return;
     }
-    setAlbums((prev) => prev.map((a) => (ids.has(a.id) ? { ...a, status } : a)));
-    toast.show(`${ids.size} album${ids.size === 1 ? "" : "s"} ${label}`);
+    void runForEach(
+      ids,
+      (a) => setAlbumPublishedAction({ id: a.id, version: a.version, published }),
+      published ? "published" : "unpublished",
+    );
   };
 
-  const setStatusForId = (id: string, status: AlbumStatus, label: string) => {
-    setAlbums((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-    setMenuFor(null);
-    toast.show(`Album ${label}`);
-  };
-
-  const publishSelected = () => setStatusFor(selected, "published", "published");
-  const makePrivateSelected = () => setStatusFor(selected, "private", "made private");
+  const publishSelected = () => setPublishedFor(Array.from(selected), true);
+  const unpublishSelected = () => setPublishedFor(Array.from(selected), false);
 
   const deleteSelected = () => {
     if (selected.size === 0) {
@@ -280,32 +300,17 @@ function GalleryList() {
   };
 
   /* Deletes are confirmed in the dark modal (like Events/Tools) instead of
-     window.confirm. The modal only stores *what* would be deleted; doDelete
-     applies the change once the user confirms. */
+     window.confirm. Soft delete: the images stay in Storage. */
   const doDelete = () => {
     if (!deleteConfirm) return;
-    if (deleteConfirm.kind === "one") {
-      const a = deleteConfirm.album;
-      setAlbums((prev) => prev.filter((x) => x.id !== a.id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(a.id);
-        return next;
-      });
-      setDeleteConfirm(null);
-      toast.show("Album deleted");
-    } else {
-      const ids = Array.from(selected);
-      setAlbums((prev) => prev.filter((a) => !selected.has(a.id)));
-      setSelected(new Set());
-      setDeleteConfirm(null);
-      toast.show(`${ids.length} album${ids.length === 1 ? "" : "s"} deleted`);
-    }
+    const ids = deleteConfirm.kind === "one" ? [deleteConfirm.album.id] : Array.from(selected);
+    setDeleteConfirm(null);
+    void runForEach(ids, (a) => removeAlbumAction({ id: a.id, version: a.version }), "deleted");
   };
 
   const copyLink = (a: AlbumItem) => {
-    void navigator.clipboard?.writeText(`https://${ALBUM_URL_PREFIX}${a.url}`);
-    toast.show(`Link for "${a.title}" copied`);
+    void navigator.clipboard?.writeText(`${publicBase}${ALBUM_PATH}${a.url}`);
+    toast.show(`Link for "${a.event}" copied`);
     setMenuFor(null);
   };
 
@@ -313,99 +318,70 @@ function GalleryList() {
   const toForm = (mode: "create" | "edit", a?: AlbumItem) => {
     setFormMode(mode);
     setEditingId(a?.id ?? null);
-    const samplePhotos: AlbumPhoto[] =
-      mode === "edit"
-        ? Array.from({ length: 10 }, (_, i) => ({
-            src: `/events/ev${String((i % 10) + 1).padStart(2, "0")}.png`,
-            status: "uploaded" as const,
-          }))
-        : [];
+    setFieldErrors({});
     setForm(
       a
         ? {
-            event: ALBUM_EVENT_OPTIONS.includes(a.event) ? a.event : EMPTY_FORM.event,
-            total: String(a.total),
+            eventId: a.eventId,
+            total: a.total === null ? "" : String(a.total),
             albumLink: a.albumLink,
             url: a.url,
-            banner: null,
-            photos: samplePhotos,
+            photos: a.images,
           }
-        : EMPTY_FORM,
+        : { ...EMPTY_FORM, eventId: events[0]?.id ?? "" },
     );
     setView("form");
   };
 
-  const fromForm = (status: AlbumStatus): AlbumItem | null => {
-    const eventName = form.event.trim();
-    if (!eventName || !form.albumLink.trim()) {
-      toast.show("Event and album link are required");
-      return null;
-    }
-    /* Banner is required on create; on edit it starts empty unless re-uploaded. */
-    if (formMode === "create" && !form.banner) {
-      toast.show("Event banner is required");
-      return null;
-    }
-    const slug =
-      form.url.trim().replace(/\s+/g, "-") ||
-      eventName.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-album";
-    const existing = albums.find((a) => a.id === editingId);
-    const eventType = existing?.eventType ?? "Album";
-    const next: AlbumItem = {
-      id: editingId ?? `al-${Date.now()}`,
-      title: `${eventName} Album`,
-      event: eventName,
-      eventType,
-      total: Number(form.total) || 0,
-      url: slug,
-      albumLink: form.albumLink.trim(),
-      image: existing?.image ?? "/events/ev01.png",
-      photos: existing?.photos ?? Array.from({ length: 5 }, () => "/events/ev01.png"),
-      status,
-      createdBy: existing?.createdBy ?? "Admin",
-      email: existing?.email ?? "admin@asiania.id",
-      createdAt: existing?.createdAt ?? new Date().toISOString().slice(0, 10),
-      modifiedAt: new Date().toISOString().slice(0, 10),
-    };
-    return next;
-  };
-
-  const saveDraft = () => {
-    const next = fromForm("draft");
-    if (!next) return;
-    setAlbums((prev) => {
-      const exists = prev.some((a) => a.id === next.id);
-      return exists ? prev.map((a) => (a.id === next.id ? next : a)) : [next, ...prev];
+  /* Save draft / Publish. Rule: an event and at least one image (server-checked too). */
+  const save = async (publish: boolean) => {
+    const current = albums.find((a) => a.id === editingId);
+    const total = form.total.trim();
+    setBusy(true);
+    const result = await saveAlbumAction({
+      ...(editingId ? { id: editingId } : {}),
+      version: current?.version ?? null,
+      publish,
+      eventId: form.eventId,
+      images: form.photos,
+      totalPhotos: total === "" ? null : Number(total),
+      albumUrl: form.albumLink,
+      slug: form.url.trim(),
     });
-    toast.show("Draft saved");
-    setView("list");
-  };
-
-  const publishAlbum = () => {
-    const next = fromForm("published");
-    if (!next) return;
-    setAlbums((prev) => {
-      const exists = prev.some((a) => a.id === next.id);
-      return exists ? prev.map((a) => (a.id === next.id ? next : a)) : [next, ...prev];
-    });
-    toast.show("Album published");
+    setBusy(false);
+    if (!result.ok) {
+      fail(result);
+      return;
+    }
+    setFieldErrors({});
+    toast.show(publish ? "Album published" : "Draft saved");
+    router.refresh();
     setPage(1);
     setView("list");
   };
 
-  const onBannerFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.show("Please choose an image file");
+  /* Uploads one image (preset "gallery") into tile `index` (or appends it). */
+  const addPhoto = async (file: File, index = form.photos.length) => {
+    if (index >= ALBUM_MAX_IMAGES) {
+      toast.show(`At most ${ALBUM_MAX_IMAGES} images`);
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.show("Image must be max 5MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, banner: reader.result as string }));
-    reader.readAsDataURL(file);
+    const image = await upload.upload(file);
+    const photo = image ? publicImage(image) : null;
+    if (!photo) return;
+    setForm((f) => {
+      const photos = [...f.photos];
+      photos.splice(index, index < photos.length ? 1 : 0, photo);
+      return { ...f, photos };
+    });
   };
+
+  /* Red field + message for a server validation error. */
+  const errorProps = (field: string) =>
+    fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `album-${field}-error` } : {};
+  const errorFor = (field: string) => (
+    <FieldError id={`album-${field}-error`} message={fieldErrors[field]} />
+  );
 
   /* ---- table columns ---- */
   const checkboxCol: Column<AlbumItem> = {
@@ -431,7 +407,7 @@ function GalleryList() {
       <label className="admin-checkbox">
         <input
           type="checkbox"
-          aria-label={`Select ${r.title}`}
+          aria-label={`Select ${r.event}`}
           checked={selected.has(r.id)}
           onChange={() => toggleSelect(r.id)}
           className="admin-table__checkbox"
@@ -457,22 +433,25 @@ function GalleryList() {
       render: (r) => (
         <div className="admin-gallery-album">
           <span className="admin-gallery-stack" aria-hidden="true">
-            {(r.photos.length > 0 ? r.photos : [r.image]).slice(0, 5).map((src, i) => (
+            {r.images.slice(0, 5).map((image, i) => (
               <span
                 key={`${r.id}-${i}`}
                 className={`admin-gallery-stack__item${
                   i === 4 ? " admin-gallery-stack__item--more" : ""
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element -- local packed asset (public/events) */}
-                <img className="admin-gallery-stack__img" src={src} alt="" />
-                {i === 4 && <span className="admin-gallery-stack__count">{r.total}+</span>}
+                {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
+                <img className="admin-gallery-stack__img" src={image.thumbUrl} alt="" />
+                {i === 4 && <span className="admin-gallery-stack__count">{r.photoCount}+</span>}
               </span>
             ))}
           </span>
           <div>
             <div className="admin-table__title">{r.event}</div>
-            <div className="admin-table__sub">{r.eventType}</div>
+            <div className="admin-table__sub">
+              {r.status === "published" ? "Public" : "Draft"} · {ALBUM_PATH}
+              {r.url}
+            </div>
           </div>
         </div>
       ),
@@ -481,21 +460,25 @@ function GalleryList() {
       key: "event",
       header: (
         <SortHeader
-          label="Author"
-          active={sortKey === "author"}
+          label="Photos"
+          active={sortKey === "total"}
           dir={sortDir}
-          onClick={() => onSort("author")}
+          onClick={() => onSort("total")}
         />
       ),
       width: "26%",
       render: (r) => (
         <div className="admin-gallery-event">
-          <span className="admin-gallery-event__avatar" aria-hidden="true">
-            {initialsOf(r.createdBy)}
-          </span>
           <div>
-            <div className="admin-table__title">{r.createdBy}</div>
-            <div className="admin-table__sub">{r.email}</div>
+            <div className="admin-table__title">{r.photoCount} photos</div>
+            <a
+              className="admin-table__sub"
+              href={r.albumLink}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Full album
+            </a>
           </div>
         </div>
       ),
@@ -513,7 +496,7 @@ function GalleryList() {
       width: "16%",
       render: (r) => (
         <span className="admin-gallery-meta">
-          <span className="admin-table__title">{formatDateTime(r.modifiedAt)}</span>
+          <span className="admin-table__title">{formatInZone(r.modifiedAt, "UTC")} UTC</span>
           <span className="admin-table__sub">{timeAgo(r.modifiedAt)}</span>
         </span>
       ),
@@ -525,14 +508,16 @@ function GalleryList() {
       width: "12%",
       render: (r) => (
         <div className="admin-table__actions">
-          <Button
-            variant="ghost"
-            size="icon"
-            icon="edit"
-            aria-label="Edit"
-            onClick={() => toForm("edit", r)}
-            title="Edit"
-          />
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              icon="edit"
+              aria-label="Edit"
+              onClick={() => toForm("edit", r)}
+              title="Edit"
+            />
+          ) : null}
           <div className="admin-row-menu">
             {menuFor === r.id ? (
               <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
@@ -547,30 +532,33 @@ function GalleryList() {
             />
             {menuFor === r.id ? (
               <div className="admin-row-menu__panel" role="menu">
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => setStatusForId(r.id, "published", "published")}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </button>
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => setStatusForId(r.id, "private", "made private")}
-                >
-                  <Icon name="lock" size={14} /> Make Private
-                </button>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="admin-row-menu__item"
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => setPublishedFor([r.id], r.status === "draft")}
+                  >
+                    {r.status === "draft" ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
+                        <img
+                          src="/globe.png"
+                          alt=""
+                          width={14}
+                          height={14}
+                          className="admin-status-badge__img"
+                        />{" "}
+                        Publish
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="lock" size={14} /> Unpublish
+                      </>
+                    )}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="admin-row-menu__item"
@@ -579,16 +567,20 @@ function GalleryList() {
                 >
                   <Icon name="copy" size={14} /> Copy Link
                 </button>
-                {/* Divider above the destructive action, separating Delete from the rest. */}
-                <div className="admin-row-menu__divider" role="separator" />
-                <button
-                  type="button"
-                  className="admin-row-menu__item admin-row-menu__item--danger"
-                  role="menuitem"
-                  onClick={() => deleteAlbum(r)}
-                >
-                  <Icon name="trash" size={14} /> Delete Gallery
-                </button>
+                {canEdit ? (
+                  <>
+                    {/* Divider above the destructive action, separating Delete from the rest. */}
+                    <div className="admin-row-menu__divider" role="separator" />
+                    <button
+                      type="button"
+                      className="admin-row-menu__item admin-row-menu__item--danger"
+                      role="menuitem"
+                      onClick={() => deleteAlbum(r)}
+                    >
+                      <Icon name="trash" size={14} /> Delete Gallery
+                    </button>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -609,7 +601,6 @@ function GalleryList() {
   const clearFilters = () => {
     setQuery("");
     setSearch("");
-    setEventTypeFilter("all");
     setStatusFilter("all");
     setDateFilter("all");
     setFiltersOpen(false);
@@ -643,24 +634,26 @@ function GalleryList() {
               <select
                 id="album-event"
                 className="admin-select"
-                value={form.event}
-                onChange={(e) => setForm({ ...form, event: e.target.value })}
+                value={form.eventId}
+                onChange={(e) => setForm({ ...form, eventId: e.target.value })}
+                {...errorProps("eventId")}
               >
                 <option value="" disabled>
-                  Select an event...
+                  Select a published event...
                 </option>
-                {ALBUM_EVENT_OPTIONS.map((e) => (
-                  <option key={e} value={e}>
-                    {e}
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.title}
                   </option>
                 ))}
               </select>
+              {errorFor("eventId")}
             </div>
 
             {/* Total Photos/Videos */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-total">
-                Total Photos/Videos *
+                Total Photos/Videos
               </label>
               <input
                 id="album-total"
@@ -670,7 +663,9 @@ function GalleryList() {
                 placeholder="e.g. 150"
                 value={form.total}
                 onChange={(e) => setForm({ ...form, total: e.target.value })}
+                {...errorProps("totalPhotos")}
               />
+              {errorFor("totalPhotos")}
             </div>
 
             {/* Album Link */}
@@ -685,45 +680,50 @@ function GalleryList() {
                 placeholder="https://photos.app.goo.gl/xxxxxxxxxxxxxxxxx"
                 value={form.albumLink}
                 onChange={(e) => setForm({ ...form, albumLink: e.target.value })}
+                {...errorProps("albumUrl")}
               />
+              {errorFor("albumUrl")}
             </div>
 
             {/* URL */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-url">
-                URL *
+                URL
               </label>
               <div className="admin-field__row">
                 <div className="admin-url-slug">
                   <span className="admin-url-slug__prefix" aria-label="Album URL prefix">
-                    /photos/
+                    {ALBUM_PATH}
                   </span>
                   <input
                     id="album-url"
                     className="admin-url-slug__slug"
                     type="text"
                     aria-label="Album URL slug"
-                    placeholder="album-name"
+                    placeholder="the event's URL when empty"
                     value={form.url}
                     onChange={(e) => setForm({ ...form, url: e.target.value })}
+                    {...errorProps("slug")}
                   />
                 </div>
               </div>
+              {errorFor("slug")}
             </div>
 
             {/* Event Banner — the label sits above the photos, then the
                 dropzone below the grid (matches the Edit Album design). */}
             <div className="admin-field admin-form-grid__full">
-              <span className="admin-field__label">Event Banner *</span>
+              <span className="admin-field__label">
+                Featured Images * (1 to {ALBUM_MAX_IMAGES})
+              </span>
 
-              {/* Photo grid — Edit Album only (the Create screen has no photos yet) */}
-              {formMode === "edit" ? (
-                <PhotoGrid
-                  photos={form.photos}
-                  onChange={(next) => setForm((f) => ({ ...f, photos: next }))}
-                  onToast={(msg) => toast.show(msg)}
-                />
-              ) : null}
+              <PhotoGrid
+                photos={form.photos}
+                onPick={(index, file) => void addPhoto(file, index)}
+                onRemove={(index) =>
+                  setForm((f) => ({ ...f, photos: f.photos.filter((_, i) => i !== index) }))
+                }
+              />
 
               <div
                 className="admin-dropzone"
@@ -732,42 +732,17 @@ function GalleryList() {
                 onDrop={(e) => {
                   e.preventDefault();
                   const file = e.dataTransfer.files?.[0];
-                  if (file) onBannerFile(file);
+                  if (file) void addPhoto(file);
                 }}
               >
-                {form.banner ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- data-URL upload, not optimizable */}
-                    <img
-                      src={form.banner}
-                      alt="Uploaded banner"
-                      className="admin-dropzone__image"
-                    />
-                    <span className="admin-dropzone__badge">Click to change</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      icon="x"
-                      className="admin-dropzone__remove"
-                      aria-label="Remove uploaded image"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setForm({ ...form, banner: null });
-                      }}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <Icon name="upload" size={34} />
-                    <span className="admin-dropzone__title">
-                      Drag &amp; drop banner image or click to browse
-                    </span>
-                    <span className="admin-card__subtitle">
-                      Any image format • Converted to WebP • Max 5MB •{" "}
-                      {formMode === "edit" ? "1 Remaining" : "10 Remaining"}
-                    </span>
-                  </>
-                )}
+                <Icon name="upload" size={34} />
+                <span className="admin-dropzone__title">
+                  {upload.busy ? "Uploading…" : "Drag & drop an image or click to browse"}
+                </span>
+                <span className="admin-card__subtitle">
+                  Any image format • Converted to WebP • Max 5MB •{" "}
+                  {ALBUM_MAX_IMAGES - form.photos.length} Remaining
+                </span>
               </div>
               <input
                 ref={bannerInputRef}
@@ -776,10 +751,11 @@ function GalleryList() {
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) onBannerFile(file);
+                  if (file) void addPhoto(file);
                   e.target.value = "";
                 }}
               />
+              <FieldError id="album-images-error" message={upload.error ?? fieldErrors["images"]} />
             </div>
           </div>
 
@@ -790,10 +766,21 @@ function GalleryList() {
               Back
             </Button>
             <div className="admin-form-actions__right">
-              <Button variant="outline" size="sm" icon="cloud" onClick={saveDraft}>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="cloud"
+                disabled={busy || upload.busy}
+                onClick={() => void save(false)}
+              >
                 Save draft
               </Button>
-              <Button variant="outline" size="sm" onClick={publishAlbum}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || upload.busy}
+                onClick={() => void save(true)}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
                 <img
                   src="/globe.png"
@@ -823,15 +810,17 @@ function GalleryList() {
           </p>
         </div>
         <div className="admin-page-header__actions">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="plus"
-            className="admin-btn--events-add"
-            onClick={() => toForm("create")}
-          >
-            Add New Album
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="plus"
+              className="admin-btn--events-add"
+              onClick={() => toForm("create")}
+            >
+              Add New Album
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             size="sm"
@@ -882,25 +871,6 @@ function GalleryList() {
           {filtersOpen ? (
             <div className="admin-filter-panel">
               <div className="admin-field">
-                <span className="admin-field__label">Event Type</span>
-                <select
-                  className="admin-select"
-                  value={eventTypeFilter}
-                  onChange={(e) => {
-                    setEventTypeFilter(e.target.value);
-                    setPage(1);
-                    setMenuFor(null);
-                  }}
-                >
-                  <option value="all">All types</option>
-                  {albumEventTypes.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="admin-field">
                 <span className="admin-field__label">Status</span>
                 <select
                   className="admin-select"
@@ -913,7 +883,6 @@ function GalleryList() {
                 >
                   <option value="all">All statuses</option>
                   <option value="published">Public</option>
-                  <option value="private">Private</option>
                   <option value="draft">Draft</option>
                 </select>
               </div>
@@ -978,9 +947,16 @@ function GalleryList() {
                       Clear filters
                     </Button>
                   ) : null}
-                  <Button variant="primary" size="sm" icon="plus" onClick={() => toForm("create")}>
-                    Add New Album
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="plus"
+                      onClick={() => toForm("create")}
+                    >
+                      Add New Album
+                    </Button>
+                  ) : null}
                 </span>
               </div>
             }
@@ -1013,23 +989,39 @@ function GalleryList() {
                 Select all {filtered.length} albums
               </button>
               <div className="admin-bulkbar__actions">
-                <Button variant="primary" size="sm" onClick={publishSelected}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </Button>
-                <Button variant="primary" size="sm" icon="lock" onClick={makePrivateSelected}>
-                  Make private
-                </Button>
-                <Button variant="danger" size="sm" icon="trash" onClick={deleteSelected}>
-                  Delete
-                </Button>
+                {canEdit ? (
+                  <>
+                    <Button variant="primary" size="sm" disabled={busy} onClick={publishSelected}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
+                      <img
+                        src="/globe.png"
+                        alt=""
+                        width={14}
+                        height={14}
+                        className="admin-status-badge__img"
+                      />{" "}
+                      Publish
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="lock"
+                      disabled={busy}
+                      onClick={unpublishSelected}
+                    >
+                      Unpublish
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon="trash"
+                      disabled={busy}
+                      onClick={deleteSelected}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : (
@@ -1098,7 +1090,7 @@ function GalleryList() {
           deleteConfirm?.kind === "many"
             ? `Delete ${deleteConfirm.count} Album${deleteConfirm.count === 1 ? "" : "s"}?`
             : deleteConfirm
-              ? `Delete "${deleteConfirm.album.title}"?`
+              ? `Delete the "${deleteConfirm.album.event}" album?`
               : "Delete album"
         }
         width={420}
@@ -1141,53 +1133,26 @@ function GalleryList() {
   );
 }
 
-/** 5×2 editable photo grid used by the Edit Album form (10 tiles). */
+/** 5×2 photo grid of the album form (10 tiles): pick a tile to upload or replace its image. */
 function PhotoGrid({
   photos,
-  onChange,
-  onToast,
+  onPick,
+  onRemove,
 }: {
-  photos: AlbumPhoto[];
-  onChange: (next: AlbumPhoto[]) => void;
-  onToast: (msg: string) => void;
+  photos: readonly FeaturedImage[];
+  onPick: (index: number, file: File) => void;
+  onRemove: (index: number) => void;
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
-  /** Current tile count — defaults to 10 once the grid has been opened. */
-  const count = 10;
-
-  const handleFile = (idx: number, file: File | undefined) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      onToast("Please choose an image file");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      onToast("Image must be max 5MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const next = [...photos];
-      next[idx] = { src: reader.result as string, status: "uploaded" };
-      onChange(next);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const clearTile = (idx: number) => {
-    /* Remove the photo entirely so the remaining filled tiles re-flow to the
-       top-left grid slots (the freed slot becomes the trailing empty tile). */
-    onChange(photos.filter((_, i) => i !== idx));
-  };
 
   return (
     <div className="admin-gallery-grid">
-      {Array.from({ length: count }, (_, i) => {
-        const photo = photos[i] ?? { src: null, status: "uploaded" as const };
+      {Array.from({ length: ALBUM_MAX_IMAGES }, (_, i) => {
+        const photo = photos[i];
         return (
           <div
             key={i}
-            className={`admin-gallery-tile${photo.src ? " admin-gallery-tile--filled" : ""}`}
+            className={`admin-gallery-tile${photo ? " admin-gallery-tile--filled" : ""}`}
             role="button"
             tabIndex={0}
             aria-label={`Album photo ${i + 1}`}
@@ -1199,18 +1164,12 @@ function PhotoGrid({
               }
             }}
           >
-            {photo.src ? (
+            {photo ? (
               <>
-                {/* eslint-disable-next-line @next/next/no-img-element -- data-URL upload, not optimizable */}
-                <img src={photo.src} alt="" className="admin-gallery-tile__img" />
-                <span
-                  className={`admin-gallery-tile__status admin-gallery-tile__status--${photo.status}`}
-                >
-                  {photo.status === "uploaded"
-                    ? "Uploaded"
-                    : photo.status === "processing"
-                      ? "Processing"
-                      : "Error"}
+                {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
+                <img src={photo.thumbUrl} alt="" className="admin-gallery-tile__img" />
+                <span className="admin-gallery-tile__status admin-gallery-tile__status--uploaded">
+                  Uploaded
                 </span>
                 <Button
                   variant="ghost"
@@ -1220,7 +1179,7 @@ function PhotoGrid({
                   aria-label={`Remove photo ${i + 1}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    clearTile(i);
+                    onRemove(i);
                   }}
                 />
               </>
@@ -1235,7 +1194,8 @@ function PhotoGrid({
               accept="image/*"
               style={{ display: "none" }}
               onChange={(e) => {
-                handleFile(i, e.target.files?.[0]);
+                const file = e.target.files?.[0];
+                if (file) onPick(Math.min(i, photos.length), file);
                 e.target.value = "";
               }}
             />

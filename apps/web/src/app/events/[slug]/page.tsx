@@ -7,6 +7,7 @@ import { ViewerTime } from "@/components/event-time";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { formatEventTime } from "@/lib/event-time";
 import { publicEventBySlug } from "@/server/events";
+import { publicAlbumForEvent } from "@/server/gallery";
 import { getSignedInUser } from "@/server/session";
 import { RegisterButton } from "./register-button";
 
@@ -36,7 +37,10 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
   const open = isRegistrationOpen({ ...event, published: true, deletedAt: null }, new Date());
-  const user = open && !event.registrationUrl ? await getSignedInUser() : null;
+  const [user, album] = await Promise.all([
+    open && !event.registrationUrl ? getSignedInUser() : null,
+    open ? null : publicAlbumForEvent(event.id),
+  ]);
   const time = (date: Date) => (
     <>
       {formatEventTime(date, event.timezone, language)} ({t.events.eventTime})
@@ -80,10 +84,17 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
         )}
       </dl>
 
-      {/* Registration decision (flowchart): open → register; closed → recap. */}
+      {/* Registration decision (flowchart): open → register; closed → the event's album. */}
       <section>
         {!open ? (
-          <p>{t.events.closed}</p>
+          <>
+            <p>{t.events.closed}</p>
+            {album && (
+              <p>
+                <a href={`/gallery/${album.slug}`}>{t.gallery.eventAlbum}</a>
+              </p>
+            )}
+          </>
         ) : event.registrationUrl ? (
           <a
             className="ui-button"

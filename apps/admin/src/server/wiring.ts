@@ -10,6 +10,7 @@ import { createMessenger } from "@website/domain/messaging";
 import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { createEventActions } from "./events";
+import { createGalleryActions } from "./gallery";
 import { getAdminEnv } from "./env";
 import { createImageUploads } from "./images";
 import { createMessageActions } from "./messaging";
@@ -31,6 +32,15 @@ export const newsActions = lazyEnv(() =>
 /** Event page actions. */
 export const eventActions = lazyEnv(() =>
   createEventActions({ events: adminStores().events, now: () => new Date(), uuid: randomUUID }),
+);
+
+/** Gallery page actions. */
+export const galleryActions = lazyEnv(() =>
+  createGalleryActions({
+    albums: adminStores().galleries,
+    events: adminStores().events,
+    now: () => new Date(),
+  }),
 );
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
@@ -100,6 +110,7 @@ export const adminReads = {
   listNews: () => adminStores().content.listForAdmin("news"),
   getContent: (id: string) => adminStores().content.get(id),
   listEvents: () => adminStores().events.listForAdmin(),
+  listAlbums: () => adminStores().galleries.listForAdmin(),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {
     const { authAdmin, passkeys } = adminStores();
