@@ -1,0 +1,83 @@
+/* Public site frame (header, footer, home sections). Values only from @website/ui tokens. */
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.site-header__brand {
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.site-header__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-header__nav a,
+.site-footer a,
+.site-header__signin {
+  color: var(--color-text);
+}
+
+.site-header__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.site-lang {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.site-lang__button {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.site-lang__button[aria-pressed="true"] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--text-sm);
+}
+
+.site-footer__links {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.site-muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.site-notice {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}

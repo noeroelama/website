@@ -15,7 +15,8 @@ Public website of PPIDK Asia-Oseania and the member self-service area.
 | `src/app/`                                        | Pages (App Router). Partial Prerendering: public pages are prerendered, so they survive outages.                                                        |
 | `src/proxy.ts`                                    | Runs before every request: origin check, per-IP rate limit, private caching, sign-in redirect without a session cookie (`src/server/request-guard.ts`). |
 | `src/app/api/session/route.ts`                    | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                                                                 |
-| `src/app/{articles,map,events,gallery,about}/`    | Public pages (blank for now; Home is `src/app/page.tsx`). Prerendered, no sign-in.                                                                      |
+| `src/app/{page,about,terms,privacy}/`             | Home, About, Terms, Privacy in Indonesian/English ([docs/public-site.md](docs/public-site.md)). `articles,map,events,gallery`: content in later steps.  |
+| `src/i18n/`, `src/components/site-frame.tsx`      | Dictionaries (ID/EN), `<Localized>`, header/footer and language switch.                                                                                 |
 | `src/app/{login,signup,forgot-password,account}/` | Sign-in pages: Google, email/password, passkeys, password reset, account (add passkey, sign out).                                                       |
 | `src/app/health/route.ts`                         | `GET /health` → `{"status":"ok"}` for uptime checks (no database call).                                                                                 |
 | `src/app/api/passkeys/[action]/route.ts`          | Passkey registration and sign-in endpoints (`src/server/passkeys.ts`).                                                                                  |

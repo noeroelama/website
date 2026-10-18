@@ -118,8 +118,9 @@ page's URL>))` (`signInUrl` from `@website/auth`; on web itself `signInUrl("", "
 admin use `requireAdminViewer(path)` from `src/server/context.ts`, which does this and shows the
 restricted (403) page (`forbidden()`) to signed-in accounts without a staff role.
 The shell must never contain personal data; authentication and authorization still run on the
-server for every request (inside the `<Suspense>` part). Current pages: web `/`, `/login`,
-`/signup`, `/forgot-password` and shop `/` are fully static; admin pages (`(panel)` group) use `instant = false` and
+server for every request (inside the `<Suspense>` part). Current pages: web public pages
+prerender an Indonesian shell and stream the visitor's language (`apps/web/docs/public-site.md`),
+shop `/` is fully static; admin pages (`(panel)` group) use `instant = false` and
 `requireAdminViewer`; web `/account` uses `instant = false` and redirects to `/login?next=/account`. Next.js guide:
 `node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md`.
 

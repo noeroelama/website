@@ -1,14 +1,25 @@
-import { AppShell, StatusBadge } from "@website/ui";
+import { Localized } from "@/i18n/localized";
 
-// Fully prerendered at build (no request-time data), so it keeps serving even if admin, shop or
-// the database is down. Cache content with "use cache" + cacheLife (docs/architecture.md#rendering).
-
+// Prerendered (Indonesian shell; the `lang` cookie version streams in). "/" never redirects:
+// Google's OAuth review fetches it as a guest and must find the purpose and the data notice.
 export default function HomePage() {
   return (
-    <AppShell title="Home">
-      <p>
-        <StatusBadge label="web: ok" status="ok" />
-      </p>
-    </AppShell>
+    <Localized
+      render={(t) => (
+        <main className="ui-shell">
+          <h1 className="ui-shell-title">{t.home.title}</h1>
+          <p>{t.home.tagline}</p>
+          <section>
+            <h2>{t.home.purposeHeading}</h2>
+            <p>{t.home.purpose}</p>
+          </section>
+          <section className="site-notice">
+            <h2>{t.home.googleHeading}</h2>
+            <p>{t.home.google}</p>
+            <a href="/privacy">{t.home.googleMore}</a>
+          </section>
+        </main>
+      )}
+    />
   );
 }
