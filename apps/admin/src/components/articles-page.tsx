@@ -7,23 +7,31 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { NEWS_CATEGORIES, type FeaturedImage, type NewsCategory } from "@website/domain/content";
+import {
+  removeNewsAction,
+  saveNewsAction,
+  setNewsPublishedAction,
+} from "@/app/(panel)/articles/actions";
+import { actionMessage } from "@/components/action-message";
+import { formatUtc, timeAgo } from "@/components/format";
+import { useImageUpload, type UploadedImage } from "@/components/image-upload";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { label, NEWS_CATEGORY_LABELS } from "@/labels";
 import {
-  ARTICLE_CATEGORIES,
-  INITIAL_ARTICLES,
   PAGE_SIZE_OPTIONS,
   matchesArticleTab,
-  timeAgo,
   type ArticleItem,
   type ArticleStatus,
   type ArticleTab,
-} from "@/data/mock/articles";
+} from "./articles-model";
 
 /* ==================================================================
    Article — list (tabs, search, filters, bulk actions) + create/edit
@@ -38,20 +46,21 @@ import {
    events form surfaces).
    ================================================================== */
 
-/** Public URL prefix for an article page, shown in "Copy Link". */
-const ARTICLE_URL_PREFIX = "ppidk.asiania.id/photos/";
+/** Public article path on the web app (apps/web /news/[slug]). */
+const ARTICLE_PATH = "/news/";
 
-/** Two-letter monogram for the author avatar ("Nevyllo K." → "NK"). */
-function initialsOf(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .map((w) => w[0] ?? "")
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "AR"
-  );
+/** Featured image from an upload (the thumbnail preset is public, so both URLs are set). */
+function toFeaturedImage(image: UploadedImage): FeaturedImage | null {
+  if (!image.url || !image.thumbUrl) return null;
+  const { url, thumbUrl, path, thumbPath, width, height } = image;
+  return { url, thumbUrl, path, thumbPath, width, height };
+}
+
+/** ISO timestamp → the value of a datetime-local input, in the viewer's time zone. */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 /** Sortable article-table columns (checkbox and actions are never sorted). */
@@ -110,29 +119,23 @@ function EditorButton({
   );
 }
 
-/** Escape plain text so it can be injected as the initial contentEditable HTML. */
-function escapeHtml(text: string): string {
-  return text.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
-  );
-}
-
 /** One rich-text "type box": an independent contentEditable article body.
     Kept as {id, text} so React keys stay stable across add/reorder — a box's
     typed content lives in the DOM, and a per-index key would make React treat
     a moved box as a new child and drop its edits. */
 interface EditorBox {
   id: string;
+  /** The box's HTML (the server sanitises the joined boxes when saving). */
   text: string;
 }
 
 interface ArticleForm {
   title: string;
-  category: string;
+  author: string;
+  category: NewsCategory;
   url: string;
   excerpt: string;
-  banner: string | null;
+  banner: FeaturedImage | null;
   /** Publish date & time, in the Settings popup's datetime-local format. */
   date: string;
   /** Keywords shown as chips in the Settings popup ("Tag/Keywords"). */
@@ -144,7 +147,8 @@ interface ArticleForm {
 
 const EMPTY_FORM: ArticleForm = {
   title: "",
-  category: ARTICLE_CATEGORIES[0],
+  author: "",
+  category: NEWS_CATEGORIES[0],
   url: "",
   excerpt: "",
   banner: null,
@@ -157,7 +161,7 @@ const EMPTY_FORM: ArticleForm = {
 let BOX_SEQ = 1;
 const nextBoxId = () => `box-${BOX_SEQ++}`;
 
-/** Filter choice for the status select: any of the mock statuses, or "all". */
+/** Filter choice for the status select: any status, or "all". */
 type StatusFilter = "all" | ArticleStatus;
 
 /** When-last-modified filter for the date select (mirrors the Events page). */
@@ -171,9 +175,9 @@ type DeleteConfirm = { kind: "one"; article: ArticleItem } | { kind: "many"; cou
 
    A full editor card (top strip with +/drag, 10-button toolbar, black
    body). Each box owns its own contentEditable, selection memory and
-   toolbar state, so several boxes can be edited independently. Text
-   flows two-way: `value` seeds the editable once on mount; typed text
-   is reported back via `onChange`. The parent drives add/drag.
+   toolbar state, so several boxes can be edited independently. HTML
+   flows two-way: `value` seeds the editable once on mount; edits are
+   reported back via `onChange`. The parent drives add/drag.
    ================================================================== */
 function ContentBox({
   value,
@@ -182,6 +186,7 @@ function ContentBox({
   onDelete,
   canDelete,
   toast,
+  uploadImage,
   isDragOver,
   onDragStart,
   onDragOver,
@@ -195,6 +200,8 @@ function ContentBox({
   onDelete: () => void;
   canDelete: boolean;
   toast: { show: (text: string) => void };
+  /** Uploads an inline image; resolves to its public URL (null when the upload failed). */
+  uploadImage: (file: File) => Promise<string | null>;
   isDragOver: boolean;
   onDragStart: (e: ReactDragEvent<HTMLSpanElement>) => void;
   onDragOver: (e: ReactDragEvent<HTMLDivElement>) => void;
@@ -209,7 +216,7 @@ function ContentBox({
   /* WYSIWYG like a mail composer: the toolbar buttons format the current
    selection in place via document.execCommand. The selection is remembered
    on blur (clicking the toolbar steals focus) and restored before each
-   command, and every command re-syncs the plain text back into the form. */
+   command, and every command re-syncs the HTML back into the form. */
   const savedRangeRef = useRef<Range | null>(null);
 
   /* Link is created through a small popup (the standard "insert link" dialog):
@@ -232,7 +239,7 @@ function ContentBox({
 
   const syncEditorText = () => {
     const el = editorRef.current;
-    if (el) onChange(el.innerText ?? "");
+    if (el) onChange(el.innerHTML);
   };
 
   const onEditorSelect = () => {
@@ -664,13 +671,13 @@ function ContentBox({
     };
   }, [linkOpen]);
 
-  /* Seed the contentEditable with the current article text the first time the
-   form mounts (after that the editor owns its own live content). */
+  /* Seed the contentEditable with the article's stored (server-sanitised) HTML the
+   first time the form mounts (after that the editor owns its own live content). */
   const editorSeededRef = useRef(false);
   useEffect(() => {
     const el = editorRef.current;
     if (el && !editorSeededRef.current) {
-      el.innerHTML = escapeHtml(value);
+      el.innerHTML = value;
       editorSeededRef.current = true;
     }
   }, [value]);
@@ -798,14 +805,12 @@ function ContentBox({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            /* read as a data URL so insertImage works offline, on any
-                         origin — the preview runs from a local dev server */
-            const reader = new FileReader();
-            reader.onload = () => {
-              if (typeof reader.result === "string") exec("insertImage", reader.result);
-            };
-            reader.readAsDataURL(file);
+            /* uploaded through the image pipeline (preset "thumbnail"); the
+                         body stores the public https URL, never a data URL */
             e.target.value = "";
+            void uploadImage(file).then((url) => {
+              if (url) exec("insertImage", url);
+            });
           }}
         />
         <div
@@ -875,11 +880,48 @@ function ContentBox({
     </>
   );
 }
-function ArticleList() {
+interface ArticleListProps {
+  /** Rows from the server (src/app/(panel)/articles/page.tsx); refreshed after every change. */
+  initial: ArticleItem[];
+  canEdit: boolean;
+  canPublish: boolean;
+  /** WEB_URL, for "Copy Link". */
+  publicBase: string;
+  /** Pre-filled byline for a new article (the staff member's name). */
+  defaultAuthor: string;
+}
+
+/** Form values for an existing article (edit view and Settings popup). */
+function formFrom(a: ArticleItem): ArticleForm {
+  return {
+    title: a.title,
+    author: a.author,
+    category: a.categoryKey,
+    url: a.url,
+    excerpt: a.excerpt,
+    banner: a.featuredImage,
+    date: toLocalInput(a.publishAt),
+    tags: a.tags,
+    bodies: [{ id: nextBoxId(), text: a.body }],
+  };
+}
+
+function ArticleList({
+  initial: articles,
+  canEdit,
+  canPublish,
+  publicBase,
+  defaultAuthor,
+}: ArticleListProps) {
   const toast = useToastMessage();
+  const router = useRouter();
+  const uploader = useImageUpload("thumbnail");
+  /* A server action is running: the action buttons are disabled meanwhile. */
+  const [busy, setBusy] = useState(false);
+  /* Server validation messages per field (GuardedResult `fields`). */
+  const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
   /* ---- list state ---- */
-  const [articles, setArticles] = useState<ArticleItem[]>(INITIAL_ARTICLES);
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [tab, setTab] = useState<ArticleTab>("all");
   const [search, setSearch] = useState("");
@@ -944,7 +986,7 @@ function ArticleList() {
     return articles.filter((a) => {
       if (!matchesArticleTab(a, tab)) return false;
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
-      if (categoryFilter !== "all" && a.category !== categoryFilter) return false;
+      if (categoryFilter !== "all" && a.categoryKey !== categoryFilter) return false;
       if (dateFilter !== "all") {
         const d = a.modifiedAt.slice(0, 10); // ISO date part of the timestamp
         if (dateFilter === "today") {
@@ -1023,24 +1065,52 @@ function ArticleList() {
     });
   };
 
-  /* ---- row / bulk mutations ---- */
-  const setStatusFor = (ids: Set<string>, status: ArticleStatus, label: string) => {
-    if (ids.size === 0) {
+  /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
+  type Failure = Parameters<typeof actionMessage>[0];
+  const fail = (result: Failure) => {
+    setFieldErrors(result.fields ?? {});
+    toast.show(actionMessage(result));
+  };
+
+  /* One action per article, one after the other (each has its own version check). */
+  const runForEach = async (
+    ids: readonly string[],
+    run: (a: ArticleItem) => Promise<{ ok: true } | Failure>,
+    done: string,
+  ) => {
+    setBusy(true);
+    setMenuFor(null);
+    let count = 0;
+    let failure: Failure | null = null;
+    for (const a of articles.filter((x) => ids.includes(x.id))) {
+      const result = await run(a);
+      if (!result.ok) {
+        failure = result;
+        break;
+      }
+      count++;
+    }
+    setBusy(false);
+    setSelected(new Set());
+    router.refresh();
+    if (failure) fail(failure);
+    else toast.show(`${count} article${count === 1 ? "" : "s"} ${done}`);
+  };
+
+  const setPublishedFor = (ids: readonly string[], published: boolean) => {
+    if (ids.length === 0) {
       toast.show("Select articles first");
       return;
     }
-    setArticles((prev) => prev.map((a) => (ids.has(a.id) ? { ...a, status } : a)));
-    toast.show(`${ids.size} article${ids.size === 1 ? "" : "s"} ${label}`);
+    void runForEach(
+      ids,
+      (a) => setNewsPublishedAction({ id: a.id, version: a.version, published }),
+      published ? "published" : "unpublished",
+    );
   };
 
-  const setStatusForId = (id: string, status: ArticleStatus, label: string) => {
-    setArticles((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-    setMenuFor(null);
-    toast.show(`Article ${label}`);
-  };
-
-  const publishSelected = () => setStatusFor(selected, "published", "published");
-  const makePrivateSelected = () => setStatusFor(selected, "private", "made private");
+  const publishSelected = () => setPublishedFor(Array.from(selected), true);
+  const unpublishSelected = () => setPublishedFor(Array.from(selected), false);
 
   const deleteSelected = () => {
     if (selected.size === 0) {
@@ -1057,164 +1127,86 @@ function ArticleList() {
 
   /* Deletes are confirmed in the dark modal (like Events/Tools) instead of
      window.confirm. The modal only stores *what* would be deleted; doDelete
-     applies the change once the user confirms. */
+     runs the soft delete once the user confirms. */
   const doDelete = () => {
     if (!deleteConfirm) return;
-    if (deleteConfirm.kind === "one") {
-      const art = deleteConfirm.article;
-      setArticles((prev) => prev.filter((x) => x.id !== art.id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(art.id);
-        return next;
-      });
-      setDeleteConfirm(null);
-      toast.show("Article deleted");
-    } else {
-      const ids = Array.from(selected);
-      setArticles((prev) => prev.filter((a) => !selected.has(a.id)));
-      setSelected(new Set());
-      setDeleteConfirm(null);
-      toast.show(`${ids.length} article${ids.length === 1 ? "" : "s"} deleted`);
-    }
+    const ids = deleteConfirm.kind === "one" ? [deleteConfirm.article.id] : Array.from(selected);
+    setDeleteConfirm(null);
+    void runForEach(ids, (a) => removeNewsAction({ id: a.id, version: a.version }), "deleted");
   };
 
   const copyLink = (a: ArticleItem) => {
-    void navigator.clipboard?.writeText(`https://${ARTICLE_URL_PREFIX}${a.url}`);
+    void navigator.clipboard?.writeText(`${publicBase}${ARTICLE_PATH}${a.url}`);
     toast.show(`Link for "${a.title}" copied`);
     setMenuFor(null);
+  };
+
+  /* Admin-only preview of the SAVED article, rendered like the public page (also drafts). */
+  const openPreview = (id: string | null) => {
+    setMenuFor(null);
+    if (!id) {
+      toast.show("Save the draft first, then preview it");
+      return;
+    }
+    window.open(`/articles/${id}/preview`, "_blank", "noopener");
   };
 
   /* ---- form open / save ---- */
   const toForm = (mode: "create" | "edit", a?: ArticleItem) => {
     setFormMode(mode);
     setEditingId(a?.id ?? null);
-    setForm(
-      a
-        ? {
-            title: a.title,
-            category: a.category,
-            url: a.url,
-            /* The body lives in the type boxes now; the Short Summary field is
-               separate, so it starts empty on edit — a pre-filled summary would
-               win over the boxes on save and silently drop their edits. */
-            excerpt: "",
-            /* Edit keeps the existing artwork as its banner so the required
-               Featured Image field is already satisfied; the user can replace
-               it or remove it. */
-            banner: a.image,
-            date: a.modifiedAt.slice(0, 16),
-            tags: [],
-            bodies: [{ id: "box-0", text: a.excerpt }],
-          }
-        : EMPTY_FORM,
-    );
+    setFieldErrors({});
+    setForm(a ? formFrom(a) : { ...EMPTY_FORM, author: defaultAuthor });
     setView("form");
   };
 
-  const fromForm = (status: ArticleStatus): ArticleItem | null => {
-    /* The Featured Image is the only required field — on create it must be
-       uploaded, on edit it is pre-filled from the article's existing artwork
-       (replaceable), so a missing banner blocks in both modes. Title is
-       optional here: the create view has no title input, so a fresh article
-       falls back to a placeholder until it is set in Settings. */
-    if (!form.banner) {
-      toast.show("Featured image is required");
-      return null;
-    }
-    const title = form.title.trim() || "Untitled article";
-    const slug =
-      form.url.trim().replace(/\s+/g, "-") || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const existing = articles.find((a) => a.id === editingId);
-    const author = existing?.author ?? "Admin";
-    const initials = existing?.authorInitials ?? initialsOf(author);
-    const nowIso = new Date().toISOString();
-    const next: ArticleItem = {
-      id: editingId ?? `ar-${Date.now()}`,
-      title,
+  /* Save draft / Publish (form view) and Save (Settings popup). Publishing with a
+     future date schedules the article; it goes public by itself at that time. */
+  const save = async (intent: "draft" | "publish", done: string) => {
+    const current = articles.find((a) => a.id === editingId);
+    setBusy(true);
+    const result = await saveNewsAction({
+      ...(editingId ? { id: editingId } : {}),
+      version: current?.version ?? null,
+      intent,
+      title: form.title,
+      slug: form.url.trim(),
+      author: form.author,
       category: form.category,
-      author,
-      authorInitials: initials,
-      image: existing?.image ?? "/events/ev01.png",
-      status,
-      modifiedAt: nowIso,
-      updatedBy: author,
-      url: slug,
-      /* The Short Summary field wins when set; otherwise the type boxes'
-         texts (joined with a blank line) act as the article body. */
-      excerpt:
-        form.excerpt.trim() ||
-        form.bodies
-          .map((b) => b.text.trim())
-          .filter(Boolean)
-          .join("\n\n") ||
-        "Artikel berita resmi PPIDK Asia-Oseania.",
-      createdAt: existing?.createdAt ?? new Date().toISOString().slice(0, 10),
-    };
-    return next;
-  };
-
-  const saveDraft = () => {
-    const next = fromForm("draft");
-    if (!next) return;
-    setArticles((prev) => {
-      const exists = prev.some((a) => a.id === next.id);
-      return exists ? prev.map((a) => (a.id === next.id ? next : a)) : [next, ...prev];
+      publishAt: form.date ? new Date(form.date).toISOString() : null,
+      summary: form.excerpt,
+      tags: form.tags,
+      body: form.bodies.map((b) => b.text).join(""),
+      featuredImage: form.banner,
     });
-    toast.show("Draft saved");
-    setView("list");
-  };
-
-  const handlePreview = () => {
-    /* Preview must respect the same required rule as Save/Publish — a missing
-       Featured Image blocks the preview instead of silently showing it. */
-    if (!form.banner) {
-      toast.show("Featured image is required");
-      return;
+    setBusy(false);
+    if (!result.ok) {
+      fail(result);
+      return false;
     }
-    toast.show("Preview — article rendered on the public page");
+    setFieldErrors({});
+    toast.show(result.data.status === "scheduled" ? "Article scheduled" : done);
+    router.refresh();
+    return true;
   };
 
-  const publishArticle = () => {
-    const next = fromForm("published");
-    if (!next) return;
-    setArticles((prev) => {
-      const exists = prev.some((a) => a.id === next.id);
-      return exists ? prev.map((a) => (a.id === next.id ? next : a)) : [next, ...prev];
-    });
-    toast.show("Article published");
+  const saveDraft = async () => {
+    if (await save("draft", "Draft saved")) setView("list");
+  };
+
+  const publishArticle = async () => {
+    if (!(await save("publish", "Article published"))) return;
     setTab("all");
     setPage(1);
     setView("list");
   };
 
-  /* Settings popup (row menu → Setting): apply the edited fields to the
-     article in place, keeping its current status, and stay on the list. */
-  const saveSettings = () => {
-    const title = form.title.trim();
-    if (!title) {
-      toast.show("Title is required");
+  /* Settings popup (row menu → Setting): saves the edited fields with the
+     article's current body, keeping it a draft or keeping it published. */
+  const saveSettings = async () => {
+    const current = articles.find((a) => a.id === editingId);
+    if (!(await save(current?.status === "draft" ? "draft" : "publish", "Article settings saved")))
       return;
-    }
-    const slug =
-      form.url.trim().replace(/\s+/g, "-") || title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const modifiedAt = form.date ? new Date(form.date).toISOString() : new Date().toISOString();
-    setArticles((prev) =>
-      prev.map((a) =>
-        a.id === editingId
-          ? {
-              ...a,
-              title,
-              category: form.category,
-              url: slug,
-              excerpt: form.excerpt.trim() || a.excerpt,
-              modifiedAt,
-              updatedBy: a.author,
-            }
-          : a,
-      ),
-    );
-    toast.show("Article settings saved");
     setSettingsOpen(false);
     setEditingId(null);
   };
@@ -1222,7 +1214,7 @@ function ArticleList() {
   /* ---- Settings popup: Tag/Keywords input ---- */
   const [tagInput, setTagInput] = useState("");
   const addTag = () => {
-    const t = tagInput.trim();
+    const t = tagInput.trim().toLowerCase();
     if (!t) return;
     if (!form.tags.includes(t)) {
       setForm((f) => ({ ...f, tags: [...f.tags, t] }));
@@ -1231,19 +1223,14 @@ function ArticleList() {
   };
   const removeTag = (t: string) => setForm((f) => ({ ...f, tags: f.tags.filter((x) => x !== t) }));
 
-  const onBannerFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.show("Please choose an image file");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.show("Image must be max 5MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, banner: reader.result as string }));
-    reader.readAsDataURL(file);
+  /* Images go through the image pipeline (type/size checks, WebP, preset "thumbnail");
+     the uploader shows its own error message under the drop zone. */
+  const onBannerFile = async (file: File) => {
+    const image = await uploader.upload(file);
+    const banner = image ? toFeaturedImage(image) : null;
+    if (banner) setForm((f) => ({ ...f, banner }));
   };
+  const uploadInlineImage = async (file: File) => (await uploader.upload(file))?.url ?? null;
 
   /* ---- type boxes: add, edit, reorder ---- */
   /* The article body is a stack of ContentBox editors. Each box edits its own
@@ -1286,6 +1273,159 @@ function ArticleList() {
       return { ...f, bodies };
     });
   };
+
+  /* ---- article details: shared by the form view and the Settings popup ---- */
+  const errorProps = (field: string, id: string) =>
+    fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `${id}-error` } : {};
+  const detailFields = (prefix: string) => (
+    <>
+      <div className="admin-field admin-form-grid__full">
+        <label className="admin-field__label" htmlFor={`${prefix}-title`}>
+          Title *
+        </label>
+        <input
+          id={`${prefix}-title`}
+          className="admin-input"
+          type="text"
+          placeholder="Article title"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          {...errorProps("title", `${prefix}-title`)}
+        />
+        <FieldError id={`${prefix}-title-error`} message={fieldErrors["title"]} />
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-field__label" htmlFor={`${prefix}-author`}>
+          Author *
+        </label>
+        <input
+          id={`${prefix}-author`}
+          className="admin-input"
+          type="text"
+          placeholder="Author name"
+          value={form.author}
+          onChange={(e) => setForm({ ...form, author: e.target.value })}
+          {...errorProps("author", `${prefix}-author`)}
+        />
+        <FieldError id={`${prefix}-author-error`} message={fieldErrors["author"]} />
+      </div>
+      <div className="admin-field">
+        <label className="admin-field__label" htmlFor={`${prefix}-category`}>
+          Category *
+        </label>
+        <select
+          id={`${prefix}-category`}
+          className="admin-select"
+          value={form.category}
+          onChange={(e) => setForm({ ...form, category: e.target.value as NewsCategory })}
+        >
+          {NEWS_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {label(NEWS_CATEGORY_LABELS, c)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-field__label" htmlFor={`${prefix}-date`}>
+          Publish Date &amp; Time
+        </label>
+        <input
+          id={`${prefix}-date`}
+          className="admin-input"
+          type="datetime-local"
+          value={form.date}
+          onChange={(e) => setForm({ ...form, date: e.target.value })}
+          {...errorProps("publishAt", `${prefix}-date`)}
+        />
+        <FieldError
+          id={`${prefix}-date-error`}
+          message={fieldErrors["publishAt"] ?? "Your time zone. Empty = when published."}
+        />
+      </div>
+      <div className="admin-field">
+        <label className="admin-field__label" htmlFor={`${prefix}-url`}>
+          URL
+        </label>
+        <div className="admin-url-slug">
+          <span className="admin-url-slug__prefix" aria-label="Article URL prefix">
+            {ARTICLE_PATH}
+          </span>
+          <input
+            id={`${prefix}-url`}
+            className="admin-url-slug__slug"
+            type="text"
+            aria-label="Article URL slug"
+            placeholder="built from the title"
+            value={form.url}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            {...errorProps("slug", `${prefix}-url`)}
+          />
+        </div>
+        <FieldError id={`${prefix}-url-error`} message={fieldErrors["slug"]} />
+      </div>
+
+      <div className="admin-field admin-form-grid__full">
+        <span className="admin-field__label">Short Summary</span>
+        <div className="admin-settings-editor">
+          <div className="admin-settings-editor__body-wrap">
+            <textarea
+              className="admin-settings-editor__body"
+              aria-label="Short summary"
+              placeholder="Write a short summary of the article…"
+              value={form.excerpt}
+              onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+              {...errorProps("summary", `${prefix}-summary`)}
+            />
+          </div>
+        </div>
+        <FieldError id={`${prefix}-summary-error`} message={fieldErrors["summary"]} />
+      </div>
+
+      <div className="admin-field admin-form-grid__full">
+        <span className="admin-field__label">Tag/Keywords (max 10)</span>
+        <div className="admin-field__row">
+          <input
+            className="admin-input"
+            type="text"
+            aria-label="Keyword"
+            placeholder="Add a keyword…"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addTag();
+              }
+            }}
+          />
+          <Button variant="maroon" onClick={addTag}>
+            Add
+          </Button>
+        </div>
+        {form.tags.length > 0 ? (
+          <div className="admin-settings-tags">
+            {form.tags.map((t) => (
+              <span key={t} className="admin-settings-tags__chip">
+                {t}
+                <button
+                  type="button"
+                  className="admin-settings-tags__remove"
+                  aria-label={`Remove ${t}`}
+                  onClick={() => removeTag(t)}
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <FieldError id={`${prefix}-tags-error`} message={fieldErrors["tags"]} />
+      </div>
+    </>
+  );
 
   /* ---- table columns ---- */
   const checkboxCol: Column<ArticleItem> = {
@@ -1337,7 +1477,7 @@ function ArticleList() {
       render: (r) => (
         <div className="admin-article-title">
           <span className="admin-article-title__thumb" aria-hidden="true">
-            <img className="admin-article-title__img" src={r.image} alt="" />
+            {r.image ? <img className="admin-article-title__img" src={r.image} alt="" /> : null}
           </span>
           <div>
             <div className="admin-table__title">{r.title}</div>
@@ -1393,10 +1533,10 @@ function ArticleList() {
               Public
             </span>
           );
-        if (r.status === "private")
+        if (r.status === "scheduled")
           return (
-            <span className="admin-status-badge admin-status-badge--private">
-              <Icon name="lock" size={12} /> Private
+            <span className="admin-status-badge admin-status-badge--scheduled">
+              <Icon name="clock" size={12} /> Scheduled
             </span>
           );
         return (
@@ -1420,7 +1560,9 @@ function ArticleList() {
       render: (r) => (
         <span className="admin-article-meta">
           <span className="admin-table__title">{timeAgo(r.modifiedAt)}</span>
-          <span className="admin-table__sub">{r.updatedBy}</span>
+          {r.status === "scheduled" && r.publishAt ? (
+            <span className="admin-table__sub">Live {formatUtc(new Date(r.publishAt))}</span>
+          ) : null}
         </span>
       ),
     },
@@ -1431,14 +1573,16 @@ function ArticleList() {
       width: "10%",
       render: (r) => (
         <div className="admin-table__actions">
-          <Button
-            variant="ghost"
-            size="icon"
-            icon="edit"
-            aria-label="Edit"
-            onClick={() => toForm("edit", r)}
-            title="Edit"
-          />
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              icon="edit"
+              aria-label="Edit"
+              onClick={() => toForm("edit", r)}
+              title="Edit"
+            />
+          ) : null}
           <div className="admin-row-menu">
             {menuFor === r.id ? (
               <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
@@ -1453,20 +1597,39 @@ function ArticleList() {
             />
             {menuFor === r.id ? (
               <div className="admin-row-menu__panel" role="menu">
+                {canPublish ? (
+                  <button
+                    type="button"
+                    className="admin-row-menu__item"
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => setPublishedFor([r.id], r.status === "draft")}
+                  >
+                    {r.status === "draft" ? (
+                      <>
+                        <img
+                          src="/globe.png"
+                          alt=""
+                          width={14}
+                          height={14}
+                          className="admin-status-badge__img"
+                        />{" "}
+                        Publish
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="lock" size={14} /> Unpublish
+                      </>
+                    )}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="admin-row-menu__item"
                   role="menuitem"
-                  onClick={() => setStatusForId(r.id, "published", "published")}
+                  onClick={() => openPreview(r.id)}
                 >
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
+                  <Icon name="eye" size={14} /> Preview
                 </button>
                 <button
                   type="button"
@@ -1476,38 +1639,34 @@ function ArticleList() {
                 >
                   <Icon name="copy" size={14} /> Copy Link
                 </button>
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => {
-                    setEditingId(r.id);
-                    setForm({
-                      title: r.title,
-                      category: r.category,
-                      url: r.url,
-                      excerpt: r.excerpt,
-                      banner: null,
-                      date: r.modifiedAt.slice(0, 16),
-                      tags: [],
-                      bodies: [{ id: "box-0", text: "" }],
-                    });
-                    setSettingsOpen(true);
-                    setMenuFor(null);
-                  }}
-                >
-                  <Icon name="settings" size={14} /> Setting
-                </button>
-                {/* Divider above the destructive action, separating Delete from the rest. */}
-                <div className="admin-row-menu__divider" role="separator" />
-                <button
-                  type="button"
-                  className="admin-row-menu__item admin-row-menu__item--danger"
-                  role="menuitem"
-                  onClick={() => deleteArticle(r)}
-                >
-                  <Icon name="trash" size={14} /> Delete Article
-                </button>
+                {canEdit ? (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-row-menu__item"
+                      role="menuitem"
+                      onClick={() => {
+                        setEditingId(r.id);
+                        setFieldErrors({});
+                        setForm(formFrom(r));
+                        setSettingsOpen(true);
+                        setMenuFor(null);
+                      }}
+                    >
+                      <Icon name="settings" size={14} /> Setting
+                    </button>
+                    {/* Divider above the destructive action, separating Delete from the rest. */}
+                    <div className="admin-row-menu__divider" role="separator" />
+                    <button
+                      type="button"
+                      className="admin-row-menu__item admin-row-menu__item--danger"
+                      role="menuitem"
+                      onClick={() => deleteArticle(r)}
+                    >
+                      <Icon name="trash" size={14} /> Delete Article
+                    </button>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1546,12 +1705,14 @@ function ArticleList() {
 
         <div className="admin-article-form">
           <div className="admin-form-grid">
+            {detailFields("article")}
+
             {/* Featured Image + type boxes — one framed container: the image
                 section on top, the type boxes below, sharing a single outer
                 line. */}
             <div className="admin-form-section admin-form-grid__full">
               <div className="admin-field">
-                <span className="admin-field__label">Featured Image *</span>
+                <span className="admin-field__label">Featured Image</span>
                 <div
                   className="admin-dropzone"
                   onClick={() => bannerInputRef.current?.click()}
@@ -1559,13 +1720,15 @@ function ArticleList() {
                   onDrop={(e) => {
                     e.preventDefault();
                     const file = e.dataTransfer.files?.[0];
-                    if (file) onBannerFile(file);
+                    if (file) void onBannerFile(file);
                   }}
                 >
-                  {form.banner ? (
+                  {uploader.busy ? (
+                    <span className="admin-dropzone__title">Uploading…</span>
+                  ) : form.banner ? (
                     <>
                       <img
-                        src={form.banner}
+                        src={form.banner.thumbUrl}
                         alt="Uploaded image"
                         className="admin-dropzone__image"
                       />
@@ -1601,10 +1764,11 @@ function ArticleList() {
                   style={{ display: "none" }}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) onBannerFile(file);
+                    if (file) void onBannerFile(file);
                     e.target.value = "";
                   }}
                 />
+                <FieldError id="article-upload-error" message={uploader.error} />
               </div>
 
               {/* Content — article "type boxes". One ContentBox per body: each is
@@ -1620,6 +1784,7 @@ function ArticleList() {
                     onDelete={() => removeBox(i)}
                     canDelete={form.bodies.length > 1}
                     toast={toast}
+                    uploadImage={uploadInlineImage}
                     isDragOver={dragOver === i}
                     onDragStart={() => setDragSource(i)}
                     onDragOver={(e) => {
@@ -1657,22 +1822,40 @@ function ArticleList() {
                 Back
               </Button>
               <div className="admin-form-actions__right">
-                <Button variant="outline" size="sm" icon="eye" onClick={handlePreview}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="eye"
+                  onClick={() => openPreview(editingId)}
+                >
                   Preview
                 </Button>
-                <Button variant="outline" size="sm" icon="cloud" onClick={saveDraft}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="cloud"
+                  disabled={busy || uploader.busy}
+                  onClick={() => void saveDraft()}
+                >
                   Save draft
                 </Button>
-                <Button variant="outline" size="sm" onClick={publishArticle}>
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </Button>
+                {canPublish ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy || uploader.busy}
+                    onClick={() => void publishArticle()}
+                  >
+                    <img
+                      src="/globe.png"
+                      alt=""
+                      width={14}
+                      height={14}
+                      className="admin-status-badge__img"
+                    />{" "}
+                    {form.date && new Date(form.date) > new Date() ? "Schedule" : "Publish"}
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1694,15 +1877,17 @@ function ArticleList() {
           </p>
         </div>
         <div className="admin-page-header__actions">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="plus"
-            className="admin-btn--events-add"
-            onClick={() => toForm("create")}
-          >
-            Add New Article
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="plus"
+              className="admin-btn--events-add"
+              onClick={() => toForm("create")}
+            >
+              Add New Article
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             size="sm"
@@ -1764,9 +1949,9 @@ function ArticleList() {
                   }}
                 >
                   <option value="all">All categories</option>
-                  {ARTICLE_CATEGORIES.map((c) => (
+                  {NEWS_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {label(NEWS_CATEGORY_LABELS, c)}
                     </option>
                   ))}
                 </select>
@@ -1784,7 +1969,7 @@ function ArticleList() {
                 >
                   <option value="all">All statuses</option>
                   <option value="published">Public</option>
-                  <option value="private">Private</option>
+                  <option value="scheduled">Scheduled</option>
                   <option value="draft">Draft</option>
                 </select>
               </div>
@@ -1875,9 +2060,16 @@ function ArticleList() {
                       Clear filters
                     </Button>
                   ) : null}
-                  <Button variant="primary" size="sm" icon="plus" onClick={() => toForm("create")}>
-                    Add New Article
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="plus"
+                      onClick={() => toForm("create")}
+                    >
+                      Add New Article
+                    </Button>
+                  ) : null}
                 </span>
               </div>
             }
@@ -1910,22 +2102,40 @@ function ArticleList() {
                 Select all {filtered.length} articles
               </button>
               <div className="admin-bulkbar__actions">
-                <Button variant="primary" size="sm" onClick={publishSelected}>
-                  <img
-                    src="/globe.png"
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="admin-status-badge__img"
-                  />{" "}
-                  Publish
-                </Button>
-                <Button variant="primary" size="sm" icon="lock" onClick={makePrivateSelected}>
-                  Make private
-                </Button>
-                <Button variant="danger" size="sm" icon="trash" onClick={deleteSelected}>
-                  Delete
-                </Button>
+                {canPublish ? (
+                  <>
+                    <Button variant="primary" size="sm" disabled={busy} onClick={publishSelected}>
+                      <img
+                        src="/globe.png"
+                        alt=""
+                        width={14}
+                        height={14}
+                        className="admin-status-badge__img"
+                      />{" "}
+                      Publish
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="lock"
+                      disabled={busy}
+                      onClick={unpublishSelected}
+                    >
+                      Unpublish
+                    </Button>
+                  </>
+                ) : null}
+                {canEdit ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon="trash"
+                    disabled={busy}
+                    onClick={deleteSelected}
+                  >
+                    Delete
+                  </Button>
+                ) : null}
               </div>
             </div>
           ) : (
@@ -2017,140 +2227,15 @@ function ArticleList() {
             <Button
               variant="primary"
               className="admin-modal__foot-btn admin-modal__foot-btn--save"
-              onClick={saveSettings}
+              disabled={busy}
+              onClick={() => void saveSettings()}
             >
               <span className="admin-settings-save__logo" aria-hidden="true" /> Save
             </Button>
           </div>
         }
       >
-        <div className="admin-form-grid">
-          {/* Title */}
-          <div className="admin-field admin-form-grid__full">
-            <label className="admin-field__label" htmlFor="settings-title">
-              Title *
-            </label>
-            <input
-              id="settings-title"
-              className="admin-input"
-              type="text"
-              placeholder="Article title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-          </div>
-
-          {/* Category + Publish Date & Time, side by side */}
-          <div className="admin-field">
-            <label className="admin-field__label" htmlFor="settings-category">
-              Category *
-            </label>
-            <select
-              id="settings-category"
-              className="admin-select"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            >
-              {ARTICLE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="admin-field">
-            <label className="admin-field__label" htmlFor="settings-date">
-              Publish Date &amp; Time *
-            </label>
-            <input
-              id="settings-date"
-              className="admin-input"
-              type="datetime-local"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
-          </div>
-
-          {/* URL */}
-          <div className="admin-field admin-form-grid__full">
-            <label className="admin-field__label" htmlFor="settings-url">
-              URL *
-            </label>
-            <div className="admin-field__row">
-              <div className="admin-url-slug">
-                <span className="admin-url-slug__prefix" aria-label="Article URL prefix">
-                  /photos/
-                </span>
-                <input
-                  id="settings-url"
-                  className="admin-url-slug__slug"
-                  type="text"
-                  aria-label="Article URL slug"
-                  placeholder="article-slug"
-                  value={form.url}
-                  onChange={(e) => setForm({ ...form, url: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Short Summary — rich text box */}
-          <div className="admin-field admin-form-grid__full">
-            <span className="admin-field__label">Short Summary *</span>
-            <div className="admin-settings-editor">
-              <div className="admin-settings-editor__body-wrap">
-                <textarea
-                  className="admin-settings-editor__body"
-                  aria-label="Short summary"
-                  placeholder="Write a short summary of the article…"
-                  value={form.excerpt}
-                  onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Tag/Keywords */}
-          <div className="admin-field admin-form-grid__full">
-            <span className="admin-field__label">Tag/Keywords</span>
-            <div className="admin-field__row">
-              <input
-                className="admin-input"
-                type="text"
-                aria-label="Keyword"
-                placeholder="Add a keyword…"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-              />
-              <Button variant="maroon" onClick={addTag}>
-                Add
-              </Button>
-            </div>
-            {form.tags.length > 0 ? (
-              <div className="admin-settings-tags">
-                {form.tags.map((t) => (
-                  <span key={t} className="admin-settings-tags__chip">
-                    {t}
-                    <button
-                      type="button"
-                      className="admin-settings-tags__remove"
-                      aria-label={`Remove ${t}`}
-                      onClick={() => removeTag(t)}
-                    >
-                      <Icon name="x" size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <div className="admin-form-grid">{detailFields("settings")}</div>
       </Modal>
 
       {/* Delete confirmation popup — dark, compact, styled like the Tools page
@@ -2204,9 +2289,9 @@ function ArticleList() {
   );
 }
 
-export function ArticlesPage() {
+export function ArticlesPage(props: ArticleListProps) {
   const pathname = usePathname();
   // key={pathname} remounts the list on navigation so search/tab/filter state
   // resets when the user comes back from another page (see Gallery).
-  return <ArticleList key={pathname} />;
+  return <ArticleList key={pathname} {...props} />;
 }

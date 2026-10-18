@@ -37,7 +37,7 @@ Internal Server Actions and Route Handlers in web/admin/shop are same-origin onl
 
 | Package         | Responsibility                                                                                          | Depends on                                                    |
 | --------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `security`      | Per-IP rate limiting, origin restriction, input sanitization, safe errors, private caching              | `zod` only                                                    |
+| `security`      | Per-IP rate limiting, origin restriction, input sanitization, safe errors, private caching              | `zod`; `sanitize-html` (only in the `./html` subpath)         |
 | `config`        | Zod env schemas, environment-isolation guard, shared tsconfigs                                          | —                                                             |
 | `contracts`     | External API DTOs, errors (RFC 9457), pagination, versions (Zod → OpenAPI)                              | —                                                             |
 | `domain`        | Business rules + ports, by module: `content`, `events`, `organizations`, `newsletter`, `shop`, `shared` | —                                                             |

@@ -12,6 +12,7 @@ import { createCronRoute, CRON_JOBS } from "./cron";
 import { getAdminEnv } from "./env";
 import { createImageUploads } from "./images";
 import { createMessageActions, emailChannel } from "./messaging";
+import { createNewsActions } from "./news";
 import { createRoleActions } from "./roles";
 import { adminStores, imageStorage } from "./stores";
 
@@ -19,6 +20,11 @@ import { adminStores, imageStorage } from "./stores";
 export const accountActions = lazyEnv(() => createAccountActions(adminStores()));
 export const roleActions = lazyEnv(() =>
   createRoleActions({ roles: adminStores().roles, now: () => new Date() }),
+);
+
+/** Article page (News) actions. */
+export const newsActions = lazyEnv(() =>
+  createNewsActions({ content: adminStores().content, now: () => new Date() }),
 );
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
@@ -76,7 +82,7 @@ export const messenger = lazyEnv(() => {
 });
 export const messageActions = lazyEnv(() => createMessageActions({ messenger: messenger() }));
 
-/** Reads for the Users and Roles pages. Callers check `users.read` / `roles.read` first. */
+/** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listUsers: (query: UserListQuery) => adminStores().accounts.list(query),
   getUser: (uid: string) => adminStores().accounts.get(uid),
@@ -85,6 +91,8 @@ export const adminReads = {
   listFailedMessages: (cursor: string | undefined) =>
     adminStores().messageLog.listFailed({ cursor, limit: 25 }),
   getRole: (id: string) => adminStores().roles.get(id),
+  listNews: () => adminStores().content.listForAdmin("news"),
+  getContent: (id: string) => adminStores().content.get(id),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {
     const { authAdmin, passkeys } = adminStores();

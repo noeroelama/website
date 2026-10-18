@@ -4,6 +4,7 @@ import {
   type AuditAction,
   type RevertRejection,
 } from "@website/audit";
+import { NEWS_CATEGORIES, type NewsCategory } from "@website/domain/content";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 
@@ -65,6 +66,14 @@ export const MESSAGE_STATUS_LABELS = {
   blocked: { id: "Diblokir (bukan penerima uji)", en: "Blocked (not a test recipient)" },
 } as const satisfies Record<MessageStatus, Label>;
 
+export const NEWS_CATEGORY_LABELS = {
+  general: { id: "Umum", en: "General" },
+  academic: { id: "Akademik", en: "Academic" },
+  community: { id: "Komunitas", en: "Community" },
+  announcement: { id: "Pengumuman", en: "Announcement" },
+  international: { id: "Internasional", en: "International" },
+} as const satisfies Record<NewsCategory, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -77,6 +86,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "audit action", keys: AUDIT_ACTIONS, labels: AUDIT_ACTION_LABELS },
   { name: "revert rejection", keys: REVERT_REJECTIONS, labels: REVERT_REJECTION_LABELS },
   { name: "message status", keys: MESSAGE_STATUSES, labels: MESSAGE_STATUS_LABELS },
+  { name: "news category", keys: NEWS_CATEGORIES, labels: NEWS_CATEGORY_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

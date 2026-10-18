@@ -14,10 +14,13 @@ import { createGuardedAction } from "./guarded-action";
 
 /**
  * How each module's records are reverted: resourceType → Firestore collection. A module adds
- * its row when its records become revertible (content modules, Phase 2). Role and account
+ * its row when its records become revertible. Role and account
  * changes, uploads and sends are never listed here.
  */
-export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {};
+export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
+  // News (Article page): fields of content/{id}; a changed URL is never revertible.
+  content: "content",
+};
 
 export interface AuditLogDeps {
   readonly audit: Pick<FirestoreAuditStore, "revert" | "revertContext">;

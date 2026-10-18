@@ -6,13 +6,18 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./validation": "./src/validation.ts"
+    "./validation": "./src/validation.ts",
+    "./html": "./src/html.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "sanitize-html": "2.18.1"
+  },
+  "devDependencies": {
+    "@types/sanitize-html": "2.16.2"
   }
 }

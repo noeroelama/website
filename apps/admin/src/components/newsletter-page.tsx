@@ -24,7 +24,7 @@ import {
   type SubscriberItem,
   type SubscriberStatus,
 } from "@/data/mock/newsletters";
-import { timeAgo } from "@/data/mock/articles";
+import { timeAgo } from "@/components/format";
 import { Modal } from "@/components/ui/modal";
 
 /** Filter choices for the subscriber "Joined" date select. */
