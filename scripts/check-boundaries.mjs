@@ -75,7 +75,10 @@ const ALLOWED = {
 /** Subpath restrictions: workspace → package → allowed subpaths. @type {Record<string, Record<string, string[]>>} */
 const SUBPATHS = {
   shop: { domain: ["shop", "shared"] },
-  web: { domain: ["content", "events", "organizations", "newsletter", "members", "shared"] },
+  // messaging: confirmation e-mails sent by the website (event registration, newsletter opt-in).
+  web: {
+    domain: ["content", "events", "organizations", "newsletter", "members", "messaging", "shared"],
+  },
   // Personal data (domain/members) never leaves through the third-party API.
   gateway: { domain: ["content", "events", "organizations", "shared"] },
   // The innermost layers may only use the framework-free sanitization helpers.

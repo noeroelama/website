@@ -69,6 +69,45 @@ export function sortedSponsors(sponsors: readonly Sponsor[]): Sponsor[] {
   return [...sponsors].sort((a, b) => a.order - b.order);
 }
 
+/** What visitors see of a published event (web). The id is kept for registrations. */
+export interface PublicEvent {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly type: EventType;
+  readonly startsAt: Date;
+  readonly timezone: string;
+  readonly registrationClosesAt: Date | null;
+  readonly location: string | null;
+  readonly chapterId: string | null;
+  readonly description: string;
+  readonly bannerImage: EventImage | null;
+  readonly registrationUrl: string | null;
+  readonly schedule: readonly ScheduleRow[];
+  readonly speakers: readonly Speaker[];
+  readonly sponsors: readonly Sponsor[];
+}
+
+export function toPublicEvent(e: EventEntity): PublicEvent {
+  return {
+    id: e.id,
+    slug: e.slug,
+    title: e.title,
+    type: e.type,
+    startsAt: e.startsAt,
+    timezone: e.timezone,
+    registrationClosesAt: e.registrationClosesAt,
+    location: e.location,
+    chapterId: e.chapterId,
+    description: e.description,
+    bannerImage: e.bannerImage,
+    registrationUrl: e.registrationUrl,
+    schedule: e.schedule,
+    speakers: e.speakers,
+    sponsors: sortedSponsors(e.sponsors),
+  };
+}
+
 /** URL slug when the editor leaves the URL empty: "event-" + 8 random hex characters. */
 export function randomEventSlug(uuid: string): string {
   return `event-${uuid.replace(/-/g, "").slice(0, 8)}`;

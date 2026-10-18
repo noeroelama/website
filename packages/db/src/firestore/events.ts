@@ -1,13 +1,22 @@
 import type { Firestore } from "firebase-admin/firestore";
 import type { Snapshot } from "@website/audit";
-import type {
-  EventEntity,
-  EventImage,
-  EventType,
-  ScheduleRow,
-  Speaker,
-  Sponsor,
+import {
+  isRegistrationOpen,
+  nextRegistrationStatus,
+  registrationId,
+  toPublicEvent,
+  type EventEntity,
+  type EventImage,
+  type EventType,
+  type PublicEvent,
+  type RegistrationStatus,
+  type ScheduleRow,
+  type Speaker,
+  type Sponsor,
 } from "@website/domain/events";
+import { RuleViolationError } from "@website/domain/shared";
+import { safeId } from "@website/security/validation";
+import { getDocumentsByIds } from "./batch";
 import { createSluggedStore, toDate } from "./slugged";
 
 export type EventFields = Omit<EventEntity, "id" | "version" | "createdAt" | "updatedAt">;
@@ -95,3 +104,98 @@ export function createFirestoreEventStore(db: Firestore) {
 }
 
 export type FirestoreEventStore = ReturnType<typeof createFirestoreEventStore>;
+
+/** Published events for the website (role web_ro), newest first, as public DTOs. */
+export function createFirestoreEventReader(db: Firestore) {
+  const store = createFirestoreEventStore(db);
+  return {
+    async listPublished(limit = 300): Promise<PublicEvent[]> {
+      const snapshot = await db
+        .collection("events")
+        .where("published", "==", true)
+        .orderBy("startsAt", "desc")
+        .limit(limit)
+        .get();
+      return snapshot.docs
+        .map((doc) => toEvent(doc.id, doc.data()))
+        .filter((e) => e.deletedAt === null)
+        .map(toPublicEvent);
+    },
+
+    async findPublishedBySlug(slug: string): Promise<PublicEvent | null> {
+      const event = await store.findBySlug(slug);
+      return event?.published ? toPublicEvent(event) : null;
+    },
+  };
+}
+
+export type FirestoreEventReader = ReturnType<typeof createFirestoreEventReader>;
+
+/**
+ * Internal registrations: `eventRegistrations/{eventId}_{uid}` (one per member and event) and
+ * `eventCounters/{eventId}` { confirmed, waitlisted }, both written in the same transaction so
+ * the capacity holds under concurrent sign-ups. No personal data is copied here.
+ */
+export function createFirestoreRegistrationStore(db: Firestore) {
+  const registrationsRef = db.collection("eventRegistrations");
+  return {
+    register(
+      eventId: string,
+      userId: string,
+      now: Date,
+    ): Promise<{ status: RegistrationStatus; created: boolean }> {
+      return db.runTransaction(async (tx) => {
+        const eventSnap = await tx.get(db.collection("events").doc(safeId.parse(eventId)));
+        const event = eventSnap.exists ? toEvent(eventSnap.id, eventSnap.data()!) : null;
+        if (!event || !isRegistrationOpen(event, now)) {
+          throw new RuleViolationError("Registration is closed.");
+        }
+        const ref = registrationsRef.doc(safeId.parse(registrationId(eventId, userId)));
+        const existing = await tx.get(ref);
+        if (existing.exists) {
+          return { status: existing.get("status") as RegistrationStatus, created: false };
+        }
+        const counterRef = db.collection("eventCounters").doc(eventId);
+        const counter = await tx.get(counterRef);
+        const confirmed = (counter.get("confirmed") as number | undefined) ?? 0;
+        const waitlisted = (counter.get("waitlisted") as number | undefined) ?? 0;
+        const status = nextRegistrationStatus(event, confirmed);
+        tx.set(ref, { eventId, userId, status, createdAt: now, updatedAt: now });
+        tx.set(
+          counterRef,
+          status === "confirmed"
+            ? { confirmed: confirmed + 1, waitlisted }
+            : { confirmed, waitlisted: waitlisted + 1 },
+        );
+        return { status, created: true };
+      });
+    },
+
+    /** A member's own registrations with their (live) events, newest event first. */
+    async listByUser(
+      userId: string,
+    ): Promise<Array<{ status: RegistrationStatus; event: PublicEvent }>> {
+      const snapshot = await registrationsRef.where("userId", "==", userId).get();
+      const rows = snapshot.docs.map((doc) => ({
+        eventId: doc.get("eventId") as string,
+        status: doc.get("status") as RegistrationStatus,
+      }));
+      const events = await getDocumentsByIds<Record<string, unknown>>(
+        db,
+        "events",
+        rows.map((r) => r.eventId),
+      );
+      return rows
+        .flatMap((r) => {
+          const data = events.get(r.eventId);
+          const event = data ? toEvent(r.eventId, data) : null;
+          return event && event.deletedAt === null
+            ? [{ status: r.status, event: toPublicEvent(event) }]
+            : [];
+        })
+        .sort((a, b) => b.event.startsAt.getTime() - a.event.startsAt.getTime());
+    },
+  };
+}
+
+export type FirestoreRegistrationStore = ReturnType<typeof createFirestoreRegistrationStore>;

@@ -79,3 +79,4 @@ export function createMemorySender(): EmailSender & { readonly sent: EmailMessag
     },
   };
 }
+export { emailChannel } from "./channel";

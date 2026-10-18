@@ -66,7 +66,7 @@ Enforced by tooling, not just this document:
 Approved matrix:
 
 ```text
-web       → auth, config, contracts, db, domain(content|events|organizations|newsletter|members|shared), email, observability, permissions, security, ui
+web       → auth, config, contracts, db, domain(content|events|organizations|newsletter|members|messaging|shared), email, observability, permissions, security, ui
 admin     → audit, auth, config, db, domain, email, observability, permissions, security, ui
 shop      → auth, config, db, domain(shop|shared), email, observability, permissions, security, ui
 gateway   → apikeys, config, contracts, db, domain(content|events|organizations|shared), observability, security

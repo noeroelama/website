@@ -1,22 +1,11 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreNewsReader, getFirestoreForRole } from "@website/db/firestore";
+import { createFirestoreNewsReader } from "@website/db/firestore";
 import type { PublicNews, PublicNewsDetail } from "@website/domain/content";
-import { getWebEnv } from "./env";
+import { webDb } from "./db";
 
-const reader = lazyEnv(() => {
-  const env = getWebEnv();
-  return createFirestoreNewsReader(
-    getFirestoreForRole({
-      appEnv: env.APP_ENV,
-      role: "web_ro",
-      projectId: env.FIREBASE_PROJECT_ID,
-      clientEmail: env.FIREBASE_CLIENT_EMAIL,
-      privateKey: env.FIREBASE_PRIVATE_KEY,
-    }),
-  );
-});
+const reader = lazyEnv(() => createFirestoreNewsReader(webDb()));
 
 /**
  * Visible news, newest first (shared by Home, /news and the related list). Cached for minutes

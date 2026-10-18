@@ -16,16 +16,32 @@ shared tag). Drafts, future and deleted articles are never shown; an unknown slu
 response is already streaming).
 Old `/articles` links redirect to `/news`.
 
+**Events**: `/events` lists published events as cards (newest first), filtered by type and a
+date range (`?type=webinar&from=2026-01-01&to=2026-12-31`, 12 per page; the country filter comes
+with chapters, step 2.7). `/events/[slug]` shows banner, type, date and time on the event's clock
+(and, in the browser, in the visitor's own zone), location, deadline, description, schedule,
+speakers and sponsors (by order number). Registration (flowchart decision): before the deadline
+an external registration link opens in a new tab; without one, a signed-in member registers here
+(confirmed or waitlisted by capacity, one registration per member, reCAPTCHA v3 action
+`event_register`, confirmation e-mail key `event:{id}:registered:{uid}`) and a guest is sent to
+sign in first. After the deadline the page says registration is closed. `/account` lists the
+member's own registrations.
+
 ## Where it lives
 
 - Dictionaries: `src/i18n/dictionaries.ts` (`DICTIONARIES.id` / `.en`, `languageFrom`, `LEGAL_VERSION`).
 - Rendering helper: `src/i18n/localized.tsx` (`<Localized render={(t, language) => …} />`).
 - Frame: `src/components/site-frame.tsx` (header, footer, legal page), `language-switch.tsx`.
 - Pages: `src/app/{page,about,terms,privacy,news}/…`, styles `src/app/globals.css`.
+- Events: cached reads and registration wiring `src/server/events.ts`, rules
+  `src/server/registrations.ts`, captcha `src/server/captcha.ts`, e-mails
+  `src/server/messaging.ts`, list query `src/lib/event-query.ts`, pages `src/app/events/…`.
 - News: cached reads `src/server/news.ts` (`publicNews`, `publicNewsBySlug`), list query
   `src/lib/news-query.ts`, cards `src/components/news-cards.tsx`; rules in
   `packages/domain/docs/content.md`.
 - Tests: `tests/unit/web-i18n.test.ts`, `tests/unit/web-news.test.ts`,
+  `tests/unit/web-events.test.ts`, `tests/integration/web-registration.test.ts`,
+  `tests/integration/event-registration.test.ts`, `tests/security/captcha.test.ts`,
   `tests/integration/news.test.ts` (public reader), `tests/e2e/web.spec.ts`.
 
 ## How to use it
@@ -51,8 +67,16 @@ completeness test fail until both exist.
 - News reads are cached for minutes (`cacheTag("news")`, `cacheLife("minutes")`): an admin change
   or a scheduled article shows up within a few minutes (admin is a separate app and cannot
   revalidate the web cache). The list holds the newest 300 visible articles.
+- Events are cached the same way (`cacheTag("events")`); the register action reads the event
+  uncached and checks the deadline inside the registration transaction (capacity counter
+  `eventCounters/{eventId}`).
+- Without `RECAPTCHA_SECRET_KEY`, development and test skip the captcha; staging and production
+  refuse every registration (fail closed).
 - If the news read fails, Home logs `home_latest_news_failed` and leaves the section out.
 
 ## Configuration
 
-None.
+`NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `RECAPTCHA_MIN_SCORE` (captcha);
+`MESSAGING_MODE`, `MESSAGING_TEST_RECIPIENTS`, `RESEND_API_KEY`, `EMAIL_FROM_TRANSACTIONAL`
+(confirmation e-mails, same meaning as in admin). Firestore index `events (published, startsAt
+desc)`.

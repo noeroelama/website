@@ -5,15 +5,22 @@ import {
   firebaseAdminEnv,
   lazyEnv,
   loadEnv,
+  messagingEnv,
   publicUrlsEnv,
+  resendEnv,
   sessionEnv,
 } from "@website/config/env";
 
-/** Public content, member self-service, sign-in and CAPTCHA. Validated lazily at first use, not at build. */
+/**
+ * Public content, member self-service, sign-in, CAPTCHA and confirmation e-mails. Validated lazily
+ * at first use, not at build.
+ */
 const webEnvSchema = baseEnv
   .extend(firebaseAdminEnv.shape)
   .extend(sessionEnv.shape)
   .extend(captchaEnv.partial().shape)
+  .extend(messagingEnv.shape)
+  .extend(resendEnv.partial().shape)
   .extend(publicUrlsEnv.pick({ WEB_URL: true }).shape);
 
 export const getWebEnv = lazyEnv(() => loadEnv(webEnvSchema, process.env));

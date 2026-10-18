@@ -5,6 +5,7 @@ import {
   isRegistrationOpen,
   randomEventSlug,
   sortedSponsors,
+  toPublicEvent,
 } from "@website/domain/events";
 
 const image = {
@@ -97,5 +98,43 @@ describe("event form (EVENT DASHBOARD)", () => {
         { order: 1, logo: null, caption: "A" },
       ]).map((s) => s.caption),
     ).toEqual(["A", "B"]);
+  });
+});
+
+describe("public event (DTO)", () => {
+  it("keeps only what visitors see, sponsors in order", () => {
+    const now = new Date("2026-10-18T00:00:00Z");
+    const dto = toPublicEvent({
+      id: "e1",
+      version: 4,
+      slug: "s",
+      title: "S",
+      summary: null,
+      startsAt: now,
+      endsAt: null,
+      timezone: "Asia/Tokyo",
+      location: "Tokyo",
+      chapterId: "jp",
+      published: true,
+      capacity: 10,
+      registrationClosesAt: null,
+      type: "seminar",
+      description: "D",
+      bannerImage: null,
+      registrationUrl: null,
+      schedule: [],
+      speakers: [],
+      sponsors: [
+        { order: 2, logo: null, caption: "B" },
+        { order: 1, logo: null, caption: "A" },
+      ],
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    });
+    expect(dto).not.toHaveProperty("version");
+    expect(dto).not.toHaveProperty("capacity");
+    expect(dto).toMatchObject({ id: "e1", chapterId: "jp", location: "Tokyo" });
+    expect(dto.sponsors.map((s) => s.caption)).toEqual(["A", "B"]);
   });
 });

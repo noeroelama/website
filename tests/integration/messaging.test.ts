@@ -7,8 +7,8 @@ import {
   type MessageChannel,
 } from "@website/domain/messaging";
 import { normalizePermissions, type Principal } from "@website/permissions";
-import { createMemorySender, type EmailSender } from "@website/email";
-import { createMessageActions, emailChannel } from "../../apps/admin/src/server/messaging";
+import { createMemorySender, emailChannel, type EmailSender } from "@website/email";
+import { createMessageActions } from "../../apps/admin/src/server/messaging";
 import { fakeFirestore } from "../support/fake-firestore";
 
 type Db = Parameters<typeof createFirestoreMessageLog>[0];

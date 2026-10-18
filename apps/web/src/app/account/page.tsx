@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasTwoSignInMethods, signInUrl } from "@website/auth";
 import { AppShell } from "@website/ui";
+import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
+import { formatEventTime } from "@/lib/event-time";
+import { registrations } from "@/server/events";
 import { ownSignInMethods } from "@/server/passkeys";
 import { getSignedInUser } from "@/server/session";
 import { AccountActions } from "./account-actions";
@@ -20,7 +24,14 @@ const PROVIDER_LABEL: Record<string, string> = {
 export default async function AccountPage() {
   const user = await getSignedInUser();
   if (!user) redirect(signInUrl("", "/account")); // → /login?next=%2Faccount, then back here
-  const methods = await ownSignInMethods(user.uid);
+  // Own registrations only (registrations.read_own): the query is keyed by the session's uid.
+  const [methods, mine, jar] = await Promise.all([
+    ownSignInMethods(user.uid),
+    registrations().listByUser(user.uid),
+    cookies(),
+  ]);
+  const language = languageFrom(jar.get(LANG_COOKIE)?.value);
+  const t = DICTIONARIES[language].events;
   return (
     <AppShell title="Your account">
       <p>Signed in as {user.email ?? "your account"}.</p>
@@ -39,6 +50,19 @@ export default async function AccountPage() {
           : "Staff roles need two sign-in methods: add a passkey below (or turn on two-step verification)."}
       </p>
       <AccountActions />
+      <h2>{t.mine}</h2>
+      {mine.length === 0 ? (
+        <p>{t.mineEmpty}</p>
+      ) : (
+        <ul>
+          {mine.map(({ event, status }) => (
+            <li key={event.id}>
+              <a href={`/events/${event.slug}`}>{event.title}</a> —{" "}
+              {formatEventTime(event.startsAt, event.timezone, language)} · {t.statuses[status]}
+            </li>
+          ))}
+        </ul>
+      )}
     </AppShell>
   );
 }

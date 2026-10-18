@@ -13,8 +13,11 @@ later. Staff see the e-mails that failed on the admin **Messages** page and can 
   `deliveryDecision`, `isValidMessageKey`, `MessageChannel` and `MessageLogStore` ports).
 - Log: `packages/db/src/firestore/messages.ts` (`createFirestoreMessageLog`, collection
   `messageLog/{sha256(key)}`).
-- Admin: `src/server/messaging.ts` (`emailChannel`, retry action), `src/server/wiring.ts`
-  (`messenger()`), page `src/app/(panel)/messages/**` (`messages.read` / `messages.edit`).
+- E-mail channel: `packages/email/src/channel.ts` (`emailChannel`, shared by admin and web).
+- Admin: `src/server/messaging.ts` (retry action), `src/server/wiring.ts` (`messenger()`), page
+  `src/app/(panel)/messages/**` (`messages.read` / `messages.edit`).
+- Web: `apps/web/src/server/messaging.ts` (`messenger()` for confirmation e-mails, same log, so
+  failed ones show up on the admin Messages page).
 - Tests: `tests/integration/messaging.test.ts`.
 
 ## How to use it

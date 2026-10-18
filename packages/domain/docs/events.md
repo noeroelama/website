@@ -40,6 +40,15 @@ link (`/events/<slug>`) or moves the event to the trash.
   the URL.
 - The admin list loads the 500 most recently changed events and filters them in the browser.
 
+## Public pages and registration
+
+`toPublicEvent` is what the website shows (no version or capacity). The web reader
+(`createFirestoreEventReader`) lists published, live events; `createFirestoreRegistrationStore`
+registers a member in one transaction: event open (`isRegistrationOpen`, closes exactly at the
+deadline) → no existing `eventRegistrations/{eventId}_{uid}` → status by
+`nextRegistrationStatus` and the counter `eventCounters/{eventId}`. Pages and captcha:
+`apps/web/docs/public-site.md`.
+
 ## Configuration
 
 Uploads need `FIREBASE_STORAGE_BUCKET`.

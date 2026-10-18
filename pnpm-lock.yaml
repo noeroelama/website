@@ -436,6 +436,9 @@ importers:
       '@website/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@website/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@website/observability':
         specifier: workspace:*
         version: link:../../packages/observability

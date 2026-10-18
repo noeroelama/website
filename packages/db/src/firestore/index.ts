@@ -31,10 +31,14 @@ export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";
 export { createFirestoreMessageLog, type FirestoreMessageLog } from "./messages";
 export {
+  createFirestoreEventReader,
   createFirestoreEventStore,
+  createFirestoreRegistrationStore,
   eventSnapshot,
   type EventFields,
+  type FirestoreEventReader,
   type FirestoreEventStore,
+  type FirestoreRegistrationStore,
 } from "./events";
 export {
   contentSnapshot,
