@@ -137,6 +137,17 @@ const id = {
     open: "Buka foto",
     eventAlbum: "Album foto acara ini",
   },
+  map: {
+    intro: "PPI Negara anggota PPIDK Asia-Oseania. Pilih titik di peta untuk melihat kontaknya.",
+    count: "PPI Negara",
+    label: "Peta PPI Negara di kawasan Asia-Oseania",
+    contact: "Narahubung",
+    website: "Situs web",
+    email: "E-mail",
+    instagram: "Instagram",
+    empty: "Daftar PPI Negara belum tersedia.",
+    close: "Tutup",
+  },
   about: {
     title: "Tentang kami",
     intro:
@@ -151,7 +162,7 @@ const id = {
     structure:
       "Kepengurusan disusun per periode. Visi, misi, dan susunan pengurus periode berjalan ditampilkan di sini setelah ditetapkan.",
     councilsHeading: "PPI Negara",
-    councils: "Daftar PPI Negara anggota ditampilkan di halaman Peta.",
+    councils: "Lihat semuanya di peta",
   },
   terms: {
     title: "Syarat dan Ketentuan",
@@ -356,6 +367,18 @@ const en: Dictionary = {
     open: "Open photo",
     eventAlbum: "Photo album of this event",
   },
+  map: {
+    intro:
+      "The national associations (PPI) in PPIDK Asia-Oseania. Select a point on the map to see their contacts.",
+    count: "national associations",
+    label: "Map of the PPI national associations in Asia-Oceania",
+    contact: "Contact person",
+    website: "Website",
+    email: "E-mail",
+    instagram: "Instagram",
+    empty: "The list of national associations is not available yet.",
+    close: "Close",
+  },
   about: {
     title: "About us",
     intro:
@@ -370,7 +393,7 @@ const en: Dictionary = {
     structure:
       "The board is formed per period. The vision, mission and board of the current period appear here once they are set.",
     councilsHeading: "National associations",
-    councils: "The member associations are listed on the Map page.",
+    councils: "See them all on the map",
   },
   terms: {
     title: "Terms and Conditions",

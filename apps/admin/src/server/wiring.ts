@@ -6,6 +6,7 @@ import type { AuditListQuery } from "@website/db/firestore";
 import { logSecurityEvent } from "@website/observability";
 import { createAccountActions } from "./accounts";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
+import { createChapterActions } from "./chapters";
 import { createMessenger } from "@website/domain/messaging";
 import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
@@ -41,6 +42,11 @@ export const galleryActions = lazyEnv(() =>
     events: adminStores().events,
     now: () => new Date(),
   }),
+);
+
+/** Organizations → PPI (chapters) actions. */
+export const chapterActions = lazyEnv(() =>
+  createChapterActions({ chapters: adminStores().chapters, now: () => new Date() }),
 );
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
@@ -111,6 +117,7 @@ export const adminReads = {
   getContent: (id: string) => adminStores().content.get(id),
   listEvents: () => adminStores().events.listForAdmin(),
   listAlbums: () => adminStores().galleries.listForAdmin(),
+  listChapters: () => adminStores().chapters.listForAdmin(),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),
   signInMethods: async (uid: string) => {
     const { authAdmin, passkeys } = adminStores();

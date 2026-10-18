@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { setChapterActiveAction } from "@/app/(panel)/organizations/actions";
+import { actionMessage } from "@/components/action-message";
+import { ChapterForm } from "@/components/chapter-form";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -13,7 +16,6 @@ import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import {
   INITIAL_PERIODS,
-  INITIAL_PPIS,
   INITIAL_UNITS,
   PAGE_SIZE_OPTIONS,
   PERIOD_LABELS,
@@ -21,11 +23,11 @@ import {
   type Division,
   type PeriodItem,
   type PeriodStatus,
-  type PpiItem,
   type UnitItem,
   type UnitMember,
   type UnitType,
 } from "@/data/mock/organizations";
+import type { ChapterItem } from "./chapters-model";
 
 /* ==================================================================
    Organizations — Period list, unit Structure, Create/Edit Unit form,
@@ -63,12 +65,8 @@ interface UnitForm {
   divisions: Division[];
 }
 
-/** Delete-confirmation union: one period/unit/ppi row, or a bulk of PPI rows. */
-type OrgDelete =
-  | { kind: "period"; item: PeriodItem }
-  | { kind: "unit"; item: UnitItem }
-  | { kind: "ppi"; item: PpiItem }
-  | { kind: "many"; count: number };
+/** Delete-confirmation union: one period or unit row (chapters are deactivated, never deleted). */
+type OrgDelete = { kind: "period"; item: PeriodItem } | { kind: "unit"; item: UnitItem };
 
 /** Create/Edit Period popup. */
 type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } | null;
@@ -101,8 +99,8 @@ function SortHeader({
 /** Columns of the Period table that can be sorted (Aksi never sorts). */
 type PeriodSortKey = "name" | "cabinet" | "status";
 
-/** Columns of the PPI table that can be sorted (Members sorts numerically). */
-type PpiSortKey = "name" | "country" | "members";
+/** Columns of the PPI table that can be sorted. */
+type PpiSortKey = "name" | "country";
 
 /** Slug shown under a unit name (the Figma structure row has name + slug). */
 function slugify(s: string): string {
@@ -133,18 +131,29 @@ function periodStatusBadge(status: PeriodStatus): ReactNode {
 let ROW_SEQ = 1;
 const nextRowId = () => `row-${ROW_SEQ++}`;
 
-export function OrganizationsPage() {
+interface OrganizationsProps {
+  /** PPI chapters from Firestore (the Period and Structure tabs are still design mocks). */
+  chapters: ChapterItem[];
+  /** organizations.edit: add, edit, activate/deactivate chapters. */
+  canEdit: boolean;
+}
+
+export function OrganizationsPage(props: OrganizationsProps) {
   const pathname = usePathname();
   // key={pathname} remounts the list when the organizations route is (re)entered,
   // so pagination / selection / tab state start fresh on every visit (same
   // pattern as Events, Articles & Gallery).
-  return <OrganizationsList key={pathname} />;
+  return <OrganizationsList key={pathname} {...props} />;
 }
 
 /** Organizations screens (all state lives here; remounted by OrganizationsPage
  *  on navigation so each visit starts clean). */
-function OrganizationsList() {
+function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
   const toast = useToastMessage();
+  const router = useRouter();
+  /* Chapter add/edit popup: null = closed, "new" = add, otherwise the chapter. */
+  const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
+  const [busy, setBusy] = useState(false);
   /* ---- navigation ---- */
   const [view, setView] = useState<OrgView>("period");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>(PERIOD_LABELS[1]!.id);
@@ -154,7 +163,6 @@ function OrganizationsList() {
   /* ---- lists ---- */
   const [periods, setPeriods] = useState<PeriodItem[]>(INITIAL_PERIODS);
   const [units, setUnits] = useState<UnitItem[]>(INITIAL_UNITS);
-  const [ppis, setPpis] = useState<PpiItem[]>(INITIAL_PPIS);
 
   /* Structure header pill options: the Figma labels first, then any periods
      created in this session (so a new period can be opened immediately). */
@@ -247,7 +255,6 @@ function OrganizationsList() {
     if (!ppiSort) return ppis;
     const copy = [...ppis];
     copy.sort((a, b) => {
-      if (ppiSort === "members") return a.members - b.members;
       const av = ppiSort === "name" ? a.name : a.country;
       const bv = ppiSort === "name" ? b.name : b.country;
       return av < bv ? -1 : av > bv ? 1 : 0;
@@ -320,14 +327,14 @@ function OrganizationsList() {
   const exportPpisCsv = () => {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const rows = [
-      ["Chapter", "Country", "Timezone", "Members", "Status", "Notes"],
+      ["Chapter", "Country", "Timezone", "Status", "Contact person", "Public contact"],
       ...ppis.map((p) => [
         esc(p.name),
         esc(p.country),
         esc(p.timezone),
-        String(p.members),
-        p.status,
-        esc(p.notes),
+        p.active ? "Active" : "Inactive",
+        esc(p.contactName),
+        esc(p.contactPublic),
       ]),
     ];
     const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n") + "\r\n";
@@ -673,13 +680,6 @@ function OrganizationsList() {
     } else if (deleteConfirm.kind === "unit") {
       setUnits((prev) => prev.filter((u) => u.id !== deleteConfirm.item.id));
       toast.show("Unit deleted");
-    } else if (deleteConfirm.kind === "ppi") {
-      setPpis((prev) => prev.filter((p) => p.id !== deleteConfirm.item.id));
-      toast.show("Chapter deleted");
-    } else if (deleteConfirm.kind === "many") {
-      setPpis((prev) => prev.filter((p) => !selected.has(p.id)));
-      clearSelection();
-      toast.show(`Deleted ${deleteConfirm.count} chapters`);
     }
     setDeleteConfirm(null);
   };
@@ -763,15 +763,11 @@ function OrganizationsList() {
 
   /* ---- shared delete modal ---- */
   const deleteTitle =
-    deleteConfirm?.kind === "many"
-      ? `Delete ${deleteConfirm.count} PPI Chapter${deleteConfirm.count === 1 ? "" : "s"}?`
-      : deleteConfirm?.kind === "period"
-        ? `Delete "${deleteConfirm.item.name}"?`
-        : deleteConfirm?.kind === "unit"
-          ? `Delete "${deleteConfirm.item.code}"?`
-          : deleteConfirm?.kind === "ppi"
-            ? `Delete "${deleteConfirm.item.name}"?`
-            : "Delete";
+    deleteConfirm?.kind === "period"
+      ? `Delete "${deleteConfirm.item.name}"?`
+      : deleteConfirm?.kind === "unit"
+        ? `Delete "${deleteConfirm.item.code}"?`
+        : "Delete";
 
   /* The "confirm delete" popup is shared by every screen that deletes
      (Period, Structure, PPI) — render it once per screen, next to the card. */
@@ -1539,9 +1535,29 @@ function OrganizationsList() {
     );
   }
 
-  /* ---- PPI chapters ---- */
+  /* ---- PPI chapters (Firestore; deactivate instead of delete) ---- */
   const ppiSelected = selected.size;
-  const columns: Column<PpiItem>[] = [
+  const setActiveFor = async (rows: readonly ChapterItem[], active: boolean) => {
+    setBusy(true);
+    let count = 0;
+    for (const r of rows) {
+      const result = await setChapterActiveAction({ id: r.id, version: r.version, active });
+      if (!result.ok) {
+        toast.show(actionMessage(result));
+        break;
+      }
+      count++;
+    }
+    setBusy(false);
+    clearSelection();
+    router.refresh();
+    if (count > 0) {
+      toast.show(
+        `${count} chapter${count === 1 ? "" : "s"} ${active ? "activated" : "deactivated"}`,
+      );
+    }
+  };
+  const columns: Column<ChapterItem>[] = [
     {
       key: "check",
       width: "24px",
@@ -1584,11 +1600,11 @@ function OrganizationsList() {
           onClick={() => onPpiSort("name")}
         />
       ),
-      width: "16%",
+      width: "22%",
       render: (r) => (
         <div>
           <div className="admin-table__title">{r.name}</div>
-          <div className="admin-table__sub">#{r.code}</div>
+          <div className="admin-table__sub">#{r.countryCode}</div>
         </div>
       ),
     },
@@ -1602,7 +1618,7 @@ function OrganizationsList() {
           onClick={() => onPpiSort("country")}
         />
       ),
-      width: "12%",
+      width: "16%",
       render: (r) => <span className="admin-table__title">{r.country}</span>,
     },
     {
@@ -1616,32 +1632,27 @@ function OrganizationsList() {
       ),
     },
     {
-      key: "members",
-      header: (
-        <SortHeader
-          label="Members"
-          active={ppiSort === "members"}
-          dir={ppiSortDir}
-          onClick={() => onPpiSort("members")}
-        />
+      key: "contact",
+      header: "Contact",
+      width: "20%",
+      render: (r) => (
+        <span className="admin-org-notes">
+          {r.contactName}
+          {r.contactPublic && ` · ${r.contactPublic}`}
+        </span>
       ),
-      width: "8%",
-      render: (r) => <span className="admin-table__title">{r.members}</span>,
-    },
-    {
-      key: "notes",
-      header: "Conditions",
-      width: "22%",
-      render: (r) => <span className="admin-org-notes">{r.notes}</span>,
     },
     {
       key: "status",
       header: "Status",
-      width: "16%",
-      render: () => (
+      width: "12%",
+      render: (r) => (
         <div className="admin-org-badges">
-          <span className="admin-org-status admin-org-status--risk">At risk of a vacuum</span>
-          <span className="admin-org-status admin-org-status--inactive">Inactive</span>
+          {r.active ? (
+            <span className="admin-org-status">Active</span>
+          ) : (
+            <span className="admin-org-status admin-org-status--inactive">Inactive</span>
+          )}
         </div>
       ),
     },
@@ -1650,27 +1661,28 @@ function OrganizationsList() {
       header: "",
       align: "right",
       width: "12%",
-      render: (r) => (
-        <div className="admin-table__actions">
-          <Button
-            variant="ghost"
-            size="icon"
-            icon="trash"
-            className="admin-table__delete"
-            aria-label={`Delete ${r.name}`}
-            title="Delete"
-            onClick={() => requestDelete({ kind: "ppi", item: r })}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            icon="edit"
-            aria-label="Edit"
-            title="Edit"
-            onClick={() => toast.show("Edit PPI — form not in the design yet")}
-          />
-        </div>
-      ),
+      render: (r) =>
+        canEdit ? (
+          <div className="admin-table__actions">
+            <Button
+              variant="ghost"
+              size="icon"
+              icon={r.active ? "lock" : "globe"}
+              aria-label={r.active ? `Deactivate ${r.name}` : `Activate ${r.name}`}
+              title={r.active ? "Deactivate (hidden from the map)" : "Activate"}
+              disabled={busy}
+              onClick={() => void setActiveFor([r], !r.active)}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              icon="edit"
+              aria-label="Edit"
+              title="Edit"
+              onClick={() => setChapterForm(r)}
+            />
+          </div>
+        ) : null,
     },
   ];
 
@@ -1685,15 +1697,17 @@ function OrganizationsList() {
           <Button variant="outline" size="sm" icon="download" onClick={exportPpisCsv}>
             Export CSV
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="plus"
-            className="admin-btn--events-add"
-            onClick={() => toast.show("Add New PPI — form not in the design yet")}
-          >
-            Add New PPI
-          </Button>
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="plus"
+              className="admin-btn--events-add"
+              onClick={() => setChapterForm("new")}
+            >
+              Add New PPI
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -1749,14 +1763,22 @@ function OrganizationsList() {
                 {ppiSelected} selected
               </span>
               <div className="admin-bulkbar__actions">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  icon="trash"
-                  onClick={() => requestDelete({ kind: "many", count: ppiSelected })}
-                >
-                  Delete
-                </Button>
+                {canEdit ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon="lock"
+                    disabled={busy}
+                    onClick={() =>
+                      void setActiveFor(
+                        ppis.filter((p) => selected.has(p.id) && p.active),
+                        false,
+                      )
+                    }
+                  >
+                    Deactivate
+                  </Button>
+                ) : null}
               </div>
             </div>
           ) : (
@@ -1766,6 +1788,18 @@ function OrganizationsList() {
       </Card>
 
       {deleteModal}
+
+      {chapterForm !== null ? (
+        <ChapterForm
+          chapter={chapterForm === "new" ? null : chapterForm}
+          onClose={() => setChapterForm(null)}
+          onSaved={(text) => {
+            setChapterForm(null);
+            router.refresh();
+            toast.show(text);
+          }}
+        />
+      ) : null}
 
       <ToastBanner message={toast.message} />
     </>
