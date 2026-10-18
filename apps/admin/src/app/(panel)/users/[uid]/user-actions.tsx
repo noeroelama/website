@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import type { Scope } from "@website/permissions";
 import { ActionError } from "@/components/action-error";
 import { actionMessage, type ActionFailure } from "@/components/action-message";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,17 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { label, SCOPE_LABELS } from "@/labels";
 import { assignRoleAction, revokeRoleAction, setStatusAction } from "../actions";
 
-type Scope = { type: "global" } | { type: "chapter"; chapterId: string };
-
 export function UserRoleEditor(props: {
   readonly uid: string;
   readonly version: number;
   readonly status: "active" | "inactive";
-  readonly assignments: readonly { roleId: string; roleName: string; scope: Scope }[];
+  readonly assignments: readonly {
+    roleId: string;
+    roleName: string;
+    scope: Scope;
+    periodId: string | null;
+    revoked: boolean;
+  }[];
   readonly roles: readonly { id: string; name: string }[];
   readonly canEdit: boolean;
   readonly reauthUrl: string | null;
@@ -25,6 +30,8 @@ export function UserRoleEditor(props: {
   const [error, setError] = useState<string | null>(null);
   const [roleId, setRoleId] = useState(props.roles[0]?.id ?? "");
   const [chapterId, setChapterId] = useState("");
+  const [orgUnitId, setOrgUnitId] = useState("");
+  const [periodId, setPeriodId] = useState("");
   const [confirmStatus, setConfirmStatus] = useState(false);
 
   const run = (action: () => Promise<{ ok: true } | ActionFailure>) =>
@@ -38,23 +45,36 @@ export function UserRoleEditor(props: {
   const scopeLabel = (scope: Scope) =>
     scope.type === "global"
       ? label(SCOPE_LABELS, "global")
-      : `${label(SCOPE_LABELS, "chapter")} ${scope.chapterId}`;
+      : scope.type === "chapter"
+        ? `${label(SCOPE_LABELS, "chapter")} ${scope.chapterId}`
+        : `${label(SCOPE_LABELS, "orgUnit")} ${scope.orgUnitId}`;
+  const rowLabel = (a: (typeof props.assignments)[number]) =>
+    [
+      `${a.roleName} — ${scopeLabel(a.scope)}`,
+      a.periodId ? ` · ${a.periodId}` : "",
+      a.revoked ? " · ended" : "",
+    ].join("");
 
   return (
     <>
       <ul className="admin-form-separator__list">
         {props.assignments.map((a) => (
-          <li key={`${a.roleId}:${scopeLabel(a.scope)}`} className="admin-account__row">
-            <span>
-              {a.roleName} — {scopeLabel(a.scope)}
-            </span>
-            {props.canEdit ? (
+          <li key={rowLabel(a)} className="admin-account__row">
+            <span>{rowLabel(a)}</span>
+            {props.canEdit && !a.revoked ? (
               <Button
                 size="sm"
                 variant="ghost"
                 disabled={pending}
                 onClick={() =>
-                  run(() => revokeRoleAction({ ...base, roleId: a.roleId, scope: a.scope }))
+                  run(() =>
+                    revokeRoleAction({
+                      ...base,
+                      roleId: a.roleId,
+                      scope: a.scope,
+                      periodId: a.periodId,
+                    }),
+                  )
                 }
               >
                 Remove
@@ -68,10 +88,14 @@ export function UserRoleEditor(props: {
           className="admin-toolbar"
           onSubmit={(event) => {
             event.preventDefault();
-            const scope: Scope = chapterId.trim()
-              ? { type: "chapter", chapterId: chapterId.trim() }
-              : { type: "global" };
-            run(() => assignRoleAction({ ...base, roleId, scope }));
+            const scope: Scope = orgUnitId.trim()
+              ? { type: "orgUnit", orgUnitId: orgUnitId.trim() }
+              : chapterId.trim()
+                ? { type: "chapter", chapterId: chapterId.trim() }
+                : { type: "global" };
+            run(() =>
+              assignRoleAction({ ...base, roleId, scope, periodId: periodId.trim() || null }),
+            );
           }}
         >
           <select
@@ -92,6 +116,20 @@ export function UserRoleEditor(props: {
             placeholder="Chapter id (empty = all chapters)"
             value={chapterId}
             onChange={(e) => setChapterId(e.target.value)}
+          />
+          <input
+            className="admin-input"
+            aria-label="Unit id (optional)"
+            placeholder="Unit id (optional)"
+            value={orgUnitId}
+            onChange={(e) => setOrgUnitId(e.target.value)}
+          />
+          <input
+            className="admin-input"
+            aria-label="Period id (empty = any period)"
+            placeholder="Period id (empty = any period)"
+            value={periodId}
+            onChange={(e) => setPeriodId(e.target.value)}
           />
           <Button type="submit" disabled={pending}>
             Give role

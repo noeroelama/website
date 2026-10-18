@@ -8,8 +8,14 @@ import {
   type RoleDefinition,
 } from "./permissions";
 
+/**
+ * Where an assignment applies (DEC-2): everywhere, one chapter, or one unit of the organisation
+ * structure together with every unit below it.
+ */
 export type Scope =
-  { readonly type: "global" } | { readonly type: "chapter"; readonly chapterId: string };
+  | { readonly type: "global" }
+  | { readonly type: "chapter"; readonly chapterId: string }
+  | { readonly type: "orgUnit"; readonly orgUnitId: string };
 
 /** `users/{uid}.status`: an inactive account can do nothing (and cannot sign in). */
 export const ACCOUNT_STATUSES = ["active", "inactive"] as const;
@@ -19,6 +25,12 @@ export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 export interface RoleAssignment {
   readonly roleId: string;
   readonly scope: Scope;
+  /** Board period it belongs to; null/absent = independent of periods (B6). */
+  readonly periodId?: string | null;
+  /** "appointment" = derived from an appointment (step 3.7) and revoked with it. */
+  readonly source?: "appointment" | "manual";
+  /** Set when revoked; revoked assignments grant nothing (kept for history). */
+  readonly revokedAt?: Date | null;
 }
 
 /** An assignment with its role's permissions resolved on the server for this request. */
@@ -42,6 +54,8 @@ export interface Principal {
 export interface ResourceContext {
   /** Present when the resource belongs to a chapter; enables chapter-scoped assignments. */
   readonly chapterId?: string;
+  /** The resource's org unit and all its ancestors (`orgUnits/{id}.path` + id), built on the server. */
+  readonly orgUnitPath?: readonly string[];
   /** Present for user-owned resources; required by `*_own` permissions. */
   readonly ownerId?: string;
 }
@@ -53,13 +67,17 @@ export const DEFAULT_ROLE_ASSIGNMENTS: readonly RoleAssignment[] = [
 
 /**
  * Turns stored assignments into resolved ones. Built-in roles always come from code; an
- * assignment to a role that no longer exists is dropped (fail closed).
+ * assignment to a role that no longer exists is dropped (fail closed), and so is a revoked one
+ * or one of another board period than `activePeriodId` (read from `settings/activePeriod`).
  */
 export function resolveAssignments(
   stored: readonly RoleAssignment[],
   customRoles: ReadonlyMap<string, RoleDefinition>,
+  activePeriodId: string | null = null,
 ): ResolvedAssignment[] {
   return stored.flatMap((assignment) => {
+    if (assignment.revokedAt) return [];
+    if (assignment.periodId && assignment.periodId !== activePeriodId) return [];
     const role = isSystemRoleId(assignment.roleId)
       ? SYSTEM_ROLES[assignment.roleId]
       : customRoles.get(assignment.roleId);
@@ -68,8 +86,16 @@ export function resolveAssignments(
   });
 }
 
+/** Same place: same type and the same chapter / org unit. */
+export function sameScope(a: Scope, b: Scope): boolean {
+  if (a.type === "chapter" && b.type === "chapter") return a.chapterId === b.chapterId;
+  if (a.type === "orgUnit" && b.type === "orgUnit") return a.orgUnitId === b.orgUnitId;
+  return a.type === "global" && b.type === "global";
+}
+
 function scopeCovers(scope: Scope, resource: ResourceContext | undefined): boolean {
   if (scope.type === "global") return true;
+  if (scope.type === "orgUnit") return resource?.orgUnitPath?.includes(scope.orgUnitId) ?? false;
   return resource?.chapterId !== undefined && resource.chapterId === scope.chapterId;
 }
 

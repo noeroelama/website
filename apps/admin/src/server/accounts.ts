@@ -8,6 +8,7 @@ import { RuleViolationError } from "@website/domain/shared";
 import { logSecurityEvent, type Logger } from "@website/observability";
 import {
   accountChangeRefusal,
+  sameScope,
   type AccountChangeRefusal,
   type Principal,
   type RoleAssignment,
@@ -33,18 +34,29 @@ const REFUSAL_MESSAGE: Record<AccountChangeRefusal, string> = {
 const ScopeInput = z.discriminatedUnion("type", [
   z.object({ type: z.literal("global") }).strict(),
   z.object({ type: z.literal("chapter"), chapterId: safeId }).strict(),
+  z.object({ type: z.literal("orgUnit"), orgUnitId: safeId }).strict(),
 ]);
 const RoleChangeInput = z
-  .object({ uid: safeId, version: z.number().int().min(0), roleId: safeId, scope: ScopeInput })
+  .object({
+    uid: safeId,
+    version: z.number().int().min(0),
+    roleId: safeId,
+    scope: ScopeInput,
+    /** Board period the role is for; null/absent = independent of periods. */
+    periodId: safeId.nullable().optional(),
+  })
   .strict();
 const StatusInput = z
   .object({ uid: safeId, version: z.number().int().min(0), status: z.enum(["active", "inactive"]) })
   .strict();
 
+/** Same role, same place and same period (a revoked assignment no longer counts). */
 const sameAssignment = (a: RoleAssignment, b: RoleAssignment) =>
   a.roleId === b.roleId &&
-  a.scope.type === b.scope.type &&
-  (a.scope.type === "global" || a.scope.chapterId === (b.scope as { chapterId: string }).chapterId);
+  sameScope(a.scope, b.scope) &&
+  (a.periodId ?? null) === (b.periodId ?? null) &&
+  !a.revokedAt &&
+  !b.revokedAt;
 
 /** A role that opens admin pages needs two sign-in methods on the account first (B2). */
 const isStaffRole = (role: RoleDefinition) => role.permissions.length > 0;
@@ -100,7 +112,13 @@ export function createAccountActions(deps: AccountDeps) {
           );
         }
       }
-      const added: RoleAssignment = { roleId: role.id, scope: input.scope };
+      const added: RoleAssignment = {
+        roleId: role.id,
+        scope: input.scope,
+        periodId: input.periodId ?? null,
+        source: "manual",
+        revokedAt: null,
+      };
       const updated = await deps.accounts.change(
         input.uid,
         input.version,
@@ -131,7 +149,11 @@ export function createAccountActions(deps: AccountDeps) {
     recentSignIn: true,
     handler: async (input, principal, audit) => {
       const role = await loadRole(input.roleId);
-      const removed: RoleAssignment = { roleId: role.id, scope: input.scope };
+      const removed: RoleAssignment = {
+        roleId: role.id,
+        scope: input.scope,
+        periodId: input.periodId ?? null,
+      };
       const updated = await deps.accounts.change(
         input.uid,
         input.version,

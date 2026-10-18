@@ -9,6 +9,7 @@ import {
   isActiveSuperadmin,
   parseAssignments,
   parseCustomRole,
+  plainAssignments,
   roleIdsOf,
   systemRole,
   toPrincipal,
@@ -26,9 +27,6 @@ import {
 } from "../users";
 import { createFirestoreAuditWriter } from "./audit";
 import { getDocumentsByIds } from "./batch";
-
-const plainAssignments = (assignments: UserSummary["roleAssignments"]) =>
-  assignments.map((a) => ({ roleId: a.roleId, scope: { ...a.scope } }));
 
 /**
  * `users/{uid}`: uid, email, name, status, roleAssignments[], roleIds[] (for queries), version,
@@ -60,12 +58,25 @@ export function createFirestoreUserStore(db: Firestore): SignInRecorder & UserDi
       });
     },
 
+    /**
+     * The principal for a request: the user record and `settings/activePeriod` in one round
+     * trip; assignments of other periods and revoked ones grant nothing.
+     */
     async findPrincipalByUid(uid) {
-      const snapshot = await db.collection("users").doc(safeId.parse(uid)).get();
-      if (!snapshot.exists) return null;
+      const [snapshot, period] = await db.getAll(
+        db.collection("users").doc(safeId.parse(uid)),
+        db.collection("settings").doc("activePeriod"),
+      );
+      if (!snapshot?.exists) return null;
       const data = snapshot.data() as Record<string, unknown>;
       const ids = customRoleIds(parseAssignments(data["roleAssignments"]));
-      return toPrincipal(uid, data, await roles.getMany(ids));
+      const periodId = period?.get("periodId") as unknown;
+      return toPrincipal(
+        uid,
+        data,
+        await roles.getMany(ids),
+        typeof periodId === "string" ? periodId : null,
+      );
     },
   };
 }

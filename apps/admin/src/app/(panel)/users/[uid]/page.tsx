@@ -82,6 +82,8 @@ export default async function UserPage({ params }: { params: Promise<{ uid: stri
               roleId: a.roleId,
               roleName: roleName.get(a.roleId) ?? a.roleId,
               scope: a.scope,
+              periodId: a.periodId ?? null,
+              revoked: Boolean(a.revokedAt),
             }))}
             roles={roles.map((r) => ({ id: r.id, name: r.name }))}
             canEdit={can(viewer.principal, "users.edit") && !self}

@@ -25,7 +25,8 @@ export const USER_STATUS_LABELS = {
 export const SCOPE_LABELS = {
   global: { id: "Semua cabang", en: "All chapters" },
   chapter: { id: "Cabang", en: "Chapter" },
-} as const satisfies Record<"global" | "chapter", Label>;
+  orgUnit: { id: "Unit", en: "Unit" },
+} as const satisfies Record<"global" | "chapter" | "orgUnit", Label>;
 
 export const ROLE_TYPE_LABELS = {
   builtIn: { id: "Bawaan", en: "Built-in" },
@@ -96,7 +97,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   readonly labels: Readonly<Record<string, Label>>;
 }> = [
   { name: "user status", keys: ACCOUNT_STATUSES, labels: USER_STATUS_LABELS },
-  { name: "scope", keys: ["global", "chapter"], labels: SCOPE_LABELS },
+  { name: "scope", keys: ["global", "chapter", "orgUnit"], labels: SCOPE_LABELS },
   { name: "role type", keys: ["builtIn", "custom"], labels: ROLE_TYPE_LABELS },
   { name: "audit action", keys: AUDIT_ACTIONS, labels: AUDIT_ACTION_LABELS },
   { name: "revert rejection", keys: REVERT_REJECTIONS, labels: REVERT_REJECTION_LABELS },

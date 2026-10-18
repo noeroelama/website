@@ -220,6 +220,63 @@ describe("Users page: give and remove roles", () => {
     expect(logLines.filter((l) => l.includes("staff.role_changed"))).toHaveLength(3);
   });
 
+  it("gives a role for one unit and one board period; staff cannot forge how it was assigned", async () => {
+    const actions = createAccountActions(deps);
+    const media = { type: "orgUnit", orgUnitId: "media" } as const;
+    const forged = { ...giveEditor, scope: media, periodId: "p2026" };
+    // Client-only fields (appointment source, revocation) are refused by the strict input.
+    for (const extra of [{ source: "appointment" }, { revokedAt: null }]) {
+      expect(await actions.assignRole(...as("boss"))({ ...forged, ...extra })).toMatchObject({
+        ok: false,
+        error: "invalid_input",
+      });
+    }
+    expect(
+      await actions.assignRole(...as("boss"))({ ...forged, scope: { type: "orgUnit" } }),
+    ).toMatchObject({ ok: false, error: "invalid_input" });
+    expect(await actions.assignRole(...as("boss"))(forged)).toMatchObject({ ok: true });
+    expect(fake.docs.get("users/ana")?.["roleAssignments"]).toContainEqual({
+      roleId: "editor",
+      scope: media,
+      periodId: "p2026",
+      source: "manual",
+      revokedAt: null,
+    });
+    // The same role for another period is a separate assignment; removal matches the period.
+    expect(
+      await actions.assignRole(...as("boss"))({ ...forged, version: 2, periodId: null }),
+    ).toMatchObject({ ok: true, data: { version: 3 } });
+    expect(await actions.revokeRole(...as("boss"))({ ...forged, version: 3 })).toMatchObject({
+      ok: true,
+      data: { version: 4 },
+    });
+    expect(fake.docs.get("users/ana")?.["roleAssignments"]).toEqual([
+      { roleId: "user", scope: global, periodId: null, source: "manual", revokedAt: null },
+      { roleId: "editor", scope: media, periodId: null, source: "manual", revokedAt: null },
+    ]);
+  });
+
+  it("keeps ended appointment roles as history: in the record and the audit snapshot", async () => {
+    const ended = {
+      roleId: "editor",
+      scope: global,
+      periodId: "p2025",
+      source: "appointment",
+      revokedAt: new Date("2026-01-31T00:00:00Z"),
+    };
+    fake.docs.set("users/ana", {
+      ...fake.docs.get("users/ana"),
+      roleAssignments: [{ roleId: "user", scope: global }, ended],
+    });
+    expect(await createAccountActions(deps).assignRole(...as("boss"))(giveEditor)).toMatchObject({
+      ok: true,
+    });
+    const [, entry] = [...fake.docs.entries()].find(([path]) => path.startsWith("auditLogs/"))!;
+    const before = entry["before"] as { roleAssignments: unknown[] };
+    expect(before.roleAssignments[1]).toEqual({ ...ended, revokedAt: "2026-01-31T00:00:00.000Z" });
+    expect(fake.docs.get("users/ana")?.["roleAssignments"]).toHaveLength(3);
+  });
+
   it("built-in roles without admin pages need no second method; entries are titled by uid when there is no e-mail", async () => {
     methods["ana"] = { providers: ["google.com"], mfaFactors: 0 };
     fake.docs.set("users/ana", { uid: "ana", ...user(["user"]), email: null });

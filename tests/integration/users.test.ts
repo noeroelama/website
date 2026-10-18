@@ -65,7 +65,7 @@ describe("principal from Firestore (admin user directory)", () => {
     docs.set("users/u2", { status: "active" });
     const principal = await users.findPrincipalByUid("u2");
     expect(principal).toMatchObject({ userId: "u2", active: true, assignments: [] });
-    expect(getAll).not.toHaveBeenCalled();
+    expect(getAll).toHaveBeenCalledTimes(1); // user + active period together; no roles read
   });
 
   it("resolves custom roles from roles/{id} and drops assignments to missing roles", async () => {
@@ -88,7 +88,31 @@ describe("principal from Firestore (admin user directory)", () => {
     expect(can(principal, "articles.publish", { chapterId: "jp" })).toBe(true);
     expect(can(principal, "articles.read", { chapterId: "jp" })).toBe(true); // publish adds read
     expect(can(principal, "articles.publish", { chapterId: "kr" })).toBe(false);
-    expect(getAll).toHaveBeenCalledTimes(1); // all custom roles in one read
+    expect(getAll).toHaveBeenCalledTimes(2); // user + period, then all custom roles in one read
+  });
+
+  it("keeps period-bound assignments only for the active period (settings/activePeriod)", async () => {
+    const { users, docs } = setup();
+    docs.set("users/u1", {
+      status: "active",
+      roleAssignments: [
+        { roleId: "superadmin", scope: { type: "global" }, periodId: "p2025" },
+        { roleId: "superadmin", scope: { type: "orgUnit", orgUnitId: "media" }, periodId: "p2026" },
+        { roleId: "superadmin", scope: { type: "global" }, revokedAt: new Date("2026-01-01") },
+        { roleId: "user", scope: { type: "global" } },
+      ],
+    });
+    const before = await users.findPrincipalByUid("u1"); // no active period yet
+    expect(before?.assignments.map((a) => a.roleId)).toEqual(["user"]);
+
+    docs.set("settings/activePeriod", { periodId: "p2026" });
+    const during = await users.findPrincipalByUid("u1");
+    expect(during?.assignments.map((a) => a.scope)).toEqual([
+      { type: "orgUnit", orgUnitId: "media" },
+      { type: "global" },
+    ]);
+    expect(can(during, "users.edit", { orgUnitPath: ["board", "media"] })).toBe(true);
+    expect(can(during, "users.edit", { orgUnitPath: ["board", "finance"] })).toBe(false);
   });
 
   it("an inactive account resolves to a principal that can do nothing", async () => {
@@ -113,6 +137,9 @@ describe("principal from Firestore (admin user directory)", () => {
         { roleId: "old", scope: { type: "global" } },
         { roleId: "bad id/../x", scope: { type: "global" } },
         { roleId: "user", scope: { type: "planet" } },
+        { roleId: "user", scope: { type: "planet", orgUnitId: "earth" } },
+        { roleId: "superadmin", scope: { type: "orgUnit", orgUnitId: "../x" } },
+        { roleId: "superadmin", scope: { type: "global" }, revokedAt: "not a date" },
         "superadmin",
       ],
     });

@@ -7,6 +7,7 @@ import {
   type Principal,
   type RoleAssignment,
   type RoleDefinition,
+  type Scope,
 } from "@website/permissions";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import { safeId } from "@website/security/validation";
@@ -92,20 +93,35 @@ export interface AccountChange {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const toDate = (value: unknown): Date | null =>
+  value instanceof Date
+    ? value
+    : isRecord(value) && typeof value["toDate"] === "function"
+      ? (value as { toDate(): Date }).toDate()
+      : null;
+
+const parseScope = (scope: Record<string, unknown>): Scope | null => {
+  const id = scope["type"] === "chapter" ? scope["chapterId"] : scope["orgUnitId"];
+  if (scope["type"] === "global") return { type: "global" };
+  if (typeof id !== "string" || !safeId.safeParse(id).success) return null;
+  if (scope["type"] === "chapter") return { type: "chapter", chapterId: id };
+  return scope["type"] === "orgUnit" ? { type: "orgUnit", orgUnitId: id } : null;
+};
+
 /** Keeps only well-formed stored assignments (fail closed on anything unexpected). */
 export function parseAssignments(value: unknown): RoleAssignment[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item: unknown): RoleAssignment[] => {
     if (!isRecord(item) || !isRecord(item["scope"])) return [];
     const roleId = item["roleId"];
-    const scope = item["scope"];
-    if (typeof roleId !== "string" || !safeId.safeParse(roleId).success) return [];
-    if (scope["type"] === "global") return [{ roleId, scope: { type: "global" } }];
-    const chapterId = scope["chapterId"];
-    if (scope["type"] === "chapter" && typeof chapterId === "string") {
-      return [{ roleId, scope: { type: "chapter", chapterId } }];
-    }
-    return [];
+    const scope = parseScope(item["scope"]);
+    if (typeof roleId !== "string" || !safeId.safeParse(roleId).success || !scope) return [];
+    const periodId = typeof item["periodId"] === "string" ? item["periodId"] : null;
+    const source = item["source"] === "appointment" ? "appointment" : "manual";
+    const revokedAt = toDate(item["revokedAt"]);
+    // A revoked assignment that cannot be read as revoked would grant again: refuse it.
+    if (item["revokedAt"] !== undefined && item["revokedAt"] !== null && !revokedAt) return [];
+    return [{ roleId, scope, periodId, source, revokedAt }];
   });
 }
 
@@ -129,19 +145,19 @@ export function toPrincipal(
   uid: string,
   data: Record<string, unknown>,
   customRoles: ReadonlyMap<string, RoleDefinition>,
+  activePeriodId: string | null = null,
 ): Principal {
   return {
     kind: "user",
     userId: uid,
     active: data["status"] === "active",
-    assignments: resolveAssignments(parseAssignments(data["roleAssignments"]), customRoles),
+    assignments: resolveAssignments(
+      parseAssignments(data["roleAssignments"]),
+      customRoles,
+      activePeriodId,
+    ),
   };
 }
-
-const toDate = (value: unknown): Date | null =>
-  isRecord(value) && typeof value["toDate"] === "function"
-    ? (value as { toDate(): Date }).toDate()
-    : null;
 
 export function toUserSummary(uid: string, data: Record<string, unknown>): UserSummary {
   return {
@@ -164,16 +180,27 @@ export const roleIdsOf = (assignments: readonly RoleAssignment[]): string[] => [
 /** True for an active account that holds superadmin globally. */
 export const isActiveSuperadmin = (user: UserSummary): boolean =>
   user.status === "active" &&
-  user.roleAssignments.some((a) => a.roleId === "superadmin" && a.scope.type === "global");
+  user.roleAssignments.some(
+    (a) => a.roleId === "superadmin" && a.scope.type === "global" && !a.revokedAt && !a.periodId,
+  );
+
+/** Assignments as stored in Firestore: every field present (null when unset). */
+export const plainAssignments = (assignments: readonly RoleAssignment[]) =>
+  assignments.map((a) => ({
+    roleId: a.roleId,
+    scope: { ...a.scope },
+    periodId: a.periodId ?? null,
+    source: a.source ?? "manual",
+    revokedAt: a.revokedAt ?? null,
+  }));
 
 /** What an account change looks like in the audit log (roles and status only). */
 export const accountSnapshot = (
   user: Pick<UserSummary, "roleAssignments" | "status">,
 ): Snapshot => ({
   status: user.status,
-  roleAssignments: user.roleAssignments.map((a) =>
-    a.scope.type === "global"
-      ? { roleId: a.roleId, scope: { type: "global" } }
-      : { roleId: a.roleId, scope: { type: "chapter", chapterId: a.scope.chapterId } },
-  ),
+  roleAssignments: plainAssignments(user.roleAssignments).map((a) => ({
+    ...a,
+    revokedAt: a.revokedAt?.toISOString() ?? null,
+  })),
 });

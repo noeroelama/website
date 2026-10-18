@@ -108,6 +108,45 @@ describe("resolving role assignments", () => {
     expect(resolveAssignments([{ roleId: "deleted-role", scope: global }], lookup)).toEqual([]);
   });
 
+  it("keeps only live assignments: revoked ones and other periods are ignored (B6)", () => {
+    const stored = [
+      {
+        roleId: "editor",
+        scope: global,
+        periodId: null,
+        source: "manual" as const,
+        revokedAt: null,
+      },
+      {
+        roleId: "viewer",
+        scope: global,
+        periodId: "2026",
+        source: "appointment" as const,
+        revokedAt: null,
+      },
+      {
+        roleId: "chapter_admin",
+        scope: jp,
+        periodId: "2025",
+        source: "appointment" as const,
+        revokedAt: null,
+      },
+      {
+        roleId: "role_manager",
+        scope: global,
+        periodId: null,
+        source: "manual" as const,
+        revokedAt: new Date(),
+      },
+    ];
+    expect(resolveAssignments(stored, lookup, "2026").map((a) => a.roleId)).toEqual([
+      "editor",
+      "viewer",
+    ]);
+    // No active period: only period-independent assignments count.
+    expect(resolveAssignments(stored, lookup, null).map((a) => a.roleId)).toEqual(["editor"]);
+  });
+
   it("new accounts get the user role, which opens no admin page", () => {
     const fresh: Principal = {
       kind: "user",
@@ -140,6 +179,21 @@ describe("can()", () => {
     expect(can(admin, "members.pii", { chapterId: "jp" })).toBe(true);
     expect(can(admin, "members.pii", { chapterId: "au" })).toBe(false);
     expect(can(admin, "members.pii")).toBe(false);
+  });
+
+  it("org unit assignments cover the unit and its descendants, never siblings (DEC-2)", () => {
+    const director = principal([
+      { roleId: "chapter_admin", scope: { type: "orgUnit", orgUnitId: "dir-edu" } },
+    ]);
+    // orgUnitPath = the resource's unit + its ancestors (root first).
+    expect(can(director, "events.edit", { orgUnitPath: ["root", "dir-edu"] })).toBe(true);
+    expect(can(director, "events.edit", { orgUnitPath: ["root", "dir-edu", "div-lang"] })).toBe(
+      true,
+    );
+    expect(can(director, "events.edit", { orgUnitPath: ["root", "dir-media"] })).toBe(false);
+    expect(can(director, "events.edit", { orgUnitPath: ["root"] })).toBe(false);
+    expect(can(director, "events.edit")).toBe(false);
+    expect(can(director, "events.edit", { chapterId: "dir-edu" })).toBe(false);
   });
 
   it("*_own permissions belong to every active account, for its own resources only", () => {

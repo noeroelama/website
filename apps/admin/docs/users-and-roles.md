@@ -10,8 +10,8 @@ to trash only when nobody holds it. Built-in roles are read-only.
 
 **Users** (`/users`, `users.read` / `users.edit`): every account that has signed in, with status,
 roles and last sign-in, filtered by role and status, 25 per page. An account page shows the
-sign-in methods and lets staff give or remove a role (all chapters, or one chapter id) and
-deactivate or reactivate the account.
+sign-in methods and lets staff give or remove a role (all chapters, one chapter id or one unit id,
+optionally for one board period only) and deactivate or reactivate the account.
 
 ## Where it lives
 
