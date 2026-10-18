@@ -1,24 +1,8 @@
 /**
- * Organization admin mock data + helpers. Static, client-side only — there is
- * no organization backend yet; the page manages its own state on top of this
- * seed. Fields mirror the Figma "ORGANIZATIONS ADMIN" screens: the Period
- * table, the unit Structure table, the Create/Edit Unit form (Core Members +
- * Divisions), and the PPI chapters table.
+ * Organization admin mock data for the unit Structure screen and the Create/Edit Unit form
+ * (Core Members + Divisions), until org units are stored (step 3.3). Static, client-side only.
+ * Periods and PPI chapters come from Firestore.
  */
-
-export type PeriodStatus = "published" | "private" | "draft";
-
-export interface PeriodItem {
-  id: string;
-  /** Period label, e.g. "2026-2027". */
-  name: string;
-  /** Name of the cabinet, e.g. "Kolaborasi Asiania". */
-  cabinet: string;
-  status: PeriodStatus;
-  /** ISO created/modified date. */
-  createdAt: string;
-  updatedBy: string;
-}
 
 /** Unit codes the structure table groups by (Figma rows: Koor, Biro, …). */
 export const UNIT_TYPES = ["Koor", "Biro", "Direktorat"] as const;
@@ -56,110 +40,6 @@ export interface UnitItem {
   members: UnitMember[];
   divisions: Division[];
 }
-
-export type PpiStatus = "published" | "private" | "draft";
-export type PpiTab = "all" | "upcoming";
-
-export interface PpiItem {
-  id: string;
-  /** Chapter name, e.g. "PPI Australia". */
-  name: string;
-  /** PPI country / chapter seat, e.g. "Australia". */
-  country: string;
-  /** ISO-3166 alpha-3 country code shown as #AUS under the chapter name. */
-  code: string;
-  timezone: string;
-  members: number;
-  /** Free-text completeness note shown under the chapter's status chips. */
-  notes: string;
-  /** True when the chapter still needs work (its natural "upcoming" state). */
-  incomplete: boolean;
-  status: PpiStatus;
-  /** ISO created/modified date. */
-  createdAt: string;
-}
-
-/** ISO date → "11 May 2026". */
-export function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const MONTHS = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-/** Mock "today": the seed is pinned so pagination stays stable in the preview. */
-const BASE = Date.UTC(2026, 9, 15);
-function daysFromNow(days: number): string {
-  const d = new Date(BASE + days * 86_400_000);
-  return d.toISOString().slice(0, 10);
-}
-
-/* ==================================================================
-   Periods — the top-level list ("Organizations > Period"). Static
-   seed of 12 rows so the darkbar "Showing 1–10 of N" paginates.
-   ================================================================== */
-
-const PERIOD_NAMES = [
-  "2026-2027",
-  "2025-2026",
-  "2024-2025",
-  "2023-2024",
-  "2022-2023",
-  "2021-2022",
-  "2020-2021",
-  "2019-2020",
-  "2018-2019",
-  "2017-2018",
-  "2016-2017",
-  "2015-2016",
-] as const;
-
-const CABINETS = [
-  "Kolaborasi Asiania",
-  "Sinergi Asia-Oseania",
-  "Keterbukaan Informasi",
-  "Digitalisasi Kawasan",
-  "Inovasi Anggota",
-  "Kolaborasi Lintas Negara",
-  "Edukasi Publik",
-  "Riset & Data",
-  "Kemitraan Strategis",
-  "Komunikasi Regional",
-  "Pemberdayaan Anggota",
-  "Transparansi Berkelanjutan",
-] as const;
-
-const AUTHORS = ["Nevyllo Kalangi", "Adhitia Erfina"] as const;
-
-function periodsSeed(): PeriodItem[] {
-  return PERIOD_NAMES.map((name, i) => {
-    const status: PeriodStatus =
-      i === 0 ? "published" : i % 3 === 0 ? "private" : i % 5 === 0 ? "draft" : "private";
-    return {
-      id: `per-${String(i + 1).padStart(2, "0")}`,
-      name,
-      cabinet: CABINETS[i]!,
-      status,
-      createdAt: daysFromNow(-7 - i * 41),
-      updatedBy: AUTHORS[i % AUTHORS.length]!,
-    };
-  });
-}
-
-export const INITIAL_PERIODS: PeriodItem[] = periodsSeed();
 
 /* ==================================================================
    Units — the structure table ("Organizations > Period > Structure").
@@ -310,55 +190,6 @@ function unitsSeed(): UnitItem[] {
 }
 
 export const INITIAL_UNITS: UnitItem[] = unitsSeed();
-
-/* ==================================================================
-   PPI chapters — the second top-level tab ("Organizations > PPI").
-   Each chapter rows its country, timezone, member count, completeness
-   notes and two status chips; the tabs filter All vs Upcoming (rows
-   whose data is still incomplete).
-   ================================================================== */
-
-export const PPI_TAB_LABELS: ReadonlyArray<{ key: PpiTab; label: string }> = [
-  { key: "all", label: "All" },
-  { key: "upcoming", label: "Upcoming" },
-];
-
-const NOTES_INCOMPLETE =
-  "Belum ada pengurus inti yang tercatat · Belum ada anggota yang terdaftar · Tidak ada satu pun kontak resmi";
-const NOTES_COMPLETE = "Pengurus inti tercatat · Anggota terdaftar · Kontak resmi aktif";
-
-const PPI_SEED: ReadonlyArray<[string, string, string, string, number, boolean]> = [
-  // chapter, country, code, timezone, members, incomplete
-  ["PPI Australia", "Australia", "AUS", "Australia/Sydney (UTC+10:00)", 200, true],
-  ["PPI Jepang", "Jepang", "JPN", "Asia/Tokyo (UTC+09:00)", 156, false],
-  ["PPI Korea", "Korea", "KOR", "Asia/Seoul (UTC+09:00)", 121, true],
-  ["PPI Tiongkok", "Tiongkok", "CHN", "Asia/Shanghai (UTC+08:00)", 98, false],
-  ["PPI Taiwan", "Taiwan", "TWN", "Asia/Taipei (UTC+08:00)", 74, true],
-  ["PPI Hong Kong", "Hong Kong", "HKG", "Asia/Hong_Kong (UTC+08:00)", 66, false],
-  ["PPI Singapura", "Singapura", "SGP", "Asia/Singapore (UTC+08:00)", 58, true],
-  ["PPI Malaysia", "Malaysia", "MYS", "Asia/Kuala_Lumpur (UTC+08:00)", 47, false],
-  ["PPI Thailand", "Thailand", "THA", "Asia/Bangkok (UTC+07:00)", 42, false],
-  ["PPI Vietnam", "Vietnam", "VNM", "Asia/Ho_Chi_Minh (UTC+07:00)", 33, true],
-  ["PPI Filipina", "Filipina", "PHL", "Asia/Manila (UTC+08:00)", 29, false],
-  ["PPI Selandia Baru", "Selandia Baru", "NZL", "Pacific/Auckland (UTC+12:00)", 21, false],
-];
-
-function ppiSeed(): PpiItem[] {
-  return PPI_SEED.map(([name, country, code, timezone, members, incomplete], i) => ({
-    id: `ppi-${String(i + 1).padStart(2, "0")}`,
-    name,
-    country,
-    code,
-    timezone,
-    members,
-    notes: incomplete ? NOTES_INCOMPLETE : NOTES_COMPLETE,
-    incomplete,
-    status: i % 3 === 0 ? "published" : i % 3 === 1 ? "private" : "draft",
-    createdAt: daysFromNow(-2 - i * 7),
-  }));
-}
-
-export const INITIAL_PPIS: PpiItem[] = ppiSeed();
 
 /** Rows-per-page options for the dark bar. */
 export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;

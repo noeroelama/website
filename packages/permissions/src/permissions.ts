@@ -34,6 +34,7 @@ export const ADMIN_PAGES = {
     extras: { send: "Send campaigns", export: "Export subscribers" },
   },
   organizations: { label: "Organizations" },
+  periods: { label: "Board periods" },
   members: {
     label: "Members",
     extras: { pii: "See personal data", export: "Export", approve: "Approve members" },

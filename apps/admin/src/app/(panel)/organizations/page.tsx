@@ -2,6 +2,7 @@ import { can } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { toChapterItem } from "@/components/chapters-model";
 import { OrganizationsPage } from "@/components/organizations-page";
+import { toPeriodItem } from "@/components/periods-model";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
@@ -11,11 +12,17 @@ export const instant = false;
 export default async function OrganizationsRoute() {
   const viewer = await requireAdminViewer("/organizations", "organizations.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  const chapters = await adminReads.listChapters();
+  const canReadPeriods = can(viewer.principal, "periods.read");
+  const [chapters, periods] = await Promise.all([
+    adminReads.listChapters(),
+    canReadPeriods ? adminReads.listPeriods() : null,
+  ]);
   return (
     <OrganizationsPage
       chapters={chapters.map(toChapterItem)}
       canEdit={can(viewer.principal, "organizations.edit")}
+      periods={periods?.map(toPeriodItem) ?? null}
+      canEditPeriods={can(viewer.principal, "periods.edit")}
     />
   );
 }

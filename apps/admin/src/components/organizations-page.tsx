@@ -3,10 +3,16 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { setChapterActiveAction } from "@/app/(panel)/organizations/actions";
+import {
+  activatePeriodAction,
+  savePeriodAction,
+  setChapterActiveAction,
+} from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
 import { ChapterForm } from "@/components/chapter-form";
 import { Card, CardBody } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FieldError } from "@/components/ui/field-error";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EditableList } from "@/components/ui/editable-list";
@@ -15,19 +21,16 @@ import { PhotoDrop } from "@/components/ui/photo-drop";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import {
-  INITIAL_PERIODS,
   INITIAL_UNITS,
   PAGE_SIZE_OPTIONS,
-  PERIOD_LABELS,
   UNIT_TYPES,
   type Division,
-  type PeriodItem,
-  type PeriodStatus,
   type UnitItem,
   type UnitMember,
   type UnitType,
 } from "@/data/mock/organizations";
 import type { ChapterItem } from "./chapters-model";
+import type { PeriodItem } from "./periods-model";
 
 /* ==================================================================
    Organizations — Period list, unit Structure, Create/Edit Unit form,
@@ -65,8 +68,8 @@ interface UnitForm {
   divisions: Division[];
 }
 
-/** Delete-confirmation union: one period or unit row (chapters are deactivated, never deleted). */
-type OrgDelete = { kind: "period"; item: PeriodItem } | { kind: "unit"; item: UnitItem };
+/** Delete-confirmation: one unit row (periods are archived and chapters deactivated, never deleted). */
+type OrgDelete = { kind: "unit"; item: UnitItem };
 
 /** Create/Edit Period popup. */
 type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } | null;
@@ -110,19 +113,18 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Period status chip — a plain two-state Active/Inactive text pill without
-    any icon (the Figma Period row shows just the badge, no logo). */
-function periodStatusBadge(status: PeriodStatus): ReactNode {
-  const active = status === "published";
+/** Period status chip — a plain text pill without any icon (the Figma Period row shows just
+    the badge, no logo). Only the active period is highlighted. */
+function periodStatusBadge(status: PeriodItem["status"]): ReactNode {
   return (
     <span
       className={
-        active
+        status === "active"
           ? "admin-org-status admin-org-status--active"
           : "admin-org-status admin-org-status--inactive"
       }
     >
-      {active ? "Active" : "Inactive"}
+      {status === "active" ? "Active" : status === "draft" ? "Draft" : "Archived"}
     </span>
   );
 }
@@ -132,10 +134,14 @@ let ROW_SEQ = 1;
 const nextRowId = () => `row-${ROW_SEQ++}`;
 
 interface OrganizationsProps {
-  /** PPI chapters from Firestore (the Period and Structure tabs are still design mocks). */
+  /** PPI chapters from Firestore (the Structure screen is still a design mock). */
   chapters: ChapterItem[];
   /** organizations.edit: add, edit, activate/deactivate chapters. */
   canEdit: boolean;
+  /** Board periods from Firestore; null without periods.read (the Period tab is hidden). */
+  periods: PeriodItem[] | null;
+  /** periods.edit: add, edit and activate periods. */
+  canEditPeriods: boolean;
 }
 
 export function OrganizationsPage(props: OrganizationsProps) {
@@ -148,34 +154,42 @@ export function OrganizationsPage(props: OrganizationsProps) {
 
 /** Organizations screens (all state lives here; remounted by OrganizationsPage
  *  on navigation so each visit starts clean). */
-function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
+function OrganizationsList({
+  chapters: ppis,
+  canEdit,
+  periods: periodList,
+  canEditPeriods,
+}: OrganizationsProps) {
+  const periods = useMemo(() => periodList ?? [], [periodList]);
   const toast = useToastMessage();
   const router = useRouter();
   /* Chapter add/edit popup: null = closed, "new" = add, otherwise the chapter. */
   const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   /* ---- navigation ---- */
-  const [view, setView] = useState<OrgView>("period");
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(PERIOD_LABELS[1]!.id);
+  const [view, setView] = useState<OrgView>(periodList ? "period" : "ppi");
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
+    () => (periods.find((p) => p.status === "active") ?? periods[0])?.id ?? "",
+  );
   const [unitFormMode, setUnitFormMode] = useState<UnitFormMode>("create");
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
 
   /* ---- lists ---- */
-  const [periods, setPeriods] = useState<PeriodItem[]>(INITIAL_PERIODS);
   const [units, setUnits] = useState<UnitItem[]>(INITIAL_UNITS);
 
-  /* Structure header pill options: the Figma labels first, then any periods
-     created in this session (so a new period can be opened immediately). */
-  const periodOptions = useMemo(() => {
-    const knownIds = new Set(PERIOD_LABELS.map((p) => p.id));
-    const extras = periods.filter((p) => !knownIds.has(p.id));
-    return [...PERIOD_LABELS, ...extras.map((p) => ({ id: p.id, label: `Period ${p.name}` }))];
-  }, [periods]);
+  /* Structure header pill options: every period, newest first. */
+  const periodOptions = useMemo(
+    () => periods.map((p) => ({ id: p.id, label: `Period ${p.name}` })),
+    [periods],
+  );
 
   /* ---- UI state ---- */
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [periodModal, setPeriodModal] = useState<PeriodModalState>(null);
+  const [periodErrors, setPeriodErrors] = useState<Readonly<Record<string, string>>>({});
+  /* Period waiting for the "Set as Active" confirmation. */
+  const [activating, setActivating] = useState<PeriodItem | null>(null);
   const [periodPage, setPeriodPage] = useState(1);
   /* Structure table page (per selected period) — the darkbar footer below the
      unit table paginates just like the Period list above. */
@@ -309,8 +323,8 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
   const exportPeriodsCsv = () => {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const rows = [
-      ["Period", "Cabinet", "Status", "Created", "Updated by"],
-      ...periods.map((p) => [esc(p.name), esc(p.cabinet), p.status, p.createdAt, esc(p.updatedBy)]),
+      ["Period", "Cabinet", "Start", "End", "Status"],
+      ...periods.map((p) => [esc(p.name), esc(p.cabinet), p.startsOn, p.endsOn, p.status]),
     ];
     const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n") + "\r\n";
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
@@ -349,44 +363,45 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
     toast.show(`Exported ${ppis.length} chapters`);
   };
 
-  const setPeriodStatus = (id: string, status: PeriodStatus, verb: string) => {
-    setPeriods((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
-    setMenuFor(null);
-    toast.show(`Period ${verb}`);
+  /* ---- period actions (Firestore; archived periods are read-only, never deleted) ---- */
+  const activatePeriod = async (period: PeriodItem) => {
+    setBusy(true);
+    const result = await activatePeriodAction({ id: period.id, version: period.version });
+    setBusy(false);
+    setActivating(null);
+    if (!result.ok) return toast.show(actionMessage(result));
+    router.refresh();
+    toast.show(`Period ${period.name} is now active`);
   };
 
   /* ---- period modal ---- */
-  const savePeriod = () => {
+  const savePeriod = async () => {
     if (!periodModal) return;
-    const name = (document.querySelector<HTMLInputElement>("#org-period-name")?.value ?? "").trim();
-    const cabinet = (
-      document.querySelector<HTMLInputElement>("#org-period-cabinet")?.value ?? ""
-    ).trim();
-    if (!name || !cabinet) {
-      toast.show("Period and Cabinet are required");
-      return;
-    }
-    if (periodModal.mode === "edit") {
-      setPeriods((prev) =>
-        prev.map((p) => (p.id === periodModal.item.id ? { ...p, name, cabinet } : p)),
-      );
-      toast.show("Period saved");
-    } else {
-      const now = new Date().toISOString().slice(0, 10);
-      setPeriods((prev) => [
-        {
-          id: `per-${Date.now()}`,
-          name,
-          cabinet,
-          status: "draft",
-          createdAt: now,
-          updatedBy: "Admin",
-        },
-        ...prev,
-      ]);
-      toast.show("Period created");
+    const value = (id: string) =>
+      document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`#org-period-${id}`)?.value ??
+      "";
+    setBusy(true);
+    const result = await savePeriodAction({
+      ...(periodModal.mode === "edit"
+        ? { id: periodModal.item.id, version: periodModal.item.version }
+        : { version: null }),
+      name: value("name"),
+      cabinet: value("cabinet"),
+      startsOn: value("startsOn"),
+      endsOn: value("endsOn"),
+      vision: value("vision"),
+      mission: value("mission"),
+      lpjDeadlineDays: Number(value("lpjDeadlineDays")),
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setPeriodErrors(result.fields ?? {});
+      return toast.show(actionMessage(result));
     }
     setPeriodModal(null);
+    setPeriodErrors({});
+    router.refresh();
+    toast.show(periodModal.mode === "edit" ? "Period saved" : "Period created");
   };
 
   /* ---- unit navigation ---- */
@@ -647,8 +662,7 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
       );
       toast.show("Unit saved");
     } else {
-      const cabinet =
-        periods.find((p) => p.id === selectedPeriodId)?.cabinet ?? "Kolaborasi Asiania";
+      const cabinet = periods.find((p) => p.id === selectedPeriodId)?.cabinet ?? "";
       setUnits((prev) => [
         {
           id: `unit-${Date.now()}`,
@@ -674,13 +688,8 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
 
   const doDelete = () => {
     if (!deleteConfirm) return;
-    if (deleteConfirm.kind === "period") {
-      setPeriods((prev) => prev.filter((p) => p.id !== deleteConfirm.item.id));
-      toast.show("Period deleted");
-    } else if (deleteConfirm.kind === "unit") {
-      setUnits((prev) => prev.filter((u) => u.id !== deleteConfirm.item.id));
-      toast.show("Unit deleted");
-    }
+    setUnits((prev) => prev.filter((u) => u.id !== deleteConfirm.item.id));
+    toast.show("Unit deleted");
     setDeleteConfirm(null);
   };
 
@@ -762,12 +771,7 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
   );
 
   /* ---- shared delete modal ---- */
-  const deleteTitle =
-    deleteConfirm?.kind === "period"
-      ? `Delete "${deleteConfirm.item.name}"?`
-      : deleteConfirm?.kind === "unit"
-        ? `Delete "${deleteConfirm.item.code}"?`
-        : "Delete";
+  const deleteTitle = deleteConfirm ? `Delete "${deleteConfirm.item.code}"?` : "Delete";
 
   /* The "confirm delete" popup is shared by every screen that deletes
      (Period, Structure, PPI) — render it once per screen, next to the card. */
@@ -861,17 +865,20 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
         width: "12%",
         render: (r) => (
           <div className="admin-table__actions">
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="edit"
-              aria-label="Edit"
-              title="Edit"
-              onClick={() => {
-                setMenuFor(null);
-                setPeriodModal({ mode: "edit", item: r });
-              }}
-            />
+            {canEditPeriods && r.status !== "archived" ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                icon="edit"
+                aria-label="Edit"
+                title="Edit"
+                onClick={() => {
+                  setMenuFor(null);
+                  setPeriodErrors({});
+                  setPeriodModal({ mode: "edit", item: r });
+                }}
+              />
+            ) : null}
             <div className="admin-row-menu">
               {menuFor === `per-${r.id}` ? (
                 <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
@@ -894,37 +901,27 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
                   >
                     <Icon name="settings" size={14} /> Manage Structure
                   </button>
-                  <button
-                    type="button"
-                    className="admin-row-menu__item"
-                    role="menuitem"
-                    onClick={() =>
-                      setPeriodStatus(
-                        r.id,
-                        r.status === "published" ? "draft" : "published",
-                        r.status === "published" ? "set as inactive" : "set as active",
-                      )
-                    }
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
-                    <img
-                      src="/globe.png"
-                      alt=""
-                      width={14}
-                      height={14}
-                      className="admin-status-badge__img"
-                    />{" "}
-                    {r.status === "published" ? "Set as Inactive" : "Set as Active"}
-                  </button>
-                  <div className="admin-row-menu__divider" role="separator" />
-                  <button
-                    type="button"
-                    className="admin-row-menu__item admin-row-menu__item--danger"
-                    role="menuitem"
-                    onClick={() => requestDelete({ kind: "period", item: r })}
-                  >
-                    <Icon name="trash" size={14} /> Delete Period
-                  </button>
+                  {canEditPeriods && r.status === "draft" ? (
+                    <button
+                      type="button"
+                      className="admin-row-menu__item"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuFor(null);
+                        setActivating(r);
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
+                      <img
+                        src="/globe.png"
+                        alt=""
+                        width={14}
+                        height={14}
+                        className="admin-status-badge__img"
+                      />{" "}
+                      Set as Active
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -944,15 +941,20 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
             <Button variant="outline" size="sm" icon="download" onClick={exportPeriodsCsv}>
               Export CSV
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="plus"
-              className="admin-btn--events-add"
-              onClick={() => setPeriodModal({ mode: "create" })}
-            >
-              Add New Period
-            </Button>
+            {canEditPeriods ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="plus"
+                className="admin-btn--events-add"
+                onClick={() => {
+                  setPeriodErrors({});
+                  setPeriodModal({ mode: "create" });
+                }}
+              >
+                Add New Period
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -994,7 +996,7 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
           </CardBody>
         </Card>
 
-        {/* Create/Edit Period popup — Period + Cabinet, Cancel keeps the list. */}
+        {/* Create/Edit Period popup, Cancel keeps the list. */}
         <Modal
           open={periodModal !== null}
           title={periodModal?.mode === "edit" ? "Edit Period" : "Create Period"}
@@ -1015,40 +1017,79 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
                 variant="primary"
                 className="admin-modal__foot-btn"
                 icon="cloud"
-                onClick={savePeriod}
+                disabled={busy}
+                onClick={() => void savePeriod()}
               >
                 Save
               </Button>
             </div>
           }
         >
-          <div className="admin-field">
-            <label className="admin-field__label" htmlFor="org-period-name">
-              Period *
-            </label>
-            <input
-              id="org-period-name"
-              className="admin-input"
-              type="text"
-              placeholder="e.g 2026-2027"
-              defaultValue={periodModal?.mode === "edit" ? periodModal.item.name : ""}
-            />
-          </div>
-          <div className="admin-field">
-            <label className="admin-field__label" htmlFor="org-period-cabinet">
-              Cabinet *
-            </label>
-            <input
-              id="org-period-cabinet"
-              className="admin-input"
-              type="text"
-              placeholder="e.g Kolaborasi Asiania"
-              defaultValue={periodModal?.mode === "edit" ? periodModal.item.cabinet : ""}
-            />
-          </div>
+          {(
+            [
+              ["name", "Period *", "text", "e.g 2026/2027"],
+              ["cabinet", "Cabinet", "text", "e.g Kolaborasi Asiania"],
+              ["startsOn", "Start date *", "date", ""],
+              ["endsOn", "End date *", "date", ""],
+              ["lpjDeadlineDays", "LPJ due (days after the end) *", "number", "30"],
+            ] as const
+          ).map(([key, text, type, placeholder]) => (
+            <div className="admin-field" key={key}>
+              <label className="admin-field__label" htmlFor={`org-period-${key}`}>
+                {text}
+              </label>
+              <input
+                id={`org-period-${key}`}
+                className="admin-input"
+                type={type}
+                placeholder={placeholder}
+                defaultValue={
+                  periodModal?.mode === "edit"
+                    ? String(periodModal.item[key])
+                    : key === "lpjDeadlineDays"
+                      ? "30"
+                      : ""
+                }
+                aria-invalid={periodErrors[key] ? true : undefined}
+                aria-describedby={`org-period-${key}-error`}
+              />
+              <FieldError id={`org-period-${key}-error`} message={periodErrors[key]} />
+            </div>
+          ))}
+          {(
+            [
+              ["vision", "Vision"],
+              ["mission", "Mission"],
+            ] as const
+          ).map(([key, text]) => (
+            <div className="admin-field" key={key}>
+              <label className="admin-field__label" htmlFor={`org-period-${key}`}>
+                {text}
+              </label>
+              <textarea
+                id={`org-period-${key}`}
+                className="admin-input"
+                rows={3}
+                defaultValue={periodModal?.mode === "edit" ? periodModal.item[key] : ""}
+                aria-describedby={`org-period-${key}-error`}
+              />
+              <FieldError id={`org-period-${key}-error`} message={periodErrors[key]} />
+            </div>
+          ))}
         </Modal>
 
-        {deleteModal}
+        <ConfirmDialog
+          open={activating !== null}
+          title={`Make ${activating?.name ?? ""} the active period?`}
+          confirmLabel="Set as Active"
+          tone="primary"
+          pending={busy}
+          onCancel={() => setActivating(null)}
+          onConfirm={() => activating && void activatePeriod(activating)}
+        >
+          The current active period is archived and becomes read-only. Roles given for one period
+          only count during that period.
+        </ConfirmDialog>
 
         <ToastBanner message={toast.message} />
       </>
@@ -1715,19 +1756,21 @@ function OrganizationsList({ chapters: ppis, canEdit }: OrganizationsProps) {
         <CardBody flush>
           {/* Section tabs: Period list vs PPI chapters (top-level switch). */}
           <div className="admin-tabs" role="tablist" aria-label="Organization lists">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={false}
-              className="admin-tabs__btn"
-              onClick={() => {
-                setView("period");
-                setMenuFor(null);
-              }}
-            >
-              Period
-              <span className="admin-tabs__count">{periods.length}</span>
-            </button>
+            {periodList ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={false}
+                className="admin-tabs__btn"
+                onClick={() => {
+                  setView("period");
+                  setMenuFor(null);
+                }}
+              >
+                Period
+                <span className="admin-tabs__count">{periods.length}</span>
+              </button>
+            ) : null}
             <button
               type="button"
               role="tab"

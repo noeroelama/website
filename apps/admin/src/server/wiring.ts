@@ -20,6 +20,7 @@ import { createImageUploads } from "./images";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
+import { createPeriodActions } from "./periods";
 import { createRoleActions } from "./roles";
 import { adminStores, imageStorage } from "./stores";
 
@@ -51,6 +52,11 @@ export const galleryActions = lazyEnv(() =>
 /** Organizations → PPI (chapters) actions. */
 export const chapterActions = lazyEnv(() =>
   createChapterActions({ chapters: adminStores().chapters, now: () => new Date() }),
+);
+
+/** Organizations → Period (board periods) actions. */
+export const periodActions = lazyEnv(() =>
+  createPeriodActions({ periods: adminStores().periods, now: () => new Date() }),
 );
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
@@ -157,6 +163,7 @@ export const adminReads = {
   listEvents: () => adminStores().events.listForAdmin(),
   listAlbums: () => adminStores().galleries.listForAdmin(),
   listChapters: () => adminStores().chapters.listForAdmin(),
+  listPeriods: () => adminStores().periods.listForAdmin(),
   listCampaigns: () => adminStores().campaigns.listForAdmin(),
   listSubscribers: () => adminStores().subscribers.listForAdmin(),
   countHolders: (ids: readonly string[]) => adminStores().roles.countHolders(ids),

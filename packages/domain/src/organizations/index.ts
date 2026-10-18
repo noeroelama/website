@@ -129,3 +129,51 @@ export interface ChapterReader {
   listActive(): Promise<Chapter[]>;
   findBySlug(slug: string): Promise<Chapter | null>;
 }
+
+/* ---- Board periods (feature A1) ---- */
+
+/** draft → active (one at a time) → archived (read-only). Periods are never deleted. */
+export const PERIOD_STATUSES = ["draft", "active", "archived"] as const;
+export type PeriodStatus = (typeof PERIOD_STATUSES)[number];
+
+/** One board term (kepengurusan), e.g. 2026/2027. Dates are calendar days (YYYY-MM-DD). */
+export interface Period extends EntityMeta {
+  readonly name: string;
+  /** Name of the cabinet, e.g. "Kolaborasi Asiania". */
+  readonly cabinet: string;
+  readonly startsOn: string;
+  readonly endsOn: string;
+  readonly vision: string;
+  readonly mission: string;
+  /** Days after the end date by which the accountability report (LPJ) is due. */
+  readonly lpjDeadlineDays: number;
+  readonly status: PeriodStatus;
+}
+
+/** The period form fields. The status changes only through activation. */
+export const PeriodInputSchema = z
+  .object({
+    name: safeText(40).pipe(z.string().min(4, "Enter the period, e.g. 2026/2027.")),
+    cabinet: safeText(120, { allowEmpty: true }),
+    startsOn: z.iso.date("Enter the start date."),
+    endsOn: z.iso.date("Enter the end date."),
+    vision: safeText(2000, { multiline: true, allowEmpty: true }),
+    mission: safeText(4000, { multiline: true, allowEmpty: true }),
+    lpjDeadlineDays: z.number().int().min(0).max(365),
+  })
+  .strict();
+export type PeriodInput = z.infer<typeof PeriodInputSchema>;
+
+/** The date-order rule, added after the form schema is extended (e.g. with id and version). */
+export const withPeriodDates = <S extends z.ZodType<{ startsOn: string; endsOn: string }>>(
+  schema: S,
+) =>
+  schema.refine((p) => p.endsOn > p.startsOn, {
+    path: ["endsOn"],
+    message: "The end date must be after the start date.",
+  });
+
+/** Archived periods are history: nothing about them changes any more. */
+export const canChangePeriod = (status: PeriodStatus): boolean => status !== "archived";
+/** Only a draft becomes the active period (an archived one never comes back). */
+export const canActivatePeriod = (status: PeriodStatus): boolean => status === "draft";

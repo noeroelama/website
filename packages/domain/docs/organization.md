@@ -1,4 +1,4 @@
-# Organisation: chapters (PPI Negara) and the map
+# Organisation: chapters (PPI Negara), the map and board periods
 
 ## What it does
 
@@ -8,7 +8,10 @@ links, and the marker position on the map. A chapter is deactivated, never delet
 shows the active chapters on `/map` (Asia–Oceania dot map, one marker per chapter; a click shows
 its card) and lists the same chapters with their count on About.
 
-The Period and Structure tabs of the Organizations page are still design mocks (steps 3.2, 3.3).
+Board periods (kepengurusan, feature A1) are kept on the **Organizations → Period** tab: name
+(2026/2027), cabinet, start and end date, vision, mission and the LPJ deadline (days after the
+end). A new period is a draft; **Set as Active** makes it the active period and archives the one
+that was active. The Structure screen is still a design mock (step 3.3).
 
 ## Where it lives
 
@@ -20,7 +23,12 @@ The Period and Structure tabs of the Organizations page are still design mocks (
   `src/components/organizations-page.tsx`, rows in `chapters-model.ts`
 - Web: `apps/web/src/server/chapters.ts`, `src/app/map/…`, About `src/app/about/page.tsx`, map
   image `apps/web/public/map/asia-oceania.svg` (from PPIDK)
-- Tests: `tests/unit/chapters.test.ts`, `tests/integration/chapters.test.ts`
+- Periods: `Period`, `PeriodInputSchema`, `withPeriodDates`, `canChangePeriod`,
+  `canActivatePeriod` in the same domain file; Firestore `packages/db/src/firestore/periods.ts`
+  (`periods/{id}`, `settings/activePeriod`); admin `apps/admin/src/server/periods.ts`, the Period
+  tab in `organizations-page.tsx`, rows in `periods-model.ts`
+- Tests: `tests/unit/chapters.test.ts`, `tests/integration/chapters.test.ts`,
+  `tests/integration/periods.test.ts`
 
 ## Rules and assumptions
 
@@ -38,6 +46,16 @@ The Period and Structure tabs of the Organizations page are still design mocks (
 - The gateway JSON (`/v1/chapters`, the "KSK API" in the flowchart) is not built until the owner
   confirms who uses it.
 - The events list will get its country filter from these chapters once events carry a chapter.
+- Periods: draft → active → archived. Exactly one period is active: activation is one
+  transaction that reads `settings/activePeriod`, archives that period, activates the draft and
+  points `settings/activePeriod` to it (concurrent activations are serialized by it). Only a
+  draft can be activated; archived periods are read-only; periods are never deleted (no route).
+- Role assignments with a `periodId` count only while that period is active
+  (`packages/permissions/docs/authorization.md`), so activating a period switches the board's
+  period-bound roles at once.
+- Permission `periods.edit` to add, edit and activate (admin page `periods`, shown as the Period
+  tab of Organizations); `periods.read` to see the tab. Audit module `periods`, resource
+  `period`; not revertible (a revert could bring back a second active period).
 
 ## Configuration
 
