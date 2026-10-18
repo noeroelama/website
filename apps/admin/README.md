@@ -24,6 +24,7 @@ Staff administration for content, events, members, users and audit.
 | `src/server/accounts.ts`, `roles.ts` | Users and Roles page actions (rules + audit), see [docs/users-and-roles.md](docs/users-and-roles.md).                                                   |
 | `src/server/stores.ts`, `wiring.ts`  | Firestore stores and Firebase Auth account operations, wired once per process.                                                                          |
 | `src/server/user-directory.ts`       | uid → account status + roles from Firestore (`@website/db`); no record or no staff role = no access.                                                    |
+| `src/data/mock/`                     | Placeholder data for the UI-only pages (nothing is saved), see [docs/admin-shell.md](docs/admin-shell.md).                                              |
 
 ## Rules
 

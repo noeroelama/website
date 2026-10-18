@@ -63,6 +63,14 @@ router.push("/things"); router.refresh();
 - Every status, category or action key shown to staff has a label in `src/labels.ts` (Indonesian
   and English); the label test fails when one is missing or stale.
 - Dates are shown in UTC on the server (`src/components/format.ts`).
+- `DataTable` options: `minRows` keeps the table height fixed with blank rows, `emptyState`
+  replaces the empty message, `expandedRow` renders a detail row under a row (the caller owns
+  the open/closed state).
+- **UI-only pages.** Articles, Events, Gallery, Newsletter, Organizations, Account, Emails,
+  Profile and the Tools short-link list are design ports that run on `src/data/mock/*` in the
+  browser: nothing is saved and nothing is audited. When a feature gets its backend, replace
+  its mock import with a server read and its buttons with guarded actions (pattern above), then
+  delete the mock file. Audit Log and Users/Roles are the real, data-backed pages.
 
 ## Configuration
 

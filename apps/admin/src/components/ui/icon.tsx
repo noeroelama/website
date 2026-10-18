@@ -100,8 +100,74 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </>
   ),
+  brackets: <path d="m8 6-5 6 5 6M16 6l5 6-5 6" />,
+  image: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </>
+  ),
   chevronLeft: <path d="m15 18-6-6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  arrowUp: (
+    <>
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </>
+  ),
+  arrowDown: (
+    <>
+      <path d="M12 5v14" />
+      <path d="m5 12 7 7 7-7" />
+    </>
+  ),
+  sort: (
+    <>
+      <path d="m8 4-3 3 3 3" />
+      <path d="M8 7h13" />
+      <path d="m16 20 3-3-3-3" />
+      <path d="M16 17H3" />
+    </>
+  ),
+  mapPin: (
+    <>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </>
+  ),
+  /* Round globe (outline) with the Asia continent as a SOLID filled mass in
+     its proper map position — upper-east side, at a realistic continent size
+     (does not touch the rim). Shape scaled/translated under <g> so it reads
+     as a small landmass inside the sphere. */
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <g transform="translate(9.8 4) scale(0.5)">
+        <path
+          d="M8 5
+             C11 4.5 15 4.5 19 5
+             C20.5 5.3 21 6 20.8 7
+             C20.6 8 20.9 9 20.6 10.5
+             C20.5 11.5 19.5 12.3 19.6 13.2
+             C19.7 14.2 18.8 14.9 18.2 15.8
+             C17.5 16.8 17 17.9 16 18.5
+             C15.4 18.9 14.7 18.6 14.5 17.9
+             C14.3 17 14.6 16.4 13.9 16
+             C12.8 15.4 12.3 16.2 11.5 17.5
+             C10.9 18.5 9.6 18.4 9.2 17.3
+             C9.6 16.3 9.3 15.8 8 15.2
+             C7.2 14.8 7.5 13.9 8.1 13.6
+             C8.5 13.3 8.3 12.4 8.2 11.4
+             C8.1 10 7.8 9 7.9 7.5
+             C8 6.5 7.6 5.6 8 5Z"
+          fill="currentColor"
+          stroke="none"
+        />
+      </g>
+    </>
+  ),
   more: (
     <>
       <circle cx="5" cy="12" r="1" fill="currentColor" />
@@ -109,6 +175,7 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <circle cx="19" cy="12" r="1" fill="currentColor" />
     </>
   ),
+  dot: <circle cx="12" cy="12" r="5" fill="currentColor" stroke="none" />,
   send: (
     <>
       <path d="m22 2-7 20-4-9-9-4z" />
@@ -154,6 +221,28 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <rect x="14" y="14" width="7" height="7" rx="1" />
     </>
   ),
+  grip: (
+    <>
+      <circle cx="9" cy="6" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="6" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="18" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="18" r="1.5" fill="currentColor" stroke="none" />
+    </>
+  ),
+  /* Bolder grip for the type box drag handle: same two-column dot layout with
+     thicker dots so the handle reads clearly at small sizes. */
+  gripBold: (
+    <>
+      <circle cx="9" cy="6" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="6" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="18" r="2.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="18" r="2.4" fill="currentColor" stroke="none" />
+    </>
+  ),
   check: <path d="M20 6 9 17l-5-5" />,
   x: <path d="M18 6 6 18M6 6l12 12" />,
   calendar: (
@@ -166,6 +255,12 @@ const ICON_PATHS: Record<string, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 3" />
+    </>
+  ),
+  crown: (
+    <>
+      <path d="m3 8 4.5 3L12 4l4.5 7L21 8l-1.6 9a2 2 0 0 1-2 1.7H6.6a2 2 0 0 1-2-1.7z" />
+      <path d="M6 21h12" />
     </>
   ),
   home: (
@@ -244,6 +339,15 @@ const ICON_PATHS: Record<string, ReactNode> = {
   key: (
     <>
       <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
+    </>
+  ),
+  /* Laptop/computer glyph for passkey devices (MacBook Pro row, Add/Edit Passkey
+     container). Feather-style laptop; matches the stroke style of the icon set. */
+  laptop: (
+    <>
+      <path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9" />
+      <path d="m20 16 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16" />
+      <path d="M9 6.3h6" />
     </>
   ),
 };

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import jsQR from "jsqr";
+import { usePathname } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -304,6 +305,16 @@ const QR_SIZE_OPTIONS: { value: QrSize; label: string; hint: string; px: number 
 ];
 
 export function ToolsPage() {
+  const pathname = usePathname();
+  // key={pathname} remounts the page when the tools route is (re)entered, so
+  // the searchbox and filters start empty on every visit (same pattern as
+  // Articles & Gallery).
+  return <ToolsList key={pathname} />;
+}
+
+/** Tools screen (all state lives here; remounted by ToolsPage on navigation
+ *  so it starts clean). */
+function ToolsList() {
   const toast = useToastMessage();
 
   /* ---- QR Generator ---- */
@@ -416,7 +427,11 @@ export function ToolsPage() {
       return;
     }
     const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    const finalSlug = slug.trim().replace(/\s+/g, "-") || Math.random().toString(36).slice(2, 8);
+    const finalSlug = slug.trim().replace(/\s+/g, "-");
+    if (!finalSlug) {
+      toast.show("URL is required — enter a short slug");
+      return;
+    }
 
     const newLink: ShortLink = {
       id: `l-${Date.now()}`,
@@ -657,17 +672,11 @@ export function ToolsPage() {
     },
   ];
 
-  /* --- Pagination page numbers (always up to 5, then ellipsis + last) --- */
-  const pageNumbers: (number | "…")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
-  } else {
-    const left = Math.max(1, safePage - 2);
-    const right = Math.min(totalPages, safePage + 2);
-    if (left > 1) pageNumbers.push(1, "…");
-    for (let i = left; i <= right; i++) pageNumbers.push(i);
-    if (right < totalPages) pageNumbers.push("…", totalPages);
-  }
+  /* --- Pagination: sliding window of 5 consecutive page numbers --- */
+  const pageNumbers: number[] = [];
+  const winStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+  const winEnd = Math.min(totalPages, winStart + 4);
+  for (let i = winStart; i <= winEnd; i++) pageNumbers.push(i);
   const compact = pageNumbers;
 
   const shownStart = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
@@ -686,7 +695,7 @@ export function ToolsPage() {
         {/* ============ QR GENERATOR (left 30%) ============ */}
         <Card>
           <CardHeader title={<span className="admin-card__title">QR Generator</span>} />
-          <CardBody style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <CardBody style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
             {/* Type */}
             <div className="admin-field">
               <span className="admin-field__label">Type</span>
@@ -715,7 +724,7 @@ export function ToolsPage() {
             {/* Value input */}
             {qrType === "link" ? (
               <label className="admin-field">
-                <span className="admin-field__label">Link</span>
+                <span className="admin-field__label">Link *</span>
                 <input
                   className="admin-input admin-input--dark"
                   type="url"
@@ -855,7 +864,7 @@ export function ToolsPage() {
         </Card>
 
         {/* ============ URL SHORTENER (right 70%) ============ */}
-        <Card>
+        <Card className="admin-tools-card">
           <CardHeader title={<span className="admin-card__title">URL Shortener</span>} />
           <CardBody className="admin-tools-form">
             {/* Result container (appears above Long URL after Generate) */}
@@ -871,7 +880,7 @@ export function ToolsPage() {
 
             {/* Long URL */}
             <label className="admin-field">
-              <span className="admin-field__label">Long URL</span>
+              <span className="admin-field__label">Long URL *</span>
               <input
                 className="admin-input"
                 type="url"
@@ -895,7 +904,7 @@ export function ToolsPage() {
 
             {/* Short URL — snug readonly prefix + editable slug */}
             <div className="admin-field">
-              <span className="admin-field__label">URL</span>
+              <span className="admin-field__label">URL *</span>
               <div className="admin-field__row">
                 <div className="admin-url-slug">
                   <span className="admin-url-slug__prefix" aria-label="Short URL prefix">
@@ -933,16 +942,25 @@ export function ToolsPage() {
                   e.preventDefault();
                   setQuery(search);
                   setPage(1);
+                  setPageSize(10);
                 }}
               >
                 <Icon name="search" size={16} className="admin-searchbox__icon" />
                 <input
                   className="admin-searchbox__input"
                   type="search"
-                  placeholder="Search title, long URL, or slug…"
+                  placeholder="Search"
                   aria-label="Search links"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    // Emptying the box (✕ or clear) drops the applied query
+                    // too, so the list returns to its default view.
+                    if (e.target.value === "") {
+                      setQuery("");
+                      setPage(1);
+                    }
+                  }}
                 />
                 <button type="submit" className="admin-searchbox__submit">
                   Search
@@ -953,13 +971,43 @@ export function ToolsPage() {
               </Button>
             </div>
 
-            <DataTable
-              columns={columns}
-              rows={pageRows}
-              rowKey={(r) => r.id}
-              emptyText="No links yet"
-              hideHeader
-            />
+            {pageRows.length === 0 ? (
+              <div className="admin-empty admin-tools-empty">
+                <span className="admin-empty__heading">
+                  <Icon name="search" size={16} />
+                  <span className="admin-empty__title">
+                    {query.trim()
+                      ? `No links match “${query.trim()}”`
+                      : "No links match your search"}
+                  </span>
+                </span>
+                <span className="admin-empty__hint">Try a new search or clear it.</span>
+                <span className="admin-empty__actions">
+                  {query.trim() ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon="x"
+                      className="admin-gallery-clear"
+                      onClick={() => {
+                        setQuery("");
+                        setSearch("");
+                      }}
+                    >
+                      Clear search
+                    </Button>
+                  ) : null}
+                </span>
+              </div>
+            ) : (
+              <DataTable
+                columns={columns}
+                rows={pageRows}
+                rowKey={(r) => r.id}
+                emptyText="No links yet"
+                hideHeader
+              />
+            )}
 
             {/* Pagination: Showing … of N · Rows per page · page numbers */}
             <div className="admin-darkbar">
@@ -997,22 +1045,16 @@ export function ToolsPage() {
               >
                 <Icon name="chevronLeft" size={14} />
               </button>
-              {compact.map((p, idx) =>
-                p === "…" ? (
-                  <span key={`e-${idx}`} className="admin-darkbar__info">
-                    …
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    key={p}
-                    className={`admin-darkbar__btn${p === safePage ? " admin-darkbar__btn--active" : ""}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                ),
-              )}
+              {compact.map((p) => (
+                <button
+                  type="button"
+                  key={p}
+                  className={`admin-darkbar__btn${p === safePage ? " admin-darkbar__btn--active" : ""}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
               <button
                 type="button"
                 className="admin-darkbar__btn"
