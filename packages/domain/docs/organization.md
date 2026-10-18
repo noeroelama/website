@@ -1,4 +1,4 @@
-# Organisation: chapters (PPI Negara), the map and board periods
+# Organisation: chapters (PPI Negara), the map, board periods and structure
 
 ## What it does
 
@@ -11,7 +11,9 @@ its card) and lists the same chapters with their count on About.
 Board periods (kepengurusan, feature A1) are kept on the **Organizations → Period** tab: name
 (2026/2027), cabinet, start and end date, vision, mission and the LPJ deadline (days after the
 end). A new period is a draft; **Set as Active** makes it the active period and archives the one
-that was active. The Structure screen is still a design mock (step 3.3).
+that was active. **Manage Structure** opens the period's unit tree
+(`/organizations/periods/[id]`, feature A5): coordinator, secretariat, directorates, bureaus,
+fields/divisions and staff, each under its parent unit.
 
 ## Where it lives
 
@@ -27,8 +29,14 @@ that was active. The Structure screen is still a design mock (step 3.3).
   `canActivatePeriod` in the same domain file; Firestore `packages/db/src/firestore/periods.ts`
   (`periods/{id}`, `settings/activePeriod`); admin `apps/admin/src/server/periods.ts`, the Period
   tab in `organizations-page.tsx`, rows in `periods-model.ts`
+- Structure: `OrgUnit`, `OrgUnitInputSchema`, `placeOrgUnit`, `assertNoCycle`, `movedPath`,
+  `orgUnitPath`, `inTreeOrder` in the same domain file; Firestore
+  `packages/db/src/firestore/org-units.ts` (`orgUnits/{id}`, code index
+  `orgUnitCodes/{periodId}_{code}`); admin `apps/admin/src/server/org-units.ts`,
+  `src/app/(panel)/organizations/periods/[id]/page.tsx`, `src/components/org-structure-page.tsx`,
+  rows in `org-units-model.ts`
 - Tests: `tests/unit/chapters.test.ts`, `tests/integration/chapters.test.ts`,
-  `tests/integration/periods.test.ts`
+  `tests/integration/periods.test.ts`, `tests/integration/org-units.test.ts`
 
 ## Rules and assumptions
 
@@ -56,6 +64,21 @@ that was active. The Structure screen is still a design mock (step 3.3).
 - Permission `periods.edit` to add, edit and activate (admin page `periods`, shown as the Period
   tab of Organizations); `periods.read` to see the tab. Audit module `periods`, resource
   `period`; not revertible (a revert could bring back a second active period).
+- Units belong to one period (PPIDK: the structure is rebuilt per period) and store `parentId`
+  and `path` (ancestor ids, root first). "Every unit below X" is one
+  `where("path", "array-contains", X)` query. A resource in a unit passes
+  `orgUnitPath(unit)` (ancestors + itself) as `ResourceContext.orgUnitPath`, so a role scoped to
+  a unit covers the unit and everything below it.
+- Save never changes where a unit sits; **Move** does, in one transaction that rewrites the
+  `path` of the whole subtree (at most 400 units; a period has a few dozen). A move into the
+  unit itself or below it is refused. Each write reads the period and the parent in the same
+  transaction: the parent must be a live unit of the same period, and an archived period's
+  structure is read-only.
+- The code is upper-cased and unique per period. Units are deactivated, never deleted (there is
+  no delete route). Members of a unit come from appointments (step 3.7).
+- Permission `structure.edit` to add, edit and move (admin page `structure`);
+  `structure.read` to see the tree. Audit module `structure`, resource `orgUnit`; not revertible
+  (a revert would not rewrite the paths below the unit).
 
 ## Configuration
 

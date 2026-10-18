@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CollectionReference, Firestore } from "firebase-admin/firestore";
+import type { CollectionReference, Firestore, Transaction } from "firebase-admin/firestore";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import {
   ConcurrencyConflictError,
@@ -28,6 +28,8 @@ export interface SluggedConfig<T extends EntityMeta> {
   readonly slug: {
     readonly collection: string;
     readonly key: (item: Omit<T, Meta>) => string;
+    /** Refusal when the key is taken (default: the URL message). */
+    readonly taken?: string;
   } | null;
   readonly fromDoc: (id: string, data: Record<string, unknown>) => T;
   /** Stored fields; the helper adds version and timestamps. Revert writes `snapshot` back. */
@@ -49,6 +51,8 @@ export function createSluggedStore<T extends EntityMeta>(db: Firestore, config: 
   // Only called when config.slug is set (key !== null below).
   const slugRef = (key: string) => (slugs as CollectionReference).doc(safeId.parse(key));
   const read = (id: string, data: unknown) => config.fromDoc(id, data as Record<string, unknown>);
+  const takenMessage =
+    config.slug?.taken ?? "This URL is already used by another item. Choose another one.";
 
   return {
     docs,
@@ -74,7 +78,8 @@ export function createSluggedStore<T extends EntityMeta>(db: Firestore, config: 
     write: (
       id: string | null,
       expectedVersion: number | null,
-      build: (current: T | null) => Omit<T, Meta>,
+      /** May read other documents in the same transaction (before any write). */
+      build: (current: T | null, tx: Transaction) => Omit<T, Meta> | Promise<Omit<T, Meta>>,
       auditFor: (
         before: Snapshot | null,
         after: Snapshot | null,
@@ -93,15 +98,13 @@ export function createSluggedStore<T extends EntityMeta>(db: Firestore, config: 
           throw new ConcurrencyConflictError(`${config.collection} version changed`);
         }
         if (current?.deletedAt) throw new RuleViolationError("This item is in the trash.");
-        const fields = build(current);
+        const fields = await build(current, tx);
         const key = config.slug ? config.slug.key(fields) : null;
         const oldKey = current && config.slug ? config.slug.key(current) : null;
         if (key !== null && key !== oldKey) {
           const taken = await tx.get(slugRef(key));
           if (taken.exists && taken.get("id") !== ref.id) {
-            throw new RuleViolationError(
-              "This URL is already used by another item. Choose another one.",
-            );
+            throw new RuleViolationError(takenMessage);
           }
         }
         const next = {

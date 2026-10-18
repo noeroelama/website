@@ -15,27 +15,17 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FieldError } from "@/components/ui/field-error";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { EditableList } from "@/components/ui/editable-list";
 import { Icon } from "@/components/ui/icon";
-import { PhotoDrop } from "@/components/ui/photo-drop";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
-import {
-  INITIAL_UNITS,
-  PAGE_SIZE_OPTIONS,
-  UNIT_TYPES,
-  type Division,
-  type UnitItem,
-  type UnitMember,
-  type UnitType,
-} from "@/data/mock/organizations";
 import type { ChapterItem } from "./chapters-model";
 import type { PeriodItem } from "./periods-model";
 
 /* ==================================================================
-   Organizations — Period list, unit Structure, Create/Edit Unit form,
-   and the PPI chapters list. Ported from the Figma "ORGANIZATIONS
-   ADMIN" screens; colours come from the shared design tokens.
+   Organizations — Period list and the PPI chapters list. Ported from
+   the Figma "ORGANIZATIONS ADMIN" screens; colours come from the shared
+   design tokens. A period's structure is its own page
+   (/organizations/periods/[id], org-structure-page.tsx).
    ================================================================== */
 
 /** Page subtitle on every screen (the Figma's own caption is a copy-paste
@@ -43,33 +33,10 @@ import type { PeriodItem } from "./periods-model";
 const ORG_SUBTITLE = "PPIDK ASIANIA ORGANIZATION ADMIN PAGE";
 
 /** Screen state machine, following the breadcrumbs "Organizations > …". */
-type OrgView = "period" | "structure" | "unit" | "ppi";
+type OrgView = "period" | "ppi";
 
-/** Default role for a fresh member row, by position in the list:
- *  1st = Kepala Direktorat, 2nd = Wakil Kepala Direktorat, 3rd = Sekretaris,
- *  anything after that is a Staff. */
-const DEFAULT_ROLES = ["Kepala Direktorat", "Wakil Kepala Direktorat", "Sekretaris"] as const;
-const roleForIndex = (index: number): string => DEFAULT_ROLES[index] ?? "Staff";
-
-/** The role the Head button crowns the member with. */
-const HEAD_ROLE = "Kepala Direktorat";
-
-/** The role the division Head button crowns a division member with. */
-const DIVISION_HEAD_ROLE = "Ketua";
-
-type UnitFormMode = "create" | "edit";
-
-/** Form shape for the unit form (Core Members + Divisions live here too). */
-interface UnitForm {
-  name: string;
-  code: string;
-  type: UnitType;
-  members: UnitMember[];
-  divisions: Division[];
-}
-
-/** Delete-confirmation: one unit row (periods are archived and chapters deactivated, never deleted). */
-type OrgDelete = { kind: "unit"; item: UnitItem };
+/** Rows-per-page options for the dark bar. */
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
 /** Create/Edit Period popup. */
 type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } | null;
@@ -105,14 +72,6 @@ type PeriodSortKey = "name" | "cabinet" | "status";
 /** Columns of the PPI table that can be sorted. */
 type PpiSortKey = "name" | "country";
 
-/** Slug shown under a unit name (the Figma structure row has name + slug). */
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 /** Period status chip — a plain text pill without any icon (the Figma Period row shows just
     the badge, no logo). Only the active period is highlighted. */
 function periodStatusBadge(status: PeriodItem["status"]): ReactNode {
@@ -129,12 +88,8 @@ function periodStatusBadge(status: PeriodItem["status"]): ReactNode {
   );
 }
 
-/** ids for freshly added member/division rows (monotonic while the page lives). */
-let ROW_SEQ = 1;
-const nextRowId = () => `row-${ROW_SEQ++}`;
-
 interface OrganizationsProps {
-  /** PPI chapters from Firestore (the Structure screen is still a design mock). */
+  /** PPI chapters from Firestore. */
   chapters: ChapterItem[];
   /** organizations.edit: add, edit, activate/deactivate chapters. */
   canEdit: boolean;
@@ -168,21 +123,6 @@ function OrganizationsList({
   const [busy, setBusy] = useState(false);
   /* ---- navigation ---- */
   const [view, setView] = useState<OrgView>(periodList ? "period" : "ppi");
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
-    () => (periods.find((p) => p.status === "active") ?? periods[0])?.id ?? "",
-  );
-  const [unitFormMode, setUnitFormMode] = useState<UnitFormMode>("create");
-  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
-
-  /* ---- lists ---- */
-  const [units, setUnits] = useState<UnitItem[]>(INITIAL_UNITS);
-
-  /* Structure header pill options: every period, newest first. */
-  const periodOptions = useMemo(
-    () => periods.map((p) => ({ id: p.id, label: `Period ${p.name}` })),
-    [periods],
-  );
-
   /* ---- UI state ---- */
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -191,9 +131,6 @@ function OrganizationsList({
   /* Period waiting for the "Set as Active" confirmation. */
   const [activating, setActivating] = useState<PeriodItem | null>(null);
   const [periodPage, setPeriodPage] = useState(1);
-  /* Structure table page (per selected period) — the darkbar footer below the
-     unit table paginates just like the Period list above. */
-  const [unitPage, setUnitPage] = useState(1);
   /* No sort applied on load — headers show the plain sort icon like the other
      pages; first click on a column turns ascending. */
   const [periodSort, setPeriodSort] = useState<PeriodSortKey | null>(null);
@@ -206,18 +143,6 @@ function OrganizationsList({
       setPeriodSortDir("asc");
     }
     setPeriodPage(1);
-  };
-  /* Structure table: unit name sort (same no-default-active pattern). */
-  const [unitSort, setUnitSort] = useState<"name" | null>(null);
-  const [unitSortDir, setUnitSortDir] = useState<"asc" | "desc">("asc");
-  const onUnitSort = (key: "name") => {
-    if (unitSort === key) {
-      setUnitSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setUnitSort(key);
-      setUnitSortDir("asc");
-    }
-    setUnitPage(1);
   };
   /* PPI table: name / country / members sort (same no-default-active pattern). */
   const [ppiSort, setPpiSort] = useState<PpiSortKey | null>(null);
@@ -233,16 +158,6 @@ function OrganizationsList({
   };
   const [ppiPage, setPpiPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [deleteConfirm, setDeleteConfirm] = useState<OrgDelete | null>(null);
-  const [unitForm, setUnitForm] = useState<UnitForm>({
-    name: "",
-    code: "",
-    type: "Biro",
-    members: [],
-    divisions: [],
-  });
-  const [divisionDragFrom, setDivisionDragFrom] = useState<number | null>(null);
-
   /* ---- period list: header sort + pagination ---- */
   const sortedPeriods = useMemo(() => {
     if (!periodSort) return periods;
@@ -280,23 +195,6 @@ function OrganizationsList({
   const ppiPageRows = sortedPpis.slice((ppiSafePage - 1) * pageSize, ppiSafePage * pageSize);
   const ppiShownStart = sortedPpis.length === 0 ? 0 : (ppiSafePage - 1) * pageSize + 1;
   const ppiShownEnd = Math.min(ppiSafePage * pageSize, sortedPpis.length);
-
-  /* ---- structure list: per-period pagination (darkbar footer, same as Period) ---- */
-  const periodUnits = useMemo(
-    () => units.filter((u) => u.periodId === selectedPeriodId),
-    [units, selectedPeriodId],
-  );
-  const sortedUnitRows = useMemo(() => {
-    if (!unitSort) return periodUnits;
-    const copy = [...periodUnits];
-    copy.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    return unitSortDir === "asc" ? copy : copy.reverse();
-  }, [periodUnits, unitSort, unitSortDir]);
-  const unitTotalPages = Math.max(1, Math.ceil(sortedUnitRows.length / pageSize));
-  const unitSafePage = Math.min(unitPage, unitTotalPages);
-  const unitPageRows = sortedUnitRows.slice((unitSafePage - 1) * pageSize, unitSafePage * pageSize);
-  const unitShownStart = sortedUnitRows.length === 0 ? 0 : (unitSafePage - 1) * pageSize + 1;
-  const unitShownEnd = Math.min(unitSafePage * pageSize, sortedUnitRows.length);
 
   /* ---- bulk selection (PPI table) ---- */
   const pageSelected = ppiPageRows.every((r) => selected.has(r.id));
@@ -404,314 +302,20 @@ function OrganizationsList({
     toast.show(periodModal.mode === "edit" ? "Period saved" : "Period created");
   };
 
-  /* ---- unit navigation ---- */
-  const toStructure = (periodId: string) => {
-    setSelectedPeriodId(periodId);
-    setUnitPage(1);
-    setMenuFor(null);
-    setView("structure");
-  };
-
-  const toUnitForm = (mode: UnitFormMode, item?: UnitItem) => {
-    setUnitFormMode(mode);
-    setEditingUnitId(item?.id ?? null);
-    setUnitForm(
-      item
-        ? {
-            name: item.name,
-            code: item.code,
-            type: item.code,
-            members: item.members,
-            divisions: item.divisions,
-          }
-        : { name: "", code: "", type: "Biro", members: [], divisions: [] },
-    );
-    setMenuFor(null);
-    setView("unit");
-  };
-
-  const setMember = (index: number, patch: Partial<UnitMember>) => {
-    setUnitForm((f) => ({
-      ...f,
-      members: f.members.map((m, i) => (i === index ? { ...m, ...patch } : m)),
-    }));
-  };
-  const addMember = () => {
-    setUnitForm((f) => ({
-      ...f,
-      members: [
-        ...f.members,
-        {
-          id: nextRowId(),
-          name: "",
-          // In the create form a fresh member starts neutral so the Head
-          // button is black (crown only via a click); the edit form keeps
-          // its sequential role defaults.
-          role: unitFormMode === "create" ? "Staff" : roleForIndex(f.members.length),
-          photo: null,
-          previousRole: null,
-        },
-      ],
-    }));
-  };
-  const removeMember = (index: number) => {
-    setUnitForm((f) => ({ ...f, members: f.members.filter((_, i) => i !== index) }));
-  };
-  /** Crown/un-crown the member as the unit's Head of. Only one member can
-   *  hold the "Kepala Direktorat" role at a time: crowning lifts the row to
-   *  the top of the list and demotes the previous head back to its own
-   *  earlier role; clicking a crowned row again un-crowns it (restoring the
-   *  remembered role). The "Head" state of the button derives from the role
-   *  itself, so typing "Kepala Direktorat" in the Role box also crowns it. */
-  const toggleMemberHead = (index: number) => {
-    setUnitForm((f) => {
-      const row = f.members[index];
-      if (!row) return f;
-      if (row.role === HEAD_ROLE) {
-        // Un-crown: switch back to the role it had before, stay in place.
-        return {
-          ...f,
-          members: f.members.map((m, i) =>
-            i === index ? { ...m, role: m.previousRole ?? "Staff", previousRole: null } : m,
-          ),
-        };
-      }
-      // Crown: this row becomes the single head — move it to the top and
-      // demote any other member still carrying the role.
-      const next = [...f.members];
-      const [moved] = next.splice(index, 1);
-      if (moved === undefined) return f;
-      next.unshift({ ...moved, role: HEAD_ROLE, previousRole: moved.role });
-      return {
-        ...f,
-        members: next.map((m) =>
-          m.id !== moved.id && m.role === HEAD_ROLE
-            ? { ...m, role: m.previousRole ?? "Staff", previousRole: null }
-            : m,
-        ),
-      };
-    });
-  };
-  /** Move a member row within the Core Members list (drag & drop). */
-  const reorderDivisions = (from: number, to: number) => {
-    setUnitForm((f) => {
-      if (
-        from < 0 ||
-        from >= f.divisions.length ||
-        to < 0 ||
-        to >= f.divisions.length ||
-        from === to
-      ) {
-        return f;
-      }
-      const next = [...f.divisions];
-      const [moved] = next.splice(from, 1);
-      if (moved === undefined) return f;
-      next.splice(to, 0, moved);
-      return { ...f, divisions: next };
-    });
-  };
-
-  const reorderMembers = (from: number, to: number) => {
-    setUnitForm((f) => {
-      if (from < 0 || from >= f.members.length || to < 0 || to >= f.members.length || from === to) {
-        return f;
-      }
-      const next = [...f.members];
-      const [moved] = next.splice(from, 1);
-      if (moved === undefined) return f;
-      next.splice(to, 0, moved);
-      return { ...f, members: next };
-    });
-  };
-  const setDivision = (index: number, name: string) => {
-    setUnitForm((f) => ({
-      ...f,
-      divisions: f.divisions.map((d, i) => (i === index ? { ...d, name } : d)),
-    }));
-  };
-  const addDivision = () => {
-    setUnitForm((f) => ({
-      ...f,
-      divisions: [...f.divisions, { id: nextRowId(), name: "", members: [] }],
-    }));
-  };
-  const removeDivision = (index: number) => {
-    setUnitForm((f) => ({ ...f, divisions: f.divisions.filter((_, i) => i !== index) }));
-  };
-
-  /* ---- per-division team members (Ketua/Wakil/Sekretaris/Staff) ---- */
-  const setDivisionMember = (div: number, index: number, patch: Partial<UnitMember>) => {
-    setUnitForm((f) => ({
-      ...f,
-      divisions: f.divisions.map((d, i) =>
-        i === div
-          ? { ...d, members: d.members.map((m, j) => (j === index ? { ...m, ...patch } : m)) }
-          : d,
-      ),
-    }));
-  };
-  const addDivisionMember = (div: number) => {
-    setUnitForm((f) => ({
-      ...f,
-      divisions: f.divisions.map((d, i) =>
-        i === div
-          ? {
-              ...d,
-              members: [
-                ...d.members,
-                {
-                  id: nextRowId(),
-                  name: "",
-                  // A fresh row is neutral Staff — crowning it makes it Ketua.
-                  role: "Staff",
-                  photo: null,
-                  previousRole: null,
-                },
-              ],
-            }
-          : d,
-      ),
-    }));
-  };
-  const removeDivisionMember = (div: number, index: number) => {
-    setUnitForm((f) => ({
-      ...f,
-      divisions: f.divisions.map((d, i) =>
-        i === div ? { ...d, members: d.members.filter((_, j) => j !== index) } : d,
-      ),
-    }));
-  };
-
-  /** Single head per division: crowning "Ketua" lifts the row to the top of
-   *  that division's team and demotes any previous Ketua; un-crowning
-   *  restores the stored role. (Mirror of the core toggleMemberHead.) */
-  const toggleDivisionMemberHead = (div: number, index: number) => {
-    setUnitForm((f) => {
-      const d = f.divisions[div];
-      const row = d?.members[index];
-      if (!d || !row) return f;
-      if (row.role === DIVISION_HEAD_ROLE) {
-        const next = d.members.map((m, j) =>
-          j === index ? { ...m, role: m.previousRole ?? "Staff", previousRole: null } : m,
-        );
-        return {
-          ...f,
-          divisions: f.divisions.map((x, i) => (i === div ? { ...x, members: next } : x)),
-        };
-      }
-      const members = [...d.members];
-      const [moved] = members.splice(index, 1);
-      if (moved === undefined) return f;
-      members.unshift({ ...moved, role: DIVISION_HEAD_ROLE, previousRole: moved.role });
-      return {
-        ...f,
-        divisions: f.divisions.map((x, i) =>
-          i === div
-            ? {
-                ...x,
-                members: members.map((m) =>
-                  m.id !== moved.id && m.role === DIVISION_HEAD_ROLE
-                    ? { ...m, role: m.previousRole ?? "Staff", previousRole: null }
-                    : m,
-                ),
-              }
-            : x,
-        ),
-      };
-    });
-  };
-
-  const saveUnit = () => {
-    const name = unitForm.name.trim();
-    const code = unitForm.code.trim();
-    if (!name) {
-      toast.show("Name is required");
-      return;
-    }
-    if (!code) {
-      toast.show("Code is required");
-      return;
-    }
-    const emptyRole = unitForm.members.find((m) => m.role.trim() === "");
-    if (emptyRole) {
-      toast.show("Role is required");
-      return;
-    }
-    const emptyDivisionRole = unitForm.divisions
-      .flatMap((d) => d.members)
-      .find((m) => m.role.trim() === "");
-    if (emptyDivisionRole) {
-      toast.show("Role is required");
-      return;
-    }
-    if (unitFormMode === "edit" && editingUnitId) {
-      setUnits((prev) =>
-        prev.map((u) =>
-          u.id === editingUnitId
-            ? {
-                ...u,
-                name,
-                code: code as UnitType,
-                type: unitForm.type,
-                members: unitForm.members,
-                divisions: unitForm.divisions,
-              }
-            : u,
-        ),
-      );
-      toast.show("Unit saved");
-    } else {
-      const cabinet = periods.find((p) => p.id === selectedPeriodId)?.cabinet ?? "";
-      setUnits((prev) => [
-        {
-          id: `unit-${Date.now()}`,
-          code: code as UnitType,
-          name,
-          cabinet,
-          periodId: selectedPeriodId,
-          members: unitForm.members,
-          divisions: unitForm.divisions,
-        },
-        ...prev,
-      ]);
-      toast.show("Unit created");
-    }
-    setView("structure");
-  };
-
-  /* ---- deletes ---- */
-  const requestDelete = (d: OrgDelete) => {
-    setMenuFor(null);
-    setDeleteConfirm(d);
-  };
-
-  const doDelete = () => {
-    if (!deleteConfirm) return;
-    setUnits((prev) => prev.filter((u) => u.id !== deleteConfirm.item.id));
-    toast.show("Unit deleted");
-    setDeleteConfirm(null);
-  };
-
   /* ---- shared pagination bar ---- */
   const pageNumbers: number[] = [];
   {
-    const total =
-      view === "period" ? periodTotalPages : view === "structure" ? unitTotalPages : ppiTotalPages;
-    const safe =
-      view === "period" ? periodSafePage : view === "structure" ? unitSafePage : ppiSafePage;
+    const total = view === "period" ? periodTotalPages : ppiTotalPages;
+    const safe = view === "period" ? periodSafePage : ppiSafePage;
     const winStart = Math.max(1, Math.min(safe - 2, total - 4));
     const winEnd = Math.min(total, winStart + 4);
     for (let i = winStart; i <= winEnd; i++) pageNumbers.push(i);
   }
 
-  /** Current page of whichever list is on screen (Period / Structure / PPI). */
-  const safePage =
-    view === "period" ? periodSafePage : view === "structure" ? unitSafePage : ppiSafePage;
-  const totalPages =
-    view === "period" ? periodTotalPages : view === "structure" ? unitTotalPages : ppiTotalPages;
-  const setPage = (p: number) =>
-    view === "period" ? setPeriodPage(p) : view === "structure" ? setUnitPage(p) : setPpiPage(p);
+  /** Current page of whichever list is on screen (Period / PPI). */
+  const safePage = view === "period" ? periodSafePage : ppiSafePage;
+  const totalPages = view === "period" ? periodTotalPages : ppiTotalPages;
+  const setPage = (p: number) => (view === "period" ? setPeriodPage(p) : setPpiPage(p));
 
   const paginationBar = (shownStart: number, shownEnd: number, total: number) => (
     <div className="admin-darkbar">
@@ -728,7 +332,6 @@ function OrganizationsList({
             setPageSize(Number(e.target.value));
             setPeriodPage(1);
             setPpiPage(1);
-            setUnitPage(1);
           }}
         >
           {PAGE_SIZE_OPTIONS.map((n) => (
@@ -768,49 +371,6 @@ function OrganizationsList({
         <Icon name="chevronRight" size={14} />
       </button>
     </div>
-  );
-
-  /* ---- shared delete modal ---- */
-  const deleteTitle = deleteConfirm ? `Delete "${deleteConfirm.item.code}"?` : "Delete";
-
-  /* The "confirm delete" popup is shared by every screen that deletes
-     (Period, Structure, PPI) — render it once per screen, next to the card. */
-  const deleteModal = (
-    <Modal
-      open={deleteConfirm !== null}
-      title={deleteTitle}
-      width={420}
-      className="admin-modal--dark admin-modal--delete"
-      hideClose
-      onClose={() => setDeleteConfirm(null)}
-      footer={
-        <div className="admin-modal__footer-row admin-modal__footer-row--end">
-          <Button
-            variant="ghost"
-            className="admin-btn--light admin-modal__foot-btn"
-            icon="chevronLeft"
-            onClick={() => setDeleteConfirm(null)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            className="admin-modal__foot-btn"
-            icon="trash"
-            onClick={doDelete}
-          >
-            Delete
-          </Button>
-        </div>
-      }
-    >
-      <p className="admin-delete-confirm__message">
-        <span className="admin-delete-confirm__hint">
-          They disappear from the public page now. You can revert deletion on the admin log before
-          14 days.
-        </span>
-      </p>
-    </Modal>
   );
 
   /* ================================================================
@@ -897,7 +457,7 @@ function OrganizationsList({
                     type="button"
                     className="admin-row-menu__item"
                     role="menuitem"
-                    onClick={() => toStructure(r.id)}
+                    onClick={() => router.push(`/organizations/periods/${r.id}`)}
                   >
                     <Icon name="settings" size={14} /> Manage Structure
                   </button>
@@ -1090,486 +650,6 @@ function OrganizationsList({
           The current active period is archived and becomes read-only. Roles given for one period
           only count during that period.
         </ConfirmDialog>
-
-        <ToastBanner message={toast.message} />
-      </>
-    );
-  }
-
-  if (view === "structure") {
-    const columns: Column<UnitItem>[] = [
-      {
-        key: "unit",
-        header: (
-          <SortHeader
-            label="Unit"
-            active={unitSort === "name"}
-            dir={unitSortDir}
-            onClick={() => onUnitSort("name")}
-          />
-        ),
-        width: "40%",
-        render: (r) => (
-          <div>
-            <div className="admin-table__title">{r.name}</div>
-            <div className="admin-table__sub">{slugify(r.name)}</div>
-          </div>
-        ),
-      },
-      {
-        key: "cabinet",
-        header: "Cabinet",
-        width: "25%",
-        render: (r) => <span className="admin-table__title">{r.code}</span>,
-      },
-      {
-        key: "people",
-        header: "Members",
-        width: "20%",
-        render: (r) => <span className="admin-table__title">{r.members.length} People</span>,
-      },
-      {
-        key: "aksi",
-        header: "",
-        align: "right",
-        width: "15%",
-        render: (r) => (
-          <div className="admin-table__actions">
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="trash"
-              className="admin-table__delete"
-              aria-label={`Delete ${r.name}`}
-              title="Delete"
-              onClick={() => requestDelete({ kind: "unit", item: r })}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="edit"
-              aria-label="Edit"
-              title="Edit"
-              onClick={() => toUnitForm("edit", r)}
-            />
-          </div>
-        ),
-      },
-    ];
-
-    return (
-      <>
-        <div className="admin-page-header admin-events-header">
-          <div>
-            <h1 className="admin-page-header__title">Organizations &gt; Period &gt; Structure</h1>
-            <p className="admin-page-header__desc">{ORG_SUBTITLE}</p>
-          </div>
-          <div className="admin-page-header__actions">
-            <select
-              className="admin-select admin-org-period"
-              aria-label="Period"
-              value={selectedPeriodId}
-              onChange={(e) => {
-                setSelectedPeriodId(e.target.value);
-                setPeriodPage(1);
-                setMenuFor(null);
-              }}
-            >
-              {periodOptions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="plus"
-              className="admin-btn--events-add"
-              onClick={() => toUnitForm("create")}
-            >
-              Add New Unit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon="chevronLeft"
-              onClick={() => setView("period")}
-            >
-              Back
-            </Button>
-          </div>
-        </div>
-
-        <Card className="admin-events-card admin-list-card admin-org-card">
-          <CardBody flush>
-            {/* Section tabs: same band as the Period/PPI lists so the page's
-                top edge matches; clicking returns to the parent list. */}
-            <div className="admin-tabs" role="tablist" aria-label="Organization lists">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={false}
-                className="admin-tabs__btn"
-                onClick={() => {
-                  setView("period");
-                  setMenuFor(null);
-                }}
-              >
-                Period
-                <span className="admin-tabs__count">{periods.length}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={false}
-                className="admin-tabs__btn"
-                onClick={() => {
-                  setView("ppi");
-                  setMenuFor(null);
-                }}
-              >
-                PPI
-                <span className="admin-tabs__count">{ppis.length}</span>
-              </button>
-            </div>
-            <DataTable
-              columns={columns}
-              rows={unitPageRows}
-              rowKey={(r) => r.id}
-              minRows={Math.min(6, pageSize)}
-              emptyState={
-                <div className="admin-empty admin-empty--stack">
-                  <span className="admin-empty__heading">
-                    <Icon name="grid" size={16} />
-                    <span className="admin-empty__title">No units for this period yet</span>
-                  </span>
-                  <span className="admin-empty__hint">
-                    Pick another period, or add the first unit with “Add New Unit”.
-                  </span>
-                </div>
-              }
-            />
-            {paginationBar(unitShownStart, unitShownEnd, sortedUnitRows.length)}
-          </CardBody>
-        </Card>
-
-        {deleteModal}
-
-        <ToastBanner message={toast.message} />
-      </>
-    );
-  }
-
-  if (view === "unit") {
-    /* -- single-row editor cell inside the cream panel (dark inputs) -- */
-    return (
-      <>
-        <div className="admin-page-header admin-events-header">
-          <div>
-            <h1 className="admin-page-header__title">
-              Organizations &gt; Period &gt; Structure &gt;{" "}
-              {unitFormMode === "create" ? "Create Unit" : "Edit Unit"}
-            </h1>
-            <p className="admin-page-header__desc">{ORG_SUBTITLE}</p>
-          </div>
-        </div>
-
-        <div className="admin-org-form">
-          <div className="admin-form-grid admin-form-grid--3">
-            {/* Name / Code / Type — one row */}
-            <div className="admin-field">
-              <label className="admin-field__label" htmlFor="org-unit-name">
-                Name *
-              </label>
-              <input
-                id="org-unit-name"
-                className="admin-input"
-                type="text"
-                placeholder="e.g Badan Koordinasi Kawasan"
-                value={unitForm.name}
-                onChange={(e) => setUnitForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div className="admin-field">
-              <label className="admin-field__label" htmlFor="org-unit-code">
-                Code *
-              </label>
-              <input
-                id="org-unit-code"
-                className="admin-input"
-                type="text"
-                placeholder="e.g Koor"
-                value={unitForm.code}
-                onChange={(e) => setUnitForm((f) => ({ ...f, code: e.target.value }))}
-              />
-            </div>
-            <div className="admin-field">
-              <label className="admin-field__label" htmlFor="org-unit-type">
-                Type *
-              </label>
-              <select
-                id="org-unit-type"
-                className="admin-select"
-                value={unitForm.type}
-                onChange={(e) => setUnitForm((f) => ({ ...f, type: e.target.value as UnitType }))}
-              >
-                {UNIT_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Core Members — same reorderable list as events Guest/Speakers,
-                only the row content differs (photo upload + name + role,
-                with a crown button to mark the member as Head of). */}
-            <div className="admin-form-grid__full">
-              <EditableList
-                title="Core Members"
-                subtitle="Heads of unit and members without divisions."
-                emptyHint="There are no members of the unit yet."
-                addLabel="Add New Member"
-                count={unitForm.members.length}
-                onAdd={addMember}
-                onRemove={(i) => removeMember(i)}
-                onReorder={reorderMembers}
-                renderRow={(i) => {
-                  const m = unitForm.members[i] ?? {
-                    id: "",
-                    name: "",
-                    role: roleForIndex(i),
-                    photo: null,
-                    previousRole: null,
-                  };
-                  return (
-                    <div className="admin-org-member--list">
-                      <PhotoDrop
-                        value={m.photo}
-                        label="Member photo"
-                        onPick={(photo) => setMember(i, { photo })}
-                        onClear={() => setMember(i, { photo: null })}
-                      />
-                      <div className="admin-field admin-org-name-field">
-                        <label className="admin-field__label" htmlFor={`member-name-${i}`}>
-                          Name *
-                        </label>
-                        <input
-                          id={`member-name-${i}`}
-                          className="admin-input admin-input--dark admin-org-member__name"
-                          type="text"
-                          placeholder="Name"
-                          value={m.name}
-                          onChange={(e) => setMember(i, { name: e.target.value })}
-                        />
-                      </div>
-                      <div className="admin-field admin-org-role-field">
-                        <label className="admin-field__label" htmlFor={`member-role-${i}`}>
-                          Role *
-                        </label>
-                        <input
-                          id={`member-role-${i}`}
-                          className="admin-input admin-input--dark admin-org-member__role"
-                          type="text"
-                          placeholder="Role"
-                          value={m.role}
-                          onChange={(e) => setMember(i, { role: e.target.value })}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        className={`admin-org-member__head${m.role === HEAD_ROLE ? " admin-org-member__head--on" : ""}`}
-                        icon="crown"
-                        aria-label="Set as Head of"
-                        title="Set as Head of"
-                        onClick={() => toggleMemberHead(i)}
-                      >
-                        Head
-                      </Button>
-                    </div>
-                  );
-                }}
-              />
-            </div>
-
-            {/* Divisions */}
-            <div className="admin-field admin-form-grid__full">
-              <div className="admin-org-section">
-                <div className="admin-org-section__head">
-                  <div>
-                    <h3 className="admin-org-section__title">Divisions</h3>
-                    <p className="admin-org-section__sub">
-                      Add a division if the unit has division
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon="plus"
-                    className="admin-org-add"
-                    onClick={addDivision}
-                  >
-                    Add New Division
-                  </Button>
-                </div>
-                {unitForm.divisions.length === 0 ? (
-                  <div className="admin-org-panel">
-                    <div className="admin-org-empty">
-                      There are no divisions. Click &quot;Add Division&quot; if this unit has a
-                      division.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="admin-org-panel">
-                    {unitForm.divisions.map((d, i) => (
-                      <div
-                        key={d.id}
-                        className={`admin-org-division--group${divisionDragFrom === i ? " admin-org-division--group--dragging" : ""}`}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (divisionDragFrom !== null && divisionDragFrom !== i) {
-                            reorderDivisions(divisionDragFrom, i);
-                          }
-                          setDivisionDragFrom(null);
-                        }}
-                      >
-                        <div className="admin-org-division--list">
-                          <span
-                            className="admin-org-division__handle"
-                            draggable
-                            aria-label="Drag division to reorder"
-                            title="Drag to reorder"
-                            onDragStart={(e) => {
-                              setDivisionDragFrom(i);
-                              e.dataTransfer.effectAllowed = "move";
-                              e.dataTransfer.setData("text/plain", String(i));
-                            }}
-                            onDragEnd={() => setDivisionDragFrom(null)}
-                          >
-                            <Icon name="grip" size={48} />
-                          </span>
-                          <div className="admin-field admin-org-division-field">
-                            <label className="admin-field__label" htmlFor={`division-name-${i}`}>
-                              Division Name *
-                            </label>
-                            <input
-                              id={`division-name-${i}`}
-                              className="admin-input admin-input--dark"
-                              type="text"
-                              placeholder="Division name"
-                              value={d.name}
-                              onChange={(e) => setDivision(i, e.target.value)}
-                            />
-                          </div>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            icon="trash"
-                            aria-label="Delete division"
-                            onClick={() => removeDivision(i)}
-                          >
-                            Delete Division
-                          </Button>
-                        </div>
-                        {d.members.map((m, j) => (
-                          <div key={m.id} className="admin-org-divisionmember--list">
-                            <PhotoDrop
-                              value={m.photo}
-                              label="Division member photo"
-                              onPick={(photo) => setDivisionMember(i, j, { photo })}
-                              onClear={() => setDivisionMember(i, j, { photo: null })}
-                            />
-                            <div className="admin-field admin-org-divisionmember-field">
-                              <label
-                                className="admin-field__label"
-                                htmlFor={`division-member-name-${i}-${j}`}
-                              >
-                                Name *
-                              </label>
-                              <input
-                                id={`division-member-name-${i}-${j}`}
-                                className="admin-input admin-input--dark"
-                                type="text"
-                                placeholder="Name"
-                                value={m.name}
-                                onChange={(e) => setDivisionMember(i, j, { name: e.target.value })}
-                              />
-                            </div>
-                            <div className="admin-field admin-org-divisionmember-role">
-                              <label
-                                className="admin-field__label"
-                                htmlFor={`division-member-role-${i}-${j}`}
-                              >
-                                Role *
-                              </label>
-                              <input
-                                id={`division-member-role-${i}-${j}`}
-                                className="admin-input  admin-input--dark"
-                                type="text"
-                                placeholder="Role"
-                                value={m.role}
-                                onChange={(e) => setDivisionMember(i, j, { role: e.target.value })}
-                              />
-                            </div>
-                            <Button
-                              variant="ghost"
-                              className={`admin-org-divisionmember__head${m.role === DIVISION_HEAD_ROLE ? " admin-org-divisionmember__head--on" : ""}`}
-                              icon="crown"
-                              aria-label="Set as Head of"
-                              title="Set as Head of"
-                              onClick={() => toggleDivisionMemberHead(i, j)}
-                            >
-                              Head
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              icon="trash"
-                              aria-label="Remove division member"
-                              onClick={() => removeDivisionMember(i, j)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        ))}
-                        <div className="admin-org-division-addrow">
-                          <button
-                            type="button"
-                            className="admin-org-division-add"
-                            onClick={() => addDivisionMember(i)}
-                          >
-                            <Icon name="plus" size={16} />
-                            Add New Member
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* footer actions — Back left, Save right (same tight no-divider
-              footer as the newsletter/article forms). */}
-          <div className="admin-form-actions admin-form-grid__full">
-            <Button
-              variant="outline"
-              size="sm"
-              icon="chevronLeft"
-              onClick={() => setView("structure")}
-            >
-              Back
-            </Button>
-            <div className="admin-form-actions__right">
-              <Button variant="outline" size="sm" icon="cloud" onClick={saveUnit}>
-                Save
-              </Button>
-            </div>
-          </div>
-        </div>
 
         <ToastBanner message={toast.message} />
       </>
@@ -1829,8 +909,6 @@ function OrganizationsList({
           )}
         </CardBody>
       </Card>
-
-      {deleteModal}
 
       {chapterForm !== null ? (
         <ChapterForm

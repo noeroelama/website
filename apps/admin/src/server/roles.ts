@@ -75,7 +75,16 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
     id: "viewer",
     name: "Viewer",
     permissions: normalizePermissions(
-      read(["events", "gallery", "articles", "newsletter", "organizations", "periods", "audit"]),
+      read([
+        "events",
+        "gallery",
+        "articles",
+        "newsletter",
+        "organizations",
+        "periods",
+        "structure",
+        "audit",
+      ]),
     ),
   },
   {

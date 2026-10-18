@@ -70,8 +70,7 @@ router.push("/things"); router.refresh();
   confirmed subscribers — each only when the viewer can read that page (Firestore `count()`,
   `src/server/dashboard.ts`, `packages/db/src/firestore/dashboard.ts`) — and the 10 newest
   audit entries with `audit.read`. Tests: `tests/integration/dashboard.test.ts`.
-- **UI-only pages.** Organizations (the Structure screen; the Period and PPI tabs are
-  data-backed, `packages/domain/docs/organization.md`), Account, Emails,
+- **UI-only pages.** Account, Emails,
   Profile and the Tools short-link list are design ports that run on `src/data/mock/*` in the
   browser: nothing is saved and nothing is audited. When a feature gets its backend, replace
   its mock import with a server read and its buttons with guarded actions (pattern above), then

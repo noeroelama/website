@@ -7,6 +7,7 @@ import {
 import { NEWS_CATEGORIES, type NewsCategory } from "@website/domain/content";
 import { EVENT_TYPES, type EventType } from "@website/domain/events";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
+import { ORG_UNIT_TYPES, type OrgUnitType } from "@website/domain/organizations";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 
 /**
@@ -90,6 +91,20 @@ export const EVENT_TYPE_LABELS = {
   meeting: { id: "Rapat", en: "Meeting" },
 } as const satisfies Record<EventType, Label>;
 
+export const ORG_UNIT_TYPE_LABELS = {
+  koordinator: { id: "Koordinator", en: "Coordinator" },
+  wakil_koordinator: { id: "Wakil Koordinator", en: "Deputy Coordinator" },
+  sekjen: { id: "Sekretaris Jenderal", en: "Secretary General" },
+  wasekjen: { id: "Wakil Sekretaris Jenderal", en: "Deputy Secretary General" },
+  bendahara: { id: "Bendahara Umum", en: "Treasurer" },
+  wakil_bendahara: { id: "Wakil Bendahara Umum", en: "Deputy Treasurer" },
+  direktorat: { id: "Direktorat", en: "Directorate" },
+  biro: { id: "Biro", en: "Bureau" },
+  bidang: { id: "Bidang", en: "Field" },
+  divisi: { id: "Divisi", en: "Division" },
+  staf: { id: "Staf", en: "Staff" },
+} as const satisfies Record<OrgUnitType, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -104,6 +119,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "message status", keys: MESSAGE_STATUSES, labels: MESSAGE_STATUS_LABELS },
   { name: "news category", keys: NEWS_CATEGORIES, labels: NEWS_CATEGORY_LABELS },
   { name: "event type", keys: EVENT_TYPES, labels: EVENT_TYPE_LABELS },
+  { name: "org unit type", keys: ORG_UNIT_TYPES, labels: ORG_UNIT_TYPE_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

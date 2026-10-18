@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { safeText } from "@website/security/validation";
+import { safeId, safeText } from "@website/security/validation";
 import { FeaturedImageSchema, type FeaturedImage } from "../content";
 import { TimezoneSchema } from "../members/profile";
-import { isValidSlug, type EntityMeta } from "../shared";
+import { isValidSlug, RuleViolationError, type EntityMeta } from "../shared";
 
 export interface Country extends EntityMeta {
   readonly code: string; // ISO 3166-1 alpha-2
@@ -177,3 +177,128 @@ export const withPeriodDates = <S extends z.ZodType<{ startsOn: string; endsOn: 
 export const canChangePeriod = (status: PeriodStatus): boolean => status !== "archived";
 /** Only a draft becomes the active period (an archived one never comes back). */
 export const canActivatePeriod = (status: PeriodStatus): boolean => status === "draft";
+
+/* ---- Organisation structure (feature A5) ---- */
+
+/** Unit kinds, as in PPIDK (the names differ between periods: "Bidang" now, "Divisi" before). */
+export const ORG_UNIT_TYPES = [
+  "koordinator",
+  "wakil_koordinator",
+  "sekjen",
+  "wasekjen",
+  "bendahara",
+  "wakil_bendahara",
+  "direktorat",
+  "biro",
+  "bidang",
+  "divisi",
+  "staf",
+] as const;
+export type OrgUnitType = (typeof ORG_UNIT_TYPES)[number];
+
+/**
+ * One unit of a period's structure (bureau, directorate, division ...). `path` holds the ids of
+ * its ancestors, root first, so "every unit below X" is one `path array-contains X` query.
+ */
+export interface OrgUnit extends EntityMeta {
+  readonly periodId: string;
+  readonly parentId: string | null;
+  readonly path: readonly string[];
+  readonly name: string;
+  /** Short and unique within the period, e.g. MED or MED-DSN. */
+  readonly code: string;
+  readonly type: OrgUnitType;
+  /** Tasks and functions (tupoksi). */
+  readonly description: string;
+  /** Order among its siblings. */
+  readonly sort: number;
+  readonly active: boolean;
+}
+
+/** The unit form. Where a unit sits (period, parent) is set on create and changed only by Move. */
+export const OrgUnitInputSchema = z
+  .object({
+    periodId: safeId,
+    parentId: safeId.nullable(),
+    name: safeText(120).pipe(z.string().min(2, "Enter the unit name.")),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9](?:[A-Z0-9-]{0,15})$/, "Use up to 16 letters, numbers and dashes."),
+    type: z.enum(ORG_UNIT_TYPES),
+    description: safeText(2000, { multiline: true, allowEmpty: true }),
+    sort: z.number().int().min(0).max(999),
+    active: z.boolean(),
+  })
+  .strict();
+export type OrgUnitInput = z.infer<typeof OrgUnitInputSchema>;
+
+/** At most this many units move at once (one Firestore transaction holds 500 writes). */
+export const ORG_UNIT_MOVE_LIMIT = 400;
+
+/** For `ResourceContext.orgUnitPath`: the unit's ancestors and the unit itself. */
+export const orgUnitPath = (unit: Pick<OrgUnit, "id" | "path">): string[] => [
+  ...unit.path,
+  unit.id,
+];
+
+/**
+ * Where a unit may sit: the parent must be a live unit of the same period, and the period must
+ * not be archived. Returns the unit's ancestor path. Throws RuleViolationError otherwise.
+ */
+export function placeOrgUnit(
+  periodId: string,
+  period: Pick<Period, "status"> | null,
+  parentId: string | null,
+  parent: OrgUnit | null,
+): string[] {
+  if (!period) throw new RuleViolationError("Choose a period first.");
+  if (!canChangePeriod(period.status)) {
+    throw new RuleViolationError("This period is archived; its structure can no longer change.");
+  }
+  if (parentId === null) return [];
+  if (!parent || parent.deletedAt || parent.periodId !== periodId) {
+    throw new RuleViolationError("The parent unit does not exist in this period.");
+  }
+  return orgUnitPath(parent);
+}
+
+/** Refuses a move of `unitId` under `parent` that would put the unit inside itself. */
+export function assertNoCycle(unitId: string, parent: Pick<OrgUnit, "id" | "path"> | null): void {
+  if (parent && orgUnitPath(parent).includes(unitId)) {
+    throw new RuleViolationError("A unit cannot be moved inside itself or one of its units.");
+  }
+}
+
+/** A descendant's new path after its ancestor `unitId` moved to `unitPath`. */
+export const movedPath = (
+  path: readonly string[],
+  unitId: string,
+  unitPath: readonly string[],
+): string[] => [...unitPath, unitId, ...path.slice(path.indexOf(unitId) + 1)];
+
+/** Depth-first tree order (siblings by `sort`, then name), for lists and pickers. */
+export function inTreeOrder<T extends Pick<OrgUnit, "id" | "parentId" | "sort" | "name">>(
+  units: readonly T[],
+): T[] {
+  const ids = new Set(units.map((u) => u.id));
+  const children = new Map<string | null, T[]>();
+  for (const unit of units) {
+    // A unit whose parent is not in the list is shown at the top level.
+    const key = unit.parentId !== null && ids.has(unit.parentId) ? unit.parentId : null;
+    children.set(key, [...(children.get(key) ?? []), unit]);
+  }
+  const ordered: T[] = [];
+  const visit = (parentId: string | null) => {
+    const siblings = [...(children.get(parentId) ?? [])].sort(
+      (a, b) => a.sort - b.sort || a.name.localeCompare(b.name),
+    );
+    for (const unit of siblings) {
+      ordered.push(unit);
+      visit(unit.id);
+    }
+  };
+  visit(null);
+  return ordered;
+}
