@@ -29,6 +29,8 @@ export interface RoleAssignment {
   readonly periodId?: string | null;
   /** "appointment" = derived from an appointment (step 3.7) and revoked with it. */
   readonly source?: "appointment" | "manual";
+  /** The appointment that gave it (source "appointment"); ending it revokes exactly these. */
+  readonly appointmentId?: string | null;
   /** Set when revoked; revoked assignments grant nothing (kept for history). */
   readonly revokedAt?: Date | null;
 }
@@ -213,6 +215,15 @@ export function canAssignRole(principal: Principal | null, role: RoleDefinition)
       ) ?? false
     );
   }
+  return holdsGlobally(principal, role.permissions);
+}
+
+/**
+ * Giving a role through an appointment (B7): `appointments.edit` and, globally, every permission of
+ * that role (no granting what you lack). Built-in roles are never given this way.
+ */
+export function canAppointInto(principal: Principal | null, role: RoleDefinition): boolean {
+  if (isSystemRoleId(role.id) || !can(principal, "appointments.edit")) return false;
   return holdsGlobally(principal, role.permissions);
 }
 

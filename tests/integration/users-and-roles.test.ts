@@ -241,6 +241,7 @@ describe("Users page: give and remove roles", () => {
       periodId: "p2026",
       source: "manual",
       revokedAt: null,
+      appointmentId: null,
     });
     // The same role for another period is a separate assignment; removal matches the period.
     expect(
@@ -251,8 +252,22 @@ describe("Users page: give and remove roles", () => {
       data: { version: 4 },
     });
     expect(fake.docs.get("users/ana")?.["roleAssignments"]).toEqual([
-      { roleId: "user", scope: global, periodId: null, source: "manual", revokedAt: null },
-      { roleId: "editor", scope: media, periodId: null, source: "manual", revokedAt: null },
+      {
+        roleId: "user",
+        scope: global,
+        periodId: null,
+        source: "manual",
+        revokedAt: null,
+        appointmentId: null,
+      },
+      {
+        roleId: "editor",
+        scope: media,
+        periodId: null,
+        source: "manual",
+        revokedAt: null,
+        appointmentId: null,
+      },
     ]);
   });
 
@@ -263,6 +278,7 @@ describe("Users page: give and remove roles", () => {
       periodId: "p2025",
       source: "appointment",
       revokedAt: new Date("2026-01-31T00:00:00Z"),
+      appointmentId: "appt-1",
     };
     fake.docs.set("users/ana", {
       ...fake.docs.get("users/ana"),
@@ -273,7 +289,11 @@ describe("Users page: give and remove roles", () => {
     });
     const [, entry] = [...fake.docs.entries()].find(([path]) => path.startsWith("auditLogs/"))!;
     const before = entry["before"] as { roleAssignments: unknown[] };
-    expect(before.roleAssignments[1]).toEqual({ ...ended, revokedAt: "2026-01-31T00:00:00.000Z" });
+    expect(before.roleAssignments[1]).toEqual({
+      ...ended,
+      revokedAt: "2026-01-31T00:00:00.000Z",
+      appointmentId: "appt-1",
+    });
     expect(fake.docs.get("users/ana")?.["roleAssignments"]).toHaveLength(3);
   });
 

@@ -79,6 +79,10 @@ fields/divisions and staff, each under its parent unit.
   structure is read-only.
 - The code is upper-cased and unique per period. Units are deactivated, never deleted (there is
   no delete route). Members of a unit come from appointments (step 3.7).
+- Appointments (B7): on the Structure page of the active period, `appointments.edit` appoints a
+  person (by account e-mail) to a unit as head, secretary or member with a title, and ends an
+  appointment (kept as history). The roles an appointment gives are described in
+  `packages/permissions/docs/authorization.md`. Tests: `tests/integration/appointments.test.ts`.
 - Permission `structure.edit` to add, edit and move (admin page `structure`);
   `structure.read` to see the tree. Audit module `structure`, resource `orgUnit`; not revertible
   (a revert would not rewrite the paths below the unit).

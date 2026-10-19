@@ -92,6 +92,64 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
     name: "Shop manager",
     permissions: normalizePermissions(["shop_products.edit", "shop_orders.edit"]),
   },
+  // Given by appointments (settings/appointmentRoles, SUGGESTED_APPOINTMENT_ROLES), not by hand.
+  {
+    id: "officer",
+    name: "Officer (every board member)",
+    permissions: normalizePermissions(
+      read(["events", "gallery", "articles", "organizations", "periods", "structure"]),
+    ),
+  },
+  {
+    id: "director",
+    name: "Director (unit head)",
+    permissions: normalizePermissions([
+      "events.edit",
+      "articles.edit",
+      "gallery.edit",
+      "appointments.read",
+    ]),
+  },
+  {
+    id: "directorate_secretary",
+    name: "Directorate secretary",
+    permissions: normalizePermissions(["events.edit", "articles.edit", "appointments.read"]),
+  },
+  {
+    id: "coordinator",
+    name: "Coordinator",
+    permissions: normalizePermissions([
+      "periods.edit",
+      "structure.edit",
+      "appointments.edit",
+      "organizations.edit",
+      "events.read",
+      "gallery.read",
+      "articles.read",
+      "users.read",
+      "audit.read",
+    ]),
+  },
+  {
+    id: "secretary_general",
+    name: "Secretary General",
+    permissions: normalizePermissions([
+      "periods.edit",
+      "structure.edit",
+      "appointments.edit",
+      "organizations.edit",
+      "events.read",
+      "gallery.read",
+      "articles.read",
+      "users.read",
+      "universities.edit",
+    ]),
+  },
+  {
+    id: "treasurer",
+    name: "Treasurer",
+    permissions: normalizePermissions(read(["periods", "structure", "organizations"])),
+  },
 ];
 
 const SaveInput = z

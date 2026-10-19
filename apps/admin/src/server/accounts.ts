@@ -157,7 +157,7 @@ export function createAccountActions(deps: AccountDeps) {
       const updated = await deps.accounts.change(
         input.uid,
         input.version,
-        (_current, superadminsAfter) => {
+        (current, superadminsAfter) => {
           refuse(
             accountChangeRefusal({
               actor: principal,
@@ -166,6 +166,16 @@ export function createAccountActions(deps: AccountDeps) {
               superadminsAfter,
             }),
           );
+          // PPIDK: a role from an appointment ends with the appointment, so both tell one story.
+          if (
+            current.roleAssignments.some(
+              (a) => a.source === "appointment" && sameAssignment(a, removed),
+            )
+          ) {
+            throw new RuleViolationError(
+              "This role comes from an appointment: end the appointment on the Structure page.",
+            );
+          }
         },
         {
           roleAssignmentsFrom: (current) =>

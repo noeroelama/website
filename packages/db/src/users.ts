@@ -122,10 +122,14 @@ export function parseAssignments(value: unknown): RoleAssignment[] {
     if (typeof roleId !== "string" || !safeId.safeParse(roleId).success || !scope) return [];
     const periodId = typeof item["periodId"] === "string" ? item["periodId"] : null;
     const source = item["source"] === "appointment" ? "appointment" : "manual";
+    const appointmentId =
+      typeof item["appointmentId"] === "string" && safeId.safeParse(item["appointmentId"]).success
+        ? item["appointmentId"]
+        : null;
     const revokedAt = toDate(item["revokedAt"]);
     // A revoked assignment that cannot be read as revoked would grant again: refuse it.
     if (item["revokedAt"] !== undefined && item["revokedAt"] !== null && !revokedAt) return [];
-    return [{ roleId, scope, periodId, source, revokedAt }];
+    return [{ roleId, scope, periodId, source, revokedAt, appointmentId }];
   });
 }
 
@@ -200,6 +204,7 @@ export const plainAssignments = (assignments: readonly RoleAssignment[]) =>
     periodId: a.periodId ?? null,
     source: a.source ?? "manual",
     revokedAt: a.revokedAt ?? null,
+    appointmentId: a.appointmentId ?? null,
   }));
 
 /** What an account change looks like in the audit log (roles and status only). */

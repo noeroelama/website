@@ -37,6 +37,7 @@ export const ADMIN_PAGES = {
   periods: { label: "Board periods" },
   structure: { label: "Organisation structure" },
   universities: { label: "Universities (campus proposals)" },
+  appointments: { label: "Appointments (board seats → roles)" },
   members: {
     label: "Members",
     extras: { pii: "See personal data", export: "Export", approve: "Approve members" },

@@ -302,3 +302,117 @@ export function inTreeOrder<T extends Pick<OrgUnit, "id" | "parentId" | "sort" |
   visit(null);
   return ordered;
 }
+
+/* ---- Appointments (feature B7) ---- */
+
+/** Where someone sits in a unit: its head, its secretary, or a member. */
+export const APPOINTMENT_SEATS = ["head", "secretary", "member"] as const;
+export type AppointmentSeat = (typeof APPOINTMENT_SEATS)[number];
+
+/** Units whose head acts for the whole organisation (their roles are global). */
+export const CORE_UNIT_TYPES = [
+  "koordinator",
+  "wakil_koordinator",
+  "sekjen",
+  "wasekjen",
+  "bendahara",
+  "wakil_bendahara",
+] as const satisfies readonly OrgUnitType[];
+export type CoreUnitType = (typeof CORE_UNIT_TYPES)[number];
+const isCoreUnit = (type: OrgUnitType): type is CoreUnitType =>
+  (CORE_UNIT_TYPES as readonly OrgUnitType[]).includes(type);
+
+/**
+ * Which role an appointment gives (`settings/appointmentRoles`, data edited by staff with
+ * roles.edit — not code): every officer, unit heads and secretaries (scoped to their unit and
+ * the units below it), and the head of each core unit (global).
+ */
+export const AppointmentRoleMapSchema = z
+  .object({
+    officer: safeId,
+    unitHead: safeId,
+    unitSecretary: safeId,
+    core: z.object(Object.fromEntries(CORE_UNIT_TYPES.map((t) => [t, safeId]))).strict(),
+  })
+  .strict();
+export type AppointmentRoleMap = {
+  readonly officer: string;
+  readonly unitHead: string;
+  readonly unitSecretary: string;
+  readonly core: Readonly<Record<CoreUnitType, string>>;
+};
+
+/** The suggested mapping ("Use suggested mapping"), matching the admin's suggested roles. */
+export const SUGGESTED_APPOINTMENT_ROLES: AppointmentRoleMap = {
+  officer: "officer",
+  unitHead: "director",
+  unitSecretary: "directorate_secretary",
+  core: {
+    koordinator: "coordinator",
+    wakil_koordinator: "coordinator",
+    sekjen: "secretary_general",
+    wasekjen: "secretary_general",
+    bendahara: "treasurer",
+    wakil_bendahara: "treasurer",
+  },
+};
+
+export const APPOINTMENT_STATUSES = ["active", "ended", "revoked"] as const;
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+
+/** Someone appointed to a seat in a unit for one period. Ended, never deleted (history). */
+export interface Appointment extends EntityMeta {
+  readonly userId: string;
+  /** The person's name (or e-mail) when appointed, for lists. */
+  readonly name: string;
+  readonly periodId: string;
+  readonly orgUnitId: string;
+  readonly seat: AppointmentSeat;
+  /** What the seat is called, e.g. "Direktur Media". */
+  readonly title: string;
+  readonly status: AppointmentStatus;
+  readonly startsOn: string;
+  readonly endsOn: string | null;
+}
+
+/** The appoint form (admin Structure page). The person is found by the account's e-mail. */
+export const AppointmentInputSchema = z
+  .object({
+    email: z.email("Enter the person's account e-mail.").max(254),
+    orgUnitId: safeId,
+    seat: z.enum(APPOINTMENT_SEATS),
+    title: safeText(120).pipe(z.string().min(2, "Enter the title of the seat.")),
+  })
+  .strict();
+
+/** One role an appointment gives: global, or for the unit (and everything below it). */
+export interface DerivedAssignment {
+  readonly roleId: string;
+  readonly scope:
+    { readonly type: "global" } | { readonly type: "orgUnit"; readonly orgUnitId: string };
+}
+
+/**
+ * The roles an appointment gives (PPIDK PenugasanService): every officer gets the officer role;
+ * the head of a core unit gets that unit's role globally; the head or secretary of another unit
+ * gets the unit-head or unit-secretary role for that unit. Members get nothing more.
+ */
+export function derivedAssignments(
+  seat: AppointmentSeat,
+  unit: Pick<OrgUnit, "id" | "type">,
+  map: AppointmentRoleMap,
+): DerivedAssignment[] {
+  const officer: DerivedAssignment = { roleId: map.officer, scope: { type: "global" } };
+  const forUnit = (roleId: string): DerivedAssignment => ({
+    roleId,
+    scope: { type: "orgUnit", orgUnitId: unit.id },
+  });
+  if (isCoreUnit(unit.type)) {
+    return seat === "head"
+      ? [officer, { roleId: map.core[unit.type], scope: { type: "global" } }]
+      : [officer];
+  }
+  if (seat === "head") return [officer, forUnit(map.unitHead)];
+  if (seat === "secretary") return [officer, forUnit(map.unitSecretary)];
+  return [officer];
+}

@@ -133,7 +133,7 @@ describe("principal from Firestore (admin user directory)", () => {
     docs.set("users/u1", {
       status: "active",
       roleAssignments: [
-        { roleId: "member", scope: { type: "global" } },
+        { roleId: "member", scope: { type: "global" }, appointmentId: "../x" },
         { roleId: "old", scope: { type: "global" } },
         { roleId: "bad id/../x", scope: { type: "global" } },
         { roleId: "user", scope: { type: "planet" } },

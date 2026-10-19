@@ -12,6 +12,8 @@ import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { label, ORG_UNIT_TYPE_LABELS } from "@/labels";
+import { AppointModal, RoleMapModal, UnitPeople, type AppointmentItem } from "./appointment-forms";
+import type { AppointmentRoleMap } from "@website/domain/organizations";
 import type { OrgUnitItem } from "./org-units-model";
 import type { PeriodItem } from "./periods-model";
 
@@ -23,6 +25,14 @@ interface Props {
   units: OrgUnitItem[];
   /** structure.edit and the period is not archived. */
   canEdit: boolean;
+  /** Active appointments of the period (empty without appointments.read). */
+  appointments: AppointmentItem[];
+  /** appointments.edit and this is the active period. */
+  canAppoint: boolean;
+  /** roles.edit: the seat → role mapping (null = not set yet); undefined = cannot edit it. */
+  roleMap: { map: AppointmentRoleMap; version: number } | null | undefined;
+  /** Custom roles for the mapping. */
+  roles: { id: string; name: string }[];
 }
 
 interface UnitForm {
@@ -53,7 +63,16 @@ const treeLabel = (u: OrgUnitItem) => `${"— ".repeat(u.path.length)}${u.name} 
  * and edited here; Move puts a unit (with everything below it) under another unit. An archived
  * period is read-only. Units are deactivated, never deleted.
  */
-export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
+export function OrgStructurePage({
+  period,
+  periods,
+  units,
+  canEdit,
+  appointments,
+  canAppoint,
+  roleMap,
+  roles,
+}: Props) {
   const router = useRouter();
   const toast = useToastMessage();
   const [busy, setBusy] = useState(false);
@@ -63,6 +82,14 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
   const [moving, setMoving] = useState<OrgUnitItem | null>(null);
   const [moveTo, setMoveTo] = useState<string>("");
+  const [appointTo, setAppointTo] = useState<OrgUnitItem | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
+  const done = (text: string) => {
+    setAppointTo(null);
+    setMapOpen(false);
+    router.refresh();
+    toast.show(text);
+  };
 
   const editedUnit = editing && "id" in editing ? editing : null;
   const set = <K extends keyof UnitForm>(key: K, value: UnitForm[K]) =>
@@ -116,6 +143,11 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
         <div style={{ paddingInlineStart: `calc(var(--space-5) * ${u.path.length})` }}>
           <div className="admin-table__title">{u.name}</div>
           <div className="admin-table__sub">{u.code}</div>
+          <UnitPeople
+            people={appointments.filter((a) => a.orgUnitId === u.id)}
+            canEdit={canAppoint}
+            onDone={done}
+          />
         </div>
       ),
     },
@@ -145,35 +177,49 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
       align: "right",
       width: "22%",
       render: (u) =>
-        canEdit ? (
+        canEdit || canAppoint ? (
           <div className="admin-table__actions">
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="plus"
-              aria-label={`Add a unit under ${u.name}`}
-              title="Add a unit under this one"
-              onClick={() => openForm(null, u.id)}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="arrowDown"
-              aria-label={`Move ${u.name}`}
-              title="Move"
-              onClick={() => {
-                setMoveTo(u.parentId ?? "");
-                setMoving(u);
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="edit"
-              aria-label={`Edit ${u.name}`}
-              title="Edit"
-              onClick={() => openForm(u)}
-            />
+            {canAppoint ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                icon="user"
+                aria-label={`Appoint someone to ${u.name}`}
+                title="Appoint"
+                onClick={() => setAppointTo(u)}
+              />
+            ) : null}
+            {canEdit ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  icon="plus"
+                  aria-label={`Add a unit under ${u.name}`}
+                  title="Add a unit under this one"
+                  onClick={() => openForm(null, u.id)}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  icon="arrowDown"
+                  aria-label={`Move ${u.name}`}
+                  title="Move"
+                  onClick={() => {
+                    setMoveTo(u.parentId ?? "");
+                    setMoving(u);
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  icon="edit"
+                  aria-label={`Edit ${u.name}`}
+                  title="Edit"
+                  onClick={() => openForm(u)}
+                />
+              </>
+            ) : null}
           </div>
         ) : null,
     },
@@ -216,6 +262,11 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
               onClick={() => openForm(null)}
             >
               Add New Unit
+            </Button>
+          ) : null}
+          {roleMap !== undefined ? (
+            <Button variant="outline" size="sm" icon="key" onClick={() => setMapOpen(true)}>
+              Roles from appointments
             </Button>
           ) : null}
           <Button variant="outline" size="sm" icon="chevronLeft" href="/organizations">
@@ -380,6 +431,19 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
           <FieldError id="unit-move-to-error" message="Every unit below it moves with it." />
         </div>
       </Modal>
+
+      {appointTo ? (
+        <AppointModal unit={appointTo} onClose={() => setAppointTo(null)} onDone={done} />
+      ) : null}
+      {mapOpen && roleMap !== undefined ? (
+        <RoleMapModal
+          open
+          current={roleMap}
+          roles={roles}
+          onClose={() => setMapOpen(false)}
+          onDone={done}
+        />
+      ) : null}
 
       <ToastBanner message={toast.message} />
     </>

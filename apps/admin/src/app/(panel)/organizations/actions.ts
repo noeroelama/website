@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
-import { chapterActions, orgUnitActions, periodActions } from "@/server/wiring";
+import { appointmentActions, chapterActions, orgUnitActions, periodActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/{chapters,periods,org-units}.ts (createGuardedAction).
+// Thin server-action wrappers: every rule lives in src/server/{chapters,periods,org-units,appointments}.ts (createGuardedAction).
 export async function saveChapterAction(input: unknown) {
   const result = await chapterActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
@@ -37,6 +37,24 @@ export async function saveOrgUnitAction(input: unknown) {
 
 export async function moveOrgUnitAction(input: unknown) {
   const result = await orgUnitActions().move(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
+export async function appointAction(input: unknown) {
+  const result = await appointmentActions().appoint(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
+export async function endAppointmentAction(input: unknown) {
+  const result = await appointmentActions().end(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
+export async function saveAppointmentRolesAction(input: unknown) {
+  const result = await appointmentActions().saveRoleMap(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
   return result;
 }

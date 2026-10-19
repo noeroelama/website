@@ -36,6 +36,21 @@
     `source` is `manual` (Users page) or `appointment` (set by the server from a board
     appointment, never from the client).
   - Unknown scope types, bad ids and unreadable dates are dropped when the record is read.
+- **Appointments → roles** (B7, `apps/admin/src/server/appointments.ts`,
+  `packages/db/src/firestore/appointments.ts`): appointing someone to a seat of a unit of the
+  active period writes the appointment and its roles in ONE transaction. The roles come from the
+  settings document `settings/appointmentRoles` (data, edited on the Structure page with
+  `roles.edit`; only existing custom roles, never built-in ones; "suggested" =
+  `SUGGESTED_APPOINTMENT_ROLES` + the suggested roles of the Roles page):
+  every officer → officer role (global); head of a core unit (coordinator, secretary general,
+  treasurer and deputies) → that seat's role (global); head / secretary of any other unit → the
+  unit-head / unit-secretary role scoped to that unit (`derivedAssignments`). They carry
+  `periodId`, `source: "appointment"` and `appointmentId`. Ending the appointment sets `revokedAt`
+  on exactly those (a manual role stays) and ends the person's sessions; a role from an
+  appointment cannot be removed on the Users page. Appointing needs `appointments.edit` and every
+  permission of each derived role (`canAppointInto`), never on your own account, a second
+  sign-in method on the person's account for staff roles, and a recent sign-in. Both the
+  appointment and the account change are audited (not revertible).
 - **Self-service** permissions (`profile.read_own`, `profile.write_own`, `events.register`,
   `registrations.read_own`, `shop.orders.read_own`) belong to every active account, for its own
   resources only (`ownerId === userId`). They cannot be put on a role.

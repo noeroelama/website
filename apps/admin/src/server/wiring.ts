@@ -7,6 +7,7 @@ import { unsubscribeLinkData } from "@website/domain/newsletter";
 import { logSecurityEvent } from "@website/observability";
 import { signLink } from "@website/security";
 import { createAccountActions } from "./accounts";
+import { createAppointmentActions } from "./appointments";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createChapterActions } from "./chapters";
 import { createMessenger } from "@website/domain/messaging";
@@ -70,6 +71,16 @@ export const orgUnitActions = lazyEnv(() =>
 export const universityActions = lazyEnv(() =>
   createUniversityActions({ universities: adminStores().universities, now: () => new Date() }),
 );
+
+/** Structure page: appointments and the roles they give. */
+export const appointmentActions = lazyEnv(() => {
+  const stores = adminStores();
+  return createAppointmentActions({
+    ...stores,
+    units: stores.orgUnits,
+    now: () => new Date(),
+  });
+});
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
 export const imageUploads = lazyEnv(() =>
@@ -178,6 +189,8 @@ export const adminReads = {
   listPeriods: () => adminStores().periods.listForAdmin(),
   getPeriod: (id: string) => adminStores().periods.get(id),
   listOrgUnits: (periodId: string) => adminStores().orgUnits.listForPeriod(periodId),
+  listAppointments: (periodId: string) => adminStores().appointments.listForPeriod(periodId),
+  getAppointmentRoleMap: () => adminStores().appointments.getRoleMap(),
   listPendingUniversities: () => adminStores().universities.listPending(),
   listApprovedUniversities: (countryCode: string) =>
     adminStores().universities.listApproved(countryCode),

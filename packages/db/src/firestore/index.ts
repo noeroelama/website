@@ -56,6 +56,12 @@ export {
   type FirestoreChapterReader,
   type FirestoreChapterStore,
 } from "./chapters";
+export {
+  appointmentSnapshot,
+  createFirestoreAppointmentStore,
+  type AppointmentAudit,
+  type FirestoreAppointmentStore,
+} from "./appointments";
 export { createFirestoreMemberProfileStore } from "./member-profiles";
 export {
   createFirestoreUniversityStore,

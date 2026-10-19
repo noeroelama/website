@@ -5,6 +5,7 @@ import {
   ADMIN_PAGES,
   can,
   canAccessAdmin,
+  canAppointInto,
   canAssignRole,
   canDeleteRole,
   canInSomeScope,
@@ -215,6 +216,31 @@ describe("can()", () => {
       [],
     );
     expect(scopedChapterIds(null, "events.edit")).toEqual([]);
+  });
+
+  it("appointing gives only roles whose permissions the appointer holds, never built-in ones (B7)", () => {
+    const secretary: RoleDefinition = {
+      id: "secretary_general",
+      name: "Sekjen",
+      permissions: normalizePermissions(["appointments.edit", "events.edit"]),
+    };
+    const officer: RoleDefinition = {
+      id: "officer",
+      name: "Officer",
+      permissions: normalizePermissions(["events.read"]),
+    };
+    const director: RoleDefinition = {
+      id: "director",
+      name: "Director",
+      permissions: normalizePermissions(["gallery.edit"]),
+    };
+    lookup.set(secretary.id, secretary);
+    const sekjen = principal([{ roleId: "secretary_general" }]);
+    expect(canAppointInto(sekjen, officer)).toBe(true);
+    expect(canAppointInto(sekjen, director)).toBe(false);
+    expect(canAppointInto(sekjen, { id: "superadmin", name: "x", permissions: [] })).toBe(false);
+    expect(canAppointInto(principal([{ roleId: "viewer" }]), officer)).toBe(false);
+    lookup.delete(secretary.id);
   });
 
   it("*_own permissions belong to every active account, for its own resources only", () => {

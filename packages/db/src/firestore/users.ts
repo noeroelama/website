@@ -128,6 +128,13 @@ export function createFirestoreAccountStore(db: Firestore) {
         : null;
     },
 
+    /** The account with this sign-in e-mail (appointments find people by it), or null. */
+    async findByEmail(email: string): Promise<UserSummary | null> {
+      const snapshot = await users.where("email", "==", email.trim().toLowerCase()).limit(1).get();
+      const doc = snapshot.docs[0];
+      return doc ? toUserSummary(doc.id, doc.data()) : null;
+    },
+
     /** Active global superadmins (the last one must never lose the role or be deactivated). */
     async countActiveSuperadmins(): Promise<number> {
       const snapshot = await users.where("roleIds", "array-contains", "superadmin").get();
