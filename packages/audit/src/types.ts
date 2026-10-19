@@ -3,7 +3,8 @@ export type JsonValue =
 export type Snapshot = { readonly [key: string]: JsonValue };
 
 export interface AuditActor {
-  readonly type: "staff" | "system" | "api_client";
+  /** "member": a member's own change of their profile (website). */
+  readonly type: "staff" | "system" | "api_client" | "member";
   readonly id: string;
   /** Snapshot of the staff e-mail at the time of the change (shown on the Audit Log page). */
   readonly email?: string | null;

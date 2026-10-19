@@ -41,6 +41,10 @@ describe("admin dashboard overview", () => {
   const dashboard = createDashboard({
     counts: createFirestoreDashboardCounts(fake.db as unknown as Db),
     listAudit,
+    graduatedOfficers: () =>
+      Promise.resolve([
+        { name: "Siti", title: "Staf", graduatedOn: "2026-09-30", periodId: "p2026" },
+      ]),
   });
 
   it("counts live records, and only for pages the viewer can read", async () => {
@@ -59,6 +63,13 @@ describe("admin dashboard overview", () => {
     expect(editor.counters.map((c) => c.key)).toEqual(["articles"]);
     expect(editor.audit).toBeNull();
 
-    expect(await dashboard(staff([]))).toEqual({ counters: [], audit: null });
+    expect(await dashboard(staff([]))).toEqual({
+      counters: [],
+      audit: null,
+      graduatedOfficers: null,
+    });
+    expect((await dashboard(staff(["appointments.edit"]))).graduatedOfficers).toEqual([
+      { name: "Siti", title: "Staf", graduatedOn: "2026-09-30", periodId: "p2026" },
+    ]);
   });
 });

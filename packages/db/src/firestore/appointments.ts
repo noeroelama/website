@@ -9,6 +9,7 @@ import {
   type DerivedAssignment,
   type OrgUnit,
 } from "@website/domain/organizations";
+import { studyStatus } from "@website/domain/members";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import type { RoleAssignment } from "@website/permissions";
 import { safeId } from "@website/security/validation";
@@ -21,6 +22,7 @@ import {
   type UserSummary,
 } from "../users";
 import { createFirestoreAuditWriter } from "./audit";
+import { getDocumentsByIds } from "./batch";
 import { toDate } from "./slugged";
 
 function toAppointment(id: string, data: Record<string, unknown>): Appointment {
@@ -78,6 +80,30 @@ export function createFirestoreAppointmentStore(db: Firestore) {
       return snapshot.docs
         .map((doc) => toAppointment(doc.id, doc.data()))
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
+    },
+
+    /**
+     * Officers of the active period who already graduated (B5, §67): a dashboard item for whoever
+     * may end appointments. Graduation never ends an appointment by itself.
+     */
+    async graduatedOfficers(today: string): Promise<Array<Appointment & { graduatedOn: string }>> {
+      const active = await settings.doc("activePeriod").get();
+      const periodId = active.get("periodId") as string | undefined;
+      if (!periodId) return [];
+      const snapshot = await docs
+        .where("periodId", "==", periodId)
+        .where("status", "==", "active")
+        .get();
+      const list = snapshot.docs.map((doc) => toAppointment(doc.id, doc.data()));
+      const profiles = await getDocumentsByIds<Record<string, unknown>>(db, "memberProfiles", [
+        ...new Set(list.map((a) => a.userId)),
+      ]);
+      return list.flatMap((a) => {
+        const on = profiles.get(a.userId)?.["graduatedOn"];
+        return typeof on === "string" && studyStatus(on, today) === "alumni"
+          ? [{ ...a, graduatedOn: on }]
+          : [];
+      });
     },
 
     async getRoleMap(): Promise<{ map: AppointmentRoleMap; version: number } | null> {

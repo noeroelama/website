@@ -34,16 +34,28 @@ export const DASHBOARD_COUNTERS: ReadonlyArray<{
 export function createDashboard(deps: {
   counts: Pick<FirestoreDashboardCounts, "count">;
   listAudit: (query: AuditListQuery) => Promise<{ items: AuditEvent[] }>;
+  /** Officers of the active period who graduated (B5): for whoever may end appointments. */
+  graduatedOfficers: () => Promise<GraduatedOfficer[]>;
 }) {
   return async (principal: Principal) => {
     const visible = DASHBOARD_COUNTERS.filter((c) => canInSomeScope(principal, c.permission));
-    const [values, audit] = await Promise.all([
+    const [values, audit, graduated] = await Promise.all([
       Promise.all(visible.map((c) => deps.counts.count(c.key))),
       can(principal, "audit.read") ? deps.listAudit({ limit: 10 }) : null,
+      can(principal, "appointments.edit") ? deps.graduatedOfficers() : null,
     ]);
     return {
       counters: visible.map((c, i) => ({ ...c, value: values[i] as number })),
       audit: audit ? audit.items : null,
+      graduatedOfficers: graduated,
     };
   };
+}
+
+/** One "graduated but still in office" item: the appointment stays until someone ends it. */
+export interface GraduatedOfficer {
+  readonly name: string;
+  readonly title: string;
+  readonly graduatedOn: string;
+  readonly periodId: string;
 }

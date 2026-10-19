@@ -56,6 +56,7 @@ describe("admin side panel navigation", () => {
       "Newsletter",
       "Organizations",
       "Universities",
+      "Members",
       "Users",
       "Roles",
       "Audit Log",

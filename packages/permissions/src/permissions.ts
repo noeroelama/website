@@ -40,7 +40,12 @@ export const ADMIN_PAGES = {
   appointments: { label: "Appointments (board seats → roles)" },
   members: {
     label: "Members",
-    extras: { pii: "See personal data", export: "Export", approve: "Approve members" },
+    extras: {
+      pii: "See personal data",
+      export: "Export",
+      approve: "Approve members",
+      verify: "Verify profiles, decide data changes, mark graduation",
+    },
   },
   users: { label: "Users & role assignments" },
   roles: { label: "Roles & permissions" },

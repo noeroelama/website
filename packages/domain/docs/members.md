@@ -45,6 +45,35 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 - Tests: `tests/integration/member-profile.test.ts`, `tests/security/app-guards.test.ts`,
   `tests/integration/web-registration.test.ts`.
 
+## Verification, data changes and graduation (B4, B5)
+
+- Rules: `packages/domain/src/members/verification.ts`; Firestore
+  `packages/db/src/firestore/member-profiles.ts` (`memberProfiles/{uid}` fields
+  `verificationStatus`, `verifiedBy`, `verifiedAt`, `graduatedOn`, `graduationMarkedBy`,
+  `chapterId`; requests in `profileChangeRequests/{uid}`); admin
+  `apps/admin/src/server/members.ts` and the **Members** page (`members.verify`); web
+  `apps/web/src/server/profile.ts` (`/account/profile`).
+- Guarded fields (PPIDK §63): full name, gender, date of birth, PPI country, campus. Not
+  verified yet: the member changes them at once, and each change is audited (actor `member`,
+  restricted values redacted). A verifier — `members.verify` for the member's chapter, never
+  their own data — verifies the profile. After that a change of guarded fields becomes a request
+  (one pending per profile, the verified values stay until approved; other fields apply at
+  once). Approve applies it (and moves the member's chapter when the country changed); reject
+  keeps the verified values. Every decision is audited (module `members`, not revertible).
+- Chapter isolation (§73): the queues are filtered by the viewer's chapters in the query, and
+  every action checks `members.verify` against the member's chapter read on the server
+  (`createGuardedAction` `resource` may load it). Birth date and gender show only with
+  `members.pii` for that chapter.
+- Graduation (§67): only the date is stored; `studyStatus` computes student / graduating
+  (date ahead) / alumni. The member marks or corrects it at once; cancelling is allowed to a
+  verifier (with a reason) or to the member for a mark they set themselves. The date is refused
+  before the year of entry or more than 10 years ahead. Graduation never ends an appointment:
+  graduated officers of the active period appear on the admin dashboard for `appointments.edit`.
+- Not built yet: the student card (KTM) upload on the website (the private `ktm` image preset
+  exists; the web upload route comes with the documents phase), and marking another member's
+  graduation from the admin screen (the guarded action `setGraduation` exists).
+- Tests: `tests/integration/profile-verification.test.ts`.
+
 ## Universities (A3)
 
 - Master `universities/{id}` (`packages/domain/src/members/universities.ts`,

@@ -76,7 +76,11 @@ const noContext = (): Promise<AuditContext> =>
 export function createGuardedAction<S extends z.ZodType, T>(definition: {
   permission: Permission;
   input: S;
-  resource?: (input: z.infer<S>) => ResourceContext;
+  /**
+   * The resource the permission is checked against. May read it on the server (e.g. a member's
+   * chapter), never from client-supplied scope fields.
+   */
+  resource?: (input: z.infer<S>) => ResourceContext | Promise<ResourceContext>;
   /** Sensitive actions (role changes, revert): refuse unless signed in within 15 minutes. */
   recentSignIn?: boolean;
   handler: (input: z.infer<S>, principal: Principal, audit: AuditBuilder) => Promise<T>;
@@ -108,7 +112,11 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
         };
       }
       try {
-        requirePermission(principal, definition.permission, definition.resource?.(parsed.data));
+        requirePermission(
+          principal,
+          definition.permission,
+          await definition.resource?.(parsed.data),
+        );
       } catch {
         return { ok: false, error: "forbidden" };
       }

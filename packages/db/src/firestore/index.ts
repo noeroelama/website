@@ -62,7 +62,12 @@ export {
   type AppointmentAudit,
   type FirestoreAppointmentStore,
 } from "./appointments";
-export { createFirestoreMemberProfileStore } from "./member-profiles";
+export {
+  createFirestoreMemberProfileStore,
+  type FirestoreMemberProfileStore,
+  type ProfileAudit,
+  type ProfileChangeRequest,
+} from "./member-profiles";
 export {
   createFirestoreUniversityStore,
   type FirestoreUniversityStore,

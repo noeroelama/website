@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
+import type { GuardedChanges } from "./verification";
 
 /**
  * Member profile — the personal data collected from every member/registrant.
@@ -161,13 +162,41 @@ export interface MemberProfile extends EntityMeta, Omit<MemberProfileInput, "con
   readonly userId: string;
   readonly email: string;
   readonly consent: { readonly privacyPolicyVersion: string; readonly consentedAt: Date };
+  /** Managed by the platform (not answers): the member's chapter, verification and graduation. */
+  readonly chapterId: string | null;
+  readonly verification: ProfileVerification;
+  readonly graduation: Graduation;
 }
+
+/** B4: checked by a verifier (members.verify for the member's chapter). */
+export interface ProfileVerification {
+  readonly status: "unverified" | "verified";
+  readonly verifiedBy: string | null;
+  readonly verifiedAt: Date | null;
+}
+export const UNVERIFIED: ProfileVerification = {
+  status: "unverified",
+  verifiedBy: null,
+  verifiedAt: null,
+};
+
+/** B5: only the date is stored; student / graduating / alumni is computed (PPIDK §67). */
+export interface Graduation {
+  /** YYYY-MM-DD, or null while a student. */
+  readonly on: string | null;
+  /** Who marked it: the member themself or a verifier (decides who may cancel it). */
+  readonly markedBy: string | null;
+}
+export const NOT_GRADUATED: Graduation = { on: null, markedBy: null };
 
 /**
  * Field classification. `basic` is visible with `members.read`; `restricted` needs
  * `members.pii`. Every field must be classified (compile-time checked).
  */
-export type ProfileField = Exclude<keyof MemberProfile, keyof EntityMeta | "userId" | "consent">;
+export type ProfileField = Exclude<
+  keyof MemberProfile,
+  keyof EntityMeta | "userId" | "consent" | "chapterId" | "verification" | "graduation"
+>;
 export const PROFILE_FIELD_CLASS = {
   fullName: "basic",
   ppiCountry: "basic",
@@ -254,8 +283,15 @@ export function profileAuditSnapshots(
 /** Firestore-backed in @website/db. */
 export interface MemberProfileRepository {
   findByUserId(userId: string): Promise<MemberProfile | null>;
-  /** Must fail with ConcurrencyConflictError when expectedVersion is stale. */
-  save(profile: MemberProfile, expectedVersion: number | null): Promise<MemberProfile>;
+  /**
+   * Must fail with ConcurrencyConflictError when expectedVersion is stale. `request`: guarded
+   * changes of a verified profile, stored for review (`splitOwnEdit`).
+   */
+  save(
+    profile: MemberProfile,
+    expectedVersion: number | null,
+    request?: GuardedChanges | null,
+  ): Promise<MemberProfile>;
 }
 
 /**
@@ -292,6 +328,9 @@ export function ownProfile(
       privacyPolicyVersion: PRIVACY_POLICY_VERSION,
       consentedAt: sameConsent ? current.consent.consentedAt : now,
     },
+    chapterId: current?.chapterId ?? null,
+    verification: current?.verification ?? UNVERIFIED,
+    graduation: current?.graduation ?? NOT_GRADUATED,
     id: owner.userId,
     version: (current?.version ?? 0) + 1,
     createdAt: current?.createdAt ?? now,

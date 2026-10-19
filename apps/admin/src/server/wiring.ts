@@ -18,6 +18,7 @@ import { createEventActions } from "./events";
 import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
+import { createMemberActions } from "./members";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
@@ -81,6 +82,11 @@ export const appointmentActions = lazyEnv(() => {
     now: () => new Date(),
   });
 });
+
+/** Members page: verification, data changes, graduation. */
+export const memberActions = lazyEnv(() =>
+  createMemberActions({ profiles: adminStores().memberProfiles, now: () => new Date() }),
+);
 
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
 export const imageUploads = lazyEnv(() =>
@@ -169,6 +175,8 @@ export const dashboard = lazyEnv(() =>
   createDashboard({
     counts: adminStores().dashboardCounts,
     listAudit: (query) => adminStores().auditLog.list(query),
+    graduatedOfficers: () =>
+      adminStores().appointments.graduatedOfficers(new Date().toISOString().slice(0, 10)),
   }),
 );
 
@@ -192,6 +200,11 @@ export const adminReads = {
   listAppointments: (periodId: string) => adminStores().appointments.listForPeriod(periodId),
   getAppointmentRoleMap: () => adminStores().appointments.getRoleMap(),
   listPendingUniversities: () => adminStores().universities.listPending(),
+  getMemberProfile: (uid: string) => adminStores().memberProfiles.findByUserId(uid),
+  listToVerify: (chapterIds: "all" | string[]) =>
+    adminStores().memberProfiles.listToVerify(chapterIds),
+  listChangeRequests: (chapterIds: "all" | string[]) =>
+    adminStores().memberProfiles.listChangeRequests(chapterIds),
   listApprovedUniversities: (countryCode: string) =>
     adminStores().universities.listApproved(countryCode),
   listCampaigns: () => adminStores().campaigns.listForAdmin(),

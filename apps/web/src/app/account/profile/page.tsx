@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { safeReturnUrl, signInUrl } from "@website/auth";
-import { PRIVACY_POLICY_VERSION, type MemberProfile } from "@website/domain/members";
+import { PRIVACY_POLICY_VERSION, studyStatus, type MemberProfile } from "@website/domain/members";
 import { AppShell } from "@website/ui";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { activeChapters } from "@/server/chapters";
 import { getAppUrls } from "@/server/env";
 import { ownProfile } from "@/server/profile-wiring";
 import { getSignedInUser } from "@/server/session";
+import { GraduationForm } from "./graduation-form";
 import { ProfileForm, type ProfileFormValues } from "./profile-form";
 
 export const metadata: Metadata = { title: "Member profile", robots: { index: false } };
@@ -57,10 +58,15 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
   return (
     <AppShell title={t.title}>
       <p>{t.intro}</p>
+      {profile && (
+        <p>{profile.verification.status === "verified" ? t.statusVerified : t.statusUnverified}</p>
+      )}
       {!user.emailVerified ? (
         <p role="alert">{t.verifyFirst}</p>
       ) : (
         <ProfileForm
+          // Remount after a graduation change so the form sends the new version.
+          key={profile?.version ?? 0}
           t={t}
           initial={toFormValues(profile)}
           version={profile?.version ?? null}
@@ -68,6 +74,21 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
           chapters={chapters.map((c) => ({ countryCode: c.countryCode, name: c.name }))}
           next={next}
         />
+      )}
+      {profile && (
+        <>
+          <h2>{t.graduation}</h2>
+          <p>
+            {
+              {
+                student: t.graduationStudent,
+                graduating: `${t.graduationGraduating} ${profile.graduation.on}.`,
+                alumni: `${t.graduationAlumni} ${profile.graduation.on}.`,
+              }[studyStatus(profile.graduation.on, new Date().toISOString().slice(0, 10))]
+            }
+          </p>
+          <GraduationForm t={t} version={profile.version} graduatedOn={profile.graduation.on} />
+        </>
       )}
     </AppShell>
   );

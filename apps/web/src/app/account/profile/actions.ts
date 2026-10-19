@@ -22,3 +22,8 @@ export async function campusChoicesAction(countryCode: unknown) {
 export async function proposeCampusAction(input: unknown) {
   return universityPicker().propose(await getSignedInUser(), input);
 }
+
+/** Mark, correct or cancel (graduatedOn null) the member's own graduation (B5). */
+export async function setGraduationAction(input: unknown) {
+  return ownProfile().setGraduation(await getSignedInUser(), input);
+}
