@@ -207,6 +207,11 @@ file (they live in the cPanel app screens and the password manager).
       DNS + AutoSSL for the main domain, `admin.`, `shop.` and `api.` (later `verif.ppiasiania.id`).
 - [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, see
       `packages/auth/docs/authentication.md` → Account lifecycle).
+- [ ] People and the organisation imported from PPIDK once (block J): freeze the PPIDK people
+      screens, export the tables as TSV, set "Roles from appointments", then
+      `infrastructure/scripts/import-ppidk-people.mjs --dir <folder>` (dry run, read
+      `import-report.json`, then `--apply`; see `packages/domain/docs/members.md` → Import from
+      PPIDK). Spot-check 10 people; re-grant the manual roles the report lists.
 - [ ] Universities imported once the PPI chapters are active
       (`infrastructure/scripts/import-ror-universities.mjs`, dry run first; see
       `packages/domain/docs/members.md` → Universities). Run again when chapters are added.

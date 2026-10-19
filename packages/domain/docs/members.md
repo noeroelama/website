@@ -74,6 +74,25 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
   graduation from the admin screen (the guarded action `setGraduation` exists).
 - Tests: `tests/integration/profile-verification.test.ts`.
 
+## Import from PPIDK (block J)
+
+- Mapping: `packages/db/src/ppidk/people.ts` (pure, tested in `tests/unit/ppidk-import.test.ts`);
+  script: `infrastructure/scripts/import-ppidk-people.mjs` (standard library only for the TSV;
+  Firebase Admin; dry run unless `--apply`; writes `import-report.json` with counts and every
+  skipped row). Ids come from PPIDK (`ppidk-<table>-<id>`; ROR campuses keep `{rorKey}_{country}`),
+  so running it again writes the same documents.
+- Accounts: matched by e-mail to an existing Firebase account (its roles are kept and the
+  imported ones added), otherwise created as `ppidk-<id>` without a password — people sign in
+  with Google or reset the password, and register passkeys again.
+- Profiles are imported as answers but count as incomplete (the consent is not the current
+  policy, and PPIDK did not ask e.g. the emergency contact): each member completes and agrees on
+  the first visit (the profile gate). Verified PPIDK profiles stay verified and get the `member`
+  role.
+- Active appointments of the active period get their roles from `settings/appointmentRoles`
+  (set it before importing). Manual PPIDK role assignments are NOT imported (roles are data
+  here): the report lists them for the Users page. Chapters staff already added are reused by
+  country; the import refuses to run when periods were already created here.
+
 ## Universities (A3)
 
 - Master `universities/{id}` (`packages/domain/src/members/universities.ts`,
