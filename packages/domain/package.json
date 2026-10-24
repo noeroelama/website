@@ -15,7 +15,8 @@
     "./messaging": "./src/messaging/index.ts",
     "./gallery": "./src/gallery/index.ts",
     "./forms": "./src/forms/index.ts",
-    "./recruitment": "./src/recruitment/index.ts"
+    "./recruitment": "./src/recruitment/index.ts",
+    "./documents": "./src/documents/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

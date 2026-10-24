@@ -65,3 +65,11 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 - `GuardOptions.signedWebhookPaths` — the only paths that skip the origin check (a path matches
   itself and its sub-paths, never look-alikes such as `/webhooks/zoomer`). See
   `apps/admin/docs/cron.md`.
+
+## Field encryption and file hashes
+
+- `encryptField(bytes, key)` / `decryptField(text, key)` — AES-256-GCM, random 12-byte IV,
+  output `v1:<iv>:<tag>:<data>` (base64url). The key is `FIELD_ENCRYPTION_KEY` (32 bytes,
+  base64) of the app that uses it. Used for data only its owner may see even with database or
+  bucket access (personal signatures, step 4.6). Losing the key makes the values unreadable.
+- `sha256Hex(bytes)` — stored with archived files (letters) and re-checked when served.

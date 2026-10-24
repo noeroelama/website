@@ -26,6 +26,7 @@ export {
   type RevertOutcome,
 } from "./audit";
 export { getDocumentsByIds } from "./batch";
+export { nextNumbers } from "./counters";
 export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";

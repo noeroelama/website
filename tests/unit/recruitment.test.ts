@@ -11,7 +11,6 @@ import {
   SlotPlanSchema,
   formFilePath,
   isFinal,
-  isPdf,
   isRecruitmentOpen,
   nextAction,
   offerExpired,
@@ -147,9 +146,6 @@ describe("applying (C3 steps 1-2)", () => {
     expect(formFilePath("form1", "uid9", now, "abcdef12-0000")).toBe(
       `forms/form1/uid9_${now.getTime()}_abcdef12.pdf`,
     );
-    expect(isPdf(new TextEncoder().encode("%PDF-1.7\n"))).toBe(true);
-    expect(isPdf(new TextEncoder().encode("<html>"))).toBe(false);
-    expect(isPdf(new TextEncoder().encode("%PDF"))).toBe(false);
   });
 
   it("shows ONE next action per state", () => {

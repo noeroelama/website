@@ -4,13 +4,12 @@ import type { ApplyOutcome, FirestoreRecruitmentWebStore } from "@website/db/fir
 import type { ApplicationStatus } from "@website/domain/recruitment";
 import {
   formFilePath,
-  isPdf,
   MAX_PORTFOLIO_BYTES,
   pactPath,
   portfolioPath,
   type Recruitment,
 } from "@website/domain/recruitment";
-import type { ImageStorage } from "@website/domain/shared";
+import { isPdf, type ImageStorage } from "@website/domain/shared";
 import { jsonError, readBodyLimited } from "@website/security";
 import { safeId, safeText } from "@website/security/validation";
 

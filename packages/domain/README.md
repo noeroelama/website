@@ -4,7 +4,7 @@ Business rules and data shapes, free of any framework.
 
 ## Responsibilities
 
-- One module per area: `content`, `events`, `organizations`, `members`, `newsletter`, `forms`, `recruitment`, `shop`, `shared`
+- One module per area: `content`, `events`, `organizations`, `members`, `newsletter`, `forms`, `recruitment`, `documents`, `shop`, `shared`
 - Pure rules (e.g. `isPubliclyVisible`, `isRegistrationOpen`, `orderTotal`)
 - Validation schemas (Zod) and repository _ports_ (interfaces) implemented in `@website/db`
 
@@ -19,8 +19,9 @@ Business rules and data shapes, free of any framework.
 | `@website/domain/newsletter`    | Subscribers, double opt-in rule                              |
 | `@website/domain/forms`         | Versioned form questions, answer schema built per version    |
 | `@website/domain/recruitment`   | Oprec: application statuses, seats, choices, next action     |
+| `@website/domain/documents`     | Letters: number patterns, desks, verification codes          |
 | `@website/domain/shop`          | Money, orders, payment provider port                         |
-| `@website/domain/shared`        | Entity metadata, clock, results                              |
+| `@website/domain/shared`        | Entity metadata, clock, results, time zones, file checks     |
 
 ## Rules
 

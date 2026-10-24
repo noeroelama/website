@@ -43,5 +43,6 @@ export function isValidSlug(slug: string): boolean {
   return slug.length > 0 && slug.length <= 120 && SLUG.test(slug);
 }
 
+export * from "./files";
 export * from "./images";
 export * from "./time";

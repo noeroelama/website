@@ -232,15 +232,6 @@ export function pactPath(recruitmentId: string, userId: string, now: Date, uuid:
   return `recruitment/${recruitmentId}/${userId}/pact_${now.getTime()}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 }
 
-/** `%PDF-` at the start: the only format of portfolios and file answers. */
-export const isPdf = (bytes: Uint8Array) =>
-  bytes.length > 4 &&
-  bytes[0] === 0x25 &&
-  bytes[1] === 0x50 &&
-  bytes[2] === 0x44 &&
-  bytes[3] === 0x46 &&
-  bytes[4] === 0x2d;
-
 export const revisionDocId = (applicationId: string, round: number) => `${applicationId}_${round}`;
 
 /** One revision round (`applicationRevisions/{applicationId}_{round}`); never overwritten. */
