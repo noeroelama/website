@@ -10,7 +10,10 @@ export const instant = false;
 export default async function AdminLetterTypesPage() {
   const viewer = await requireAdminViewer("/letters/types", "letter_types.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  const types = await adminReads.listLetterTypes();
+  const [types, settings] = await Promise.all([
+    adminReads.listLetterTypes(),
+    adminReads.getLetterSettings(),
+  ]);
   return (
     <LetterTypesPage
       initial={types.map((t) => ({
@@ -27,6 +30,8 @@ export default async function AdminLetterTypesPage() {
         active: t.active,
         sort: t.sort,
       }))}
+      letterhead={settings.letterhead}
+      letterheadVersion={settings.version}
       canEdit={canInSomeScope(viewer.principal, "letter_types.edit")}
     />
   );

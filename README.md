@@ -75,6 +75,7 @@ Details: [docs/architecture.md](docs/architecture.md).
 | [`packages/contracts`](packages/contracts/README.md)         | Public API request/response schemas                     |
 | [`packages/apikeys`](packages/apikeys/README.md)             | API keys, scopes and rate limiting for the gateway      |
 | [`packages/email`](packages/email/README.md)                 | Email sending (Resend)                                  |
+| [`packages/pdf`](packages/pdf/README.md)                     | PDF and QR rendering for letters and certificates       |
 | [`packages/ui`](packages/ui/README.md)                       | Shared React components                                 |
 | [`packages/observability`](packages/observability/README.md) | Structured logging and security events                  |
 | [`packages/security`](packages/security/README.md)           | Rate limiting, origin checks, sanitization, safe errors |

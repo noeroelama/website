@@ -8,12 +8,14 @@ const LONG_CACHE = "public, max-age=31536000, immutable";
 /**
  * Firebase Storage for images (DEC-12). Public files get a download-token URL that browsers and
  * CDNs may cache for a year (every upload has a new name); private files (KTM, signatures) get
- * no URL — read them through `signedReadUrl` (15 minutes).
+ * no URL — read them through `signedReadUrl` (15 minutes) or, on the server, `read`.
  */
 export function createFirebaseImageStorage(app: App, bucketName: string) {
   const bucket = getStorage(app).bucket(bucketName);
   const storage: ImageStorage & {
     signedReadUrl(path: string, minutes?: number): Promise<string>;
+    /** The bytes of a stored file (letter archives, letterhead art), null when missing. */
+    read(path: string): Promise<Uint8Array | null>;
   } = {
     async save(path, bytes, { visibility, contentType = "image/webp" }) {
       const token = visibility === "public" ? randomUUID() : null;
@@ -30,6 +32,13 @@ export function createFirebaseImageStorage(app: App, bucketName: string) {
           ? `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`
           : null,
       };
+    },
+    async read(path) {
+      const file = bucket.file(path);
+      const [exists] = await file.exists();
+      if (!exists) return null;
+      const [bytes] = await file.download();
+      return new Uint8Array(bytes);
     },
     async signedReadUrl(path, minutes = 15) {
       const [url] = await bucket

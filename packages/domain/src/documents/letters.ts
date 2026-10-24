@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
+import type { Letterhead } from "./letterhead";
 import { checkNumberPattern } from "./numbering";
 
 /**
@@ -117,7 +118,21 @@ export interface Letter extends LetterInput, EntityMeta {
   /** sha256 of `letterCanonical` at issue; a mismatch means the stored text was changed. */
   readonly contentDigest: string | null;
   readonly signers: readonly SignerSnapshot[];
+  /** The letterhead as it was at issue (null until issued). */
+  readonly letterhead: Letterhead | null;
+  /** The issued PDF in private Storage, kept byte for byte (null until rendered). */
+  readonly archive: LetterArchive | null;
 }
+
+export interface LetterArchive {
+  readonly path: string;
+  readonly sha256: string;
+  readonly size: number;
+}
+
+/** Private Storage path of a letter's archived PDF (a fresh name per render: never overwritten). */
+export const letterArchivePath = (letter: Pick<Letter, "id" | "periodId">, uuid: string) =>
+  `letters/${letter.periodId}/${letter.id}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 
 const refuse = (message: string): never => {
   throw new RuleViolationError(message);

@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import type { Firestore, Query, Transaction } from "firebase-admin/firestore";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import {
+  DEFAULT_LETTERHEAD,
   deskLabel,
   formatNumber,
   isEditable,
@@ -11,7 +12,9 @@ import {
   type Desk,
   type DeskSignature,
   type Letter,
+  type LetterArchive,
   type LetterInput,
+  type Letterhead,
   type LetterStatus,
   type LetterType,
   type LetterTypeInput,
@@ -105,6 +108,41 @@ export function createFirestoreLetterTypeStore(db: Firestore) {
 
 export type FirestoreLetterTypeStore = ReturnType<typeof createFirestoreLetterTypeStore>;
 
+/** `settings/letters`: the letterhead (+ version), edited on the Letter types page. */
+export function createFirestoreLetterSettingsStore(db: Firestore) {
+  const ref = db.collection("settings").doc("letters");
+  const audit = createFirestoreAuditWriter(db);
+  const read = (data: Record<string, unknown> | undefined) => {
+    if (!data) return { letterhead: DEFAULT_LETTERHEAD, version: null };
+    const { version, ...letterhead } = data;
+    return { letterhead: letterhead as Letterhead, version: version as number };
+  };
+  return {
+    async get(): Promise<{ letterhead: Letterhead; version: number | null }> {
+      return read((await ref.get()).data());
+    },
+    save(
+      letterhead: Letterhead,
+      expectedVersion: number | null,
+      auditFor: (before: Snapshot, after: Snapshot, version: number) => AuditEvent,
+    ): Promise<number> {
+      return db.runTransaction(async (tx) => {
+        const current = read((await tx.get(ref)).data());
+        if (current.version !== expectedVersion) {
+          throw new ConcurrencyConflictError("letter settings changed");
+        }
+        const version = (current.version ?? 0) + 1;
+        const log = await audit.begin(tx);
+        tx.set(ref, { ...letterhead, version });
+        log.append(auditFor({ ...current.letterhead }, { ...letterhead }, version));
+        return version;
+      });
+    },
+  };
+}
+
+export type FirestoreLetterSettingsStore = ReturnType<typeof createFirestoreLetterSettingsStore>;
+
 const desk = (value: unknown): DeskSignature | null => {
   const data = value as { uid: string; at: unknown } | null | undefined;
   return data ? { uid: data.uid, at: toDate(data.at) as Date } : null;
@@ -141,6 +179,8 @@ function toLetter(id: string, data: Record<string, unknown>): Letter {
       ...(s as unknown as SignerSnapshot),
       at: toDate(s["at"]) as Date,
     })),
+    letterhead: data["letterhead"] as Letterhead | null,
+    archive: data["archive"] as LetterArchive | null,
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -196,6 +236,8 @@ const stored = (l: LetterFields) => ({
   cancelReason: l.cancelReason,
   contentDigest: l.contentDigest,
   signers: l.signers,
+  letterhead: l.letterhead,
+  archive: l.archive,
 });
 
 export type LetterAudit = (
@@ -324,6 +366,8 @@ export function createFirestoreLetterStore(
             cancelReason: null,
             contentDigest: null,
             signers: [],
+            letterhead: null,
+            archive: null,
             deletedAt: null,
           };
         },
@@ -401,7 +445,14 @@ export function createFirestoreLetterStore(
      * approved → issued: number, verification code, frozen signers and digest, all in ONE
      * transaction (a failure leaves no number used and no audit entry).
      */
-    issue(id: string, version: number, auditFor: LetterAudit, now: Date): Promise<Letter> {
+    issue(
+      id: string,
+      version: number,
+      /** `settings/letters` as it is now: frozen on the letter. */
+      letterhead: Letterhead,
+      auditFor: LetterAudit,
+      now: Date,
+    ): Promise<Letter> {
       const ref = store.docs.doc(safeId.parse(id));
       return db.runTransaction(async (tx) => {
         const snapshot = await tx.get(ref);
@@ -458,6 +509,7 @@ export function createFirestoreLetterStore(
           verificationCode: code,
           issuedAt: now,
           signers,
+          letterhead,
           version: letter.version + 1,
           updatedAt: now,
         };
@@ -475,6 +527,21 @@ export function createFirestoreLetterStore(
         tx.create(codes.doc(code), { kind: "letter", letterId: ref.id, periodId: letter.periodId });
         log.append(auditFor(letterSnapshot(letter), letterSnapshot(next), letter, next));
         return next;
+      });
+    },
+
+    /**
+     * Records the archived PDF once (later calls keep the first): the archive is the letter as it
+     * was issued, never replaced. Not a user change, so no new version and no audit entry.
+     */
+    setArchive(id: string, archive: LetterArchive): Promise<LetterArchive> {
+      const ref = store.docs.doc(safeId.parse(id));
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        const current = snapshot.get("archive") as LetterArchive | null | undefined;
+        if (current) return current;
+        tx.update(ref, { archive });
+        return archive;
       });
     },
   };

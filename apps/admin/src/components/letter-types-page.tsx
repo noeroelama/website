@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { formatNumber, NUMBER_TOKENS } from "@website/domain/documents";
-import { saveLetterTypeAction } from "@/app/(panel)/letters/actions";
+import {
+  formatNumber,
+  NUMBER_TOKENS,
+  type Letterhead,
+  type LetterheadImage,
+} from "@website/domain/documents";
+import { saveLetterheadAction, saveLetterTypeAction } from "@/app/(panel)/letters/actions";
+import { useImageUpload } from "@/components/image-upload";
+import { PhotoDrop } from "@/components/ui/photo-drop";
 import { actionMessage } from "@/components/action-message";
 import { Button } from "@/components/ui/button";
 import { type Column } from "@/components/ui/data-table";
@@ -66,18 +73,171 @@ function example(draft: Draft): string {
   }
 }
 
-export function LetterTypesPage(props: { initial: LetterTypeItem[]; canEdit: boolean }) {
+interface Props {
+  initial: LetterTypeItem[];
+  letterhead: Letterhead;
+  letterheadVersion: number | null;
+  canEdit: boolean;
+}
+
+export function LetterTypesPage(props: Props) {
   const pathname = usePathname();
   return <LetterTypesList key={pathname} {...props} />;
 }
 
-function LetterTypesList({
-  initial: items,
-  canEdit,
+const ART: Array<{ key: "header" | "footer" | "watermark" | "emblem"; label: string }> = [
+  { key: "header", label: "Letterhead image (full width)" },
+  { key: "footer", label: "Footer image (full width)" },
+  { key: "watermark", label: "Watermark (full page)" },
+  { key: "emblem", label: "Emblem (text letterhead)" },
+];
+
+/** Letterhead: text, four images (uploaded as `letterhead`), watermark strength, initials box. */
+function LetterheadForm({
+  initial,
+  version,
+  onDone,
+  show,
 }: {
-  initial: LetterTypeItem[];
-  canEdit: boolean;
+  initial: Letterhead;
+  version: number | null;
+  onDone: () => void;
+  show: (text: string) => void;
 }) {
+  const router = useRouter();
+  const [draft, setDraft] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
+  const uploads = useImageUpload("letterhead");
+
+  const pick = async (key: (typeof ART)[number]["key"], file: File) => {
+    const image = await uploads.upload(file);
+    if (!image?.url) {
+      show(uploads.error ?? "Upload failed. Try again.");
+      return;
+    }
+    const art: LetterheadImage = {
+      path: image.path,
+      url: image.url,
+      width: image.width,
+      height: image.height,
+    };
+    setDraft((d) => ({ ...d, [key]: art }));
+  };
+
+  const save = async () => {
+    setBusy(true);
+    const result = await saveLetterheadAction({ letterhead: draft, version });
+    setBusy(false);
+    if (!result.ok) {
+      setFieldErrors(result.fields ?? {});
+      show(actionMessage(result));
+      return;
+    }
+    show("Letterhead saved: it applies to letters issued from now on");
+    router.refresh();
+    onDone();
+  };
+
+  return (
+    <div className="admin-dark-form">
+      <div className="admin-form-grid">
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="kop-parent">
+            Parent organisation *
+          </label>
+          <input
+            id="kop-parent"
+            className="admin-input"
+            value={draft.parentName}
+            onChange={(e) => setDraft({ ...draft, parentName: e.target.value })}
+          />
+        </div>
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="kop-main">
+            Name *
+          </label>
+          <input
+            id="kop-main"
+            className="admin-input"
+            value={draft.mainName}
+            onChange={(e) => setDraft({ ...draft, mainName: e.target.value })}
+          />
+        </div>
+        <div className="admin-field admin-form-grid__full">
+          <label className="admin-field__label" htmlFor="kop-address">
+            Address line
+          </label>
+          <input
+            id="kop-address"
+            className="admin-input"
+            value={draft.address}
+            onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+          />
+          <FieldError
+            id="kop-letterhead-error"
+            message={fieldErrors["letterhead"]}
+            hint="The text letterhead is used while there is no letterhead image."
+          />
+        </div>
+        {ART.map(({ key, label }) => (
+          <div key={key} className="admin-field">
+            <span className="admin-field__label">{label}</span>
+            <PhotoDrop
+              value={draft[key]?.url ?? null}
+              label={label}
+              onFile={(file) => void pick(key, file)}
+              onClear={() => setDraft({ ...draft, [key]: null })}
+            />
+          </div>
+        ))}
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="kop-opacity">
+            Watermark strength (%)
+          </label>
+          <input
+            id="kop-opacity"
+            className="admin-input"
+            type="number"
+            min={2}
+            max={40}
+            value={draft.watermarkOpacity}
+            onChange={(e) => setDraft({ ...draft, watermarkOpacity: Number(e.target.value) })}
+          />
+        </div>
+        <div className="admin-field">
+          <label className="admin-check-label">
+            <input
+              type="checkbox"
+              checked={draft.initialsBox}
+              onChange={(e) => setDraft({ ...draft, initialsBox: e.target.checked })}
+            />
+            &ldquo;Paraf&rdquo; box above the footer
+          </label>
+        </div>
+      </div>
+      <div className="admin-form-actions admin-form-grid__full">
+        <Button variant="outline" size="sm" icon="chevronLeft" onClick={onDone}>
+          Back
+        </Button>
+        <div className="admin-form-actions__right">
+          <Button
+            variant="outline"
+            size="sm"
+            icon="cloud"
+            disabled={busy || uploads.busy}
+            onClick={() => void save()}
+          >
+            Save letterhead
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdit }: Props) {
+  const [editingLetterhead, setEditingLetterhead] = useState(false);
   const toast = useToastMessage();
   const router = useRouter();
   const table = useListTable(items, (t: LetterTypeItem) => t.sort);
@@ -204,13 +364,30 @@ function LetterTypesList({
             Letters
           </Button>
           {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => open()}>
-              Add type
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="image"
+                onClick={() => setEditingLetterhead(true)}
+              >
+                Letterhead
+              </Button>
+              <Button variant="outline" size="sm" icon="plus" onClick={() => open()}>
+                Add type
+              </Button>
+            </>
           ) : null}
         </div>
       </div>
-      {draft ? (
+      {editingLetterhead ? (
+        <LetterheadForm
+          initial={letterhead}
+          version={letterheadVersion}
+          onDone={() => setEditingLetterhead(false)}
+          show={toast.show}
+        />
+      ) : draft ? (
         <div className="admin-dark-form">
           <div className="admin-form-grid">
             <div className="admin-field">

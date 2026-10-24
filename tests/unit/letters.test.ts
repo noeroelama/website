@@ -58,6 +58,8 @@ const letter = (extra: Partial<Letter> = {}): Letter => ({
   cancelReason: null,
   contentDigest: null,
   signers: [],
+  letterhead: null,
+  archive: null,
   ...extra,
 });
 

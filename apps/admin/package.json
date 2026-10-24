@@ -18,6 +18,7 @@
     "@website/domain": "workspace:*",
     "@website/email": "workspace:*",
     "@website/observability": "workspace:*",
+    "@website/pdf": "workspace:*",
     "@website/permissions": "workspace:*",
     "@website/security": "workspace:*",
     "@website/ui": "workspace:*",

@@ -54,6 +54,8 @@ export const IMAGE_PRESETS = {
   cabinet: { folder: "structure/photos", maxPx: 1024, visibility: "public" },
   ktm: { folder: "members/ktm", maxPx: 2400, visibility: "private" },
   signature: { folder: "members/signatures", maxPx: 1200, visibility: "private" },
+  /** Letterhead, footer, watermark and emblem of letters (A4 width at about 290 dpi). */
+  letterhead: { folder: "letters/letterhead", maxPx: 2400, visibility: "public" },
 } as const satisfies Record<string, ImagePreset>;
 export type ImagePresetName = keyof typeof IMAGE_PRESETS;
 

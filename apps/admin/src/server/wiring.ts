@@ -4,7 +4,9 @@ import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
 import type { AuditListQuery, FirestoreFormStore, LetterListQuery } from "@website/db/firestore";
+import type { Letter } from "@website/domain/documents";
 import { orgUnitPath } from "@website/domain/organizations";
+import sharp from "sharp";
 import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newsletter";
 import { logSecurityEvent } from "@website/observability";
 import { keyedHash, signLink } from "@website/security";
@@ -24,6 +26,7 @@ import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
 import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
+import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
 import { createMemberActions } from "./members";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
@@ -87,14 +90,70 @@ export const formActions = lazyEnv(() =>
   }),
 );
 
-/** Letters page (D1, D2): drafts, desks, issue; Letter types page. */
+/** Letter PDFs (D9): rendering and the private archive. */
+export const letterPdf = lazyEnv(() => {
+  const env = getAdminEnv();
+  return createLetterPdf({
+    storage: imageStorage(),
+    letters: adminStores().letters,
+    toPng: async (bytes) => new Uint8Array(await sharp(bytes).png().toBuffer()),
+    verification: { host: env.VERIFICATION_HOST ?? null, webUrl: env.WEB_URL ?? null },
+    uuid: randomUUID,
+  });
+});
+
+/** What rendering a letter needs: its type, unit, period, the desks' names, the letterhead. */
+export async function letterContext(
+  letter: Letter,
+): Promise<{ context: LetterContext; period: string | null } | null> {
+  const stores = adminStores();
+  const uids = [letter.secretary?.uid, letter.coordinator?.uid].filter((u): u is string => !!u);
+  const [type, unit, period, people, settings] = await Promise.all([
+    stores.letterTypes.get(letter.typeId),
+    stores.orgUnits.get(letter.orgUnitId),
+    stores.periods.get(letter.periodId),
+    stores.accounts.getMany(uids),
+    stores.letterSettings.get(),
+  ]);
+  if (!type) return null;
+  const names = new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
+  return {
+    context: { type, unitName: unit?.name ?? "", names, letterhead: settings.letterhead },
+    period: period?.name ?? null,
+  };
+}
+
+/** GET /api/letters/<id>/pdf (src/app/api/letters/[id]/pdf/route.ts). */
+export const letterFile = lazyEnv(() =>
+  createLetterFileRoute({
+    getLetter: (id) => adminStores().letters.get(id),
+    load: letterContext,
+    pdf: letterPdf(),
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+  }),
+);
+
+/** Letters page (D1, D2): drafts, desks, issue; Letter types page and letterhead. */
 export const letterActions = lazyEnv(() =>
   createLetterActions({
     letters: adminStores().letters,
     types: adminStores().letterTypes,
+    settings: adminStores().letterSettings,
     unitPath: async (id) => {
       const unit = await adminStores().orgUnits.get(id);
       return unit ? orgUnitPath(unit) : null;
+    },
+    // The archive is made right after issue; if that fails the preview route makes it later.
+    afterIssue: async (letter) => {
+      try {
+        const loaded = await letterContext(letter);
+        if (loaded) await letterPdf().archive(letter, loaded.context, loaded.period);
+      } catch (error) {
+        adminStores().logger.error("letter archive failed", {
+          letterId: letter.id,
+          error: String(error),
+        });
+      }
     },
     now: () => new Date(),
   }),
@@ -285,6 +344,7 @@ export const adminReads = {
   listLetters: (query: LetterListQuery) => adminStores().letters.list(query),
   getLetter: (id: string) => adminStores().letters.get(id),
   listLetterTypes: () => adminStores().letterTypes.list(),
+  getLetterSettings: () => adminStores().letterSettings.get(),
   listRecruitments: () => adminStores().recruitments.listForAdmin(),
   getRecruitment: (id: string) => adminStores().recruitments.get(id),
   listApplications: (recruitmentId: string) =>

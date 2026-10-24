@@ -47,6 +47,7 @@ Internal Server Actions and Route Handlers in web/admin/shop are same-origin onl
 | `email`         | `EmailSender` port, Resend adapter, in-memory adapter                                                              | —                                                             |
 | `observability` | Structured logging with redaction, request IDs, security events                                                    | —                                                             |
 | `ui`            | Presentational React components (no data access, no auth decisions)                                                | —                                                             |
+| `pdf`           | PDF and QR rendering for documents (letters, certificates) with `pdf-lib` and `qrcode` (DEC-6); server-side only   | `domain` (documents: QR rules)                                |
 | `auth`          | Identity port, session cookie policy, Firebase Admin adapter                                                       | `config`                                                      |
 | `db`            | Database access per role; Firestore confined to `src/firestore/`                                                   | `domain`, `config`, `apikeys`, `auth`, `permissions`, `audit` |
 
@@ -67,12 +68,13 @@ Approved matrix:
 
 ```text
 web       → auth, config, contracts, db, domain(content|events|gallery|organizations|newsletter|members|messaging|forms|recruitment|shared), email, observability, permissions, security, ui
-admin     → audit, auth, config, db, domain, email, observability, permissions, security, ui
+admin     → audit, auth, config, db, domain, email, observability, pdf, permissions, security, ui
 shop      → auth, config, db, domain(shop|shared), email, observability, permissions, security, ui
 gateway   → apikeys, config, contracts, db, domain(content|events|organizations|shared), observability, security
 auth      → config, security
 db        → apikeys, audit, auth, config, domain, permissions, security
 domain    → security(validation)
+pdf       → domain(documents)
 contracts → security(validation)
 others    → (none)
 ```

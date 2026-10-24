@@ -558,6 +558,14 @@ function LettersList(props: Props) {
               Back
             </Button>
             <div className="admin-form-actions__right">
+              <Button
+                variant="outline"
+                size="sm"
+                icon="download"
+                onClick={() => window.open(`/api/letters/${current.id}/pdf`, "_blank", "noopener")}
+              >
+                {current.status === "issued" ? "PDF (archive)" : "Preview PDF"}
+              </Button>
               {actions.map((key) =>
                 key === "edit" ? (
                   <Button

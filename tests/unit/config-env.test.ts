@@ -130,3 +130,16 @@ describe("messaging env (MESSAGING_MODE, MESSAGING_TEST_RECIPIENTS)", () => {
     expect(messagingEnv.safeParse({ MESSAGING_MODE: "send-everything" }).success).toBe(false);
   });
 });
+
+describe("documents env (VERIFICATION_HOST)", () => {
+  it("takes a bare host name (lower-cased) or nothing", async () => {
+    const { documentsEnv } = await import("@website/config/env");
+    expect(documentsEnv.parse({})).toEqual({});
+    expect(documentsEnv.parse({ VERIFICATION_HOST: " Verif.PPIAsiania.id " })).toEqual({
+      VERIFICATION_HOST: "verif.ppiasiania.id",
+    });
+    for (const value of ["https://verif.ppiasiania.id", "verif.ppiasiania.id/x", "localhost"]) {
+      expect(documentsEnv.safeParse({ VERIFICATION_HOST: value }).success, value).toBe(false);
+    }
+  });
+});

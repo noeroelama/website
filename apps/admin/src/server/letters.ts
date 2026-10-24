@@ -2,12 +2,14 @@ import "server-only";
 import { z } from "zod";
 import type { AuditAction } from "@website/audit";
 import type {
+  FirestoreLetterSettingsStore,
   FirestoreLetterStore,
   FirestoreLetterTypeStore,
   LetterAudit,
 } from "@website/db/firestore";
 import {
   cancelLetter,
+  LetterheadSchema,
   LetterInputSchema,
   LetterTypeInputSchema,
   passReview,
@@ -30,6 +32,10 @@ export interface LetterDeps {
     "get" | "create" | "update" | "transition" | "remove" | "issue"
   >;
   readonly types: Pick<FirestoreLetterTypeStore, "save">;
+  readonly settings: Pick<FirestoreLetterSettingsStore, "get" | "save">;
+  /** After the issue transaction: renders and archives the PDF (errors are logged there; the
+   *  preview route archives a letter that has none yet). */
+  readonly afterIssue: (letter: Letter) => Promise<void>;
   /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   readonly now: () => Date;
@@ -159,12 +165,15 @@ export function createLetterActions(deps: LetterDeps) {
     input: Ref,
     resource: scopeOf,
     handler: async ({ id, version }, _principal, audit) => {
+      const { letterhead } = await deps.settings.get();
       const issued = await deps.letters.issue(
         id,
         version,
+        letterhead,
         letterAudit(audit, "PUBLISH"),
         deps.now(),
       );
+      await deps.afterIssue(issued);
       return {
         version: issued.version,
         numberFormatted: issued.numberFormatted,
@@ -200,6 +209,29 @@ export function createLetterActions(deps: LetterDeps) {
     },
   });
 
+  const saveLetterhead = createGuardedAction({
+    permission: "letter_types.edit",
+    input: z
+      .object({ letterhead: LetterheadSchema, version: z.number().int().min(1).nullable() })
+      .strict(),
+    handler: async ({ letterhead, version }, _principal, audit) => ({
+      version: await deps.settings.save(letterhead, version, (before, after, next) =>
+        audit({
+          module: "letter_types",
+          action: "UPDATE",
+          resourceType: "letterhead",
+          resourceId: "letters",
+          title: "Letterhead",
+          before,
+          after,
+          versionBefore: version,
+          versionAfter: next,
+          revertible: false,
+        }),
+      ),
+    }),
+  });
+
   const Note = Ref.extend({ note: safeText(1000, { multiline: true, allowEmpty: true }) }).strict();
   const Reason = Ref.extend({ reason: safeText(300, { allowEmpty: true }) }).strict();
 
@@ -220,5 +252,6 @@ export function createLetterActions(deps: LetterDeps) {
       cancelLetter(letter, input["reason"] as string, now),
     ),
     saveType,
+    saveLetterhead,
   };
 }

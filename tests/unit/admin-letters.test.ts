@@ -40,6 +40,8 @@ const letter: Letter = {
   cancelReason: null,
   contentDigest: null,
   signers: [],
+  letterhead: null,
+  archive: null,
 };
 const type = {
   name: "Surat Keputusan",

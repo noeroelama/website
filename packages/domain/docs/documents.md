@@ -65,8 +65,36 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
   Deactivated, never deleted. Suggested roles: Secretary General (all desks but the
   Coordinator's, letter types), Coordinator (`sign_coordinator`, `cancel`), Director and
   Directorate secretary (`letters.edit`, scoped to their unit by the appointment).
-- Not built yet: the PDF and archive (4.3), the public verification page (4.4), the upload path
-  (`awaiting_file`, 4.7), PPIDK's format checker (warnings) and notifications to the desks.
+- Not built yet: the public verification page (4.4), the upload path (`awaiting_file`, 4.7),
+  PPIDK's format checker (warnings) and notifications to the desks.
+
+## Letter PDF, letterhead, archive (D1, D9)
+
+- **Rendering**: `@website/pdf` (`renderLetterPdf`, pdf-lib + qrcode, pure JavaScript) lays out
+  PPIDK's template: letterhead, "Tokyo, 2 November 2026", Nomor / Lampiran / Perihal / Jenis,
+  "Kepada Yth.", the body (Times 12 pt, 1.5 lines, justified, first-line indent 1.27 cm, lists,
+  headings), the desks (electronic-signature box with the date, or "waiting"), the note that no
+  wet signature is needed, the cancelled stamp, and the QR with the verification address and
+  code. Images and tables in the body are not printed. Dates are written in Indonesian in WIB.
+- **Letterhead** (`settings/letters`, Letter types page → Letterhead, `letter_types.edit`):
+  parent name, name, address line, full-width letterhead / footer / watermark images, emblem,
+  watermark strength (2-40 %), "Paraf" box. Images are uploaded with the `letterhead` preset
+  (public WebP, converted to PNG with sharp when rendering) and must come from that folder.
+  Without a letterhead image the text letterhead (emblem + names) is printed. It is FROZEN on
+  the letter at issue (`letters.letterhead`): a new design never changes issued letters; a lost
+  image falls back to the text letterhead.
+- **QR address**: `https://<VERIFICATION_HOST>/<CODE>` (PPIDK's printed form, e.g.
+  `verif.ppiasiania.id/8F3KM-QRTVW`) or `<WEB_URL>/verify/<CODE>` (`verificationUrl`).
+- **Archive**: right after the issue transaction the PDF is rendered and stored privately at
+  `letters/<periodId>/<letterId>_<random>.pdf` with its sha256 and size (`letters.archive`,
+  recorded once: a second render never replaces it). If that fails the letter stays issued and
+  the first PDF request archives it.
+- **Preview / download**: `GET /api/letters/<id>/pdf` (admin, `letters.read` in the letter's
+  unit; otherwise 404). Issued letters: the archive, its sha256 checked (a mismatch is an error,
+  never a silent re-render); drafts: rendered now without number or QR; cancelled letters:
+  rendered now with the stamp. The Letters detail view has the button.
+- Code: `apps/admin/src/server/letter-pdf.ts`, route `apps/admin/src/app/api/letters/[id]/pdf/route.ts`.
+- Configuration: `VERIFICATION_HOST` (or `WEB_URL`) and `FIREBASE_STORAGE_BUCKET` on admin.
 
 ## QR codes (D8)
 
@@ -81,4 +109,5 @@ the QR without a logo (the letterhead already shows the emblem).
 
 `tests/unit/documents.test.ts`, `tests/integration/numbering.test.ts`,
 `tests/security/field-encryption.test.ts`, `tests/unit/admin-tools.test.ts` (QR rules),
-`tests/unit/letters.test.ts`, `tests/unit/admin-letters.test.ts`, `tests/integration/letters.test.ts`.
+`tests/unit/letters.test.ts`, `tests/unit/admin-letters.test.ts`, `tests/integration/letters.test.ts`,
+`tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`.

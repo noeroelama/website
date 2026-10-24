@@ -1,0 +1,310 @@
+import { createHash } from "node:crypto";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_LETTERHEAD,
+  type Letter,
+  type LetterArchive,
+  type LetterType,
+} from "@website/domain/documents";
+import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
+import { qrPng } from "@website/pdf";
+import {
+  ArchiveDamagedError,
+  createLetterFileRoute,
+  createLetterPdf,
+  letterDesks,
+  type LetterContext,
+} from "../../apps/admin/src/server/letter-pdf";
+
+const at = new Date("2026-11-02T03:00:00Z");
+const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const type = {
+  id: "sk",
+  name: "Surat Keputusan",
+  code: "SK",
+  requiresCoordinator: true,
+  requiresRecipient: false,
+} as LetterType;
+const letter: Letter = {
+  id: "l1",
+  version: 7,
+  createdAt: at,
+  updatedAt: at,
+  deletedAt: null,
+  periodId: "p1",
+  typeId: "sk",
+  orgUnitId: "sekjen",
+  orgUnitPath: ["sekjen"],
+  subject: "SK Panitia",
+  body: "<p>Menetapkan panitia.</p>",
+  recipient: "",
+  place: "Tokyo",
+  attachmentNote: "",
+  letterDate: "2026-11-02",
+  status: "issued",
+  source: "editor",
+  createdBy: "author",
+  reviewedBy: "sekre",
+  reviewNote: null,
+  secretary: { uid: "sekjen", at },
+  coordinator: { uid: "koor", at },
+  number: 1,
+  numberFormatted: "001/SK/PPIDK-ASIANIA/XI/2026",
+  verificationCode: "8F3KM-QRTVW",
+  issuedAt: at,
+  cancelledAt: null,
+  cancelReason: null,
+  contentDigest: "x",
+  signers: [
+    {
+      name: "Budi K",
+      desk: "Koordinator PPIDK Asia-Oseania",
+      position: null,
+      period: "2026/2027",
+      at,
+    },
+    {
+      name: "Rina S",
+      desk: "Sekretaris Jenderal PPIDK Asia-Oseania",
+      position: "Sekjen",
+      period: "2026/2027",
+      at,
+    },
+  ],
+  letterhead: DEFAULT_LETTERHEAD,
+  archive: null,
+};
+const context: LetterContext = {
+  type,
+  unitName: "Sekretariat Jenderal",
+  names: new Map([["sekjen", "Now Renamed"]]),
+  letterhead: DEFAULT_LETTERHEAD,
+};
+
+let files: Map<string, Uint8Array>;
+let recorded: LetterArchive | null;
+let uuids = 0;
+const deps = (
+  verification: { host: string | null; webUrl: string | null } = {
+    host: "verif.ppiasiania.id",
+    webUrl: null,
+  },
+) => ({
+  storage: {
+    read: (path: string) => Promise.resolve(files.get(path) ?? null),
+    save: vi.fn((path: string, bytes: Uint8Array) => {
+      files.set(path, bytes);
+      return Promise.resolve({ url: null });
+    }),
+  },
+  letters: {
+    setArchive: (_id: string, archive: LetterArchive) => {
+      recorded ??= archive;
+      return Promise.resolve(recorded);
+    },
+  },
+  toPng: (bytes: Uint8Array) => Promise.resolve(bytes),
+  verification,
+  uuid: () => `abcd${String((uuids += 1)).padStart(4, "0")}-0000`,
+});
+
+beforeEach(() => {
+  files = new Map();
+  recorded = null;
+});
+
+describe("letter desks as printed", () => {
+  it("issued letters print the names frozen at issue; others the current names", () => {
+    expect(letterDesks(letter, context)).toEqual([
+      {
+        label: "Koordinator PPIDK Asia-Oseania",
+        name: "Budi K",
+        signedOn: "2 November 2026",
+        signature: null,
+      },
+      {
+        label: "Sekretaris Jenderal PPIDK Asia-Oseania",
+        name: "Rina S",
+        signedOn: "2 November 2026",
+        signature: null,
+      },
+    ]);
+    const corrected = { ...letter, status: "corrected" as const, signers: [], coordinator: null };
+    expect(letterDesks(corrected, context)).toEqual([
+      { label: "Koordinator PPIDK Asia-Oseania", name: null, signedOn: null, signature: null },
+      {
+        label: "Sekretaris Jenderal PPIDK Asia-Oseania",
+        name: "Now Renamed",
+        signedOn: "2 November 2026",
+        signature: null,
+      },
+    ]);
+    const single = { ...context, type: { ...type, requiresCoordinator: false } };
+    expect(letterDesks({ ...corrected, secretary: { uid: "unknown", at } }, single)).toEqual([
+      { label: "Sekretariat Jenderal", name: null, signedOn: "2 November 2026", signature: null },
+    ]);
+  });
+});
+
+describe("letter archive (byte for byte)", () => {
+  it("renders once, stores privately, records sha256; later reads check it", async () => {
+    const pdf = createLetterPdf(deps());
+    const first = await pdf.archive(letter, context, "2026/2027");
+    expect(new TextDecoder().decode(first.slice(0, 5))).toBe("%PDF-");
+    expect(recorded).toEqual({
+      path: "letters/p1/l1_abcd0001.pdf",
+      sha256: sha(first),
+      size: first.length,
+    });
+    const again = await pdf.archive({ ...letter, archive: recorded }, context, "2026/2027");
+    expect(again).toEqual(first);
+    files.set("letters/p1/l1_abcd0001.pdf", new Uint8Array([1, 2, 3]));
+    await expect(
+      pdf.archive({ ...letter, archive: recorded }, context, null),
+    ).rejects.toBeInstanceOf(ArchiveDamagedError);
+    await expect(
+      pdf.archive(
+        { ...letter, archive: { ...(recorded as LetterArchive), path: "gone" } },
+        context,
+        null,
+      ),
+    ).rejects.toThrow("missing or changed");
+  });
+
+  it("a concurrent first archive wins and is served", async () => {
+    const winner = await createLetterPdf(deps()).archive(letter, context, null);
+    const pdf = createLetterPdf(deps());
+    const late = await pdf.archive({ ...letter }, context, null);
+    expect(late).toEqual(winner);
+  });
+
+  it("drafts render without number and QR; issued letters need a verification address", async () => {
+    const pdf = createLetterPdf(deps({ host: null, webUrl: null }));
+    const draft = {
+      ...letter,
+      status: "draft" as const,
+      numberFormatted: null,
+      verificationCode: null,
+      letterhead: null,
+      letterDate: null,
+    };
+    expect((await pdf.render(draft, context, null)).length).toBeGreaterThan(1000);
+    await expect(pdf.render(letter, context, null)).rejects.toThrow(
+      "Set VERIFICATION_HOST or WEB_URL",
+    );
+    const web = createLetterPdf(deps({ host: null, webUrl: "https://ppiasiania.id/" }));
+    const cancelled = { ...letter, status: "cancelled" as const, cancelReason: null };
+    expect((await web.render(cancelled, context, null)).length).toBeGreaterThan(1000);
+  });
+
+  it("letterhead images are read from Storage; a lost one falls back to text", async () => {
+    files.set("letters/letterhead/a.webp", await qrPng("art", 100));
+    const art = {
+      path: "letters/letterhead/a.webp",
+      url: "https://x.test/a",
+      width: 100,
+      height: 100,
+    };
+    const missing = { ...art, path: "letters/letterhead/gone.webp" };
+    const pdf = createLetterPdf(deps());
+    const bytes = await pdf.render(
+      {
+        ...letter,
+        letterhead: {
+          ...DEFAULT_LETTERHEAD,
+          header: art,
+          footer: missing,
+          emblem: art,
+          watermark: art,
+        },
+      },
+      context,
+      null,
+    );
+    expect(bytes.length).toBeGreaterThan(1000);
+  });
+});
+
+describe("GET /api/letters/<id>/pdf", () => {
+  const staff = (
+    permissions: string[],
+    scope: Scope = { type: "global" },
+    active = true,
+  ): Principal => ({
+    kind: "user",
+    userId: "s",
+    active,
+    assignments: [{ roleId: "r", scope, permissions: new Set(normalizePermissions(permissions)) }],
+  });
+  const route = (stored: Letter | null, options: { context?: boolean; fail?: boolean } = {}) => {
+    const logError = vi.fn();
+    const pdf = {
+      render: vi.fn(() =>
+        options.fail
+          ? Promise.reject(new Error("boom"))
+          : Promise.resolve(new Uint8Array([37, 80, 68, 70, 45])),
+      ),
+      archive: vi.fn(() => Promise.resolve(new Uint8Array([37, 80, 68, 70, 45, 49]))),
+    };
+    const handler = createLetterFileRoute({
+      getLetter: () => Promise.resolve(stored),
+      load: () => Promise.resolve(options.context === false ? null : { context, period: null }),
+      pdf,
+      logError,
+    });
+    return { handler, pdf, logError };
+  };
+
+  it("serves the archive of issued letters and renders the others, inline and private", async () => {
+    const { handler, pdf } = route(letter);
+    const response = await handler("l1", staff(["letters.read"]));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toBe(
+      'inline; filename="001-SK-PPIDK-ASIANIA-XI-2026.pdf"',
+    );
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(pdf.archive).toHaveBeenCalled();
+    const draft = route({ ...letter, status: "draft", numberFormatted: null, subject: "///" });
+    const drafted = await draft.handler("l1", staff(["letters.read"]));
+    expect(drafted.headers.get("content-disposition")).toBe('inline; filename="-.pdf"');
+    expect(draft.pdf.render).toHaveBeenCalled();
+    const empty = route({ ...letter, status: "draft", numberFormatted: null, subject: "" });
+    expect(
+      (await empty.handler("l1", staff(["letters.read"]))).headers.get("content-disposition"),
+    ).toBe('inline; filename="letter.pdf"');
+  });
+
+  it("refuses strangers, hides letters out of scope, and never leaks errors", async () => {
+    expect((await route(letter).handler("l1", null)).status).toBe(401);
+    expect(
+      (await route(letter).handler("l1", staff(["letters.read"], { type: "global" }, false)))
+        .status,
+    ).toBe(401);
+    expect((await route(letter).handler("l1", staff([]))).status).toBe(403);
+    expect((await route(letter).handler("l1", staff(["events.read"]))).status).toBe(404);
+    expect(
+      (
+        await route(letter).handler(
+          "l1",
+          staff(["letters.read"], { type: "orgUnit", orgUnitId: "media" }),
+        )
+      ).status,
+    ).toBe(404);
+    expect((await route(null).handler("l1", staff(["letters.read"]))).status).toBe(404);
+    expect(
+      (await route({ ...letter, deletedAt: at }).handler("l1", staff(["letters.read"]))).status,
+    ).toBe(404);
+    expect(
+      (await route(letter, { context: false }).handler("l1", staff(["letters.read"]))).status,
+    ).toBe(404);
+    const failing = route({ ...letter, status: "draft" }, { fail: true });
+    const response = await failing.handler("l1", staff(["letters.read"]));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "internal", message: "Something went wrong." });
+    expect(failing.logError).toHaveBeenCalledWith("letter pdf failed", {
+      letterId: "l1",
+      error: "Error: boom",
+    });
+  });
+});

@@ -41,6 +41,7 @@ const ALLOWED = {
     "domain",
     "email",
     "observability",
+    "pdf",
     "permissions",
     "security",
     "ui",
@@ -68,6 +69,8 @@ const ALLOWED = {
   email: [],
   observability: [],
   ui: [],
+  // PDF and QR rendering (pdf-lib, qrcode; DEC-6): reads the shared QR rules only.
+  pdf: ["domain"],
   auth: ["config", "security"],
   db: ["apikeys", "audit", "auth", "config", "domain", "permissions", "security"],
 };
@@ -95,6 +98,7 @@ const SUBPATHS = {
   gateway: { domain: ["content", "events", "organizations", "shared"] },
   // The innermost layers may only use the framework-free sanitization helpers.
   domain: { security: ["validation"] },
+  pdf: { domain: ["documents"] },
   contracts: { security: ["validation"] },
 };
 

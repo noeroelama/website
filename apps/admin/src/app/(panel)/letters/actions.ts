@@ -40,3 +40,6 @@ export async function cancelLetterAction(input: unknown) {
 export async function saveLetterTypeAction(input: unknown) {
   return done(await letterActions().saveType(getPrincipal, getAuditContext)(input));
 }
+export async function saveLetterheadAction(input: unknown) {
+  return done(await letterActions().saveLetterhead(getPrincipal, getAuditContext)(input));
+}

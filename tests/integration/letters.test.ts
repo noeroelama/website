@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { createFirestoreLetterStore, createFirestoreLetterTypeStore } from "@website/db/firestore";
-import { letterCanonical, type Letter } from "@website/domain/documents";
+import {
+  createFirestoreLetterSettingsStore,
+  createFirestoreLetterStore,
+  createFirestoreLetterTypeStore,
+} from "@website/db/firestore";
+import { DEFAULT_LETTERHEAD, letterCanonical, type Letter } from "@website/domain/documents";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
 import { createLetterActions } from "../../apps/admin/src/server/letters";
 import { fakeFirestore } from "../support/fake-firestore";
@@ -35,12 +39,18 @@ const koordinator = staff("koor", ["letters.sign_coordinator", "letters.sign"]);
 const director = staff("dir", ["letters.edit"], { type: "orgUnit", orgUnitId: "media" });
 
 let fake: ReturnType<typeof fakeFirestore>;
+let afterIssue: Letter[] = [];
 const db = () => fake.db as unknown as Db;
 const letters = () => createFirestoreLetterStore(db());
 const actions = () =>
   createLetterActions({
     letters: letters(),
     types: createFirestoreLetterTypeStore(db()),
+    settings: createFirestoreLetterSettingsStore(db()),
+    afterIssue: (letter) => {
+      afterIssue.push(letter);
+      return Promise.resolve();
+    },
     unitPath: (id) => {
       const unit = fake.docs.get(`orgUnits/${id}`) as { path: string[] } | undefined;
       return Promise.resolve(unit ? [...unit.path, id] : null);
@@ -61,6 +71,7 @@ const draft = {
 
 beforeEach(() => {
   fake = fakeFirestore();
+  afterIssue = [];
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
   fake.docs.set("periods/p1", { name: "2026/2027" });
   fake.docs.set("orgUnits/sekjen", {
@@ -373,6 +384,8 @@ describe("letters workflow", () => {
       createHash("sha256").update(letterCanonical(issued, "SU")).digest("hex"),
     );
     expect(issued.verificationCode).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
+    expect(issued).toMatchObject({ letterhead: DEFAULT_LETTERHEAD, archive: null });
+    expect(afterIssue.map((l) => l.id)).toEqual([id]);
     expect(fake.docs.get(`verificationCodes/${issued.verificationCode}`)).toEqual({
       kind: "letter",
       letterId: id,
@@ -467,7 +480,9 @@ describe("letters workflow", () => {
     let calls = 0;
     // First code: all zeros (taken); then all ones.
     const store = createFirestoreLetterStore(db(), () => (calls++ < 10 ? 0 : 1));
-    const issued = await store.issue(id, 4, () => ({}) as never, clock).catch((e: Error) => e);
+    const issued = await store
+      .issue(id, 4, DEFAULT_LETTERHEAD, () => ({}) as never, clock)
+      .catch((e: Error) => e);
     expect(issued).toBeInstanceOf(Error);
     calls = 0;
     const audited = (_b: unknown, _a: unknown, _c: unknown, next: Letter) =>
@@ -487,7 +502,7 @@ describe("letters workflow", () => {
         operationId: "op",
         revertible: false,
       }) as never;
-    const letter = await store.issue(id, 4, audited, clock);
+    const letter = await store.issue(id, 4, DEFAULT_LETTERHEAD, audited, clock);
     expect(letter).toMatchObject({
       verificationCode: "BBBBB-BBBBB",
       numberFormatted: "001/SU/MEDIA/PPIDK-ASIANIA/XI/2026",
@@ -504,8 +519,36 @@ describe("letters workflow", () => {
     const unlucky = createFirestoreLetterStore(db(), () => 0);
     const again = await approvedLetter({ code: "SU3" });
     fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "letter", letterId: "older" });
-    await expect(unlucky.issue(again.id, again.version, audited, clock)).rejects.toThrow(
-      "No free verification code.",
-    );
+    await expect(
+      unlucky.issue(again.id, again.version, DEFAULT_LETTERHEAD, audited, clock),
+    ).rejects.toThrow("No free verification code.");
+  });
+
+  it("the letterhead is versioned, audited and frozen on letters issued after it", async () => {
+    const settings = createFirestoreLetterSettingsStore(db());
+    expect(await settings.get()).toEqual({ letterhead: DEFAULT_LETTERHEAD, version: null });
+    const letterhead = { ...DEFAULT_LETTERHEAD, address: "Tokyo, Japan", initialsBox: true };
+    const saved = await actions().saveLetterhead(...as(secretariat))({ letterhead, version: null });
+    expect(saved).toMatchObject({ ok: true, data: { version: 1 } });
+    expect(await settings.get()).toEqual({ letterhead, version: 1 });
+    expect(
+      await actions().saveLetterhead(...as(secretariat))({ letterhead, version: null }),
+    ).toMatchObject({
+      error: "conflict",
+    });
+    const foreign = await actions().saveLetterhead(...as(secretariat))({
+      letterhead: {
+        ...letterhead,
+        header: { path: "members/ktm/x.webp", url: "https://x.test/a", width: 10, height: 10 },
+      },
+      version: 1,
+    });
+    expect(foreign).toMatchObject({ error: "invalid_input" });
+    const { id, version } = await approvedLetter();
+    await actions().issue(...as(secretariat))({ id, version });
+    expect((await letters().get(id))?.letterhead).toEqual(letterhead);
+    const archive = { path: `letters/p1/${id}_aaaa.pdf`, sha256: "a".repeat(64), size: 10 };
+    expect(await letters().setArchive(id, archive)).toEqual(archive);
+    expect(await letters().setArchive(id, { ...archive, path: "other" })).toEqual(archive);
   });
 });

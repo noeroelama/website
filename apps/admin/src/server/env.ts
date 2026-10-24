@@ -2,6 +2,7 @@ import "server-only";
 import {
   baseEnv,
   cronEnv,
+  documentsEnv,
   firebaseAdminEnv,
   messagingEnv,
   newsletterEnv,
@@ -20,7 +21,9 @@ const adminEnvSchema = baseEnv
   .extend(messagingEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(newsletterEnv.partial().shape)
-  .extend(zoomEnv.partial().shape);
+  .extend(zoomEnv.partial().shape)
+  .extend(documentsEnv.shape)
+  .extend(publicUrlsEnv.pick({ WEB_URL: true }).shape);
 
 export const getAdminEnv = lazyEnv(() => loadEnv(adminEnvSchema, process.env));
 

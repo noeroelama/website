@@ -35,6 +35,14 @@ const { upload, busy, error } = useImageUpload("banner");
 // store { path, thumbPath, url, thumbUrl, width, height } on the record
 ```
 
+## Private PDFs
+
+- `read(path)` on the same adapter returns a stored file's bytes on the server (letter archives,
+  letterhead images for rendering). Letter archives are saved private
+  (`contentType: application/pdf`) and checked against their sha256 when served
+  (`packages/domain/docs/documents.md` → Letter PDF).
+- Preset `letterhead` (`letter_types.edit`, public, longest side 2400 px ≈ A4 at 290 dpi).
+
 ## Rules and assumptions
 
 - `POST /api/uploads/<preset>`: same origin (request guard), staff only, the page's edit

@@ -116,6 +116,20 @@ export const newsletterEnv = z.object({
   LINK_SIGNING_SECRET: nonEmpty.min(32),
 });
 
+/**
+ * Documents (letters, certificates). VERIFICATION_HOST is the extra domain of the web app that
+ * answers printed codes (`verif.ppiasiania.id/<CODE>`, as PPIDK printed them); empty = the QR
+ * points to `<WEB_URL>/verify/<CODE>`.
+ */
+export const documentsEnv = z.object({
+  VERIFICATION_HOST: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/, "a host name such as verif.ppiasiania.id")
+    .optional(),
+});
+
 export const calendarEnv = z.object({
   CALENDAR_FEED_SIGNING_SECRET: nonEmpty.min(32),
 });
