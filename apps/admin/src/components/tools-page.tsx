@@ -10,6 +10,14 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import {
+  QR_DOWNLOAD_PX,
+  QR_ERROR_CORRECTION,
+  QR_MARGIN,
+  QR_MAX_LENGTH,
+  qrLogoPlate,
+  qrTextProblem,
+} from "@website/domain/documents";
 import { withoutScheme } from "@/components/format";
 import {
   INITIAL_LINKS,
@@ -42,43 +50,32 @@ function colorForQr(): { dark: string; light: string } | undefined {
   return dark && light ? { dark, light } : undefined;
 }
 
-/* ---- Centre-logo data URL (memoised per app run) ---- */
-let logoUrlPromise: Promise<string> | null = null;
+/* ---- Centre logo (memoised per app run) ---- */
+let logoPromise: Promise<HTMLImageElement | null> | null = null;
 
-/** Load the public brand icon once and return it as a data URL for the SVG QR. */
-function dataUrlForLogo(): Promise<string> {
-  logoUrlPromise ??= new Promise((resolve) => {
+/** Load the public brand icon once (drawn on the PNG download's plate). */
+function brandLogo(): Promise<HTMLImageElement | null> {
+  logoPromise ??= new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        const side = Math.min(img.naturalWidth, img.naturalHeight) || 256;
-        canvas.width = side;
-        canvas.height = side;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return resolve("");
-        ctx.drawImage(img, 0, 0, side, side);
-        resolve(canvas.toDataURL("image/png"));
-      } catch {
-        resolve("");
-      }
-    };
-    img.onerror = () => resolve("");
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
     img.src = "/icon.png";
   });
-  return logoUrlPromise;
+  return logoPromise;
 }
 
 /* ---------- Real, scannable QR code ---------- */
 function QrPreview({
   text,
   size,
+  downloadSize,
   showLogo,
   onClear,
 }: {
   text: string;
   size: number;
+  /** Pixels of the PNG download (print sizes, larger than the preview). */
+  downloadSize: number;
   showLogo: boolean;
   onClear?: () => void;
 }) {
@@ -89,8 +86,8 @@ function QrPreview({
     let alive = true;
     QRCode.toDataURL(text.trim(), {
       width: size,
-      margin: 2,
-      errorCorrectionLevel: "H",
+      margin: QR_MARGIN,
+      errorCorrectionLevel: QR_ERROR_CORRECTION,
       ...(colorForQr() ? { color: colorForQr() } : {}),
     })
       .then((url) => {
@@ -106,62 +103,58 @@ function QrPreview({
 
   /* Never show a stale QR: blank when the input is empty, while generating, or on error. */
   const shown = text.trim() && dataUrl ? dataUrl : "";
-  const logoPx = Math.round(size * 0.24);
+  const plate = qrLogoPlate(size);
   const ready = Boolean(shown);
 
-  /* Trigger a browser download of the current QR as PNG (the shown data URL). */
-  const downloadPng = () => {
-    if (!ready) return;
+  const save = (href: string, name: string) => {
     const a = document.createElement("a");
-    a.href = shown;
-    a.download = "qr-code.png";
+    a.href = href;
+    a.download = name;
     a.click();
   };
 
-  /* Build an SVG string identical to the preview (same colours, optional centre logo),
-     wrap it in a Blob and trigger a download. */
+  /* PNG at print size; with the logo on an OPAQUE plate in the QR's light colour (qrLogoPlate),
+     so the transparent icon never merges with the dark modules. */
+  const downloadPng = async () => {
+    const value = text.trim();
+    if (!ready || !value) return;
+    try {
+      const canvas = document.createElement("canvas");
+      const colors = colorForQr();
+      await QRCode.toCanvas(canvas, value, {
+        width: downloadSize,
+        margin: QR_MARGIN,
+        errorCorrectionLevel: QR_ERROR_CORRECTION,
+        ...(colors ? { color: colors } : {}),
+      });
+      const logo = showLogo ? await brandLogo() : null;
+      const ctx = canvas.getContext("2d");
+      if (logo && ctx) {
+        const plate = qrLogoPlate(canvas.width);
+        ctx.fillStyle = colors?.light || tokenValue("--color-white");
+        ctx.fillRect(plate.x, plate.y, plate.size, plate.size);
+        ctx.drawImage(logo, plate.logo.x, plate.logo.y, plate.logo.size, plate.logo.size);
+      }
+      save(canvas.toDataURL("image/png"), "qr-code.png");
+    } catch {
+      /* Keep the button inert if generation fails (e.g. content overflows the symbol). */
+    }
+  };
+
+  /* SVG for large prints: never with the logo (it would be a raster inside the vector file). */
   const downloadSvg = async () => {
     const value = text.trim();
     if (!ready || !value) return;
     try {
       const svg = await QRCode.toString(value, {
         type: "svg",
-        width: size,
-        margin: 2,
-        errorCorrectionLevel: "H",
+        width: downloadSize,
+        margin: QR_MARGIN,
+        errorCorrectionLevel: QR_ERROR_CORRECTION,
         ...(colorForQr() ? { color: colorForQr() } : {}),
       });
-
-      let mark = "";
-      if (showLogo) {
-        /* Centre overlay: dark chip + logo, mirroring the on-screen .admin-qr-preview__logo.
-           Colours come from the resolved design tokens (never literal hex/rgb — tokens test). */
-        const viewBox = (svg.match(/viewBox="0 0 ([0-9.]+) ([0-9.]+)"/) ?? [])[1] ?? "";
-        const vb = parseFloat(viewBox) || size;
-        const logoHref = await dataUrlForLogo();
-        if (logoHref) {
-          const markSize = Math.round(vb * 0.24);
-          const offset = Math.round((vb - markSize) / 2);
-          const radius = Math.max(1, Math.round(markSize * 0.18));
-          const chipFill = tokenValue("--color-brand-950");
-          mark =
-            `<g>` +
-            `<rect x="${offset}" y="${offset}" width="${markSize}" height="${markSize}" ` +
-            `rx="${radius}" fill="${chipFill}"/>` +
-            `<image x="${offset}" y="${offset}" width="${markSize}" height="${markSize}" ` +
-            `href="${logoHref}" preserveAspectRatio="xMidYMid meet"/>` +
-            `</g>`;
-        }
-      }
-
-      const blob = new Blob([svg.replace("</svg>", `${mark}</svg>`)], {
-        type: "image/svg+xml;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "qr-code.svg";
-      a.click();
+      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+      save(url, "qr-code.svg");
       URL.revokeObjectURL(url);
     } catch {
       /* Keep the button inert if generation fails (e.g. content overflows the symbol). */
@@ -187,7 +180,10 @@ function QrPreview({
             <div className="admin-qr-preview__empty">(empty)</div>
           )}
           {showLogo && shown ? (
-            <div className="admin-qr-preview__logo" style={{ width: logoPx, height: logoPx }}>
+            <div
+              className="admin-qr-preview__logo"
+              style={{ width: plate.size, height: plate.size }}
+            >
               {/* Brand mark from the admin public folder; content only — see admin-logo. */}
               {/* eslint-disable-next-line @next/next/no-img-element -- static packed asset */}
               <img
@@ -210,7 +206,12 @@ function QrPreview({
         </div>
       </div>
       <div className="admin-qr-preview__actions">
-        <Button variant="primary" icon="download" onClick={downloadPng} disabled={!ready}>
+        <Button
+          variant="primary"
+          icon="download"
+          onClick={() => void downloadPng()}
+          disabled={!ready}
+        >
           Download PNG
         </Button>
         <Button
@@ -286,6 +287,7 @@ function LinkResultBanner({
   );
 }
 
+/** `px` = on-screen preview; the downloads use QR_DOWNLOAD_PX (300 / 600 / 1000 px). */
 const QR_SIZE_OPTIONS: { value: QrSize; label: string; hint: string; px: number }[] = [
   { value: "small", label: "Small", hint: "For screens", px: 132 },
   { value: "medium", label: "Medium", hint: "For A4 print", px: 180 },
@@ -368,8 +370,9 @@ function ToolsList() {
   const qrSizePx = QR_SIZE_OPTIONS.find((o) => o.value === qrSize)?.px ?? 180;
 
   const generateQr = () => {
-    if (!qrValue.trim()) {
-      toast.show(qrType === "link" ? "Enter a link first" : "Enter some text first");
+    const problem = qrTextProblem(qrValue);
+    if (problem) {
+      toast.show(problem);
       return;
     }
     setQrCreated(true);
@@ -720,6 +723,7 @@ function ToolsList() {
                   type="url"
                   placeholder="https://"
                   value={qrLink}
+                  maxLength={QR_MAX_LENGTH}
                   onChange={(e) => setQrLink(e.target.value)}
                 />
               </label>
@@ -731,6 +735,7 @@ function ToolsList() {
                   rows={3}
                   placeholder="Type your content here…"
                   value={qrText}
+                  maxLength={QR_MAX_LENGTH}
                   onChange={(e) => setQrText(e.target.value)}
                 />
               </label>
@@ -768,7 +773,9 @@ function ToolsList() {
               <span className="admin-qr-switch__track" aria-hidden="true" />
               <span className="admin-qr-switch__text">
                 <span className="admin-qr-switch__label">Add PPIDK Asiania logo in the centre</span>
-                <span className="admin-qr-switch__hint">Turn this off for long content.</span>
+                <span className="admin-qr-switch__hint">
+                  PNG only (never in the SVG). Turn this off for long content.
+                </span>
               </span>
             </label>
 
@@ -786,6 +793,7 @@ function ToolsList() {
               <QrPreview
                 text={qrValue}
                 size={qrSizePx}
+                downloadSize={QR_DOWNLOAD_PX[qrSize]}
                 showLogo={qrLogo}
                 onClear={() => {
                   setQrCreated(false);

@@ -130,7 +130,12 @@ router.push("/things"); router.refresh();
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links
   are shown without their scheme (`withoutScheme` in `src/components/format.ts`); the link list
-  has no header row, so its column widths live in CSS. Tests: `tests/unit/admin-tools.test.ts`.
+  has no header row, so its column widths live in CSS. The QR Generator follows the shared QR
+  rules (`@website/domain/documents` → `qr.ts`, see `packages/domain/docs/documents.md`): at
+  most 800 characters, high error correction, 4-module quiet zone, downloads at 300 / 600 /
+  1000 px, the logo only on the PNG on an opaque plate, never in the SVG. It runs in the
+  browser (nothing is stored). The short links still use mock data (step 7.5). Tests:
+  `tests/unit/admin-tools.test.ts`.
 
 ## Configuration
 

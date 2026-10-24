@@ -1008,8 +1008,8 @@ a.admin-stat-card:hover {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
-  border-radius: var(--radius-md);
-  background: var(--color-brand-950);
+  /* Opaque plate in the QR's light colour, like the PNG download (qrLogoPlate). */
+  background: var(--color-brand-50);
   display: grid;
   place-items: center;
   overflow: hidden;

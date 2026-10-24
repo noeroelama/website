@@ -25,7 +25,16 @@ with each step.
 - `sha256Hex(bytes)` (`@website/security`) is stored with an archived file and compared when
   the file is served.
 
+## QR codes (D8)
+
+One set of rules (`src/documents/qr.ts`, from PPIDK `PembuatQr`) for the Tools page and the
+letter and certificate PDFs: content of at most `QR_MAX_LENGTH` (800) characters
+(`qrTextProblem`), error correction `H`, a 4-module quiet zone, downloads at 300 / 600 / 1000
+px. The optional centre logo goes only on PNGs, on an opaque plate in the code's light colour
+covering 22% of the width (`qrLogoPlate`, under 5% of the area); SVGs never carry it. PDFs embed
+the QR without a logo (the letterhead already shows the emblem).
+
 ## Tests
 
 `tests/unit/documents.test.ts`, `tests/integration/numbering.test.ts`,
-`tests/security/field-encryption.test.ts`.
+`tests/security/field-encryption.test.ts`, `tests/unit/admin-tools.test.ts` (QR rules).
