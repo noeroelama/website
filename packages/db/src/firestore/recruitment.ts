@@ -12,6 +12,10 @@ import {
   revisionDocId,
   seatCounterId,
   takeSeat,
+  assertBookable,
+  slotTimes,
+  type InterviewSlot,
+  type SlotPlan,
   type Offer,
   type RevisionRound,
   type Application,
@@ -67,6 +71,7 @@ export function recruitmentSnapshot(r: RecruitmentFields): Snapshot {
 
 export function toApplication(id: string, data: Record<string, unknown>): Application {
   const offer = data["offer"] as { orgUnitId: string; expiresAt: unknown } | null | undefined;
+  const interview = data["interview"] as { slotId: string; startsAt: unknown } | null | undefined;
   return {
     id,
     recruitmentId: data["recruitmentId"] as string,
@@ -78,6 +83,9 @@ export function toApplication(id: string, data: Record<string, unknown>): Applic
     revisionRound: data["revisionRound"] as number,
     offer: offer
       ? { orgUnitId: offer.orgUnitId, expiresAt: toDate(offer.expiresAt) as Date }
+      : null,
+    interview: interview
+      ? { slotId: interview.slotId, startsAt: toDate(interview.startsAt) as Date }
       : null,
     submittedAt: toDate(data["submittedAt"]),
     version: data["version"] as number,
@@ -108,6 +116,7 @@ const applicationDoc = (a: Application) => ({
   portfolio: a.portfolio,
   revisionRound: a.revisionRound,
   offer: a.offer,
+  interview: a.interview,
   submittedAt: a.submittedAt,
   version: a.version,
   createdAt: a.createdAt,
@@ -131,6 +140,27 @@ const listRevisions = async (
 ): Promise<RevisionRound[]> => {
   const snapshot = await revisions.where("applicationId", "==", id).get();
   return snapshot.docs.map((doc) => toRevision(doc.data())).sort((a, b) => a.round - b.round);
+};
+
+function toSlot(id: string, data: Record<string, unknown>): InterviewSlot {
+  return {
+    id,
+    recruitmentId: data["recruitmentId"] as string,
+    startsAt: toDate(data["startsAt"]) as Date,
+    durationMinutes: data["durationMinutes"] as number,
+    capacity: data["capacity"] as number,
+    booked: data["booked"] as number,
+    location: data["location"] as string,
+    deletedAt: toDate(data["deletedAt"]),
+  };
+}
+
+const listSlots = async (slots: CollectionReference, recruitmentId: string) => {
+  const snapshot = await slots.where("recruitmentId", "==", safeId.parse(recruitmentId)).get();
+  return snapshot.docs
+    .map((doc) => toSlot(doc.id, doc.data()))
+    .filter((slot) => !slot.deletedAt)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 };
 
 /** What an admin decision does to an application (built by the action from the rules). */
@@ -452,6 +482,70 @@ export function createFirestoreApplicationStore(db: Firestore) {
 
 export type FirestoreApplicationStore = ReturnType<typeof createFirestoreApplicationStore>;
 
+/**
+ * Interview times (`interviewSlots/{id}`) set by the committee: a day plan creates up to 100
+ * UTC slots in one transaction; a slot with bookings is never deleted.
+ */
+export function createFirestoreInterviewStore(db: Firestore) {
+  const slots = db.collection("interviewSlots");
+  const recruitments = db.collection("recruitments");
+  const auditLog = createFirestoreAuditWriter(db);
+
+  return {
+    listForRecruitment: (recruitmentId: string) => listSlots(slots, recruitmentId),
+
+    createPlan(
+      recruitmentId: string,
+      plan: SlotPlan,
+      audit: (created: readonly InterviewSlot[], title: string) => AuditEvent,
+      now: Date,
+    ): Promise<InterviewSlot[]> {
+      return db.runTransaction(async (tx) => {
+        const r = await tx.get(recruitments.doc(safeId.parse(recruitmentId)));
+        if (!r.exists || r.get("deletedAt")) {
+          throw new RuleViolationError("This recruitment does not exist.");
+        }
+        const created = slotTimes(plan)
+          .filter((startsAt) => startsAt > now)
+          .map((startsAt): InterviewSlot => ({
+            id: randomUUID(),
+            recruitmentId: r.id,
+            startsAt,
+            durationMinutes: plan.durationMinutes,
+            capacity: plan.capacity,
+            booked: 0,
+            location: plan.location,
+            deletedAt: null,
+          }));
+        if (created.length === 0)
+          throw new RuleViolationError("No interview time is in the future.");
+        const log = await auditLog.begin(tx);
+        for (const { id, ...slot } of created) tx.create(slots.doc(id), slot);
+        log.append(audit(created, r.get("title") as string));
+        return created;
+      });
+    },
+
+    remove(id: string, audit: (slot: InterviewSlot) => AuditEvent, now: Date): Promise<void> {
+      const ref = slots.doc(safeId.parse(id));
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        const slot = snapshot.exists
+          ? toSlot(snapshot.id, snapshot.data() as Record<string, unknown>)
+          : null;
+        if (!slot || slot.deletedAt)
+          throw new RuleViolationError("This interview time does not exist.");
+        if (slot.booked > 0) throw new RuleViolationError("Someone booked this time; it stays.");
+        const log = await auditLog.begin(tx);
+        tx.update(ref, { deletedAt: now });
+        log.append(audit(slot));
+      });
+    },
+  };
+}
+
+export type FirestoreInterviewStore = ReturnType<typeof createFirestoreInterviewStore>;
+
 /* ------------------------------------------------------------------ website (applicants) */
 
 export type ApplyOutcome =
@@ -506,6 +600,7 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
   const versions = db.collection("formVersions");
   const revisions = db.collection("applicationRevisions");
   const counters = db.collection("seatCounters");
+  const slotsCollection = db.collection("interviewSlots");
   const auditLog = createFirestoreAuditWriter(db);
 
   const readRecruitment = async (tx: Transaction, id: string) => {
@@ -571,6 +666,7 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
       portfolio: null,
       revisionRound: 0,
       offer: null,
+      interview: null,
       submittedAt: null,
       version: 0,
       createdAt: now,
@@ -719,6 +815,55 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
           }
         },
       );
+    },
+
+    /** Interview times of a recruitment that are not deleted (the page shows the free ones). */
+    slots: (recruitmentId: string) => listSlots(slotsCollection, recruitmentId),
+
+    /**
+     * Books an interview time (C3-I): ONE transaction reads the application (must be in
+     * `interview`), the chosen slot (future, not full) and the previously booked slot; the new
+     * slot's count goes up, the old one's goes down, so a re-booking frees the old time.
+     */
+    bookInterview(
+      recruitmentId: string,
+      uid: string,
+      slotId: string,
+      now: Date,
+    ): Promise<ApplyOutcome> {
+      return db.runTransaction(async (tx): Promise<ApplyOutcome> => {
+        const r = await readRecruitment(tx, recruitmentId);
+        if (!r) return { ok: false, error: "closed" };
+        const ref = applications.doc(applicationId(r.id, safeId.parse(uid)));
+        const newRef = slotsCollection.doc(safeId.parse(slotId));
+        const [snapshot, chosen] = await Promise.all([tx.get(ref), tx.get(newRef)]);
+        const current = snapshot.exists
+          ? toApplication(snapshot.id, snapshot.data() as Record<string, unknown>)
+          : null;
+        if (!current || current.status !== "interview") return { ok: false, error: "locked" };
+        if (current.interview?.slotId === slotId) return { ok: true, application: current };
+        const oldRef = current.interview ? slotsCollection.doc(current.interview.slotId) : null;
+        const old = oldRef ? await tx.get(oldRef) : null;
+        const found = chosen.exists
+          ? toSlot(chosen.id, chosen.data() as Record<string, unknown>)
+          : null;
+        let slot: InterviewSlot;
+        try {
+          // A slot of another recruitment does not exist here.
+          slot = assertBookable(found?.recruitmentId === r.id ? found : null, now);
+        } catch (error) {
+          return { ok: false, error: "refused", message: (error as Error).message };
+        }
+        const next = bump(current, now, { interview: { slotId, startsAt: slot.startsAt } });
+        const log = await auditLog.begin(tx);
+        tx.set(ref, applicationDoc(next));
+        tx.update(newRef, { booked: slot.booked + 1 });
+        if (oldRef && old?.exists) {
+          tx.update(oldRef, { booked: Math.max(0, (old.get("booked") as number) - 1) });
+        }
+        log.append(applicantAudit(uid, now, r.title, current, next));
+        return { ok: true, application: next };
+      });
     },
 
     /** The applicant's own revision rounds, oldest first. */

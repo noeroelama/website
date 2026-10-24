@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
-import { applicationActions, recruitmentActions } from "@/server/wiring";
+import { applicationActions, interviewActions, recruitmentActions } from "@/server/wiring";
 
 // Thin server-action wrappers: every rule lives in src/server/recruitment.ts (createGuardedAction).
 export async function saveRecruitmentAction(input: unknown) {
@@ -53,4 +53,14 @@ export async function offerApplicationAction(input: unknown) {
 /** A 15-minute link to a portfolio or file answer of the application. */
 export async function applicationFileUrlAction(input: unknown) {
   return applicationActions().fileUrl(getPrincipal, getAuditContext)(input);
+}
+
+/* ---- interview times (src/server/interviews.ts) ---- */
+
+export async function createInterviewPlanAction(input: unknown) {
+  return queued(await interviewActions().createPlan(getPrincipal, getAuditContext)(input));
+}
+
+export async function removeInterviewSlotAction(input: unknown) {
+  return queued(await interviewActions().removeSlot(getPrincipal, getAuditContext)(input));
 }

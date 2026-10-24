@@ -130,6 +130,7 @@ export {
 export {
   applicationSnapshot,
   createFirestoreApplicationStore,
+  createFirestoreInterviewStore,
   createFirestoreRecruitmentStore,
   createFirestoreRecruitmentWebStore,
   recruitmentSnapshot,
@@ -138,6 +139,7 @@ export {
   type ApplyOutcome,
   type Decision,
   type FirestoreApplicationStore,
+  type FirestoreInterviewStore,
   type FirestoreRecruitmentStore,
   type FirestoreRecruitmentWebStore,
   type RecruitmentAudit,

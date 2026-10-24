@@ -18,12 +18,14 @@ shows ONE next action.
   `seatCounters`) and web store (the applicant's own `applications/{recruitmentId}_{uid}`).
 - Admin: `apps/admin/src/server/recruitment.ts` (set-up) and `applications.ts` (selection), pages
   `/recruitment` (`src/components/recruitment-page.tsx`, `recruitment-model.ts`) and
-  `/recruitment/{id}/applications` (`applications-page.tsx`, `applications-model.ts`).
+  `/recruitment/{id}/applications` (`applications-page.tsx`, `applications-model.ts`),
+  `/recruitment/{id}/interviews` (`interviews-page.tsx`; actions `src/server/interviews.ts`).
 - Web: `/recruitment`, `/recruitment/[id]` (status + next action), `/recruitment/[id]/apply`,
   upload route `POST /api/recruitment/[id]/portfolio[?question=q_…]`; logic
   `apps/web/src/server/recruitment.ts`, wiring `recruitment-wiring.ts`.
 - Tests: `tests/unit/recruitment.test.ts`, `tests/unit/admin-recruitment.test.ts`,
-  `tests/integration/recruitment.test.ts`, `tests/integration/selection.test.ts`.
+  `tests/integration/recruitment.test.ts`, `tests/integration/selection.test.ts`,
+  `tests/integration/interviews.test.ts`.
 
 ## How to use it
 
@@ -61,6 +63,14 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
   and writes `seatCounters/{recruitmentId}_{unitId}` and refuses when `filled >= quota`, so
   concurrent accepts never exceed the quota. Rejecting an accepted applicant gives the seat back
   in the same transaction. Declining takes nothing.
+- **Interviews** (C3-I, admin `/recruitment/{id}/interviews`, `src/server/interviews.ts`,
+  `recruitment.review`): a day plan (day, from/until, minutes per interview, minutes between,
+  a break, people per time, link or room) on the committee's clock becomes `interviewSlots`
+  in UTC (`slotTimes`, at most 100 per plan, past times skipped). The day view lists each time
+  with who booked it. An applicant in `interview` books on the website, shown on the clock of
+  their profile time zone: ONE transaction reads the application, the chosen slot
+  (`booked < capacity`, future, same recruitment) and the old slot, so capacity holds under
+  concurrency and a re-booking frees the old time. A time with bookings is never deleted.
 - **Offers** expire at read time (`offerExpired`): no job releases them; an expired offer cannot
   be answered and the committee may offer again.
 - **Files** are opened by the committee through 15-minute signed links, only for paths that

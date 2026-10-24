@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
 import type { Answers, FileAnswer } from "../forms";
-import { RuleViolationError, type EntityMeta } from "../shared";
+import { TimezoneSchema } from "../members/profile";
+import { RuleViolationError, wallTimeToUtc, type EntityMeta } from "../shared";
 
 /**
  * Open recruitment (Oprec, feature C3). A recruitment belongs to a board period, offers seats in
@@ -91,6 +92,12 @@ export interface Recruitment extends EntityMeta {
   readonly published: boolean;
 }
 
+export interface Booking {
+  readonly slotId: string;
+  /** Copy of the slot's start (UTC), shown without reading the slot. */
+  readonly startsAt: Date;
+}
+
 export interface Offer {
   readonly orgUnitId: string;
   readonly expiresAt: Date;
@@ -109,6 +116,8 @@ export interface Application {
   readonly portfolio: FileAnswer | null;
   readonly revisionRound: number;
   readonly offer: Offer | null;
+  /** The booked interview slot (C3-I), or null. */
+  readonly interview: Booking | null;
   readonly submittedAt: Date | null;
   readonly version: number;
   readonly createdAt: Date;
@@ -307,3 +316,92 @@ export const ApplicationDraftSchema = z
     answers: z.record(z.string().max(40), z.unknown()),
   })
   .strict();
+
+/* ---------------------------------------------------------------- interview slots (C3-I) */
+
+/**
+ * `interviewSlots/{id}`: one interview time (UTC) with a capacity; `booked` is the live count,
+ * read and written in every booking transaction.
+ */
+export interface InterviewSlot {
+  readonly id: string;
+  readonly recruitmentId: string;
+  readonly startsAt: Date;
+  readonly durationMinutes: number;
+  readonly capacity: number;
+  readonly booked: number;
+  /** Meeting link or room, shown to the booked applicant. */
+  readonly location: string;
+  readonly deletedAt: Date | null;
+}
+
+export const MAX_SLOTS_PER_PLAN = 100;
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+/**
+ * A day of interviews (PPIT schedule generator): from `startTime` to `endTime` on `date` in the
+ * committee's `timeZone`, slots of `durationMinutes` with `gapMinutes` between them, skipping
+ * breaks. Stored in UTC.
+ */
+export const SlotPlanSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a day."),
+    timeZone: TimezoneSchema,
+    startTime: z.string().regex(HHMM, "Use HH:MM."),
+    endTime: z.string().regex(HHMM, "Use HH:MM."),
+    durationMinutes: z.number().int().min(5).max(240),
+    gapMinutes: z.number().int().min(0).max(120),
+    breaks: z
+      .array(
+        z
+          .object({ start: z.string().regex(HHMM), end: z.string().regex(HHMM) })
+          .strict()
+          .refine((b) => minutesOf(b.end) > minutesOf(b.start), "A break ends after it starts."),
+      )
+      .max(10),
+    capacity: z.number().int().min(1).max(50),
+    location: safeText(500, { allowEmpty: true }),
+  })
+  .strict()
+  .refine((p) => minutesOf(p.endTime) > minutesOf(p.startTime), {
+    path: ["endTime"],
+    message: "End after the start.",
+  });
+export type SlotPlan = z.output<typeof SlotPlanSchema>;
+
+/** The UTC start of every slot of a plan (a slot overlapping a break is skipped). */
+export function slotTimes(plan: SlotPlan): Date[] {
+  const end = minutesOf(plan.endTime);
+  const breaks = plan.breaks.map((b) => [minutesOf(b.start), minutesOf(b.end)] as const);
+  const times: Date[] = [];
+  for (let at = minutesOf(plan.startTime); at + plan.durationMinutes <= end;) {
+    const until = at + plan.durationMinutes;
+    const overlap = breaks.find(([s, e]) => at < e && until > s);
+    if (overlap) {
+      at = overlap[1];
+      continue;
+    }
+    const hh = String(Math.floor(at / 60)).padStart(2, "0");
+    const mm = String(at % 60).padStart(2, "0");
+    times.push(wallTimeToUtc(`${plan.date}T${hh}:${mm}`, plan.timeZone) as Date);
+    at = until + plan.gapMinutes;
+  }
+  if (times.length > MAX_SLOTS_PER_PLAN) {
+    throw new RuleViolationError(`At most ${MAX_SLOTS_PER_PLAN} slots at once.`);
+  }
+  return times;
+}
+
+/** A slot can be booked while it is in the future, not deleted and not full. */
+export function canBook(slot: InterviewSlot, now: Date): boolean {
+  return slot.deletedAt === null && slot.startsAt > now && slot.booked < slot.capacity;
+}
+
+export function assertBookable(slot: InterviewSlot | null, now: Date): InterviewSlot {
+  if (!slot || slot.deletedAt !== null || slot.startsAt <= now) {
+    throw new RuleViolationError("This interview time is no longer available.");
+  }
+  if (slot.booked >= slot.capacity) throw new RuleViolationError("This interview time is full.");
+  return slot;
+}

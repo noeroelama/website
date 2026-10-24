@@ -66,6 +66,7 @@ export default defineConfig({
         "apps/admin/src/server/recruitment.ts",
         "apps/web/src/server/recruitment.ts",
         "apps/admin/src/server/applications.ts",
+        "apps/admin/src/server/interviews.ts",
         "packages/db/src/firestore/chapters.ts",
         "apps/admin/src/server/chapters.ts",
       ],

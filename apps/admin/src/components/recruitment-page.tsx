@@ -236,6 +236,12 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
             <MenuItem icon="inbox" onClick={() => router.push(`/recruitment/${r.id}/applications`)}>
               Applications
             </MenuItem>
+            <MenuItem
+              icon="calendar"
+              onClick={() => router.push(`/recruitment/${r.id}/interviews`)}
+            >
+              Interviews
+            </MenuItem>
             {canEdit ? (
               <>
                 <MenuItem

@@ -24,3 +24,7 @@ export async function withdrawApplicationAction(input: unknown) {
 export async function respondOfferAction(input: unknown) {
   return applying().respondOffer(await applicant(), input);
 }
+
+export async function bookInterviewAction(input: unknown) {
+  return applying().bookInterview(await applicant(), input);
+}

@@ -20,6 +20,7 @@ import { createFormActions } from "./forms";
 import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
+import { createInterviewActions } from "./interviews";
 import { createMemberActions } from "./members";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
@@ -95,6 +96,11 @@ export const applicationActions = lazyEnv(() =>
     signedUrl: (path) => imageStorage().signedReadUrl(path),
     now: () => new Date(),
   }),
+);
+
+/** Recruitment → Interviews: interview times (day plans) and the day view. */
+export const interviewActions = lazyEnv(() =>
+  createInterviewActions({ interviews: adminStores().interviews, now: () => new Date() }),
 );
 
 /** Universities page: review of proposed campuses. */
@@ -248,6 +254,8 @@ export const adminReads = {
   listRevisions: (recruitmentId: string) =>
     adminStores().applications.revisionsForRecruitment(recruitmentId),
   getFormVersion: (formId: string, n: number) => adminStores().forms.getVersion(formId, n),
+  listInterviewSlots: (recruitmentId: string) =>
+    adminStores().interviews.listForRecruitment(recruitmentId),
   recruitmentSeats: (ids: readonly string[]) => adminStores().recruitments.seats(ids),
   getForm: (id: string) => adminStores().forms.get(id),
   listFormVersions: (id: string) => adminStores().forms.listVersions(id),

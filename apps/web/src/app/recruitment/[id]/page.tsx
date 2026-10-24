@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { signInUrl } from "@website/auth";
-import { nextAction } from "@website/domain/recruitment";
+import { canBook, nextAction } from "@website/domain/recruitment";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { formatEventTime } from "@/lib/event-time";
-import { hasCompleteProfile } from "@/server/profile-wiring";
+import { hasCompleteProfile, ownTimezone } from "@/server/profile-wiring";
 import { recruitmentStore } from "@/server/recruitment-wiring";
 import { getSignedInUser } from "@/server/session";
+import { InterviewTimes } from "./interview-times";
 import { OfferButtons } from "./offer-buttons";
 import { WithdrawButton } from "./withdraw-button";
 
@@ -41,7 +42,12 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
         recruitmentStore().ownRevisions(r.id, user.uid),
       ])
     : [null, false, []];
-  const action = nextAction(r, application, new Date());
+  const now = new Date();
+  const action = nextAction(r, application, now);
+  const [slots, zone] =
+    user && action === "interview"
+      ? await Promise.all([recruitmentStore().slots(r.id), ownTimezone(user.uid)])
+      : [[], "UTC"];
   const path = `/recruitment/${r.id}`;
   const canApply = action === "start" || action === "complete" || action === "revise";
 
@@ -97,6 +103,23 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
               </p>
               <OfferButtons recruitmentId={r.id} labels={t} />
             </>
+          )}
+          {action === "interview" && application && (
+            <InterviewTimes
+              recruitmentId={r.id}
+              zone={zone}
+              language={language}
+              current={application.interview?.startsAt.toISOString() ?? null}
+              times={slots
+                .filter((s) => canBook(s, now) && s.id !== application.interview?.slotId)
+                .map((s) => ({
+                  id: s.id,
+                  startsAt: s.startsAt.toISOString(),
+                  minutes: s.durationMinutes,
+                }))}
+              location={slots.find((s) => s.id === application.interview?.slotId)?.location ?? ""}
+              labels={t}
+            />
           )}
           {/* ONE next action (C3): a button when the applicant can act, else what happens next. */}
           {canApply ? (

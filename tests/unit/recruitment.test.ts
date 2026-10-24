@@ -4,7 +4,11 @@ import {
   applicationId,
   assertTransition,
   canTransition,
+  assertBookable,
+  canBook,
   checkChoices,
+  slotTimes,
+  SlotPlanSchema,
   formFilePath,
   isFinal,
   isPdf,
@@ -171,5 +175,77 @@ describe("applying (C3 steps 1-2)", () => {
     expect(nextAction(window, { status: "offered", offer }, new Date("2026-11-12T00:00:00Z"))).toBe(
       "ended",
     );
+  });
+});
+
+describe("interview slots (C3-I)", () => {
+  const plan = SlotPlanSchema.parse({
+    date: "2026-11-15",
+    timeZone: "Asia/Tokyo",
+    startTime: "09:00",
+    endTime: "12:00",
+    durationMinutes: 30,
+    gapMinutes: 10,
+    breaks: [{ start: "10:30", end: "11:00" }],
+    capacity: 2,
+    location: "https://meet.example/oprec",
+  });
+
+  it("generates UTC times from a day plan in the committee's zone, skipping breaks", () => {
+    // 09:00, 09:40, (10:20 overlaps the break) → 11:00 (11:40 would end after 12:00).
+    expect(slotTimes(plan).map((d) => d.toISOString())).toEqual([
+      "2026-11-15T00:00:00.000Z",
+      "2026-11-15T00:40:00.000Z",
+      "2026-11-15T02:00:00.000Z",
+    ]);
+    expect(slotTimes({ ...plan, breaks: [], gapMinutes: 0 })).toHaveLength(6);
+    expect(() =>
+      slotTimes({
+        ...plan,
+        startTime: "00:00",
+        endTime: "23:59",
+        durationMinutes: 5,
+        breaks: [],
+        gapMinutes: 0,
+      }),
+    ).toThrow(/At most 100/);
+  });
+
+  it("validates the plan", () => {
+    for (const bad of [
+      { endTime: "08:00" },
+      { startTime: "9:00" },
+      { timeZone: "Mars/Base" },
+      { durationMinutes: 1 },
+      { capacity: 0 },
+      { breaks: [{ start: "11:00", end: "10:00" }] },
+      { location: "<b>" },
+    ]) {
+      expect(SlotPlanSchema.safeParse({ ...plan, ...bad }).success, JSON.stringify(bad)).toBe(
+        false,
+      );
+    }
+  });
+
+  it("books only future, live slots with room", () => {
+    const slot = {
+      id: "s1",
+      recruitmentId: "rec1",
+      startsAt: new Date("2026-11-15T00:00:00Z"),
+      durationMinutes: 30,
+      capacity: 2,
+      booked: 1,
+      location: "",
+      deletedAt: null,
+    };
+    const before = new Date("2026-11-14T00:00:00Z");
+    expect(canBook(slot, before)).toBe(true);
+    expect(canBook({ ...slot, booked: 2 }, before)).toBe(false);
+    expect(canBook(slot, slot.startsAt)).toBe(false);
+    expect(canBook({ ...slot, deletedAt: before }, before)).toBe(false);
+    expect(assertBookable(slot, before)).toBe(slot);
+    expect(() => assertBookable({ ...slot, booked: 2 }, before)).toThrow(/full/);
+    expect(() => assertBookable(null, before)).toThrow(/no longer available/);
+    expect(() => assertBookable(slot, slot.startsAt)).toThrow(/no longer available/);
   });
 });

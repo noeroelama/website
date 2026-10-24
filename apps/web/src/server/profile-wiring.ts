@@ -27,6 +27,10 @@ export const ownProfile = lazyEnv(() =>
 export const hasCompleteProfile = async (uid: string): Promise<boolean> =>
   isProfileComplete(await memberProfiles().findByUserId(uid));
 
+/** The member's own IANA time zone (profile), for showing times on their clock (C3-I). */
+export const ownTimezone = async (uid: string): Promise<string> =>
+  (await memberProfiles().findByUserId(uid))?.timezone ?? "Asia/Jakarta";
+
 export const universityPicker = lazyEnv(() =>
   createUniversityPicker({ universities: universities(), now: () => new Date() }),
 );

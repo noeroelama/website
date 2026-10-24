@@ -1,0 +1,77 @@
+import "server-only";
+import { z } from "zod";
+import type { FirestoreInterviewStore } from "@website/db/firestore";
+import { SlotPlanSchema } from "@website/domain/recruitment";
+import { safeId } from "@website/security/validation";
+import { createGuardedAction } from "./guarded-action";
+
+export interface InterviewDeps {
+  readonly interviews: Pick<FirestoreInterviewStore, "createPlan" | "remove">;
+  readonly now: () => Date;
+}
+
+/**
+ * Interview times (C3-I, `recruitment.review`): a day plan in the committee's time zone becomes
+ * UTC slots with a capacity; a time somebody booked is never deleted. Not revertible (bookings
+ * may follow at once).
+ */
+export function createInterviewActions(deps: InterviewDeps) {
+  const createPlan = createGuardedAction({
+    permission: "recruitment.review",
+    input: z.object({ recruitmentId: safeId, plan: SlotPlanSchema }).strict(),
+    handler: async ({ recruitmentId, plan }, _principal, audit) => {
+      const created = await deps.interviews.createPlan(
+        recruitmentId,
+        plan,
+        (slots, title) =>
+          audit({
+            module: "recruitment",
+            action: "CREATE",
+            resourceType: "interviewSlot",
+            // One entry per plan, filed under the recruitment.
+            resourceId: recruitmentId,
+            title: `${title}: ${slots.length} interview times on ${plan.date}`,
+            before: null,
+            after: {
+              date: plan.date,
+              timeZone: plan.timeZone,
+              slots: slots.map((s) => s.startsAt.toISOString()),
+              capacity: plan.capacity,
+            },
+            versionBefore: null,
+            versionAfter: null,
+            revertible: false,
+          }),
+        deps.now(),
+      );
+      return { created: created.length };
+    },
+  });
+
+  const removeSlot = createGuardedAction({
+    permission: "recruitment.review",
+    input: z.object({ id: safeId }).strict(),
+    handler: async ({ id }, _principal, audit) => {
+      await deps.interviews.remove(
+        id,
+        (slot) =>
+          audit({
+            module: "recruitment",
+            action: "DELETE",
+            resourceType: "interviewSlot",
+            resourceId: slot.id,
+            title: `Interview time ${slot.startsAt.toISOString()}`,
+            before: { startsAt: slot.startsAt.toISOString(), capacity: slot.capacity },
+            after: null,
+            versionBefore: null,
+            versionAfter: null,
+            revertible: false,
+          }),
+        deps.now(),
+      );
+      return { id };
+    },
+  });
+
+  return { createPlan, removeSlot };
+}

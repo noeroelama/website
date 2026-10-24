@@ -102,6 +102,7 @@ describe("selection queue model", () => {
     portfolio: null,
     revisionRound: 1,
     offer: { orgUnitId: "media", expiresAt: new Date("2026-11-09T00:00:00Z") },
+    interview: null,
     submittedAt: at,
     version: 4,
     createdAt: at,

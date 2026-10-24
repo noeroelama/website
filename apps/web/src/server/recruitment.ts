@@ -28,6 +28,7 @@ export interface ApplyingDeps {
     | "submit"
     | "withdraw"
     | "respondOffer"
+    | "bookInterview"
   >;
   readonly profileComplete: (uid: string) => Promise<boolean>;
   /** Private Storage (portfolios have no public URL). */
@@ -108,6 +109,14 @@ export function createApplying(deps: ApplyingDeps) {
       if (!g.ok) return g.result;
       const { recruitmentId, accept } = g.data;
       return toResult(await deps.store.respondOffer(recruitmentId, g.uid, accept, deps.now()));
+    },
+
+    /** Books (or moves) the own interview to a free time; the old time is freed. */
+    async bookInterview(user: Applicant, input: unknown): Promise<ApplyResult> {
+      const g = await gate(user, Ref.extend({ slotId: safeId }).strict(), input);
+      if (!g.ok) return g.result;
+      const { recruitmentId, slotId } = g.data;
+      return toResult(await deps.store.bookInterview(recruitmentId, g.uid, slotId, deps.now()));
     },
 
     async withdraw(user: Applicant, input: unknown): Promise<ApplyResult> {
