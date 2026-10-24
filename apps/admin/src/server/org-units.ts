@@ -6,7 +6,7 @@ import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface OrgUnitDeps {
-  readonly units: Pick<FirestoreOrgUnitStore, "save" | "move">;
+  readonly units: Pick<FirestoreOrgUnitStore, "save" | "move" | "remove">;
   readonly now: () => Date;
 }
 
@@ -20,10 +20,11 @@ const MoveInput = z
 
 /**
  * Audit entry for one unit change (module `structure`, resource `orgUnit`). Not revertible: a
- * revert would bring back an old path without rewriting the units below it.
+ * revert would bring back an old path without rewriting the units below it. A DELETE is
+ * revertible (only units with nothing below them are deleted, so no path is involved).
  */
 const unitAudit =
-  (audit: AuditBuilder) =>
+  (audit: AuditBuilder, deleting = false) =>
   (
     before: Parameters<AuditBuilder>[0]["before"],
     after: Parameters<AuditBuilder>[0]["after"],
@@ -32,7 +33,7 @@ const unitAudit =
   ) =>
     audit({
       module: "structure",
-      action: current ? "UPDATE" : "CREATE",
+      action: deleting ? "DELETE" : current ? "UPDATE" : "CREATE",
       resourceType: "orgUnit",
       resourceId: next.id,
       title: next.name,
@@ -40,10 +41,10 @@ const unitAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      revertible: false,
+      revertible: deleting,
     });
 
-/** Organizations → Period → Structure actions: save (add/edit) and move. Units are deactivated. */
+/** Organizations → Period → Structure actions: save (add/edit), move and delete (soft). */
 export function createOrgUnitActions(deps: OrgUnitDeps) {
   const save = createGuardedAction({
     permission: "structure.edit",
@@ -63,5 +64,14 @@ export function createOrgUnitActions(deps: OrgUnitDeps) {
     },
   });
 
-  return { save, move };
+  const remove = createGuardedAction({
+    permission: "structure.edit",
+    input: z.object({ id: safeId, version: z.number().int().min(1) }).strict(),
+    handler: async ({ id, version }, _principal, audit) => {
+      const saved = await deps.units.remove(id, version, unitAudit(audit, true), deps.now());
+      return { version: saved.version };
+    },
+  });
+
+  return { save, move, remove };
 }

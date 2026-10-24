@@ -2,11 +2,18 @@
 
 ## What it does
 
-Staff create events on the admin **Event** page: title, type, date and time with the event's
-time zone, registration deadline, location, description, banner, optional external registration
-link, URL, schedule (rundown), guest speakers and sponsors. **Save draft** keeps it hidden,
-**Publish** shows it on the site; the row menu publishes/unpublishes at once, copies the public
-link (`/events/<slug>`) or moves the event to the trash.
+Staff create events on the admin **Event** page: title, type, date and time, registration
+deadline, location, URL, description, optional external registration link, banner, guest
+speakers, rundown and sponsors. **Save draft** keeps it hidden (shown as **Private**), **Publish**
+shows it on the site (**Public**); the row menu and the bulk bar publish / **Make private** at
+once, the row menu copies the public link (`/events/<slug>`), and Delete moves events to the trash.
+
+The list (the shared dark admin look, "Dark admin pages" in `apps/admin/src/app/globals.css`) has
+the tabs All / Upcoming / Past / Drafts, a title search, Filters (type, status, event date), and
+the columns Event, Event Date ("14 Nov 2026" on the event's clock + "In N days"), Location,
+Status and **Last Modified** ("2 hours ago" + the author: the staff member of the event's newest
+change, from the newest 500 `events` audit entries and `users/{uid}`, mapped by
+`apps/admin/src/components/authors.ts`; nothing when no entry is in that window).
 
 ## Where it lives
 
@@ -17,15 +24,16 @@ link (`/events/<slug>`) or moves the event to the trash.
   built on `slugged.ts`)
 - Admin actions: `apps/admin/src/server/events.ts`; page `apps/admin/src/app/(panel)/events/`
   (`src/components/events-page.tsx`, rows mapped in `events-model.ts`)
+- List cells (author, "In N days"): `apps/admin/src/components/authors.ts`, `events-model.ts`
 - Tests: `tests/unit/events-cms.test.ts`, `tests/unit/time.test.ts`,
   `tests/unit/admin-events.test.ts`, `tests/integration/events-cms.test.ts`
 
 ## Rules and assumptions
 
 - Required: title (3–200), type (fixed list; labels in `apps/admin/src/labels.ts`), date and time,
-  time zone (IANA, e.g. `Asia/Tokyo`, defaults to the editor's browser), location, description,
-  banner (preset `banner`). The date, time and deadline are entered on the event's own clock and
-  stored in UTC.
+  location, description, banner (preset `banner`). The date, time and deadline are entered on the
+  event's own clock and stored in UTC. The time zone (IANA, e.g. `Asia/Tokyo`) is not shown in the
+  form: a new event takes the editor's browser zone, an edited event keeps its own.
 - The registration deadline must be on or before the event date. Empty = registration closes when
   the event starts.
 - The URL slug is unique; when left empty the server picks `event-` + 8 random hex characters.

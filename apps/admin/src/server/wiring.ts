@@ -1,11 +1,11 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
 import type { AuditListQuery } from "@website/db/firestore";
-import { unsubscribeLinkData } from "@website/domain/newsletter";
+import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newsletter";
 import { logSecurityEvent } from "@website/observability";
-import { signLink } from "@website/security";
+import { keyedHash, signLink } from "@website/security";
 import { createAccountActions } from "./accounts";
 import { createAppointmentActions } from "./appointments";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
@@ -141,21 +141,39 @@ export const messenger = lazyEnv(() => {
     now: () => new Date(),
   });
 });
+/** A signed link on the website (newsletter pages); needs LINK_SIGNING_SECRET and WEB_URL. */
+function webLink(path: string, data: Record<string, string>): string {
+  const secret = getAdminEnv().LINK_SIGNING_SECRET;
+  const web = getAppUrls().WEB_URL;
+  if (!secret || !web) throw new Error("LINK_SIGNING_SECRET and WEB_URL are required.");
+  return `${web}${path}?t=${signLink(data, secret)}`;
+}
+
 /**
- * Newsletter page actions and the "newsletter-send" cron job. Unsubscribe links need
- * LINK_SIGNING_SECRET (the same value as apps/web) and WEB_URL.
+ * Newsletter page actions and the "newsletter-send" cron job. Unsubscribe, open and click links
+ * need LINK_SIGNING_SECRET and staff-added subscribers SUBSCRIBER_HASH_SECRET (the same values as
+ * apps/web), plus WEB_URL.
  */
 export const newsletterActions = lazyEnv(() =>
   createNewsletterActions({
     campaigns: adminStores().campaigns,
     subscribers: adminStores().subscribers,
     send: (message, key) => messenger().send(message, key),
-    unsubscribeUrl: (subscriberId) => {
-      const secret = getAdminEnv().LINK_SIGNING_SECRET;
-      const web = getAppUrls().WEB_URL;
-      if (!secret || !web) throw new Error("LINK_SIGNING_SECRET and WEB_URL are required.");
-      return `${web}/newsletter/unsubscribe?t=${signLink(unsubscribeLinkData(subscriberId), secret)}`;
+    unsubscribeUrl: (subscriberId) =>
+      webLink("/newsletter/unsubscribe", unsubscribeLinkData(subscriberId)),
+    openUrl: (campaignId, subscriberId) =>
+      webLink("/newsletter/o", trackingLinkData("open", campaignId, subscriberId)),
+    clickUrl: (campaignId, subscriberId, url) =>
+      webLink("/newsletter/c", trackingLinkData("click", campaignId, subscriberId, url)),
+    subscriberId: (email) => {
+      const secret = getAdminEnv().SUBSCRIBER_HASH_SECRET;
+      if (!secret) throw new Error("SUBSCRIBER_HASH_SECRET is required.");
+      return keyedHash("subscriber", email, secret);
     },
+    newToken: () => randomBytes(32).toString("base64url"),
+    confirmUrl: (id, token) =>
+      `${getAppUrls().WEB_URL ?? ""}/newsletter/confirm?s=${id}&t=${token}`,
+    chapters: () => adminStores().chapters.listForAdmin(),
     staffEmail: async (uid) => (await adminStores().accounts.get(uid))?.email ?? null,
     logExport: (actorId, rows) =>
       logSecurityEvent(adminStores().logger, {
@@ -184,6 +202,7 @@ export const dashboard = lazyEnv(() =>
 export const adminReads = {
   listUsers: (query: UserListQuery) => adminStores().accounts.list(query),
   getUser: (uid: string) => adminStores().accounts.get(uid),
+  getUsers: (uids: readonly string[]) => adminStores().accounts.getMany(uids),
   listRoles: () => adminStores().roles.list(),
   listAudit: (query: AuditListQuery) => adminStores().auditLog.list(query),
   listFailedMessages: (cursor: string | undefined) =>
@@ -197,6 +216,7 @@ export const adminReads = {
   listPeriods: () => adminStores().periods.listForAdmin(),
   getPeriod: (id: string) => adminStores().periods.get(id),
   listOrgUnits: (periodId: string) => adminStores().orgUnits.listForPeriod(periodId),
+  getOrgUnit: (id: string) => adminStores().orgUnits.get(id),
   listAppointments: (periodId: string) => adminStores().appointments.listForPeriod(periodId),
   getAppointmentRoleMap: () => adminStores().appointments.getRoleMap(),
   listPendingUniversities: () => adminStores().universities.listPending(),

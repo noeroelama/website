@@ -8,6 +8,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { label, SCOPE_LABELS, USER_STATUS_LABELS } from "@/labels";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
+import { Select } from "@/components/ui/select";
 
 export const instant = false;
 
@@ -58,15 +59,15 @@ export default async function UsersPage({
         </div>
       </div>
       <form className="admin-toolbar" method="get">
-        <select className="admin-select" name="role" defaultValue={roleId ?? ""} aria-label="Role">
+        <Select className="admin-select" name="role" defaultValue={roleId ?? ""} aria-label="Role">
           <option value="">All roles</option>
           {roles.map((role) => (
             <option key={role.id} value={role.id}>
               {role.name}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           className="admin-select"
           name="status"
           defaultValue={status ?? ""}
@@ -78,7 +79,7 @@ export default async function UsersPage({
               {label(USER_STATUS_LABELS, value)}
             </option>
           ))}
-        </select>
+        </Select>
         <Button type="submit" variant="outline">
           Filter
         </Button>

@@ -17,6 +17,8 @@ export function SuggestedRolesButton({ reauthUrl }: { reauthUrl: string | null }
     <>
       <Button
         variant="outline"
+        size="sm"
+        icon="plus"
         disabled={pending}
         onClick={() =>
           start(async () => {
@@ -123,10 +125,10 @@ export function RoleForm(props: {
       </p>
       <div className="admin-form-grid">
         {props.groups.map((group) => (
-          <fieldset key={group.page} className="admin-field">
+          <fieldset key={group.page} className="admin-field admin-fieldset">
             <legend className="admin-field__label">{group.label}</legend>
             {group.options.map((option) => (
-              <label key={option.value} className="admin-checkbox">
+              <label key={option.value} className="admin-radio">
                 <input
                   type="checkbox"
                   checked={checked.has(option.value)}
@@ -152,8 +154,8 @@ export function RoleForm(props: {
           </Button>
         ) : null}
         <div className="admin-form-actions__right">
-          <Button href="/roles" variant="ghost">
-            Cancel
+          <Button href="/roles" variant="outline" icon="chevronLeft">
+            Back
           </Button>
           <Button type="submit" disabled={pending}>
             Save role

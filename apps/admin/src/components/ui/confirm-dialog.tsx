@@ -2,11 +2,13 @@
 
 import type { ReactNode } from "react";
 import { Button } from "./button";
+import type { IconName } from "./icon";
 import { Modal } from "./modal";
 
 /**
- * Confirmation for destructive or account-changing actions. Records are never removed for good
- * (soft delete), so the default wording is "Move to trash" (DEC-16).
+ * Confirmation for destructive or account-changing actions, in the shared popup look (Back + the
+ * action at the bottom right). Records are never removed for good (soft delete), so the default
+ * wording is "Move to trash" (DEC-16); list pages use `DELETE_HINT` as the message.
  */
 export function ConfirmDialog({
   open,
@@ -14,6 +16,7 @@ export function ConfirmDialog({
   children,
   confirmLabel = "Move to trash",
   tone = "danger",
+  icon,
   pending = false,
   onConfirm,
   onCancel,
@@ -23,6 +26,8 @@ export function ConfirmDialog({
   children: ReactNode;
   confirmLabel?: string;
   tone?: "danger" | "success" | "primary";
+  /** Icon of the action button (e.g. "trash"). */
+  icon?: IconName;
   pending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -31,13 +36,15 @@ export function ConfirmDialog({
     <Modal
       open={open}
       title={title}
+      width={420}
+      hideClose
       onClose={onCancel}
       footer={
-        <div className="admin-modal__footer-row admin-modal__footer-row--end">
-          <Button variant="ghost" onClick={onCancel}>
-            Cancel
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={onCancel}>
+            Back
           </Button>
-          <Button variant={tone} disabled={pending} onClick={onConfirm}>
+          <Button variant={tone} {...(icon ? { icon } : {})} disabled={pending} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>
@@ -47,3 +54,7 @@ export function ConfirmDialog({
     </Modal>
   );
 }
+
+/** Message of a soft delete on the content list pages (revertible on the Audit Log). */
+export const DELETE_HINT =
+  "They disappear from the public page now. You can revert deletion on the admin log before 14 days.";

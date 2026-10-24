@@ -5,10 +5,13 @@ import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   activatePeriodAction,
+  deleteChapterAction,
+  deletePeriodAction,
   savePeriodAction,
-  setChapterActiveAction,
 } from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
+import { downloadCsv } from "@/components/csv";
+import { esc } from "@/components/format";
 import { ChapterForm } from "@/components/chapter-form";
 import { Card, CardBody } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -18,22 +21,24 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { CHAPTER_RISK_LABELS, label } from "@/labels";
 import type { ChapterItem } from "./chapters-model";
 import type { PeriodItem } from "./periods-model";
+import { Select } from "@/components/ui/select";
 
 /* ==================================================================
-   Organizations — Period list and the PPI chapters list. Ported from
-   the Figma "ORGANIZATIONS ADMIN" screens; colours come from the shared
-   design tokens. A period's structure is its own page
-   (/organizations/periods/[id], org-structure-page.tsx).
+   Organizations — Period list and the PPI chapters list, ported from
+   the Figma "ORGANIZATIONS ADMIN" screens. A period's structure is its
+   own page (/organizations/periods/[id], org-structure-page.tsx).
    ================================================================== */
 
-/** Page subtitle on every screen (the Figma's own caption is a copy-paste
+/** Page subtitle on every Organizations screen (the Figma's "GALLERY" caption is a copy-paste
     leftover from the Gallery artboard, so the section name is corrected here). */
-const ORG_SUBTITLE = "PPIDK ASIANIA ORGANIZATION ADMIN PAGE";
+export const ORG_SUBTITLE =
+  "Manage the board periods, their structure and the PPI chapters shown on the public site.";
 
-/** Screen state machine, following the breadcrumbs "Organizations > …". */
-type OrgView = "period" | "ppi";
+/** The two lists of the Organizations page (`?view=ppi` opens the PPI list). */
+export type OrgView = "period" | "ppi";
 
 /** Rows-per-page options for the dark bar. */
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
@@ -41,10 +46,95 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 /** Create/Edit Period popup. */
 type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } | null;
 
-/** Sortable table header — label + arrow icon, gold when sorting (same
-    pattern as the Events table's sortable columns). */
+/** What waits for the delete confirmation. */
+type DeleteState =
+  { kind: "period"; item: PeriodItem } | { kind: "ppis"; items: ChapterItem[] } | null;
+
+/** Period / PPI tabs under the page title. On the Structure page they are links back. */
+export function OrgTabs({
+  view,
+  onSelect,
+  showPeriod = true,
+}: {
+  view: OrgView;
+  /** Switch in place; without it the tabs link to /organizations. */
+  onSelect?: (view: OrgView) => void;
+  showPeriod?: boolean;
+}) {
+  const router = useRouter();
+  const tabs: [OrgView, string][] = showPeriod
+    ? [
+        ["period", "Period"],
+        ["ppi", "PPI"],
+      ]
+    : [["ppi", "PPI"]];
+  return (
+    <div className="admin-tabs" role="tablist" aria-label="Organization lists">
+      {tabs.map(([key, text]) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={view === key}
+          className={`admin-tabs__btn${view === key ? " admin-tabs__btn--active" : ""}`}
+          onClick={() =>
+            onSelect
+              ? onSelect(key)
+              : router.push(key === "ppi" ? "/organizations?view=ppi" : "/organizations")
+          }
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Dark delete confirmation (same as the Events page): "Delete N PPIS?", Back / Delete. */
+export function OrgDeleteDialog({
+  open,
+  title,
+  confirmLabel,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  confirmLabel: string;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      open={open}
+      title={title}
+      width={460}
+      hideClose
+      onClose={onCancel}
+      footer={
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={onCancel}>
+            Back
+          </Button>
+          <Button variant="danger" icon="trash" disabled={pending} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      }
+    >
+      <p className="admin-delete-confirm__message">
+        They disappear from the public page now. You can revert deletion on the admin log before 14
+        days.
+      </p>
+    </Modal>
+  );
+}
+
+/** Sortable table header — label + arrow icon (same pattern as the Events table). */
 function SortHeader({
-  label,
+  label: text,
   active,
   dir,
   onClick,
@@ -60,63 +150,51 @@ function SortHeader({
       className={`admin-th-sort${active ? " admin-th-sort--active" : ""}`}
       onClick={onClick}
     >
-      <span>{label}</span>
+      <span>{text}</span>
       <Icon name={active ? (dir === "asc" ? "arrowUp" : "arrowDown") : "sort"} size={12} />
     </button>
   );
 }
 
-/** Columns of the Period table that can be sorted (Aksi never sorts). */
-type PeriodSortKey = "name" | "cabinet" | "status";
+/** Columns of the Period table that can be sorted. */
+type PeriodSortKey = "name" | "status";
 
 /** Columns of the PPI table that can be sorted. */
-type PpiSortKey = "name" | "country";
+type PpiSortKey = "name" | "country" | "memberCount";
 
-/** Period status chip — a plain text pill without any icon (the Figma Period row shows just
-    the badge, no logo). Only the active period is highlighted. */
-function periodStatusBadge(status: PeriodItem["status"]): ReactNode {
-  return (
-    <span
-      className={
-        status === "active"
-          ? "admin-org-status admin-org-status--active"
-          : "admin-org-status admin-org-status--inactive"
-      }
-    >
-      {status === "active" ? "Active" : status === "draft" ? "Draft" : "Archived"}
-    </span>
-  );
-}
+/** Cream pill (Figma status chip). The design shows Active / Inactive only. */
+const statusChip = (text: string) => <span className="admin-status-badge">{text}</span>;
 
 interface OrganizationsProps {
   /** PPI chapters from Firestore. */
   chapters: ChapterItem[];
-  /** organizations.edit: add, edit, activate/deactivate chapters. */
+  /** organizations.edit: add, edit, activate/deactivate and delete chapters. */
   canEdit: boolean;
   /** Chapters whose contact details this chapter admin may edit (organizations.edit there). */
   contactEditIds: string[];
   /** Board periods from Firestore; null without periods.read (the Period tab is hidden). */
   periods: PeriodItem[] | null;
-  /** periods.edit: add, edit and activate periods. */
+  /** periods.edit: add, edit, activate and delete periods. */
   canEditPeriods: boolean;
+  /** List shown first (`?view=ppi`). */
+  initialView: OrgView;
 }
 
 export function OrganizationsPage(props: OrganizationsProps) {
   const pathname = usePathname();
   // key={pathname} remounts the list when the organizations route is (re)entered,
-  // so pagination / selection / tab state start fresh on every visit (same
-  // pattern as Events, Articles & Gallery).
+  // so pagination / selection / tab state start fresh on every visit.
   return <OrganizationsList key={pathname} {...props} />;
 }
 
-/** Organizations screens (all state lives here; remounted by OrganizationsPage
- *  on navigation so each visit starts clean). */
+/** Organizations screens (all state lives here; remounted on navigation). */
 function OrganizationsList({
   chapters: ppis,
   canEdit,
   contactEditIds,
   periods: periodList,
   canEditPeriods,
+  initialView,
 }: OrganizationsProps) {
   const periods = useMemo(() => periodList ?? [], [periodList]);
   const toast = useToastMessage();
@@ -124,147 +202,107 @@ function OrganizationsList({
   /* Chapter add/edit popup: null = closed, "new" = add, otherwise the chapter. */
   const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
   const [busy, setBusy] = useState(false);
-  /* ---- navigation ---- */
-  const [view, setView] = useState<OrgView>(periodList ? "period" : "ppi");
-  /* ---- UI state ---- */
+  const [view, setView] = useState<OrgView>(periodList ? initialView : "ppi");
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [periodModal, setPeriodModal] = useState<PeriodModalState>(null);
   const [periodErrors, setPeriodErrors] = useState<Readonly<Record<string, string>>>({});
   /* Period waiting for the "Set as Active" confirmation. */
   const [activating, setActivating] = useState<PeriodItem | null>(null);
-  const [periodPage, setPeriodPage] = useState(1);
-  /* No sort applied on load — headers show the plain sort icon like the other
-     pages; first click on a column turns ascending. */
-  const [periodSort, setPeriodSort] = useState<PeriodSortKey | null>(null);
-  const [periodSortDir, setPeriodSortDir] = useState<"asc" | "desc">("asc");
-  const onPeriodSort = (key: PeriodSortKey) => {
-    if (periodSort === key) {
-      setPeriodSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setPeriodSort(key);
-      setPeriodSortDir("asc");
-    }
-    setPeriodPage(1);
-  };
-  /* PPI table: name / country / members sort (same no-default-active pattern). */
-  const [ppiSort, setPpiSort] = useState<PpiSortKey | null>(null);
-  const [ppiSortDir, setPpiSortDir] = useState<"asc" | "desc">("asc");
-  const onPpiSort = (key: PpiSortKey) => {
-    if (ppiSort === key) {
-      setPpiSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setPpiSort(key);
-      setPpiSortDir("asc");
-    }
-    setPpiPage(1);
-  };
-  const [ppiPage, setPpiPage] = useState(1);
+  const [deleting, setDeleting] = useState<DeleteState>(null);
+  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  /* ---- period list: header sort + pagination ---- */
+  /* No sort applied on load; the first click on a column sorts ascending. */
+  const [periodSort, setPeriodSort] = useState<PeriodSortKey | null>(null);
+  const [ppiSort, setPpiSort] = useState<PpiSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const sortBy = <K extends string>(current: K | null, key: K, set: (k: K) => void) => {
+    if (current === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      set(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+  const switchView = (next: OrgView) => {
+    setView(next);
+    setMenuFor(null);
+    setPage(1);
+  };
+
   const sortedPeriods = useMemo(() => {
     if (!periodSort) return periods;
-    const copy = [...periods];
-    copy.sort((a, b) => {
-      const av = periodSort === "name" ? a.name : periodSort === "cabinet" ? a.cabinet : a.status;
-      const bv = periodSort === "name" ? b.name : periodSort === "cabinet" ? b.cabinet : b.status;
-      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-      return periodSortDir === "asc" ? cmp : -cmp;
+    return [...periods].sort((a, b) => {
+      const cmp = a[periodSort] < b[periodSort] ? -1 : a[periodSort] > b[periodSort] ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
     });
-    return copy;
-  }, [periods, periodSort, periodSortDir]);
-  const periodTotalPages = Math.max(1, Math.ceil(periods.length / pageSize));
-  const periodSafePage = Math.min(periodPage, periodTotalPages);
-  const periodPageRows = sortedPeriods.slice(
-    (periodSafePage - 1) * pageSize,
-    periodSafePage * pageSize,
-  );
-  const periodShownStart = periods.length === 0 ? 0 : (periodSafePage - 1) * pageSize + 1;
-  const periodShownEnd = Math.min(periodSafePage * pageSize, periods.length);
-
-  /* ---- ppi list: sort + pagination (full list — All/Upcoming tabs are gone) ---- */
+  }, [periods, periodSort, sortDir]);
   const sortedPpis = useMemo(() => {
     if (!ppiSort) return ppis;
-    const copy = [...ppis];
-    copy.sort((a, b) => {
-      const av = ppiSort === "name" ? a.name : a.country;
-      const bv = ppiSort === "name" ? b.name : b.country;
-      return av < bv ? -1 : av > bv ? 1 : 0;
+    return [...ppis].sort((a, b) => {
+      const cmp = a[ppiSort] < b[ppiSort] ? -1 : a[ppiSort] > b[ppiSort] ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
     });
-    return ppiSortDir === "asc" ? copy : copy.reverse();
-  }, [ppis, ppiSort, ppiSortDir]);
-  const ppiTotalPages = Math.max(1, Math.ceil(sortedPpis.length / pageSize));
-  const ppiSafePage = Math.min(ppiPage, ppiTotalPages);
-  const ppiPageRows = sortedPpis.slice((ppiSafePage - 1) * pageSize, ppiSafePage * pageSize);
-  const ppiShownStart = sortedPpis.length === 0 ? 0 : (ppiSafePage - 1) * pageSize + 1;
-  const ppiShownEnd = Math.min(ppiSafePage * pageSize, sortedPpis.length);
+  }, [ppis, ppiSort, sortDir]);
+
+  /* ---- pagination of whichever list is on screen ---- */
+  const total = view === "period" ? periods.length : ppis.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const shownStart = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const shownEnd = Math.min(safePage * pageSize, total);
+  const periodPageRows = sortedPeriods.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const ppiPageRows = sortedPpis.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageNumbers: number[] = [];
+  {
+    const winStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+    for (let i = winStart; i <= Math.min(totalPages, winStart + 4); i++) pageNumbers.push(i);
+  }
 
   /* ---- bulk selection (PPI table) ---- */
-  const pageSelected = ppiPageRows.every((r) => selected.has(r.id));
+  const pageSelected = ppiPageRows.length > 0 && ppiPageRows.every((r) => selected.has(r.id));
   const pageSomeSelected = ppiPageRows.some((r) => selected.has(r.id));
-  const toggleAllPage = () => {
+  const toggleAllPage = () =>
     setSelected((prev) => {
       const next = new Set(prev);
-      if (pageSelected) ppiPageRows.forEach((r) => next.delete(r.id));
-      else ppiPageRows.forEach((r) => next.add(r.id));
+      for (const r of ppiPageRows) {
+        if (pageSelected) next.delete(r.id);
+        else next.add(r.id);
+      }
       return next;
     });
-  };
-  const toggleOne = (id: string) => {
+  const toggleOne = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
-  const clearSelection = () => setSelected(new Set());
 
   /* ---- actions ---- */
   const exportPeriodsCsv = () => {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const rows = [
+    downloadCsv("periods", [
       ["Period", "Cabinet", "Start", "End", "Status"],
       ...periods.map((p) => [esc(p.name), esc(p.cabinet), p.startsOn, p.endsOn, p.status]),
-    ];
-    const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n") + "\r\n";
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `periods-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    ]);
     toast.show(`Exported ${periods.length} periods`);
   };
-
   const exportPpisCsv = () => {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const rows = [
-      ["Chapter", "Country", "Timezone", "Status", "Contact person", "Public contact"],
+    downloadCsv("ppi-chapters", [
+      ["Chapter", "Country", "Timezone", "Members", "Conditions", "Risk", "Status"],
       ...ppis.map((p) => [
         esc(p.name),
         esc(p.country),
         esc(p.timezone),
+        String(p.memberCount),
+        esc(p.conditions.join(" · ")),
+        label(CHAPTER_RISK_LABELS, p.risk),
         p.active ? "Active" : "Inactive",
-        esc(p.contactName),
-        esc(p.contactPublic),
       ]),
-    ];
-    const csv = "﻿" + rows.map((r) => r.join(",")).join("\r\n") + "\r\n";
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ppi-chapters-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    ]);
     toast.show(`Exported ${ppis.length} chapters`);
   };
 
-  /* ---- period actions (Firestore; archived periods are read-only, never deleted) ---- */
   const activatePeriod = async (period: PeriodItem) => {
     setBusy(true);
     const result = await activatePeriodAction({ id: period.id, version: period.version });
@@ -275,12 +313,10 @@ function OrganizationsList({
     toast.show(`Period ${period.name} is now active`);
   };
 
-  /* ---- period modal ---- */
   const savePeriod = async () => {
     if (!periodModal) return;
     const value = (id: string) =>
-      document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`#org-period-${id}`)?.value ??
-      "";
+      document.querySelector<HTMLInputElement>(`#org-period-${id}`)?.value ?? "";
     setBusy(true);
     const result = await savePeriodAction({
       ...(periodModal.mode === "edit"
@@ -288,11 +324,6 @@ function OrganizationsList({
         : { version: null }),
       name: value("name"),
       cabinet: value("cabinet"),
-      startsOn: value("startsOn"),
-      endsOn: value("endsOn"),
-      vision: value("vision"),
-      mission: value("mission"),
-      lpjDeadlineDays: Number(value("lpjDeadlineDays")),
     });
     setBusy(false);
     if (!result.ok) {
@@ -305,36 +336,48 @@ function OrganizationsList({
     toast.show(periodModal.mode === "edit" ? "Period saved" : "Period created");
   };
 
-  /* ---- shared pagination bar ---- */
-  const pageNumbers: number[] = [];
-  {
-    const total = view === "period" ? periodTotalPages : ppiTotalPages;
-    const safe = view === "period" ? periodSafePage : ppiSafePage;
-    const winStart = Math.max(1, Math.min(safe - 2, total - 4));
-    const winEnd = Math.min(total, winStart + 4);
-    for (let i = winStart; i <= winEnd; i++) pageNumbers.push(i);
-  }
+  /** Deletes one period or the selected chapters (soft; revertible in the Audit Log). */
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setBusy(true);
+    let count = 0;
+    let failure: string | null = null;
+    const rows = deleting.kind === "period" ? [deleting.item] : deleting.items;
+    for (const r of rows) {
+      const remove = deleting.kind === "period" ? deletePeriodAction : deleteChapterAction;
+      const result = await remove({ id: r.id, version: r.version });
+      if (!result.ok) {
+        failure = actionMessage(result);
+        break;
+      }
+      count++;
+    }
+    setBusy(false);
+    setDeleting(null);
+    setSelected(new Set());
+    router.refresh();
+    if (failure) return toast.show(failure);
+    toast.show(
+      deleting.kind === "period"
+        ? `Period ${deleting.item.name} deleted`
+        : `${count} PPI${count === 1 ? "" : "s"} deleted`,
+    );
+  };
 
-  /** Current page of whichever list is on screen (Period / PPI). */
-  const safePage = view === "period" ? periodSafePage : ppiSafePage;
-  const totalPages = view === "period" ? periodTotalPages : ppiTotalPages;
-  const setPage = (p: number) => (view === "period" ? setPeriodPage(p) : setPpiPage(p));
-
-  const paginationBar = (shownStart: number, shownEnd: number, total: number) => (
+  const paginationBar = (
     <div className="admin-darkbar">
       <span className="admin-darkbar__info">
         Showing {shownStart}–{shownEnd} of {total}
       </span>
       <span className="admin-darkbar__info">
         Rows per page
-        <select
+        <Select
           className="admin-darkbar__select"
           aria-label="Rows per page"
           value={pageSize}
           onChange={(e) => {
             setPageSize(Number(e.target.value));
-            setPeriodPage(1);
-            setPpiPage(1);
+            setPage(1);
           }}
         >
           {PAGE_SIZE_OPTIONS.map((n) => (
@@ -342,7 +385,7 @@ function OrganizationsList({
               {n}
             </option>
           ))}
-        </select>
+        </Select>
       </span>
       <span className="admin-darkbar__spacer" />
       <button
@@ -376,8 +419,40 @@ function OrganizationsList({
     </div>
   );
 
+  const header = (title: string, actions: ReactNode) => (
+    <>
+      <div className="admin-page-header admin-events-header">
+        <div>
+          <h1 className="admin-page-header__title">{title}</h1>
+          <p className="admin-page-header__desc">{ORG_SUBTITLE}</p>
+        </div>
+        <div className="admin-page-header__actions">{actions}</div>
+      </div>
+      <OrgTabs view={view} onSelect={switchView} showPeriod={periodList !== null} />
+    </>
+  );
+
+  const deleteDialog = (
+    <OrgDeleteDialog
+      open={deleting !== null}
+      title={
+        deleting?.kind === "ppis"
+          ? `Delete ${deleting.items.length} PPI${deleting.items.length === 1 ? "" : "S"}?`
+          : `Delete Period ${deleting?.item.name ?? ""}?`
+      }
+      confirmLabel={
+        deleting?.kind === "ppis"
+          ? `Delete ${deleting.items.length} PPI${deleting.items.length === 1 ? "" : "S"}`
+          : "Delete Period"
+      }
+      pending={busy}
+      onCancel={() => setDeleting(null)}
+      onConfirm={() => void confirmDelete()}
+    />
+  );
+
   /* ================================================================
-     SCREENS
+     PERIOD LIST
      ================================================================ */
 
   if (view === "period") {
@@ -388,8 +463,8 @@ function OrganizationsList({
           <SortHeader
             label="Period"
             active={periodSort === "name"}
-            dir={periodSortDir}
-            onClick={() => onPeriodSort("name")}
+            dir={sortDir}
+            onClick={() => sortBy(periodSort, "name", setPeriodSort)}
           />
         ),
         width: "40%",
@@ -397,15 +472,8 @@ function OrganizationsList({
       },
       {
         key: "cabinet",
-        header: (
-          <SortHeader
-            label="Cabinet"
-            active={periodSort === "cabinet"}
-            dir={periodSortDir}
-            onClick={() => onPeriodSort("cabinet")}
-          />
-        ),
-        width: "34%",
+        header: "Cabinet",
+        width: "40%",
         render: (r) => <span className="admin-table__title">{r.cabinet}</span>,
       },
       {
@@ -414,18 +482,18 @@ function OrganizationsList({
           <SortHeader
             label="Status"
             active={periodSort === "status"}
-            dir={periodSortDir}
-            onClick={() => onPeriodSort("status")}
+            dir={sortDir}
+            onClick={() => sortBy(periodSort, "status", setPeriodSort)}
           />
         ),
-        width: "18%",
-        render: (r) => periodStatusBadge(r.status),
+        width: "12%",
+        render: (r) => statusChip(r.status === "active" ? "Active" : "Inactive"),
       },
       {
         key: "aksi",
         header: "",
         align: "right",
-        width: "12%",
+        width: "8%",
         render: (r) => (
           <div className="admin-table__actions">
             {canEditPeriods && r.status !== "archived" ? (
@@ -433,7 +501,7 @@ function OrganizationsList({
                 variant="ghost"
                 size="icon"
                 icon="edit"
-                aria-label="Edit"
+                aria-label={`Edit ${r.name}`}
                 title="Edit"
                 onClick={() => {
                   setMenuFor(null);
@@ -443,7 +511,7 @@ function OrganizationsList({
               />
             ) : null}
             <div className="admin-row-menu">
-              {menuFor === `per-${r.id}` ? (
+              {menuFor === r.id ? (
                 <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
               ) : null}
               <Button
@@ -452,9 +520,9 @@ function OrganizationsList({
                 icon="more"
                 aria-label="More actions"
                 title="More actions"
-                onClick={() => setMenuFor(menuFor === `per-${r.id}` ? null : `per-${r.id}`)}
+                onClick={() => setMenuFor(menuFor === r.id ? null : r.id)}
               />
-              {menuFor === `per-${r.id}` ? (
+              {menuFor === r.id ? (
                 <div className="admin-row-menu__panel" role="menu">
                   <button
                     type="button"
@@ -474,15 +542,23 @@ function OrganizationsList({
                         setActivating(r);
                       }}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
-                      <img
-                        src="/globe.png"
-                        alt=""
-                        width={14}
-                        height={14}
-                        className="admin-status-badge__img"
-                      />{" "}
-                      Set as Active
+                      <Icon name="globe" size={14} /> Set as Active
+                    </button>
+                  ) : null}
+                  {canEditPeriods && r.status !== "active" ? (
+                    <div className="admin-row-menu__divider" role="separator" />
+                  ) : null}
+                  {canEditPeriods && r.status !== "active" ? (
+                    <button
+                      type="button"
+                      className="admin-row-menu__item admin-row-menu__item--danger"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuFor(null);
+                        setDeleting({ kind: "period", item: r });
+                      }}
+                    >
+                      <Icon name="trash" size={14} /> Delete Period
                     </button>
                   ) : null}
                 </div>
@@ -494,22 +570,18 @@ function OrganizationsList({
     ];
 
     return (
-      <>
-        <div className="admin-page-header admin-events-header">
-          <div>
-            <h1 className="admin-page-header__title">Organizations &gt; Period</h1>
-            <p className="admin-page-header__desc">{ORG_SUBTITLE}</p>
-          </div>
-          <div className="admin-page-header__actions">
+      <div>
+        {header(
+          "Organizations > Period",
+          <>
             <Button variant="outline" size="sm" icon="download" onClick={exportPeriodsCsv}>
               Export CSV
             </Button>
             {canEditPeriods ? (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 icon="plus"
-                className="admin-btn--events-add"
                 onClick={() => {
                   setPeriodErrors({});
                   setPeriodModal({ mode: "create" });
@@ -518,67 +590,36 @@ function OrganizationsList({
                 Add New Period
               </Button>
             ) : null}
-          </div>
-        </div>
+          </>,
+        )}
 
         <Card className="admin-events-card admin-list-card admin-org-card">
           <CardBody flush>
-            {/* Section tabs: Period list vs PPI chapters (top-level switch). */}
-            <div className="admin-tabs" role="tablist" aria-label="Organization lists">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={view === "period"}
-                className={`admin-tabs__btn${view === "period" ? " admin-tabs__btn--active" : ""}`}
-                onClick={() => setView("period")}
-              >
-                Period
-                <span className="admin-tabs__count">{periods.length}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={false}
-                className="admin-tabs__btn"
-                onClick={() => {
-                  setView("ppi");
-                  setMenuFor(null);
-                }}
-              >
-                PPI
-                <span className="admin-tabs__count">{ppis.length}</span>
-              </button>
-            </div>
             <DataTable
               columns={columns}
               rows={periodPageRows}
               rowKey={(r) => r.id}
               minRows={pageSize}
             />
-            {paginationBar(periodShownStart, periodShownEnd, periods.length)}
+            {paginationBar}
           </CardBody>
         </Card>
 
-        {/* Create/Edit Period popup, Cancel keeps the list. */}
+        {/* Create/Edit Period popup: Period (its years, which set the dates) and Cabinet.
+            Cancel keeps the list. */}
         <Modal
           open={periodModal !== null}
           title={periodModal?.mode === "edit" ? "Edit Period" : "Create Period"}
-          className="admin-modal--light"
-          width={420}
+          width={520}
           hideClose
           onClose={() => setPeriodModal(null)}
           footer={
             <div className="admin-modal__footer-row">
-              <Button
-                variant="ghost"
-                className="admin-btn--light admin-modal__foot-btn"
-                onClick={() => setPeriodModal(null)}
-              >
-                Cancel
+              <Button variant="outline" icon="chevronLeft" onClick={() => setPeriodModal(null)}>
+                Back
               </Button>
               <Button
                 variant="primary"
-                className="admin-modal__foot-btn"
                 icon="cloud"
                 disabled={busy}
                 onClick={() => void savePeriod()}
@@ -590,13 +631,19 @@ function OrganizationsList({
         >
           {(
             [
-              ["name", "Period *", "text", "e.g 2026/2027"],
-              ["cabinet", "Cabinet", "text", "e.g Kolaborasi Asiania"],
-              ["startsOn", "Start date *", "date", ""],
-              ["endsOn", "End date *", "date", ""],
-              ["lpjDeadlineDays", "LPJ due (days after the end) *", "number", "30"],
+              // Same rules as PeriodFormSchema (the server checks them again).
+              [
+                "name",
+                "Period *",
+                "e.g 2026-2027",
+                {
+                  pattern: String.raw`\s*\d{4}\s*(?:-|/)\s*\d{4}\s*`,
+                  title: "The years of the period, e.g. 2026-2027",
+                },
+              ],
+              ["cabinet", "Cabinet *", "Cabinet Name", { minLength: 2 }],
             ] as const
-          ).map(([key, text, type, placeholder]) => (
+          ).map(([key, text, placeholder, rules]) => (
             <div className="admin-field" key={key}>
               <label className="admin-field__label" htmlFor={`org-period-${key}`}>
                 {text}
@@ -604,36 +651,11 @@ function OrganizationsList({
               <input
                 id={`org-period-${key}`}
                 className="admin-input"
-                type={type}
+                required
+                {...rules}
                 placeholder={placeholder}
-                defaultValue={
-                  periodModal?.mode === "edit"
-                    ? String(periodModal.item[key])
-                    : key === "lpjDeadlineDays"
-                      ? "30"
-                      : ""
-                }
-                aria-invalid={periodErrors[key] ? true : undefined}
-                aria-describedby={`org-period-${key}-error`}
-              />
-              <FieldError id={`org-period-${key}-error`} message={periodErrors[key]} />
-            </div>
-          ))}
-          {(
-            [
-              ["vision", "Vision"],
-              ["mission", "Mission"],
-            ] as const
-          ).map(([key, text]) => (
-            <div className="admin-field" key={key}>
-              <label className="admin-field__label" htmlFor={`org-period-${key}`}>
-                {text}
-              </label>
-              <textarea
-                id={`org-period-${key}`}
-                className="admin-input"
-                rows={3}
                 defaultValue={periodModal?.mode === "edit" ? periodModal.item[key] : ""}
+                aria-invalid={periodErrors[key] ? true : undefined}
                 aria-describedby={`org-period-${key}-error`}
               />
               <FieldError id={`org-period-${key}-error`} message={periodErrors[key]} />
@@ -654,81 +676,60 @@ function OrganizationsList({
           only count during that period.
         </ConfirmDialog>
 
+        {deleteDialog}
         <ToastBanner message={toast.message} />
-      </>
+      </div>
     );
   }
 
-  /* ---- PPI chapters (Firestore; deactivate instead of delete) ---- */
-  const ppiSelected = selected.size;
-  const setActiveFor = async (rows: readonly ChapterItem[], active: boolean) => {
-    setBusy(true);
-    let count = 0;
-    for (const r of rows) {
-      const result = await setChapterActiveAction({ id: r.id, version: r.version, active });
-      if (!result.ok) {
-        toast.show(actionMessage(result));
-        break;
-      }
-      count++;
-    }
-    setBusy(false);
-    clearSelection();
-    router.refresh();
-    if (count > 0) {
-      toast.show(
-        `${count} chapter${count === 1 ? "" : "s"} ${active ? "activated" : "deactivated"}`,
-      );
-    }
-  };
+  /* ================================================================
+     PPI LIST
+     ================================================================ */
+
+  const checkbox = (labelText: string, checked: boolean, onChange: () => void, some = false) => (
+    <label className="admin-checkbox">
+      <input
+        type="checkbox"
+        aria-label={labelText}
+        checked={checked}
+        ref={(el) => {
+          if (el) el.indeterminate = some && !checked;
+        }}
+        onChange={onChange}
+        className="admin-table__checkbox"
+      />
+      <span aria-hidden="true" />
+    </label>
+  );
+
   const columns: Column<ChapterItem>[] = [
-    {
-      key: "check",
-      width: "24px",
-      align: "left",
-      header: (
-        <label className="admin-checkbox">
-          <input
-            type="checkbox"
-            aria-label="Select all on page"
-            checked={pageSelected}
-            ref={(el) => {
-              if (el) el.indeterminate = pageSomeSelected && !pageSelected;
-            }}
-            onChange={toggleAllPage}
-            className="admin-table__checkbox"
-          />
-          <span aria-hidden="true" />
-        </label>
-      ),
-      render: (r) => (
-        <label className="admin-checkbox">
-          <input
-            type="checkbox"
-            aria-label={`Select ${r.name}`}
-            checked={selected.has(r.id)}
-            onChange={() => toggleOne(r.id)}
-            className="admin-table__checkbox"
-          />
-          <span aria-hidden="true" />
-        </label>
-      ),
-    },
+    ...(canEdit
+      ? [
+          {
+            key: "check",
+            width: "24px",
+            align: "left" as const,
+            header: checkbox("Select all on page", pageSelected, toggleAllPage, pageSomeSelected),
+            render: (r: ChapterItem) =>
+              checkbox(`Select ${r.name}`, selected.has(r.id), () => toggleOne(r.id)),
+          },
+        ]
+      : []),
     {
       key: "name",
       header: (
         <SortHeader
           label="PPI"
           active={ppiSort === "name"}
-          dir={ppiSortDir}
-          onClick={() => onPpiSort("name")}
+          dir={sortDir}
+          onClick={() => sortBy(ppiSort, "name", setPpiSort)}
         />
       ),
-      width: "22%",
+      width: "18%",
       render: (r) => (
         <div>
           <div className="admin-table__title">{r.name}</div>
-          <div className="admin-table__sub">#{r.countryCode}</div>
+          <div className="admin-table__sub admin-org-code">#{r.countryCode}</div>
         </div>
       ),
     },
@@ -738,45 +739,50 @@ function OrganizationsList({
         <SortHeader
           label="Country"
           active={ppiSort === "country"}
-          dir={ppiSortDir}
-          onClick={() => onPpiSort("country")}
+          dir={sortDir}
+          onClick={() => sortBy(ppiSort, "country", setPpiSort)}
         />
       ),
-      width: "16%",
-      render: (r) => <span className="admin-table__title">{r.country}</span>,
+      width: "12%",
+      render: (r) => <span>{r.country}</span>,
     },
     {
       key: "timezone",
       header: "Timezone",
-      width: "16%",
+      width: "18%",
       render: (r) => (
-        <span className="admin-table__sub admin-org-timezone">
-          <Icon name="clock" size={12} /> {r.timezone}
+        <span className="admin-table__title">
+          {r.timezone} ({r.utcOffset})
         </span>
       ),
     },
     {
-      key: "contact",
-      header: "Contact",
-      width: "20%",
-      render: (r) => (
-        <span className="admin-org-notes">
-          {r.contactName}
-          {r.contactPublic && ` · ${r.contactPublic}`}
-        </span>
+      key: "members",
+      header: (
+        <SortHeader
+          label="Members"
+          active={ppiSort === "memberCount"}
+          dir={sortDir}
+          onClick={() => sortBy(ppiSort, "memberCount", setPpiSort)}
+        />
       ),
+      width: "9%",
+      render: (r) => <span className="admin-table__title">{r.memberCount}</span>,
+    },
+    {
+      key: "conditions",
+      header: "Conditions",
+      width: "16%",
+      render: (r) => <span className="admin-org-conditions">{r.conditions.join(" · ")}</span>,
     },
     {
       key: "status",
       header: "Status",
-      width: "12%",
+      width: "14%",
       render: (r) => (
         <div className="admin-org-badges">
-          {r.active ? (
-            <span className="admin-org-status">Active</span>
-          ) : (
-            <span className="admin-org-status admin-org-status--inactive">Inactive</span>
-          )}
+          {r.risk !== "none" ? statusChip(label(CHAPTER_RISK_LABELS, r.risk)) : null}
+          {statusChip(r.active ? "Active" : "Inactive")}
         </div>
       ),
     },
@@ -784,7 +790,7 @@ function OrganizationsList({
       key: "aksi",
       header: "",
       align: "right",
-      width: "12%",
+      width: "9%",
       render: (r) =>
         canEdit || contactEditIds.includes(r.id) ? (
           <div className="admin-table__actions">
@@ -792,18 +798,18 @@ function OrganizationsList({
               <Button
                 variant="ghost"
                 size="icon"
-                icon={r.active ? "lock" : "globe"}
-                aria-label={r.active ? `Deactivate ${r.name}` : `Activate ${r.name}`}
-                title={r.active ? "Deactivate (hidden from the map)" : "Activate"}
-                disabled={busy}
-                onClick={() => void setActiveFor([r], !r.active)}
+                icon="trash"
+                className="admin-btn--icon-danger"
+                aria-label={`Delete ${r.name}`}
+                title="Delete"
+                onClick={() => setDeleting({ kind: "ppis", items: [r] })}
               />
             ) : null}
             <Button
               variant="ghost"
               size="icon"
               icon="edit"
-              aria-label="Edit"
+              aria-label={`Edit ${r.name}`}
               title="Edit"
               onClick={() => setChapterForm(r)}
             />
@@ -812,106 +818,65 @@ function OrganizationsList({
     },
   ];
 
+  const allSelected = ppis.length > 0 && selected.size === ppis.length;
+
   return (
-    <>
-      <div className="admin-page-header admin-events-header">
-        <div>
-          <h1 className="admin-page-header__title">Organizations &gt; PPI</h1>
-          <p className="admin-page-header__desc">{ORG_SUBTITLE}</p>
-        </div>
-        <div className="admin-page-header__actions">
+    <div>
+      {header(
+        "Organizations > PPI",
+        <>
           <Button variant="outline" size="sm" icon="download" onClick={exportPpisCsv}>
             Export CSV
           </Button>
           {canEdit ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="plus"
-              className="admin-btn--events-add"
-              onClick={() => setChapterForm("new")}
-            >
+            <Button variant="outline" size="sm" icon="plus" onClick={() => setChapterForm("new")}>
               Add New PPI
             </Button>
           ) : null}
-        </div>
-      </div>
+        </>,
+      )}
 
       <Card className="admin-events-card admin-list-card admin-org-card">
         <CardBody flush>
-          {/* Section tabs: Period list vs PPI chapters (top-level switch). */}
-          <div className="admin-tabs" role="tablist" aria-label="Organization lists">
-            {periodList ? (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={false}
-                className="admin-tabs__btn"
-                onClick={() => {
-                  setView("period");
-                  setMenuFor(null);
-                }}
-              >
-                Period
-                <span className="admin-tabs__count">{periods.length}</span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === "ppi"}
-              className={`admin-tabs__btn${view === "ppi" ? " admin-tabs__btn--active" : ""}`}
-              onClick={() => setView("ppi")}
-            >
-              PPI
-              <span className="admin-tabs__count">{ppis.length}</span>
-            </button>
-          </div>
-
           <DataTable columns={columns} rows={ppiPageRows} rowKey={(r) => r.id} minRows={pageSize} />
 
-          {ppiSelected > 0 ? (
-            /* Bulk action bar — shown in place of the pagination bar while
-               rows are selected (same treatment as the Events list). */
-            <div className="admin-bulkbar">
+          {selected.size > 0 ? (
+            /* Bulk action bar (Figma: floats above the pagination while rows are selected). */
+            <div className="admin-bulkbar admin-org-bulkbar">
               <span className="admin-bulkbar__summary">
-                <label className="admin-checkbox">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all on page"
-                    checked={pageSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = pageSomeSelected && !pageSelected;
-                    }}
-                    onChange={toggleAllPage}
-                    className="admin-table__checkbox"
-                  />
-                  <span aria-hidden="true" />
-                </label>
-                {ppiSelected} selected
+                {checkbox(
+                  "Select all PPIs",
+                  allSelected,
+                  () => setSelected(allSelected ? new Set() : new Set(ppis.map((p) => p.id))),
+                  true,
+                )}
+                {selected.size} selected
               </span>
+              {!allSelected ? (
+                <button
+                  type="button"
+                  className="admin-bulkbar__select-all"
+                  onClick={() => setSelected(new Set(ppis.map((p) => p.id)))}
+                >
+                  Select all {ppis.length} ppis
+                </button>
+              ) : null}
               <div className="admin-bulkbar__actions">
-                {canEdit ? (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    icon="lock"
-                    disabled={busy}
-                    onClick={() =>
-                      void setActiveFor(
-                        ppis.filter((p) => selected.has(p.id) && p.active),
-                        false,
-                      )
-                    }
-                  >
-                    Deactivate
-                  </Button>
-                ) : null}
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon="trash"
+                  disabled={busy}
+                  onClick={() =>
+                    setDeleting({ kind: "ppis", items: ppis.filter((p) => selected.has(p.id)) })
+                  }
+                >
+                  Delete
+                </Button>
               </div>
             </div>
-          ) : (
-            paginationBar(ppiShownStart, ppiShownEnd, ppis.length)
-          )}
+          ) : null}
+          {paginationBar}
         </CardBody>
       </Card>
 
@@ -928,7 +893,8 @@ function OrganizationsList({
         />
       ) : null}
 
+      {deleteDialog}
       <ToastBanner message={toast.message} />
-    </>
+    </div>
   );
 }

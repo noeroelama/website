@@ -4,6 +4,7 @@ import type { FeaturedImage } from "@website/domain/content";
 import {
   toPublicChapter,
   type Chapter,
+  type ChapterRisk,
   type PublicChapter,
   type SocialLink,
 } from "@website/domain/organizations";
@@ -28,6 +29,10 @@ function toChapter(id: string, data: Record<string, unknown>): Chapter {
     socials: data["socials"] as SocialLink[],
     latitude: data["latitude"] as number,
     longitude: data["longitude"] as number,
+    // Chapters saved before these fields existed read as "nothing entered yet".
+    memberCount: (data["memberCount"] as number | undefined) ?? 0,
+    conditions: (data["conditions"] as string[] | undefined) ?? [],
+    risk: (data["risk"] as ChapterRisk | undefined) ?? "none",
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -51,10 +56,16 @@ export function chapterSnapshot(c: ChapterFields): Snapshot {
     socials: c.socials.map((s) => ({ ...s })),
     latitude: c.latitude,
     longitude: c.longitude,
+    memberCount: c.memberCount,
+    conditions: [...c.conditions],
+    risk: c.risk,
   };
 }
 
-/** `chapters/{id}` + `chapterSlugs/{slug}`. Chapters are deactivated, never deleted. */
+/**
+ * `chapters/{id}` + `chapterSlugs/{slug}`. A delete is soft (`deletedAt`); the slug stays
+ * reserved so reverting the delete in the Audit Log brings the chapter back unchanged.
+ */
 const chapters = (db: Firestore) =>
   createSluggedStore<Chapter>(db, {
     collection: "chapters",
@@ -68,10 +79,10 @@ const chapters = (db: Firestore) =>
 export function createFirestoreChapterStore(db: Firestore) {
   const store = chapters(db);
   return {
-    /** Every chapter (active and inactive), by name. */
+    /** Every chapter that is not deleted (active and inactive), by name. */
     async listForAdmin(): Promise<Chapter[]> {
       const snapshot = await store.docs.orderBy("name").get();
-      return snapshot.docs.map((doc) => store.read(doc.id, doc.data()));
+      return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((c) => !c.deletedAt);
     },
     get: store.get,
     write: store.write,
@@ -89,7 +100,10 @@ export function createFirestoreChapterReader(db: Firestore) {
   return {
     async listActive(): Promise<PublicChapter[]> {
       const snapshot = await store.docs.where("active", "==", true).orderBy("name").get();
-      return snapshot.docs.map((doc) => toPublicChapter(store.read(doc.id, doc.data())));
+      return snapshot.docs
+        .map((doc) => store.read(doc.id, doc.data()))
+        .filter((c) => !c.deletedAt)
+        .map(toPublicChapter);
     },
   };
 }

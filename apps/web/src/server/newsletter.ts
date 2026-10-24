@@ -1,12 +1,14 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { FirestoreSubscriberStore } from "@website/db/firestore";
+import type { FirestoreCampaignWebStore, FirestoreSubscriberStore } from "@website/db/firestore";
 import type { Message } from "@website/domain/messaging";
 import {
   NewsletterEmailSchema,
   OPTIN_TTL_MS,
+  readTrackingLink,
   unsubscribeLinkData,
+  type Campaign,
 } from "@website/domain/newsletter";
 import { keyedHash, signLink, verifyLink } from "@website/security";
 import { safeId } from "@website/security/validation";
@@ -14,6 +16,10 @@ import { DICTIONARIES, type Language } from "../i18n/dictionaries";
 
 export interface NewsletterDeps {
   readonly store: Pick<FirestoreSubscriberStore, "startOptIn" | "confirm" | "unsubscribe">;
+  /** Public archive page and open/click counters. */
+  readonly campaigns: Pick<FirestoreCampaignWebStore, "findPublic" | "track">;
+  /** A counter that could not be written (the reader still gets the pixel or the redirect). */
+  readonly onTrackError: (error: unknown) => void;
   /** reCAPTCHA v3, action "newsletter". */
   readonly captcha: (token: string) => Promise<boolean>;
   /** Messenger send; called after the transaction committed. */
@@ -42,6 +48,18 @@ export function createNewsletter(deps: NewsletterDeps) {
 
   const unsubscribeUrl = (id: string) =>
     `${deps.webUrl}/newsletter/unsubscribe?t=${signLink(unsubscribeLinkData(id), deps.linkSecret)}`;
+
+  /** Verifies a tracking link of `kind`, counts it (errors reported, never thrown) → its URL. */
+  const record = async (linkToken: string, kind: "open" | "click"): Promise<string | null> => {
+    const link = readTrackingLink(verifyLink(linkToken, deps.linkSecret, deps.now()));
+    if (link?.kind !== kind) return null;
+    try {
+      await deps.campaigns.track(kind, link.campaignId, link.subscriberId, deps.now());
+    } catch (error) {
+      deps.onTrackError(error);
+    }
+    return link.url;
+  };
 
   return {
     async subscribe(
@@ -87,6 +105,21 @@ export function createNewsletter(deps: NewsletterDeps) {
 
     /** Every campaign e-mail carries this link (step 2.9). */
     unsubscribeUrl,
+
+    /** Public archive page (/newsletter/{id}): sent campaigns only. */
+    publicCampaign(id: string): Promise<Campaign | null> {
+      return deps.campaigns.findPublic(id);
+    },
+
+    /** Open pixel (/newsletter/o): counts a valid signed link once per subscriber. */
+    async trackOpen(linkToken: string): Promise<void> {
+      await record(linkToken, "open");
+    },
+
+    /** Click link (/newsletter/c): counts it and returns the signed address to redirect to. */
+    async trackClick(linkToken: string): Promise<string | null> {
+      return record(linkToken, "click");
+    },
 
     async unsubscribe(linkToken: string): Promise<boolean> {
       const data = verifyLink(linkToken, deps.linkSecret, deps.now());

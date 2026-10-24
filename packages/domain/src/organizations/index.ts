@@ -14,9 +14,15 @@ export interface SocialLink {
   readonly url: string;
 }
 
+/** How the national board rates a chapter (feature H2 names; entered by hand for now). */
+export const CHAPTER_RISKS = ["none", "needs_checking", "at_risk"] as const;
+export type ChapterRisk = (typeof CHAPTER_RISKS)[number];
+
 /**
- * A member council (PPI Negara). Everything here is public: the contact person is stored only
- * with the contact details the chapter chose to publish. Deactivated, never deleted.
+ * A member council (PPI Negara). The contact person is stored only with the contact details the
+ * chapter chose to publish. `memberCount`, `conditions` and `risk` are the board's own notes for
+ * the admin list and never leave it (`toPublicChapter` does not copy them). Deleted = soft delete
+ * (`deletedAt`), restored by reverting the audit entry within 14 days.
  */
 export interface Chapter extends EntityMeta {
   readonly slug: string;
@@ -34,6 +40,11 @@ export interface Chapter extends EntityMeta {
   /** Map marker (e.g. the country's centre), WGS 84 degrees. */
   readonly latitude: number;
   readonly longitude: number;
+  /** Members registered with the chapter, as counted by the board. */
+  readonly memberCount: number;
+  /** Short notes on what is missing, e.g. "Belum ada pengurus inti yang tercatat". */
+  readonly conditions: readonly string[];
+  readonly risk: ChapterRisk;
 }
 
 const ISO_ALPHA2 = /^[A-Z]{2}$/;
@@ -78,6 +89,12 @@ export const ChapterInputSchema = z
       .trim()
       .max(120)
       .refine((s) => s === "" || isValidSlug(s), "Use lower-case letters, numbers and dashes."),
+    memberCount: z.number().int().min(0).max(1_000_000).default(0),
+    conditions: z
+      .array(safeText(160).pipe(z.string().min(2, "Write the condition or remove it.")))
+      .max(5, "At most 5 conditions.")
+      .default([]),
+    risk: z.enum(CHAPTER_RISKS).default("none"),
   })
   .strict();
 export type ChapterInput = z.infer<typeof ChapterInputSchema>;
@@ -132,7 +149,7 @@ export interface ChapterReader {
 
 /* ---- Board periods (feature A1) ---- */
 
-/** draft → active (one at a time) → archived (read-only). Periods are never deleted. */
+/** draft → active (one at a time) → archived (read-only). Any but the active one can be deleted (soft). */
 export const PERIOD_STATUSES = ["draft", "active", "archived"] as const;
 export type PeriodStatus = (typeof PERIOD_STATUSES)[number];
 
@@ -150,31 +167,34 @@ export interface Period extends EntityMeta {
   readonly status: PeriodStatus;
 }
 
-/** The period form fields. The status changes only through activation. */
-export const PeriodInputSchema = z
+/**
+ * The dates of a period named by its years ("2026-2027" or "2026/2027"): 1 January of the first
+ * year to 31 December of the last. Null when the name is not two years in order.
+ */
+export function periodDatesFromName(name: string): { startsOn: string; endsOn: string } | null {
+  const match = /^(\d{4})\s*[-/]\s*(\d{4})$/.exec(name.trim());
+  if (!match || Number(match[2]) <= Number(match[1])) return null;
+  return { startsOn: `${match[1]}-01-01`, endsOn: `${match[2]}-12-31` };
+}
+
+/**
+ * The admin period form: the years and the cabinet. The dates come from the years; vision,
+ * mission and the LPJ deadline keep their stored values. The status changes only by activation.
+ */
+export const PeriodFormSchema = z
   .object({
-    name: safeText(40).pipe(z.string().min(4, "Enter the period, e.g. 2026/2027.")),
-    cabinet: safeText(120, { allowEmpty: true }),
-    startsOn: z.iso.date("Enter the start date."),
-    endsOn: z.iso.date("Enter the end date."),
-    vision: safeText(2000, { multiline: true, allowEmpty: true }),
-    mission: safeText(4000, { multiline: true, allowEmpty: true }),
-    lpjDeadlineDays: z.number().int().min(0).max(365),
+    name: safeText(40).refine(
+      (name) => periodDatesFromName(name) !== null,
+      "Write the years of the period, e.g. 2026-2027.",
+    ),
+    cabinet: safeText(120).pipe(z.string().min(2, "Enter the cabinet name.")),
   })
   .strict();
-export type PeriodInput = z.infer<typeof PeriodInputSchema>;
-
-/** The date-order rule, added after the form schema is extended (e.g. with id and version). */
-export const withPeriodDates = <S extends z.ZodType<{ startsOn: string; endsOn: string }>>(
-  schema: S,
-) =>
-  schema.refine((p) => p.endsOn > p.startsOn, {
-    path: ["endsOn"],
-    message: "The end date must be after the start date.",
-  });
 
 /** Archived periods are history: nothing about them changes any more. */
 export const canChangePeriod = (status: PeriodStatus): boolean => status !== "archived";
+/** The active period cannot be deleted (it drives the period-bound roles); others can. */
+export const canDeletePeriod = (status: PeriodStatus): boolean => status !== "active";
 /** Only a draft becomes the active period (an archived one never comes back). */
 export const canActivatePeriod = (status: PeriodStatus): boolean => status === "draft";
 
@@ -197,6 +217,30 @@ export const ORG_UNIT_TYPES = [
 export type OrgUnitType = (typeof ORG_UNIT_TYPES)[number];
 
 /**
+ * One person on the cabinet photo of a unit: a name, a role and a photo — display data only, not
+ * an account and not a role assignment. Kept in display order.
+ */
+export const UnitMemberSchema = z
+  .object({
+    name: safeText(120).pipe(z.string().min(2, "Enter the member's name.")),
+    role: safeText(120).pipe(z.string().min(2, "Enter the member's role.")),
+    /** Shown as the head of the unit or division. */
+    head: z.boolean(),
+    photo: FeaturedImageSchema.nullable(),
+  })
+  .strict();
+export type UnitMember = z.infer<typeof UnitMemberSchema>;
+
+/** A division of a unit (e.g. "Bidang Audit") with its own members, in display order. */
+export const UnitDivisionSchema = z
+  .object({
+    name: safeText(120).pipe(z.string().min(2, "Enter the division name.")),
+    members: z.array(UnitMemberSchema).max(50, "At most 50 members in a division."),
+  })
+  .strict();
+export type UnitDivision = z.infer<typeof UnitDivisionSchema>;
+
+/**
  * One unit of a period's structure (bureau, directorate, division ...). `path` holds the ids of
  * its ancestors, root first, so "every unit below X" is one `path array-contains X` query.
  */
@@ -213,7 +257,14 @@ export interface OrgUnit extends EntityMeta {
   /** Order among its siblings. */
   readonly sort: number;
   readonly active: boolean;
+  /** Core members: the heads of the unit and members without a division. */
+  readonly members: readonly UnitMember[];
+  readonly divisions: readonly UnitDivision[];
 }
+
+/** People on a unit's page: its core members plus every division's members. */
+export const unitPeopleCount = (unit: Pick<OrgUnit, "members" | "divisions">): number =>
+  unit.members.length + unit.divisions.reduce((sum, d) => sum + d.members.length, 0);
 
 /** The unit form. Where a unit sits (period, parent) is set on create and changed only by Move. */
 export const OrgUnitInputSchema = z
@@ -230,6 +281,8 @@ export const OrgUnitInputSchema = z
     description: safeText(2000, { multiline: true, allowEmpty: true }),
     sort: z.number().int().min(0).max(999),
     active: z.boolean(),
+    members: z.array(UnitMemberSchema).max(50, "At most 50 core members.").default([]),
+    divisions: z.array(UnitDivisionSchema).max(30, "At most 30 divisions.").default([]),
   })
   .strict();
 export type OrgUnitInput = z.infer<typeof OrgUnitInputSchema>;

@@ -23,13 +23,22 @@ job.
 
 ## Rules and assumptions
 
-- Fields: title (3–200), URL slug (built from the title when empty, unique per kind), author,
-  category (General, Academic, Community, Announcement, International), publish date (entered in
-  the viewer's time zone, stored UTC), summary (≤ 500), up to 10 lower-case tags, featured image
-  (preset `thumbnail`), body (rich text).
-- Status: **Save draft** → `draft`; **Publish** → `published` (publish date = now when empty) or
-  `scheduled` when the date is in the future. The row menu **Publish/Unpublish** works
-  immediately (published now / back to draft).
+- Fields: title (3–200), URL slug (unique per kind), author, category (General, Academic,
+  Community, Announcement, International), publish date (entered in the viewer's time zone,
+  stored UTC), summary (≤ 500), up to 10 lower-case tags, featured image (preset `thumbnail`),
+  body (rich text). **Required** (also for drafts): title, URL, author, category, publish date,
+  summary and featured image (`NewsInputSchema`; the form marks them with *).
+- Admin page layout (Figma "ARTICLE ADMIN"): the list (tabs All/Published/Drafts, title search,
+  filters, bulk Publish/Delete, row menu Publish or Make Private · Copy Link · Settings · Delete
+  Article); the editor page holds only the featured image and the content boxes (Back · Preview ·
+  Save draft · Publish); title, category, date, URL, summary and tags are edited in the
+  **Settings** panel (row menu, or opened by Save draft/Publish when one of those fields is
+  refused). The URL follows the title while it is still the title's slug. There is no Author
+  field: a new article gets the staff member's name (else e-mail), an edit keeps its byline.
+  The Author column shows that byline; Last Modified shows who made the newest audited change.
+- Status: **Save draft** → `draft`; **Publish** → `published` (a past date) or `scheduled` when
+  the date is in the future. The row menu **Publish / Make Private** works immediately
+  (published now / back to draft).
 - Permissions: `articles.read` to see the page, `articles.edit` to add, edit and delete,
   `articles.publish` to publish, schedule or unpublish (also when saving an already published
   article). Checked on the server by `createGuardedAction`; the page only hides buttons.

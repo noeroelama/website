@@ -26,6 +26,13 @@ export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
   album: "galleries",
   // Organizations → PPI: fields of chapters/{id}; a changed URL is never revertible.
   chapter: "chapters",
+  // Organizations → Period and Structure: only DELETE entries are revertible (restores the item).
+  period: "periods",
+  orgUnit: "orgUnits",
+  // Newsletter: campaign edits and deletes (never a send); subscriber deletes (a staff "add" is
+  // not revertible: the confirmation e-mail is already out).
+  campaign: "campaigns",
+  subscriber: "subscribers",
 };
 
 export interface AuditLogDeps {

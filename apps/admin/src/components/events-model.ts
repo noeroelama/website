@@ -8,6 +8,7 @@ import {
   type Sponsor,
 } from "@website/domain/events";
 import { EVENT_TYPE_LABELS, label } from "../labels";
+import type { Author } from "./authors";
 
 /**
  * What the Event page shows and edits, mapped on the server from `events/{id}`. The page lists,
@@ -35,13 +36,13 @@ export interface EventItem {
   status: EventStatus;
   /** ISO timestamp of the last change. */
   modifiedAt: string;
+  /** Who made the last change (from the audit log); null when unknown. */
+  author: Author | null;
   schedule: ScheduleRow[];
   speakers: Speaker[];
   /** In display order. */
   sponsors: Sponsor[];
 }
-
-export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
 /** "All" = every event; "Drafts" = drafts; Upcoming/Past = published events by start time. */
 export function matchesTab(e: EventItem, tab: EventTab, nowIso: string): boolean {
@@ -51,8 +52,15 @@ export function matchesTab(e: EventItem, tab: EventTab, nowIso: string): boolean
   return tab === "upcoming" ? e.startsAt >= nowIso : e.startsAt < nowIso;
 }
 
+/** "In 44 days" under the Event Date while the event is at least part of a day ahead, else null. */
+export function countdownLabel(startsAt: string, now: number): string | null {
+  const days = Math.ceil((Date.parse(startsAt) - now) / 86_400_000);
+  if (Number.isNaN(days) || days < 1) return null;
+  return days === 1 ? "In 1 day" : `In ${days} days`;
+}
+
 /** Server-side mapping to a table row (plain JSON for the client page). */
-export function toEventItem(e: EventEntity): EventItem {
+export function toEventItem(e: EventEntity, author: Author | null): EventItem {
   return {
     id: e.id,
     version: e.version,
@@ -69,6 +77,7 @@ export function toEventItem(e: EventEntity): EventItem {
     banner: e.bannerImage,
     status: e.published ? "published" : "draft",
     modifiedAt: e.updatedAt.toISOString(),
+    author,
     schedule: [...e.schedule],
     speakers: [...e.speakers],
     sponsors: sortedSponsors(e.sponsors),

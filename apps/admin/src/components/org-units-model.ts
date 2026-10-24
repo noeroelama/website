@@ -1,4 +1,10 @@
-import type { OrgUnit, OrgUnitType } from "@website/domain/organizations";
+import {
+  unitPeopleCount,
+  type OrgUnit,
+  type OrgUnitType,
+  type UnitDivision,
+  type UnitMember,
+} from "@website/domain/organizations";
 
 /** A unit row of Organizations → Period → Structure, mapped on the server from `orgUnits/{id}`. */
 export interface OrgUnitItem {
@@ -14,6 +20,10 @@ export interface OrgUnitItem {
   description: string;
   sort: number;
   active: boolean;
+  members: UnitMember[];
+  divisions: UnitDivision[];
+  /** Core members plus every division's members ("4 People"). */
+  people: number;
 }
 
 export function toOrgUnitItem(u: OrgUnit): OrgUnitItem {
@@ -29,5 +39,11 @@ export function toOrgUnitItem(u: OrgUnit): OrgUnitItem {
     description: u.description,
     sort: u.sort,
     active: u.active,
+    members: u.members.map((m) => ({ ...m })),
+    divisions: u.divisions.map((d) => ({
+      name: d.name,
+      members: d.members.map((m) => ({ ...m })),
+    })),
+    people: unitPeopleCount(u),
   };
 }

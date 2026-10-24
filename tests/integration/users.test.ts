@@ -1,6 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createFirestoreRoleStore, createFirestoreUserStore } from "@website/db/firestore";
+import {
+  createFirestoreAccountStore,
+  createFirestoreRoleStore,
+  createFirestoreUserStore,
+} from "@website/db/firestore";
 import { can, canAccessAdmin, DEFAULT_ROLE_ASSIGNMENTS } from "@website/permissions";
 import { fakeFirestore } from "../support/fake-firestore";
 
@@ -146,6 +150,19 @@ describe("principal from Firestore (admin user directory)", () => {
     const principal = await users.findPrincipalByUid("u1");
     expect(principal?.assignments.map((a) => a.roleId)).toEqual(["member"]);
     expect(canAccessAdmin(principal)).toBe(false);
+  });
+});
+
+describe("accounts by uid (one batched read)", () => {
+  it("returns the found accounts by uid, skips missing and invalid ids, reads once", async () => {
+    const { db, docs, getAll } = setup();
+    docs.set("users/uid-ana", { uid: "uid-ana", email: "ana@example.org", name: "Ana" });
+    const accounts = createFirestoreAccountStore(db as unknown as Db);
+    const many = await accounts.getMany(["uid-ana", "uid-missing", "../x", "uid-ana"]);
+    expect([...many.keys()]).toEqual(["uid-ana"]);
+    expect(many.get("uid-ana")).toMatchObject({ name: "Ana", email: "ana@example.org" });
+    expect(getAll).toHaveBeenCalledTimes(1);
+    expect((await accounts.getMany([])).size).toBe(0);
   });
 });
 

@@ -3,8 +3,9 @@ import { z } from "zod";
 import type { FirestorePeriodStore } from "@website/db/firestore";
 import {
   canChangePeriod,
-  PeriodInputSchema,
-  withPeriodDates,
+  canDeletePeriod,
+  periodDatesFromName,
+  PeriodFormSchema,
   type Period,
 } from "@website/domain/organizations";
 import { RuleViolationError } from "@website/domain/shared";
@@ -16,19 +17,18 @@ export interface PeriodDeps {
   readonly now: () => Date;
 }
 
-const SaveInput = withPeriodDates(
-  PeriodInputSchema.extend({
-    id: safeId.optional(),
-    version: z.number().int().min(1).nullable(),
-  }).strict(),
-);
+const SaveInput = PeriodFormSchema.extend({
+  id: safeId.optional(),
+  version: z.number().int().min(1).nullable(),
+}).strict();
 
 /**
  * Audit entry for one period change (module `periods`, resource `period`). Not revertible: a
- * revert could bring back a second active period or change an archived one.
+ * revert could bring back a second active period or change an archived one. A DELETE is
+ * revertible (it only clears `deletedAt` again; the active period is never deleted).
  */
 const periodAudit =
-  (audit: AuditBuilder) =>
+  (audit: AuditBuilder, deleting = false) =>
   (
     before: Parameters<AuditBuilder>[0]["before"],
     after: Parameters<AuditBuilder>[0]["after"],
@@ -37,7 +37,7 @@ const periodAudit =
   ) =>
     audit({
       module: "periods",
-      action: current ? "UPDATE" : "CREATE",
+      action: deleting ? "DELETE" : current ? "UPDATE" : "CREATE",
       resourceType: "period",
       resourceId: next.id,
       title: next.name,
@@ -45,10 +45,10 @@ const periodAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      revertible: false,
+      revertible: deleting,
     });
 
-/** Organizations → Period actions: save (add/edit) and activate. Periods are never deleted. */
+/** Organizations → Period actions: save (add/edit), activate and delete (soft, not the active one). */
 export function createPeriodActions(deps: PeriodDeps) {
   const save = createGuardedAction({
     permission: "periods.edit",
@@ -61,7 +61,21 @@ export function createPeriodActions(deps: PeriodDeps) {
           if (current && !canChangePeriod(current.status)) {
             throw new RuleViolationError("This period is archived and can no longer be changed.");
           }
-          return { ...input, status: current?.status ?? "draft", deletedAt: null };
+          // The form has only the years and the cabinet: the dates follow the years (kept when
+          // the years did not change, e.g. imported dates), the notes keep their values.
+          const dates =
+            current?.name === input.name
+              ? { startsOn: current.startsOn, endsOn: current.endsOn }
+              : (periodDatesFromName(input.name) as { startsOn: string; endsOn: string });
+          return {
+            ...input,
+            ...dates,
+            vision: current?.vision ?? "",
+            mission: current?.mission ?? "",
+            lpjDeadlineDays: current?.lpjDeadlineDays ?? 30,
+            status: current?.status ?? "draft",
+            deletedAt: null,
+          };
         },
         periodAudit(audit),
         deps.now(),
@@ -80,5 +94,27 @@ export function createPeriodActions(deps: PeriodDeps) {
     },
   });
 
-  return { save, activate };
+  const remove = createGuardedAction({
+    permission: "periods.edit",
+    input: z.object({ id: safeId, version: z.number().int().min(1) }).strict(),
+    handler: async ({ id, version }, _principal, audit) => {
+      const now = deps.now();
+      const saved = await deps.periods.write(
+        id,
+        version,
+        (current) => {
+          const period = current as Period;
+          if (!canDeletePeriod(period.status)) {
+            throw new RuleViolationError("The active period cannot be deleted.");
+          }
+          return { ...period, deletedAt: now };
+        },
+        periodAudit(audit, true),
+        now,
+      );
+      return { version: saved.version };
+    },
+  });
+
+  return { save, activate, remove };
 }

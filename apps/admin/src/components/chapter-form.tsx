@@ -1,15 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type InputHTMLAttributes } from "react";
 import type { FeaturedImage } from "@website/domain/content";
-import type { SocialLink } from "@website/domain/organizations";
-import { saveChapterAction } from "@/app/(panel)/organizations/actions";
+import { CHAPTER_RISKS, type ChapterRisk, type SocialLink } from "@website/domain/organizations";
+import { saveChapterAction, setChapterActiveAction } from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
 import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
+import { CHAPTER_RISK_LABELS, label } from "@/labels";
 import type { ChapterItem } from "./chapters-model";
+import { Select } from "@/components/ui/select";
 
 interface Form {
   name: string;
@@ -25,6 +27,11 @@ interface Form {
   latitude: string;
   longitude: string;
   slug: string;
+  memberCount: string;
+  /** One condition per line. */
+  conditions: string;
+  risk: ChapterRisk;
+  active: boolean;
 }
 
 const fromChapter = (c: ChapterItem | null): Form => ({
@@ -41,11 +48,17 @@ const fromChapter = (c: ChapterItem | null): Form => ({
   latitude: c ? String(c.latitude) : "",
   longitude: c ? String(c.longitude) : "",
   slug: c?.slug ?? "",
+  memberCount: String(c?.memberCount ?? 0),
+  conditions: c?.conditions.join("\n") ?? "",
+  risk: c?.risk ?? "none",
+  active: c?.active ?? true,
 });
 
 /**
- * Add / edit a PPI chapter (feature A2). Every field is public (map card, About), so the contact
- * person is entered with the contact the chapter wants published only. Saved with a version check.
+ * Add / edit a PPI chapter (feature A2), styled like the Create Period popup. The contact person
+ * is entered with the contact the chapter wants published only. Members, conditions and the risk
+ * badge are the national board's own notes (admin list only). Saved with a version check; a
+ * changed Status is saved right after through activate/deactivate.
  */
 export function ChapterForm(props: {
   chapter: ChapterItem | null;
@@ -64,7 +77,15 @@ export function ChapterForm(props: {
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const field = (key: keyof Form, label: string, hint?: string, type = "text", board = false) => (
+  /** `rules`: the field's requirements (required, min/max, pattern …), shown under it. */
+  const field = (
+    key: keyof Form,
+    label: string,
+    hint?: string,
+    type = "text",
+    board = false,
+    rules: InputHTMLAttributes<HTMLInputElement> = {},
+  ) => (
     <div className="admin-field">
       <label className="admin-field__label" htmlFor={`chapter-${key}`}>
         {label}
@@ -73,44 +94,66 @@ export function ChapterForm(props: {
         id={`chapter-${key}`}
         className="admin-input"
         type={type}
+        {...rules}
         disabled={board && props.contactOnly}
         value={form[key] as string}
         onChange={(e) => set(key, e.target.value as never)}
         aria-invalid={errors[key] ? true : undefined}
         aria-describedby={`chapter-${key}-error`}
       />
-      <FieldError id={`chapter-${key}-error`} message={errors[key] ?? hint} />
+      <FieldError id={`chapter-${key}-error`} message={errors[key]} hint={hint} />
     </div>
   );
 
   const save = async () => {
     setBusy(true);
+    const { active, memberCount, conditions, ...fields } = form;
     const result = await saveChapterAction({
       ...(props.chapter ? { id: props.chapter.id } : {}),
       version: props.chapter?.version ?? null,
-      ...form,
+      ...fields,
       latitude: Number(form.latitude),
       longitude: Number(form.longitude),
+      memberCount: Number(memberCount),
+      conditions: conditions
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
     });
-    setBusy(false);
     if (!result.ok) {
+      setBusy(false);
       setErrors(result.fields ?? {});
       setMessage(actionMessage(result));
       return;
     }
+    // New chapters start active; only a changed status needs the second action.
+    if (active !== (props.chapter?.active ?? true)) {
+      const status = await setChapterActiveAction({
+        id: props.chapter?.id ?? result.data.id,
+        version: result.data.version,
+        active,
+      });
+      if (!status.ok) {
+        setBusy(false);
+        setMessage(actionMessage(status));
+        return;
+      }
+    }
+    setBusy(false);
     props.onSaved(props.chapter ? "Chapter saved" : "Chapter added");
   };
 
   return (
     <Modal
       open
-      title={props.chapter ? `Edit ${props.chapter.name}` : "Add New PPI"}
+      title={props.chapter ? "Edit PPI" : "Create PPI"}
       width={640}
+      hideClose
       onClose={props.onClose}
       footer={
-        <div className="admin-modal__footer-row admin-modal__footer-row--end">
-          <Button variant="ghost" onClick={props.onClose}>
-            Cancel
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
+            Back
           </Button>
           <Button
             variant="primary"
@@ -124,12 +167,82 @@ export function ChapterForm(props: {
       }
     >
       <div className="admin-form-grid">
-        {field("name", "Name *", "e.g. PPI Jepang", "text", true)}
-        {field("countryCode", "Country *", "2-letter ISO code, e.g. JP", "text", true)}
-        {field("timezone", "Time zone *", "IANA name, e.g. Asia/Tokyo", "text", true)}
+        {field("name", "Name *", "e.g. PPI Jepang", "text", true, { required: true })}
+        {field("countryCode", "Country *", "2-letter ISO code, e.g. JP", "text", true, {
+          required: true,
+          pattern: "[A-Za-z]{2}",
+          title: "A 2-letter country code, e.g. JP",
+        })}
+        {field("timezone", "Time zone *", "IANA name, e.g. Australia/Sydney", "text", true, {
+          required: true,
+        })}
+        {field("memberCount", "Members", "Registered members", "number", true, { min: 0 })}
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="chapter-active">
+            Status
+          </label>
+          <Select
+            id="chapter-active"
+            className="admin-input"
+            disabled={props.contactOnly}
+            value={form.active ? "active" : "inactive"}
+            onChange={(e) => set("active", e.target.value === "active")}
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive (hidden from the map)</option>
+          </Select>
+        </div>
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="chapter-risk">
+            Risk
+          </label>
+          <Select
+            id="chapter-risk"
+            className="admin-input"
+            disabled={props.contactOnly}
+            value={form.risk}
+            onChange={(e) => set("risk", e.target.value as ChapterRisk)}
+          >
+            {CHAPTER_RISKS.map((risk) => (
+              <option key={risk} value={risk}>
+                {label(CHAPTER_RISK_LABELS, risk)}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="admin-field admin-form-grid__full">
+          <label className="admin-field__label" htmlFor="chapter-conditions">
+            Conditions
+          </label>
+          <textarea
+            id="chapter-conditions"
+            className="admin-input admin-textarea"
+            rows={3}
+            disabled={props.contactOnly}
+            placeholder="Belum ada pengurus inti yang tercatat"
+            value={form.conditions}
+            onChange={(e) => set("conditions", e.target.value)}
+            aria-describedby="chapter-conditions-error"
+          />
+          <FieldError
+            id="chapter-conditions-error"
+            message={errors["conditions"]}
+            hint="One per line, at most 5"
+          />
+        </div>
         {field("slug", "URL", "Built from the name when empty", "text", true)}
-        {field("latitude", "Map latitude *", "Marker position, e.g. 36.2", "number", true)}
-        {field("longitude", "Map longitude *", "e.g. 138.25", "number", true)}
+        {field("latitude", "Map latitude *", "Marker position, e.g. 36.2", "number", true, {
+          required: true,
+          min: -90,
+          max: 90,
+          step: "any",
+        })}
+        {field("longitude", "Map longitude *", "e.g. 138.25", "number", true, {
+          required: true,
+          min: -180,
+          max: 180,
+          step: "any",
+        })}
         {field("contactName", "Contact person", "Shown publicly")}
         {field("contactPublic", "Public contact", "E-mail or phone the contact allows to publish")}
         {field("website", "Website", "https://…", "url")}

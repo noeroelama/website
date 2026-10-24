@@ -1,6 +1,12 @@
 import type { Firestore } from "firebase-admin/firestore";
 import type { Snapshot } from "@website/audit";
-import type { Campaign, CampaignSegment, CampaignStatus } from "@website/domain/newsletter";
+import {
+  isPublicCampaign,
+  type Campaign,
+  type CampaignSegment,
+  type CampaignStatus,
+  type TrackingKind,
+} from "@website/domain/newsletter";
 import { safeId } from "@website/security/validation";
 import { createSluggedStore, toDate } from "./slugged";
 
@@ -17,6 +23,9 @@ function toCampaign(id: string, data: Record<string, unknown>): Campaign {
     cursor: data["cursor"] as string | null,
     sentCount: data["sentCount"] as number,
     sentAt: toDate(data["sentAt"]),
+    // Campaigns from before tracking have no counters.
+    openCount: (data["openCount"] as number | undefined) ?? 0,
+    clickCount: (data["clickCount"] as number | undefined) ?? 0,
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -46,7 +55,13 @@ export function createFirestoreCampaignStore(db: Firestore) {
     slug: null,
     fromDoc: toCampaign,
     snapshot: campaignSnapshot,
-    fixed: (c) => ({ cursor: c.cursor, sentCount: c.sentCount, sentAt: c.sentAt }),
+    fixed: (c) => ({
+      cursor: c.cursor,
+      sentCount: c.sentCount,
+      sentAt: c.sentAt,
+      openCount: c.openCount,
+      clickCount: c.clickCount,
+    }),
   });
 
   return {
@@ -90,3 +105,54 @@ export function createFirestoreCampaignStore(db: Firestore) {
 }
 
 export type FirestoreCampaignStore = ReturnType<typeof createFirestoreCampaignStore>;
+
+/**
+ * The website's side of campaigns: the public archive page and open/click tracking. A tracking
+ * marker `campaignTracking/{kind}_{campaignId}_{subscriberId}` is written once per subscriber, and
+ * the campaign's `openCount` / `clickCount` grow only when a marker is new (one transaction). A
+ * click also counts as an open (images may be blocked).
+ */
+export function createFirestoreCampaignWebStore(db: Firestore) {
+  const campaigns = db.collection("campaigns");
+  const markers = db.collection("campaignTracking");
+
+  return {
+    async findPublic(id: string): Promise<Campaign | null> {
+      if (!safeId.safeParse(id).success) return null;
+      const snapshot = await campaigns.doc(id).get();
+      if (!snapshot.exists) return null;
+      const campaign = toCampaign(id, snapshot.data() as Record<string, unknown>);
+      return isPublicCampaign(campaign) ? campaign : null;
+    },
+
+    /** False when the campaign is unknown, not public (deleted) or the ids are invalid. */
+    track(
+      kind: TrackingKind,
+      campaignId: string,
+      subscriberId: string,
+      now: Date,
+    ): Promise<boolean> {
+      const ref = campaigns.doc(safeId.parse(campaignId));
+      const marker = (k: TrackingKind) =>
+        markers.doc(safeId.parse(`${k}_${campaignId}_${subscriberId}`));
+      const kinds: TrackingKind[] = kind === "click" ? ["open", "click"] : ["open"];
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        const seen = await Promise.all(kinds.map((k) => tx.get(marker(k))));
+        if (!snapshot.exists) return false;
+        const campaign = toCampaign(campaignId, snapshot.data() as Record<string, unknown>);
+        if (!isPublicCampaign(campaign)) return false;
+        const fresh = kinds.filter((_, i) => !seen[i]?.exists);
+        if (fresh.length === 0) return true;
+        for (const k of fresh) tx.set(marker(k), { kind: k, campaignId, subscriberId, at: now });
+        tx.update(ref, {
+          openCount: campaign.openCount + (fresh.includes("open") ? 1 : 0),
+          clickCount: campaign.clickCount + (fresh.includes("click") ? 1 : 0),
+        });
+        return true;
+      });
+    },
+  };
+}
+
+export type FirestoreCampaignWebStore = ReturnType<typeof createFirestoreCampaignWebStore>;

@@ -115,22 +115,31 @@ export const FeaturedImageSchema = z
 export const NewsInputSchema = z
   .object({
     title: safeText(200).pipe(z.string().min(3, "Enter a title (at least 3 characters).")),
-    /** Empty = built from the title. */
     slug: z
       .string()
       .trim()
+      .min(1, { error: "Enter the URL.", abort: true })
       .max(120)
-      .refine((s) => s === "" || isValidSlug(s), "Use lower-case letters, numbers and dashes."),
+      .refine(isValidSlug, "Use lower-case letters, numbers and dashes."),
     author: safeText(120).pipe(z.string().min(2, "Enter the author.")),
     category: z.enum(NEWS_CATEGORIES, { error: "Choose a category." }),
-    publishAt: z.coerce.date().nullable(),
-    summary: safeText(500, { multiline: true, allowEmpty: true }),
+    // `.nullable()` lets null reach the refine with a clear message (coerce would turn it into 1970).
+    publishAt: z.coerce
+      .date()
+      .nullable()
+      .refine((date) => date !== null, "Choose the publish date and time."),
+    summary: safeText(500, { multiline: true, allowEmpty: true }).pipe(
+      z.string().min(1, "Write a short summary."),
+    ),
     tags: z
       .array(z.string().max(30))
       .max(10, "At most 10 tags.")
       .transform((tags) => normalizeTags(tags)),
     body: z.string().max(200_000),
-    featuredImage: FeaturedImageSchema.nullable(),
+    featuredImage: FeaturedImageSchema.nullable().refine(
+      (image) => image !== null,
+      "Add a featured image.",
+    ),
   })
   .strict();
 export type NewsInput = z.infer<typeof NewsInputSchema>;

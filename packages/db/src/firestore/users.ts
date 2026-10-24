@@ -120,6 +120,18 @@ export function createFirestoreAccountStore(db: Firestore) {
       };
     },
 
+    /** Accounts by uid in one batched read; missing and invalid ids are left out. */
+    async getMany(uids: readonly string[]): Promise<Map<string, UserSummary>> {
+      const ids = uids.filter((uid) => safeId.safeParse(uid).success);
+      const docs =
+        ids.length > 0
+          ? await getDocumentsByIds<Record<string, unknown>>(db, "users", ids)
+          : new Map<string, Record<string, unknown> | null>();
+      const result = new Map<string, UserSummary>();
+      for (const [uid, data] of docs) if (data) result.set(uid, toUserSummary(uid, data));
+      return result;
+    },
+
     async get(uid: string): Promise<UserSummary | null> {
       if (!safeId.safeParse(uid).success) return null;
       const snapshot = await users.doc(uid).get();

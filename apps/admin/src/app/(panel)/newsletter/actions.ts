@@ -30,3 +30,21 @@ export async function sendTestAction(input: unknown) {
 export async function exportSubscribersAction() {
   return newsletterActions().exportSubscribers(getPrincipal, getAuditContext)({});
 }
+
+export async function addSubscriberAction(input: unknown) {
+  const result = await newsletterActions().addSubscriber(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/newsletter", "layout");
+  return result;
+}
+
+export async function importSubscribersAction(input: unknown) {
+  const result = await newsletterActions().importSubscribers(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/newsletter", "layout");
+  return result;
+}
+
+export async function removeSubscriberAction(input: unknown) {
+  const result = await newsletterActions().removeSubscriber(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/newsletter", "layout");
+  return result;
+}

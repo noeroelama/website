@@ -1,7 +1,7 @@
 import { can, isSystemRoleId } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { Badge } from "@/components/ui/badge";
-import { Fab } from "@/components/ui/fab";
+import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { label, ROLE_TYPE_LABELS } from "@/labels";
@@ -28,7 +28,7 @@ export default async function RolesPage() {
 
   return (
     <>
-      <div className="admin-page-header">
+      <div className="admin-page-header admin-events-header">
         <div>
           <h1 className="admin-page-header__title">Roles</h1>
           <p className="admin-page-header__desc">
@@ -37,8 +37,11 @@ export default async function RolesPage() {
           </p>
         </div>
         {canEdit ? (
-          <div className="admin-toolbar__actions">
+          <div className="admin-page-header__actions">
             <SuggestedRolesButton reauthUrl={signInAgainUrl("/roles")} />
+            <Button href="/roles/new" variant="outline" size="sm" icon="plus">
+              Add New Role
+            </Button>
           </div>
         ) : null}
       </div>
@@ -69,7 +72,6 @@ export default async function RolesPage() {
           />
         </CardBody>
       </Card>
-      {canEdit ? <Fab href="/roles/new" label="New role" /> : null}
     </>
   );
 }

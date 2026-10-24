@@ -251,6 +251,8 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M16 2v4M8 2v4M3 10h18" />
     </>
   ),
+  /* Three bars: campaign results (Newsletter) and the click-rate card. */
+  chart: <path d="M6 20v-6M12 20V4M18 20v-9" />,
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -287,6 +289,12 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M15 3h6v6M10 14 21 3" />
     </>
   ),
+  undo: (
+    <>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </>
+  ),
   refresh: (
     <>
       <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8" />
@@ -316,6 +324,8 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </>
   ),
+  /* "↳" — points from a short link to the URL it redirects to (Tools list). */
+  cornerDownRight: <path d="M4 4v7a4 4 0 0 0 4 4h12m-5-5 5 5-5 5" />,
   shield: <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5z" />,
   warning: (
     <>

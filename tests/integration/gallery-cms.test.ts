@@ -76,7 +76,7 @@ beforeEach(() => {
 });
 
 describe("Gallery CMS", () => {
-  it("an album needs a published event; its URL defaults to the event's", async () => {
+  it("an album needs a published event and a total; its URL defaults to the event's", async () => {
     const draftEvent = await createEvent(false, "draft-event");
     const album = { images: [image], totalPhotos: 150, albumUrl: "https://photos.app.goo.gl/x" };
     expect(
@@ -98,6 +98,19 @@ describe("Gallery CMS", () => {
       }),
     ).toMatchObject({ error: "refused" });
     const eventId = await createEvent(true);
+    expect(
+      await gallery().save(...as(editor))({
+        ...album,
+        totalPhotos: null,
+        eventId,
+        slug: "",
+        version: null,
+        publish: true,
+      }),
+    ).toMatchObject({
+      error: "invalid_input",
+      fields: { totalPhotos: "Enter the total number of photos/videos." },
+    });
     const saved = await gallery().save(...as(editor))({
       ...album,
       eventId,
@@ -126,7 +139,7 @@ describe("Gallery CMS", () => {
     const eventId = await createEvent(true);
     const created = await gallery().save(...as(editor))({
       images: [image],
-      totalPhotos: null,
+      totalPhotos: 1,
       albumUrl: "https://photos.app.goo.gl/x",
       eventId,
       slug: "",
@@ -139,7 +152,7 @@ describe("Gallery CMS", () => {
     expect(await reader.findPublishedBySlug("simposium")).toBeNull();
     await gallery().save(...as(editor))({
       images: [image, image],
-      totalPhotos: null,
+      totalPhotos: 2,
       albumUrl: "https://photos.app.goo.gl/x",
       eventId,
       slug: "simposium-2026",

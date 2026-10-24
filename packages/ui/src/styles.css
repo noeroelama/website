@@ -27,6 +27,9 @@
   --color-danger: var(--color-brand-600);
   --color-danger-bright: #ef4444; /* vivid red — destructive emphasis (Delete selected) */
   --color-gold: #e0b64e; /* soft gold — "… days left" countdown under Event Date */
+  --color-success-bright: #4ade80; /* light green on dark pages — "Sent", "+38 this month" */
+  --color-info: #60a5fa; /* soft blue on dark pages — "Scheduled", "Sends 3 Oct" */
+  --color-violet: #a78bfa; /* soft violet on dark pages — "Reverted" Audit Log entries */
   --color-border: var(--color-brand-200);
   --color-border-subtle: color-mix(in srgb, var(--color-brand-800) 12%, transparent);
   --color-hover: color-mix(in srgb, var(--color-brand-800) 7%, transparent);
@@ -41,6 +44,9 @@
   --color-panel-hover: color-mix(in srgb, var(--color-white) 8%, transparent);
   --color-panel-active: var(--color-brand-50);
   --color-on-panel-active: var(--color-brand-950);
+
+  /* Public site header and footer (darkest maroon band) */
+  --color-frame: var(--color-brand-950);
 
   /* ---- Typography (Poppins) ---- */
   --font-sans: var(--font-poppins), system-ui, sans-serif;
@@ -100,6 +106,7 @@
   --size-icon: 1.125rem;
   --measure: 22.5rem; /* narrow forms */
   --measure-content: 45rem; /* readable content column */
+  --measure-page: 91.5rem; /* public site header/footer: 1416 px content + side padding */
 
   /* ---- Radius ---- */
   --radius-sm: 0.25rem;

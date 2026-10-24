@@ -4,6 +4,7 @@ import { normalizePermissions, type Principal } from "@website/permissions";
 import { REVERTIBLE_COLLECTIONS } from "../../apps/admin/src/server/audit-log";
 import { createChapterActions } from "../../apps/admin/src/server/chapters";
 import { fakeFirestore } from "../support/fake-firestore";
+import { revertEntry } from "../support/revert";
 
 type Db = Parameters<typeof createFirestoreChapterStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
@@ -131,7 +132,14 @@ describe("chapters (Organizations → PPI) and the map", () => {
     ).toMatchObject({ ok: true, data: { version: 2 } });
     expect(await store.get(jpId)).toMatchObject(contact);
     // Name, country, map position and URL stay with the national board.
-    for (const change of [{ name: "PPI Nippon" }, { latitude: 35 }, { slug: "ppi-nippon" }]) {
+    for (const change of [
+      { name: "PPI Nippon" },
+      { latitude: 35 },
+      { slug: "ppi-nippon" },
+      { memberCount: 9 },
+      { conditions: ["Tidak ada kontak resmi"] },
+      { risk: "at_risk" },
+    ]) {
       expect(
         await actions().save(...as(jpAdmin))({
           ...chapter,
@@ -153,6 +161,64 @@ describe("chapters (Organizations → PPI) and the map", () => {
     expect(
       await actions().setActive(...as(jpAdmin))({ id: jpId, version: 2, active: false }),
     ).toEqual({ ok: false, error: "forbidden" });
+    expect(await actions().remove(...as(jpAdmin))({ id: jpId, version: 2 })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+  });
+
+  it("stores the board's member count, conditions and risk (admin only)", async () => {
+    const saved = await actions().save(...as(editor))({
+      ...chapter,
+      memberCount: 200,
+      conditions: ["Belum ada pengurus inti yang tercatat", "Tidak ada satu pun kontak resmi"],
+      risk: "at_risk",
+      version: null,
+    });
+    const id = saved.ok ? saved.data.id : "";
+    expect(await store.get(id)).toMatchObject({ memberCount: 200, risk: "at_risk" });
+    // Chapters saved before these fields existed read as "nothing entered yet".
+    fake.docs.set(`chapters/${id}`, {
+      ...fake.docs.get(`chapters/${id}`),
+      memberCount: undefined,
+      conditions: undefined,
+      risk: undefined,
+    });
+    expect(await store.get(id)).toMatchObject({ memberCount: 0, conditions: [], risk: "none" });
+    const [onMap] = await createFirestoreChapterReader(fake.db as unknown as Db).listActive();
+    expect(onMap).not.toHaveProperty("risk");
+    expect(onMap).not.toHaveProperty("memberCount");
+  });
+
+  it("deletes softly: gone from the list and the map until the audit entry is reverted", async () => {
+    const jp = await actions().save(...as(editor))({ ...chapter, version: null });
+    const id = jp.ok ? jp.data.id : "";
+    const reader = createFirestoreChapterReader(fake.db as unknown as Db);
+    expect(
+      await actions().remove(...as(staff(["organizations.read"])))({ id, version: 1 }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    expect(await actions().remove(...as(editor))({ id, version: 1 })).toMatchObject({
+      ok: true,
+      data: { version: 2 },
+    });
+    const deleted = auditEntries().at(-1);
+    expect(deleted).toMatchObject({
+      action: "DELETE",
+      module: "organizations",
+      resourceType: "chapter",
+      after: null,
+      revertible: true,
+    });
+    expect(await store.listForAdmin()).toEqual([]);
+    expect(await reader.listActive()).toEqual([]);
+    expect(await actions().save(...as(editor))({ ...chapter, id, version: 2 })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("trash")],
+    });
+
+    expect(await revertEntry(fake.db, deleted?.["id"] as string, now)).toMatchObject({ ok: true });
+    expect((await store.listForAdmin()).map((c) => c.name)).toEqual(["PPI Jepang"]);
+    expect((await reader.listActive()).map((c) => c.name)).toEqual(["PPI Jepang"]);
   });
 
   it("refuses a name without letters or numbers and a URL in use", async () => {

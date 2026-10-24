@@ -30,11 +30,14 @@ const BOARD_FIELDS = [
   "latitude",
   "longitude",
   "slug",
+  "memberCount",
+  "conditions",
+  "risk",
 ] as const satisfies readonly (keyof Chapter)[];
 
 /** Audit entry for one chapter change (module `organizations`, resource `chapter`). */
 const chapterAudit =
-  (audit: AuditBuilder, action: "CREATE" | "UPDATE", revertible = true) =>
+  (audit: AuditBuilder, action: "CREATE" | "UPDATE" | "DELETE", revertible = true) =>
   (
     before: Parameters<AuditBuilder>[0]["before"],
     after: Parameters<AuditBuilder>[0]["after"],
@@ -55,7 +58,8 @@ const chapterAudit =
     });
 
 /**
- * Organizations → PPI actions: save (add/edit) and activate/deactivate. There is no delete.
+ * Organizations → PPI actions: save (add/edit), activate/deactivate and delete (soft; reverting
+ * the DELETE entry in the Audit Log within 14 days brings the chapter back).
  * The national board (global organizations.edit) changes everything; a chapter admin (the
  * permission for one chapter) only the contact fields of that chapter.
  */
@@ -117,5 +121,22 @@ export function createChapterActions(deps: ChapterDeps) {
     },
   });
 
-  return { save, setActive };
+  /** Soft delete: hidden from the admin list, the map and About. National board only. */
+  const remove = createGuardedAction({
+    permission: "organizations.edit",
+    input: z.object({ id: safeId, version: z.number().int().min(1) }).strict(),
+    handler: async ({ id, version }, _principal, audit) => {
+      const now = deps.now();
+      const saved = await deps.chapters.write(
+        id,
+        version,
+        (current) => ({ ...(current as Chapter), deletedAt: now }),
+        chapterAudit(audit, "DELETE"),
+        now,
+      );
+      return { version: saved.version };
+    },
+  });
+
+  return { save, setActive, remove };
 }

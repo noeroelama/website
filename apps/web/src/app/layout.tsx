@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="id" className={poppins.variable}>
       <body>
-        <Localized render={(t, language) => <SiteHeader t={t} language={language} />} />
+        <Localized render={(t) => <SiteHeader t={t} />} />
         {children}
         <Localized render={(t) => <SiteFooter t={t} />} />
       </body>

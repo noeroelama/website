@@ -32,7 +32,8 @@ export const AlbumInputSchema = z
       .array(FeaturedImageSchema)
       .min(1, "Add at least one image.")
       .max(ALBUM_MAX_IMAGES, `At most ${ALBUM_MAX_IMAGES} images.`),
-    totalPhotos: z.number().int().min(0).nullable(),
+    /** Required on save; older (imported) albums may still store null. */
+    totalPhotos: z.number({ error: "Enter the total number of photos/videos." }).int().min(0),
     albumUrl: z
       .string()
       .trim()

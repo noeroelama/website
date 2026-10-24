@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
 import { label, ORG_UNIT_TYPE_LABELS } from "@/labels";
+import { Select } from "@/components/ui/select";
 
 /** An appointment row of the Structure page (mapped on the server from `appointments/{id}`). */
 export interface AppointmentItem {
@@ -102,9 +103,9 @@ export function AppointModal(props: {
       width={480}
       onClose={props.onClose}
       footer={
-        <div className="admin-modal__footer-row admin-modal__footer-row--end">
-          <Button variant="ghost" onClick={props.onClose}>
-            Cancel
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
+            Back
           </Button>
           <Button variant="primary" disabled={busy} onClick={() => void appoint()}>
             Appoint
@@ -133,7 +134,7 @@ export function AppointModal(props: {
         <label className="admin-field__label" htmlFor="appoint-seat">
           Seat *
         </label>
-        <select
+        <Select
           id="appoint-seat"
           className="admin-select"
           value={seat}
@@ -144,7 +145,7 @@ export function AppointModal(props: {
               {SEAT_LABELS[s]}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="admin-field">
         <label className="admin-field__label" htmlFor="appoint-title">
@@ -198,14 +199,14 @@ export function RoleMapModal(props: {
     <div className="admin-field" key={text}>
       <label className="admin-field__label">
         {text}
-        <select className="admin-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <Select className="admin-select" value={value} onChange={(e) => onChange(e.target.value)}>
           {props.roles.some((r) => r.id === value) ? null : <option value={value}>{value}</option>}
           {props.roles.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
     </div>
   );
@@ -217,9 +218,9 @@ export function RoleMapModal(props: {
       width={560}
       onClose={props.onClose}
       footer={
-        <div className="admin-modal__footer-row admin-modal__footer-row--end">
-          <Button variant="ghost" onClick={props.onClose}>
-            Cancel
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
+            Back
           </Button>
           <Button variant="primary" disabled={busy} onClick={() => void save()}>
             Save

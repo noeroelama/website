@@ -15,6 +15,8 @@
   --admin-leading-tight: 1.2; /* buttons / tight stacks */
   --admin-leading-label: 1.3; /* radio stack / dropzone / slug / meta */
   --admin-leading-badge: 1.6; /* badge rows */
+  /* Dark page of the Gallery/Event designs (darker than brand-950, which the dialogs use). */
+  --admin-page-dark: color-mix(in srgb, var(--color-brand-950) 60%, var(--color-black));
 }
 
 /* ===================== Side panel (components/admin-sidebar.tsx) ===================== */
@@ -422,7 +424,7 @@
 /* ---- Account / profile / emails content ---- */
 .admin-account__line {
   margin: 0 0 var(--space-2);
-  color: var(--color-text);
+  color: inherit;
   font-size: var(--text-sm);
 }
 
@@ -440,7 +442,7 @@
 
 .admin-account__dl {
   margin: 0;
-  color: var(--color-text);
+  color: inherit;
   font-size: var(--text-sm);
 }
 
@@ -449,7 +451,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-panel-line);
 }
 
 .admin-account__row:last-child {
@@ -459,7 +461,7 @@
 .admin-account__row dt {
   width: var(--space-16);
   flex: 0 0 auto;
-  color: var(--color-text-muted);
+  color: var(--admin-ink-muted, var(--color-text-muted));
   font-weight: var(--font-semibold);
 }
 
@@ -479,8 +481,8 @@
   flex-direction: column;
   gap: var(--space-1-5);
   padding: var(--space-4) var(--space-4-5);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--color-brand-50);
+  border: 1px solid var(--color-brand-50);
   border-radius: var(--radius-lg);
   color: inherit;
   text-decoration: none;
@@ -490,7 +492,7 @@
 }
 
 a.admin-stat-card:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-brand-200);
   transform: translateY(-2px);
 }
 
@@ -681,16 +683,6 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-md);
 }
 
-/* Light variant for use on dark surfaces (result banners, dark modals). */
-.admin-btn--light {
-  background: var(--color-brand-50);
-  color: var(--color-brand-950);
-}
-
-.admin-btn--light:hover:not(:disabled) {
-  background: var(--color-brand-200);
-}
-
 /* ---- Badges ---- */
 .admin-badge {
   display: inline-flex;
@@ -739,7 +731,7 @@ a.admin-stat-card:hover {
 /* ---- Page-level tools layout ---- */
 .admin-tools-grid {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
   gap: var(--space-5);
   align-items: start;
 }
@@ -814,14 +806,16 @@ a.admin-stat-card:hover {
   box-shadow: 0 0 0 3px var(--color-border-subtle);
 }
 
-.admin-input--dark {
-  background: var(--color-black);
-  border-color: var(--color-brand-950);
-  color: var(--color-brand-50);
+/* A group of checkboxes or radios with its title (Roles: the permissions of one page). */
+.admin-fieldset {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-lg);
 }
 
-.admin-input--dark::placeholder {
-  color: var(--color-on-panel-muted);
+.admin-fieldset > .admin-field__label {
+  padding: 0 var(--space-1);
 }
 
 /* Radio rows (QR size / type) */
@@ -968,10 +962,10 @@ a.admin-stat-card:hover {
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
   max-width: 100%;
-  height: 264px;
+  height: 350px;
   padding: var(--space-4);
   box-sizing: border-box;
-  border: 2px dashed var(--color-black);
+  border: 1px dashed var(--admin-page-dark);
   border-radius: var(--radius-lg);
   background: transparent;
 }
@@ -989,8 +983,7 @@ a.admin-stat-card:hover {
   aspect-ratio: 1 / 1;
   border-radius: var(--radius-lg);
   padding: var(--space-2);
-  background: var(--color-white);
-  outline: 1px solid var(--color-border-subtle);
+  background: var(--color-brand-50);
 }
 
 .admin-qr-preview__image {
@@ -1010,17 +1003,16 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-sm);
 }
 
+/* Centre logo on a dark chip (same look as the SVG download, see downloadSvg). */
 .admin-qr-preview__logo {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
   border-radius: var(--radius-md);
-  background: var(--color-white);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--color-brand-950);
   display: grid;
   place-items: center;
   overflow: hidden;
-  box-shadow: var(--shadow-popover);
 }
 
 .admin-qr-preview__logo-img {
@@ -1030,27 +1022,13 @@ a.admin-stat-card:hover {
   padding: var(--space-0-5);
 }
 
-/* Download actions under the dashed QR container: two black buttons on one row. */
+/* Download actions under the dashed QR container: two dark buttons, one at each edge. */
 .admin-qr-preview__actions {
   display: flex;
+  justify-content: space-between;
   gap: var(--space-2);
-}
-
-/* Black variant for the QR download buttons. Higher specificity than the base
-   variant/theme rules so it stays black in every context (incl. preview-dark). */
-.admin-qr-preview__actions .admin-btn--black {
-  background: var(--color-black);
-  color: var(--color-white);
-}
-
-.admin-qr-preview__actions .admin-btn--black:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-black) 82%, var(--color-white));
-  color: var(--color-white);
-}
-
-.admin-qr-preview__actions .admin-btn--black:disabled {
-  background: var(--color-black);
-  color: var(--color-white);
+  width: 100%;
+  margin-top: var(--space-2);
 }
 
 /* Dropzone (before a QR is generated) — base look (also used by events-page). */
@@ -1078,13 +1056,14 @@ a.admin-stat-card:hover {
    its cream well, and higher specificity than the theme overrides that repaint
    dropzones cream. */
 .admin-tools-grid .admin-dropzone {
-  border: 2px dashed var(--color-black);
+  border: 1px dashed var(--admin-page-dark);
   background: transparent;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  height: 264px;
+  height: 350px;
   min-height: 0;
+  color: var(--color-text);
 }
 
 .admin-dropzone__image {
@@ -1208,32 +1187,6 @@ a.admin-stat-card:hover {
   gap: var(--space-3-5);
 }
 
-/* Tools short-URL row: only the goppi.id/ prefix chip is taller (40px) so it
-   reads as a panel; the slug input and Generate Link button keep the base
-   34px height and centre vertically, so no black shows behind them. The
-   modal's row keeps the base look. */
-.admin-tools-form .admin-field__row .admin-url-slug {
-  height: calc(var(--size-control) - var(--space-1) - var(--space-0-5) * 0.5);
-  gap: 0;
-  background: transparent;
-  border: 0;
-}
-
-.admin-tools-form .admin-url-slug__prefix {
-  align-self: stretch;
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  background: var(--color-black);
-}
-
-/* Middle segment of the flush chip–slug–button control: square corners so
-   it meets the rounded chip (left) and rounded Generate Link button (right)
-   with no seam or gap. */
-.admin-tools-form .admin-url-slug__slug {
-  height: calc(var(--size-control-sm) + var(--space-1-5));
-  margin: 0;
-  border-radius: 0;
-}
-
 /* Toolbar (search + delete) */
 .admin-toolbar {
   position: relative;
@@ -1268,13 +1221,6 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-md);
   background: var(--color-brand-50);
   overflow: hidden;
-}
-
-.admin-searchbox__icon {
-  align-self: center;
-  margin-left: var(--space-3);
-  color: var(--color-text-muted);
-  flex: 0 0 auto;
 }
 
 .admin-searchbox__input {
@@ -1315,57 +1261,9 @@ a.admin-stat-card:hover {
   justify-content: flex-end;
 }
 
-/* "Add New Event" reads like the search button: solid cream fill, dark ink
-   (not the filled maroon or the ghost look). */
-.admin-events-header .admin-btn--events-add,
-.admin-events-header .admin-btn--outline {
-  background: var(--color-brand-50);
-  color: var(--color-brand-950);
-  border-color: var(--color-brand-50);
-}
-
-.admin-events-header .admin-btn--events-add:hover:not(:disabled),
-.admin-events-header .admin-btn--outline:hover:not(:disabled) {
-  background: var(--color-brand-200);
-  color: var(--color-brand-950);
-}
-
-/* Events search: transparent well — only the WHITE outer border shows (dark page behind). */
 .admin-events-header .admin-searchbox {
   flex: 0 1 auto;
   min-width: 200px;
-  background: transparent;
-  border-color: var(--color-white);
-}
-
-.admin-events-header .admin-searchbox__icon {
-  color: var(--color-white);
-}
-
-.admin-events-header .admin-searchbox__input {
-  color: var(--color-on-panel);
-  caret-color: var(--color-on-panel-muted);
-}
-
-.admin-events-header .admin-searchbox__input::placeholder {
-  color: var(--color-on-panel-muted);
-}
-
-.admin-events-header .admin-searchbox__submit {
-  background: var(--color-brand-50);
-  color: var(--color-brand-950);
-}
-
-.admin-events-header .admin-searchbox__submit:hover {
-  background: var(--color-brand-200);
-}
-
-/* Filter button: keep the outline look but in the page ink so it stays
-   legible on the dark page surface. */
-.admin-events-header .admin-btn--filter-on {
-  background: var(--color-brand-50);
-  color: var(--color-brand-950);
-  border-color: var(--color-brand-50);
 }
 
 /* Table */
@@ -1624,19 +1522,18 @@ a.admin-stat-card:hover {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  border-radius: var(--radius-md);
-  padding: var(--space-2-5) var(--space-3);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 
 .admin-link-result--dark {
-  background: var(--color-black);
+  background: var(--admin-page-dark);
   color: var(--color-brand-50);
 }
 
 .admin-link-result--cream {
   background: var(--color-brand-50);
   color: var(--color-brand-950);
-  border: 1px solid var(--color-border-subtle);
 }
 
 .admin-link-result__main {
@@ -1666,8 +1563,8 @@ a.admin-stat-card:hover {
 
 .admin-link-result__link {
   font-weight: var(--font-semibold);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1677,7 +1574,6 @@ a.admin-stat-card:hover {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   color: inherit;
-  opacity: 0.72;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1685,11 +1581,17 @@ a.admin-stat-card:hover {
 
 .admin-link-result__actions {
   display: flex;
-  gap: var(--space-1-5);
+  gap: var(--space-3);
   flex: 0 0 auto;
 }
 
-/* Modal */
+.admin-link-result__actions .admin-btn {
+  height: var(--size-control);
+  font-weight: var(--font-regular);
+}
+
+/* Modal: one look on every page — a dark maroon card over the dimmed (still visible) page, a big
+   cream title, cream fields, actions at the bottom right (Back + the action). */
 .admin-modal-overlay {
   position: fixed;
   inset: 0;
@@ -1697,37 +1599,39 @@ a.admin-stat-card:hover {
   display: grid;
   place-items: center;
   padding: var(--space-4);
-  background: var(--color-overlay);
+  background: color-mix(in srgb, var(--color-black) 55%, transparent);
 }
 
 .admin-modal {
   width: 100%;
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
   max-height: min(90dvh, 100%);
   overflow-y: auto;
+  background: var(--color-brand-950);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-xl);
+  color: var(--color-brand-50);
 }
 
 .admin-modal__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-border-subtle);
+  padding: var(--space-5) var(--space-5) var(--space-2);
 }
 
 .admin-modal__title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+  font-weight: var(--font-bold);
+  color: var(--color-brand-50);
 }
 
 .admin-modal__subtitle {
-  margin-top: var(--space-0-5);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-on-panel-muted);
 }
 
 .admin-modal__close {
@@ -1738,146 +1642,80 @@ a.admin-stat-card:hover {
   border: 0;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--color-brand-50);
   cursor: pointer;
 }
 
 .admin-modal__close:hover {
-  background: var(--color-hover);
+  background: var(--color-panel-hover);
 }
 
 .admin-modal__body {
-  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
 }
 
 .admin-modal__footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2-5);
-  padding: var(--space-3-5) var(--space-5);
-  border-top: 1px solid var(--color-border-subtle);
+  padding: var(--space-3) var(--space-5) var(--space-5);
 }
 
+/* Footer actions: Back (left of the pair) and the action, at the right edge. */
 .admin-modal__footer-row {
   display: flex;
-  width: 100%;
-  justify-content: space-between;
-  gap: var(--space-2-5);
-}
-
-/* Compact confirm dialogs (delete): action buttons hugging the right edge.
-   A bare --end row (account popups) must also be a flex row so its buttons
-   centre vertically instead of stacking on the text baseline. */
-.admin-modal__footer-row,
-.admin-modal__footer-row--end {
-  display: flex;
-  width: 100%;
-  gap: var(--space-2-5);
-  justify-content: space-between;
-}
-
-.admin-modal__footer-row--end {
-  justify-content: flex-end;
   align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2-5);
+  width: 100%;
 }
 
-/* Modal footer buttons (Back / Save Draft): smaller type, snug horizontal
-   padding, and the same height as the modal's URL row controls (34px). */
 .admin-modal__footer-row .admin-btn {
-  font-size: var(--text-xs);
-  padding: 0 var(--space-2-5);
   height: calc(var(--size-control-sm) + var(--space-1-5));
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
 }
 
-/* Dark modal variant (edit short link) */
-.admin-modal--dark {
-  background: var(--color-black);
-  border: 1px solid var(--color-panel-line);
+/* Side panel (Article Settings): the same popup docked on the right as a cream surface (dark
+   fields and buttons, see "Dark admin pages"), with lines under the title and above the actions. */
+.admin-modal.admin-modal--side {
+  justify-self: end;
+  background: var(--color-brand-50);
+  border-color: var(--color-brand-50);
+  color: var(--color-brand-950);
 }
 
-/* Edit link modal: the title and the action bar are flush — no divider lines
-   above the Back / Save Draft buttons or under the "Edit Link" title. */
-.admin-modal--dark .admin-modal__header {
-  border-bottom: 0;
+.admin-modal--side .admin-modal__title {
+  color: var(--color-brand-950);
 }
 
-.admin-modal--dark .admin-modal__subtitle {
-  color: var(--color-on-panel-muted);
+.admin-modal--side .admin-modal__header,
+.admin-modal--side .admin-modal__footer {
+  margin: 0 var(--space-5);
+  padding-inline: 0;
 }
 
-.admin-modal--dark .admin-modal__footer {
-  border-top: 0;
+.admin-modal--side .admin-modal__header {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-brand-950);
 }
 
-/* Dark "window" titles restore the removed 2xl body titles: same size and
-   weight (--text-2xl / bold), with the subtitle hugging the title above. */
-.admin-modal--dark .admin-modal__title {
-  color: var(--color-brand-50);
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
+.admin-modal--side .admin-modal__body {
+  padding-top: var(--space-5);
 }
 
-.admin-modal--dark .admin-modal__close {
-  color: var(--color-brand-50);
+.admin-modal--side .admin-modal__footer {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-brand-950);
 }
 
-.admin-modal--dark .admin-modal__close:hover {
-  background: var(--color-panel-hover);
-}
-
-.admin-modal--dark .admin-modal__body {
-  color: var(--color-brand-50);
-}
-
-.admin-modal--dark .admin-modal__footer {
-  border-top-color: var(--color-panel-line);
-}
-
-.admin-modal--dark .admin-field__label {
-  color: var(--color-brand-50);
-}
-
-.admin-modal--dark .admin-input {
-  background: var(--color-brand-200);
-  color: var(--color-brand-600);
-  border-color: var(--color-brand-200);
-}
-
-.admin-modal--dark .admin-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-/* Delete confirmation text inside the dark modal (inherits the cream body ink). */
+/* Confirmation text (delete, revert, publish …). */
 .admin-delete-confirm__message {
   margin: 0;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
-}
-
-/* Delete confirm modal: the "Delete link" title matches the Tools page header
-   size, not the default modal title. */
-.admin-modal--delete .admin-modal__title {
-  font-size: var(--text-3xl);
-  line-height: var(--leading-3xl);
-}
-
-/* Delete confirm modal: tighter vertical rhythm — the three stacked rows
-   (title, message, actions) sit closer together. */
-.admin-modal--delete .admin-modal__header {
-  padding: var(--space-2-5) var(--space-5);
-}
-
-.admin-modal--delete .admin-modal__body {
-  padding: var(--space-2-5) var(--space-5);
-}
-
-.admin-modal--delete .admin-modal__footer {
-  padding: var(--space-2-5) var(--space-5);
-}
-
-.admin-modal--dark .admin-url-slug__prefix {
-  color: var(--color-brand-50);
 }
 
 /* Form grid (2 columns → 1 on small screens) */
@@ -1897,7 +1735,7 @@ a.admin-stat-card:hover {
   }
 
   .admin-tools-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .admin-page-header {
@@ -2099,16 +1937,6 @@ a.admin-stat-card:hover {
   margin-left: auto;
 }
 
-/* The Figma "Publish" / "Make private" bulk buttons are near-black (brand-950),
-   unlike the generic primary (accent) — scope that override to this bar only. */
-.admin-bulkbar .admin-btn--primary {
-  background: var(--color-black);
-}
-
-.admin-bulkbar .admin-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-brand-950) 88%, var(--color-white));
-}
-
 /* Row "more" menu (Publish / Make Private / Copy Link / Delete event) */
 .admin-row-menu {
   position: relative;
@@ -2199,20 +2027,6 @@ a.admin-stat-card:hover {
   text-decoration: underline;
 }
 
-/* Right cluster of the list toolbar (Filters + Delete) */
-.admin-toolbar__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-left: auto;
-}
-
-/* Filters button showing an active count */
-.admin-btn--filter-on {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
 /* Form footer actions (Back · Save draft · Publish) */
 .admin-form-actions {
   display: flex;
@@ -2252,40 +2066,142 @@ a.admin-stat-card:hover {
   gap: var(--space-2);
 }
 
-/* ── Page pattern (docs/admin-shell.md): field errors, floating add button ── */
+/* ── Page pattern (docs/admin-shell.md): field errors ── */
 .admin-field__error {
   margin: var(--space-1) 0 0;
-  color: var(--color-danger);
+  color: var(--admin-error, var(--color-danger));
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
+}
+
+/* Under a field (components/ui/field-error.tsx): one line, or a list of requirements, each with a
+   warning triangle (unmet, red) or a tick (met, green); help text before the field is checked. */
+.admin-field__feedback:empty {
+  display: none;
+}
+
+.admin-field__reqs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-field__msg,
+.admin-field__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-field__msg--error {
+  color: var(--admin-error, var(--color-danger));
+}
+
+.admin-field__msg--ok {
+  color: var(--admin-ok, var(--color-success));
+}
+
+.admin-field__hint {
+  color: var(--admin-ink-muted, var(--color-text-muted));
+}
+
+/* The icon sits on the first line of the text. */
+.admin-field__icon {
+  flex: none;
+  margin-top: calc((var(--text-xs) * var(--leading-xs) - 14px) / 2);
+}
+
+/* Dropdown with a search box (components/ui/select.tsx, more than 5 options). The button takes
+   the select's own class (admin-select, admin-input …); the list reuses the row "more" menu. */
+.admin-combo {
+  position: relative;
+  min-width: 0;
+}
+
+.admin-combo__native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+:where(.admin-combo__trigger) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.admin-combo__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  max-width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-combo__trigger:disabled {
+  cursor: not-allowed;
+}
+
+.admin-combo__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-combo__panel {
+  position: fixed;
+  z-index: 1100; /* above popups (.admin-modal-overlay) */
+  right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 12rem;
+  max-width: 90vw;
+}
+
+.admin-combo__list {
+  max-height: calc(var(--space-16) * 4);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.admin-combo__list .admin-row-menu__item {
+  justify-content: space-between;
+  white-space: normal;
+}
+
+.admin-combo__option--active {
+  background: var(--color-brand-200);
+}
+
+.admin-combo__option--selected {
+  font-weight: var(--font-semibold);
+}
+
+.admin-combo__empty {
+  padding: var(--space-2) var(--space-2-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .admin-input[aria-invalid="true"],
 .admin-select[aria-invalid="true"],
 .admin-textarea[aria-invalid="true"] {
   border-color: var(--color-danger);
-}
-
-.admin-fab {
-  position: fixed;
-  right: var(--space-6);
-  bottom: var(--space-6);
-  z-index: 30;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-full);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-weight: var(--font-semibold);
-  text-decoration: none;
-  box-shadow: var(--shadow-popover);
-}
-
-.admin-fab:hover,
-.admin-fab:focus-visible {
-  filter: brightness(1.08);
 }
 
 /* ---- Recovered Account / Profile / Emails (Vite admin, ported to tokens) ----
@@ -2304,14 +2220,6 @@ a.admin-stat-card:hover {
   .admin-acct-page {
     margin-inline: calc(var(--space-4) * -1);
   }
-}
-
-.admin-acct-card,
-.admin-acct-page .admin-acct-card,
-body .admin-acct-card {
-  background: var(--color-black);
-  border-color: var(--color-panel-line);
-  color: var(--color-brand-50);
 }
 
 .admin-acct-card .admin-card__header {
@@ -2385,7 +2293,7 @@ body .admin-acct-card {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-panel-line);
   border-radius: var(--radius-md);
-  background: var(--color-white);
+  background: var(--color-brand-50);
   color: var(--color-brand-950);
 }
 
@@ -2655,49 +2563,6 @@ body .admin-acct-card {
   line-height: var(--leading-xs);
 }
 
-/* Dark-modal field labels: recovered uppercase caps (tracking-wide), regular
-   weight, shrunk one step to micro (11px) per user request. */
-.admin-acct-fieldlabel {
-  color: var(--color-brand-50);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-regular);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  line-height: var(--leading-sm);
-}
-
-/* Caption under a field input — same copy as the textbox placeholder, small
-   and muted so it reads as inline help on the black modal. */
-.admin-acct-input-hint {
-  font-size: var(--text-2xs);
-  line-height: var(--leading-2xs);
-  color: var(--color-on-panel-muted);
-}
-
-/* Cream input on the black modal (overrides .admin-modal--dark .admin-input) */
-.admin-acct-input-cream {
-  width: 100%;
-  height: calc(var(--size-control-sm) + var(--space-1));
-  padding: var(--space-1) var(--space-2-5);
-  border: 1px solid var(--color-panel-line);
-  border-radius: var(--radius-sm);
-  background: var(--color-black);
-  color: var(--color-brand-50);
-  caret-color: var(--color-brand-50);
-  font: inherit;
-  font-size: var(--text-xs);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.admin-acct-input-cream::placeholder {
-  color: var(--color-text-muted);
-}
-
-.admin-acct-input-cream:focus {
-  border-color: var(--color-focus);
-}
-
 /* 4-digit code input on black modal */
 .admin-acct-code {
   width: 52px;
@@ -2764,34 +2629,10 @@ body .admin-acct-card {
   overflow-wrap: anywhere;
 }
 
-/* Edit Profile form: inputs turn white (text, combobox/select, date, textarea)
-   while the card stays black. Scoped so /account popups (same base class)
-   keep their black inputs. Text inside the boxes: black, regular weight. */
-.admin-acct-edit .admin-acct-input-cream {
-  background: var(--color-white);
-  border-color: var(--color-panel-line);
-  color: var(--color-black);
-  caret-color: var(--color-black);
-  font-weight: var(--font-regular);
-}
-
-.admin-acct-edit .admin-acct-input-cream::placeholder {
-  color: color-mix(in srgb, var(--color-black) 55%, transparent);
-}
-
-.admin-acct-edit .admin-acct-input-cream:focus {
-  border-color: var(--color-focus);
-}
-
-.admin-acct-edit .admin-acct-input-cream option {
-  background: var(--color-white);
-  color: var(--color-black);
-}
-
-/* Device info container (Add/Edit Passkey) inside an edit modal turns white,
-   like the other white boxes: white panel, maroon icon disc, dark ink. */
+/* Device info container (Add/Edit Passkey) inside an edit popup: a cream box with a maroon
+   icon disc and dark ink, like the account rows. */
 .admin-acct-edit .admin-acct-pop {
-  background: var(--color-white);
+  background: var(--color-brand-50);
   border-color: var(--color-border-subtle);
 }
 
@@ -2808,40 +2649,16 @@ body .admin-acct-card {
   color: color-mix(in srgb, var(--color-black) 55%, transparent);
 }
 
-/* Address textboxes (richtext) — tall, grows up-down with content */
-.admin-acct-edit textarea.admin-acct-input-cream {
-  height: auto;
-  min-height: 7.5rem;
-  resize: vertical;
-  line-height: var(--leading-sm);
-}
-
-/* Delete confirm popups (Delete Passkey / Delete Account): the warning
-   container and the confirmation textbox turn white like the edit popups,
-   while the warning icon and red ink stay readable on the white panel. */
+/* Delete confirm popups (Delete Passkey / Delete Account): the warning box is cream like the
+   edit popups; the warning icon and red ink stay readable on it. */
 .admin-acct-delete .admin-acct-pop {
-  background: var(--color-white);
+  background: var(--color-brand-50);
   border-color: var(--color-border-subtle);
 }
 
 .admin-acct-delete .admin-acct-pop__icon--warn {
   background: transparent;
   color: var(--color-danger-bright);
-}
-
-.admin-acct-delete .admin-acct-input-cream {
-  background: var(--color-white);
-  border-color: var(--color-border-subtle);
-  color: var(--color-black);
-  caret-color: var(--color-black);
-}
-
-.admin-acct-delete .admin-acct-input-cream::placeholder {
-  color: color-mix(in srgb, var(--color-black) 55%, transparent);
-}
-
-.admin-acct-delete .admin-acct-input-cream:focus {
-  border-color: var(--color-focus);
 }
 
 /* Emails inbox row */
@@ -2909,4 +2726,2020 @@ body .admin-acct-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* ===================== Dark admin pages (every page; docs/admin-shell.md) ===================== */
+/* Every admin page is dark: `.admin-dark-page` sits on the content area (`<main>` in
+   components/admin-sidebar.tsx), so the rules below apply to all pages and their popups. The list
+   card is `.admin-list-card`, the add/edit page wrapper `.admin-dark-form`. */
+body:has(.admin-dark-page) {
+  background: var(--admin-page-dark);
+}
+
+/* Colours that depend on the surface. The dark canvas (and dark blocks inside cream cards): cream
+   text, cream fields and buttons. */
+.admin-dark-page,
+.admin-dark-page
+  :is(.admin-link-result--dark, .admin-tools .admin-table-wrap, .admin-tools .admin-darkbar) {
+  --admin-ink: var(--color-brand-50);
+  --admin-ink-muted: var(--color-on-panel-muted);
+  --admin-field-bg: var(--color-brand-50);
+  --admin-field-ink: var(--color-brand-950);
+  --admin-field-placeholder: var(--color-text-muted);
+  --admin-field-scheme: light;
+  --admin-btn-bg: var(--color-brand-50);
+  --admin-btn-ink: var(--color-brand-950);
+  --admin-btn-hover: var(--color-brand-200);
+  --admin-ghost-hover: var(--color-panel-hover);
+  --admin-ok: var(--color-success-bright);
+  --admin-error: var(--color-danger-bright);
+  --admin-focus: var(--color-gold);
+  color: var(--admin-ink);
+}
+
+/* Cream surfaces on the dark canvas (cards, rows, menus, bars): dark text, dark fields and
+   buttons. Add a surface here instead of styling its fields one by one. */
+.admin-dark-page
+  :is(
+    .admin-bulkbar,
+    .admin-unit-card,
+    .admin-list-panel,
+    .admin-row-menu__panel,
+    .admin-tools-grid > .admin-card,
+    .admin-link-result--cream,
+    .admin-acct-row,
+    .admin-stat-card,
+    .admin-newsletter-kpi,
+    .admin-modal--side
+  ) {
+  --admin-ink: var(--color-brand-950);
+  --admin-ink-muted: var(--color-text-muted);
+  --admin-field-bg: var(--color-brand-950);
+  --admin-field-ink: var(--color-brand-50);
+  --admin-field-placeholder: var(--color-on-panel-muted);
+  --admin-field-scheme: dark;
+  --admin-btn-bg: var(--color-brand-950);
+  --admin-btn-ink: var(--color-brand-50);
+  --admin-btn-hover: var(--color-brand-800);
+  --admin-ghost-hover: var(--color-hover);
+  --admin-ok: var(--color-success);
+  --admin-error: var(--color-danger);
+}
+
+.admin-dark-page .admin-page-header__title,
+.admin-dark-page .admin-page-header__desc,
+.admin-dark-page .admin-field__label,
+.admin-dark-page .admin-card__title {
+  color: var(--admin-ink);
+}
+
+.admin-dark-page .admin-page-header__desc {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.admin-dark-page .admin-card__subtitle {
+  color: var(--admin-ink-muted);
+}
+
+/* Cards: transparent with a thin light outline (the list card look). */
+.admin-dark-page .admin-card {
+  background: transparent;
+  border: 1px solid var(--color-panel-line);
+  color: var(--admin-ink);
+}
+
+/* Buttons: solid ones (primary, outline) are cream with dark ink on the canvas and dark on cream
+   surfaces; ghost/icon buttons take the text colour; danger stays red. */
+.admin-dark-page :is(.admin-btn--primary, .admin-btn--outline, .admin-btn--maroon) {
+  background: var(--admin-btn-bg);
+  color: var(--admin-btn-ink);
+  border: 1px solid var(--admin-btn-bg);
+}
+
+.admin-dark-page
+  :is(.admin-btn--primary, .admin-btn--outline, .admin-btn--maroon):hover:not(:disabled) {
+  background: var(--admin-btn-hover);
+  border-color: var(--admin-btn-hover);
+}
+
+.admin-dark-page .admin-btn--ghost {
+  color: var(--admin-ink);
+}
+
+.admin-dark-page .admin-btn--ghost:hover:not(:disabled) {
+  background: var(--admin-ghost-hover);
+}
+
+/* Fields: cream wells with dark ink on the canvas (dark wells on cream surfaces). The border lights
+   up gold while typing and turns red (with the message below) when a requirement is unmet. */
+.admin-dark-page :is(.admin-input, .admin-select, .admin-textarea, .admin-url-slug) {
+  background: var(--admin-field-bg);
+  border-color: var(--admin-field-bg);
+  color: var(--admin-field-ink);
+  color-scheme: var(--admin-field-scheme);
+}
+
+/* The URL box: prefix in the field ink, the editable part a shade darker than the field. */
+.admin-dark-page .admin-url-slug__prefix {
+  color: var(--admin-field-ink);
+  font-size: var(--text-sm);
+}
+
+.admin-dark-page .admin-url-slug__slug {
+  background: color-mix(in srgb, var(--admin-field-ink) 10%, var(--admin-field-bg));
+  color: var(--admin-field-ink);
+}
+
+.admin-dark-page .admin-url-slug__slug:focus {
+  box-shadow: none;
+}
+
+.admin-dark-page :is(.admin-input, .admin-textarea, .admin-url-slug__slug)::placeholder {
+  color: var(--admin-field-placeholder);
+}
+
+.admin-dark-page :is(.admin-input, .admin-select, .admin-textarea):focus,
+.admin-dark-page .admin-url-slug:focus-within {
+  border-color: var(--admin-focus);
+  box-shadow: 0 0 0 1px var(--admin-focus);
+}
+
+.admin-dark-page :is(.admin-input, .admin-select, .admin-textarea)[aria-invalid="true"],
+.admin-dark-page .admin-url-slug:has([aria-invalid="true"]),
+.admin-dark-page .admin-combo__native[aria-invalid="true"] + .admin-combo__trigger {
+  border-color: var(--admin-error);
+  box-shadow: 0 0 0 1px var(--admin-error);
+}
+
+.admin-dark-page :is(.admin-input, .admin-select, .admin-textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Checkbox and radio choices take the text colour; the box follows the surface. */
+.admin-dark-page .admin-radio {
+  color: var(--admin-ink);
+}
+
+.admin-dark-page .admin-radio input {
+  accent-color: var(--admin-btn-bg);
+}
+
+/* Status chips on the dark rows: tinted (green, gold, red, muted). */
+.admin-dark-page .admin-badge {
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-medium);
+}
+
+.admin-dark-page .admin-badge--success {
+  background: color-mix(in srgb, var(--color-success-bright) 16%, transparent);
+  color: var(--color-success-bright);
+}
+
+.admin-dark-page .admin-badge--warn {
+  background: color-mix(in srgb, var(--color-gold) 16%, transparent);
+  color: var(--color-gold);
+}
+
+.admin-dark-page .admin-badge--danger {
+  background: color-mix(in srgb, var(--color-danger-bright) 18%, transparent);
+  color: var(--color-danger-bright);
+}
+
+.admin-dark-page .admin-badge--primary {
+  background: color-mix(in srgb, var(--color-info) 18%, transparent);
+  color: var(--color-info);
+}
+
+.admin-dark-page .admin-badge--neutral {
+  background: var(--color-panel-hover);
+  color: var(--color-on-panel-muted);
+}
+
+/* Search box: an outlined well in the text colour with a solid Search button. */
+.admin-dark-page .admin-searchbox {
+  background: transparent;
+  border-color: var(--admin-ink);
+}
+
+.admin-dark-page .admin-searchbox:focus-within {
+  border-color: var(--admin-focus);
+  box-shadow: 0 0 0 1px var(--admin-focus);
+}
+
+.admin-dark-page .admin-searchbox__input {
+  color: var(--admin-ink);
+}
+
+.admin-dark-page .admin-searchbox__input::placeholder {
+  color: var(--admin-ink-muted);
+}
+
+.admin-dark-page .admin-searchbox__submit {
+  background: var(--admin-btn-bg);
+  color: var(--admin-btn-ink);
+}
+
+.admin-dark-page .admin-searchbox__submit:hover {
+  background: var(--admin-btn-hover);
+}
+
+/* Links in text on the dark canvas: the text colour; table rows link without an underline. */
+.admin-dark-page .admin-card a:not(.admin-btn),
+.admin-dark-page .admin-table a:not(.admin-btn) {
+  color: inherit;
+}
+
+.admin-dark-page .admin-table a:not(.admin-btn) {
+  text-decoration: none;
+}
+
+.admin-dark-page .admin-table a:not(.admin-btn):hover .admin-table__title {
+  text-decoration: underline;
+}
+
+/* A row link with a title and a line under it (Users: name over e-mail). */
+.admin-table a > .admin-table__sub {
+  display: block;
+}
+
+/* A filter form above a table: its controls sit together on the left. */
+form.admin-toolbar {
+  justify-content: flex-start;
+  padding-inline: 0;
+}
+
+form.admin-toolbar::before {
+  display: none;
+}
+
+/* Filter selects in a toolbar keep their natural width. */
+.admin-toolbar .admin-select,
+.admin-toolbar .admin-combo {
+  width: auto;
+  min-width: 12rem;
+}
+
+/* Header: number badge on "Filters", roomier search field without an icon. */
+.admin-filter-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--space-4-5);
+  height: var(--space-4-5);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-brand-950);
+  color: var(--color-brand-50);
+  font-size: var(--text-2xs);
+  line-height: var(--admin-leading-tight);
+  font-weight: var(--font-bold);
+}
+
+.admin-dark-page .admin-searchbox {
+  min-width: 260px;
+  max-width: 360px;
+}
+
+.admin-dark-page .admin-searchbox__input {
+  padding-left: var(--space-4);
+}
+
+.admin-dark-page .admin-searchbox__submit {
+  padding: 0 var(--space-6);
+}
+
+/* Album table: transparent card with a thin light outline, lines edge to edge. */
+.admin-dark-page .admin-list-card {
+  background: transparent;
+  border: 1px solid var(--color-panel-line);
+  overflow: hidden;
+}
+
+.admin-dark-page .admin-table-wrap {
+  margin-inline: 0;
+}
+
+.admin-dark-page .admin-table th {
+  background: transparent;
+  color: var(--color-on-panel-muted);
+  font-weight: var(--font-regular);
+  font-size: var(--text-2xs);
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-dark-page .admin-table td {
+  color: var(--color-brand-50);
+  border-bottom-color: var(--color-panel-line);
+}
+
+.admin-dark-page .admin-table tbody tr:hover td {
+  background: var(--color-panel-hover);
+}
+
+.admin-dark-page .admin-table__title {
+  color: var(--color-brand-50);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-dark-page .admin-table__sub {
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-2xs);
+}
+
+.admin-dark-page .admin-th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-dark-page .admin-th-sort--active {
+  color: var(--color-brand-50);
+}
+
+/* Checkboxes: cream rounded squares; filled cream (with the black mark) when on.
+   Shared with the Tools link list, which uses the same dark rows. */
+.admin-dark-page .admin-checkbox,
+.admin-dark-page .admin-checkbox span {
+  width: var(--space-4-5);
+  height: var(--space-4-5);
+}
+
+.admin-dark-page .admin-checkbox span {
+  border: 1.5px solid var(--color-brand-50);
+  border-radius: var(--radius-sm);
+}
+
+.admin-dark-page .admin-table__checkbox:checked + span,
+.admin-dark-page .admin-table__checkbox:indeterminate + span {
+  background: var(--color-brand-50);
+}
+
+.admin-dark-page .admin-bulkbar .admin-checkbox span {
+  border-color: var(--color-brand-950);
+}
+
+.admin-dark-page .admin-bulkbar .admin-table__checkbox:checked + span,
+.admin-dark-page .admin-bulkbar .admin-table__checkbox:indeterminate + span {
+  background: transparent;
+}
+
+/* Gallery cell: four thumbnails + "48+" tile, then title and event type. */
+.admin-gallery-album {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.admin-gallery-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  flex: 0 0 auto;
+}
+
+.admin-gallery-stack__img {
+  width: var(--space-5);
+  height: var(--space-8);
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.admin-gallery-stack__more {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--space-8);
+  height: var(--space-8);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-white) 10%, transparent);
+  color: var(--color-brand-50);
+  font-size: var(--text-2xs);
+}
+
+/* Author cell: green initials avatar, name and e-mail. */
+.admin-gallery-author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.admin-gallery-author__avatar {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  color: var(--color-brand-50);
+  font-size: var(--text-3xs);
+  font-weight: var(--font-bold);
+}
+
+.admin-gallery-meta {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+/* Disabled menu entries are dimmed. */
+.admin-dark-page .admin-row-menu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* Footer bars sit inside the card: pagination transparent, bulk bar cream. */
+.admin-dark-page .admin-darkbar,
+.admin-dark-page .admin-bulkbar {
+  margin: 0;
+  border-radius: 0;
+}
+
+.admin-dark-page .admin-darkbar {
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border-top: 0;
+}
+
+.admin-dark-page .admin-darkbar__info {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-dark-page .admin-darkbar__select,
+.admin-dark-page .admin-darkbar__btn {
+  background: transparent;
+}
+
+.admin-dark-page .admin-darkbar__btn--active {
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+}
+
+.admin-dark-page .admin-bulkbar {
+  border: 0;
+}
+
+/* Empty state: cream title, muted hint, outlined "Clear Filters" + cream "Add New Album". */
+.admin-dark-page .admin-empty {
+  color: var(--color-on-panel-muted);
+}
+
+.admin-dark-page .admin-empty__title {
+  color: var(--color-brand-50);
+}
+
+.admin-dark-page .admin-empty__actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Album form: cream fields on the dark page, lines under the title and above the actions. */
+.admin-dark-form {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 9rem);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-brand-50);
+}
+
+/* Back · Save draft · Publish stay at the bottom of the page on short forms. */
+.admin-dark-form > .admin-form-actions {
+  margin-top: auto;
+}
+
+.admin-dark-form > .admin-form-grid {
+  margin-bottom: var(--space-5);
+}
+
+.admin-dark-page .admin-form-actions {
+  border-top-color: var(--color-brand-50);
+}
+
+/* Banner images: five square tiles per row, red round remove button top-right. */
+.admin-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.admin-gallery-tile {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.admin-gallery-tile:focus-visible {
+  outline: 2px solid var(--color-brand-50);
+  outline-offset: var(--space-0-5);
+}
+
+.admin-gallery-tile__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-gallery-tile__clear {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-danger-bright) 88%, transparent);
+  color: var(--color-brand-800);
+  cursor: pointer;
+}
+
+.admin-gallery-tile__clear:hover {
+  background: var(--color-danger-bright);
+  color: var(--color-white);
+}
+
+.admin-dark-page .admin-dropzone {
+  min-height: 240px;
+  margin-top: var(--space-4);
+  border: 1.5px dashed var(--color-brand-50);
+  background: transparent;
+  color: var(--color-brand-50);
+}
+
+.admin-dark-page .admin-dropzone:focus-visible {
+  outline: 2px solid var(--color-brand-50);
+  outline-offset: var(--space-0-5);
+}
+
+.admin-dark-page .admin-dropzone .admin-card__subtitle {
+  color: var(--color-brand-50);
+}
+
+.admin-dark-page .admin-dropzone__title {
+  color: var(--color-brand-50);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 1023px) {
+  .admin-gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Card fills the page height; the pagination / bulk bar stay at its bottom. */
+.admin-dark-page .admin-list-card {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 8.5rem);
+}
+
+.admin-dark-page .admin-list-card > * {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.admin-dark-page .admin-list-card .admin-darkbar,
+.admin-dark-page .admin-list-card .admin-bulkbar {
+  margin-top: auto;
+}
+
+/* Empty list: invisible filler rows, the message centred over them (DataTable overlay). */
+.admin-dark-page .admin-table-wrap {
+  position: relative;
+}
+
+.admin-dark-page .admin-table__placeholder td {
+  border-bottom-color: transparent;
+}
+
+.admin-dark-page .admin-table__placeholder:hover td {
+  background: transparent;
+}
+
+.admin-dark-page .admin-table__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Small screens: the album table keeps its columns and scrolls sideways inside the card. */
+.admin-dark-page .admin-table {
+  min-width: 760px;
+}
+
+/* Long event titles in the select must not widen the form past the screen. */
+.admin-dark-page .admin-form-grid > * {
+  min-width: 0;
+}
+
+/* ==================================================================
+   Organizations (Period / PPI lists, Structure, Create/Edit Unit) —
+   Figma "ORGANIZATIONS ADMIN". The page sits on the black canvas.
+   ================================================================== */
+
+.admin-org-badges {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* "#AUS" under the chapter name. */
+.admin-org-code {
+  font-weight: var(--font-bold);
+}
+
+/* Conditions joined with " · " (bold, wraps over several lines). */
+.admin-org-conditions {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-sm);
+}
+
+/* Red trash icon in table rows. */
+.admin-btn--icon-danger {
+  color: var(--color-danger-bright);
+}
+
+/* PPI bulk bar sits above the pagination bar (both stay visible). */
+.admin-org-bulkbar {
+  margin-top: var(--space-2);
+}
+
+/* Structure page period switch: menu under the button. */
+.admin-org-period-menu {
+  left: 0;
+  right: auto;
+  min-width: 100%;
+}
+
+/* ---- Create / Edit Unit page ---- */
+.admin-unit-header {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-unit-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  padding-top: var(--space-6);
+}
+
+.admin-unit-section__title,
+.admin-unit-section__desc,
+.admin-unit-empty {
+  color: var(--admin-ink);
+}
+
+.admin-unit-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) 0 var(--space-5);
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-unit-section__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-unit-section__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-medium);
+}
+
+.admin-unit-section__desc {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.admin-unit-empty {
+  margin: var(--space-4) 0;
+  text-align: center;
+  font-size: var(--text-xs);
+}
+
+/* Cream cards: a core member, or a division with its members. */
+.admin-unit-card {
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+.admin-unit-member {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: var(--space-6);
+}
+
+/* Members inside a division have no handle of their own. */
+.admin-unit-division .admin-unit-member {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  padding: var(--space-3) 0;
+}
+
+.admin-unit-grip {
+  align-self: center;
+  color: var(--color-brand-950);
+  cursor: grab;
+}
+
+.admin-unit-photo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-16);
+  height: var(--space-16);
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-brand-200);
+  color: var(--color-brand-950);
+  cursor: pointer;
+}
+
+.admin-unit-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-unit-division {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.admin-unit-division__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.admin-unit-division__name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-6);
+}
+
+/* Dashed "+ Add New Member" area at the end of a division. */
+.admin-unit-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  margin-top: var(--space-3);
+  border: 1.5px dashed var(--color-brand-950);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-brand-950);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+}
+
+.admin-unit-add:hover {
+  background: var(--color-hover);
+}
+
+.admin-unit-section > .admin-unit-card + .admin-unit-card {
+  margin-top: var(--space-2);
+}
+
+.admin-unit-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-6) 0;
+}
+
+@media (max-width: 900px) {
+  .admin-unit-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-unit-member,
+  .admin-unit-division .admin-unit-member {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .admin-unit-division {
+    flex-direction: column;
+  }
+}
+
+/* ---- Event page (components/events-page.tsx) on the dark page ---- */
+/* Tabs (All / Upcoming / Past / Drafts) sit above the table card on a thin full-width line. */
+.admin-dark-page .admin-tabs {
+  gap: var(--space-8);
+  margin-bottom: var(--space-4);
+  padding: 0;
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-dark-page .admin-tabs__btn {
+  margin: 0;
+  padding: var(--space-2);
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-sm);
+}
+
+.admin-dark-page .admin-tabs__btn::after {
+  bottom: -1px;
+}
+
+.admin-dark-page .admin-tabs__btn--active,
+.admin-dark-page .admin-tabs__btn:hover:not(.admin-tabs__btn--active) {
+  color: var(--color-brand-50);
+  font-weight: var(--font-semibold);
+}
+
+.admin-dark-page .admin-tabs__btn--active::after {
+  background: var(--color-brand-50);
+}
+
+.admin-dark-page .admin-tabs__count {
+  margin-left: var(--space-3);
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Banner thumbnail of the event row. */
+.admin-dark-page .admin-event-avatar {
+  width: var(--space-10);
+  height: var(--space-10);
+}
+
+/* Location: pin + text. */
+.admin-event-location {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+/* Last Modified: "2 hours ago" over the author's short name. */
+.admin-event-meta {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+/* Status pill: cream with dark ink, lock (Private) or globe (Public). */
+.admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2-5);
+  border-radius: var(--radius-full);
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  white-space: nowrap;
+}
+
+/* ---- Article page (articles-page.tsx): list and editor reuse the Event page styles ---- */
+/* Featured image thumbnail in the Article column. */
+.admin-article-thumb {
+  flex: 0 0 auto;
+  width: calc(var(--space-12) + var(--space-3));
+  height: var(--space-10);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-panel-hover);
+}
+
+.admin-article-thumb__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Editor: Featured Image and the content boxes share one outlined frame, no line below it. */
+.admin-article-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--admin-ink);
+  border-radius: var(--radius-md);
+}
+
+.admin-article-frame .admin-editor {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-dark-page .admin-article-frame + .admin-form-actions {
+  border-top: 0;
+}
+
+/* Settings → Tag/Keywords: input + Add, then removable chips in the field colours. */
+.admin-article-tags-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.admin-article-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-article-tags__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-0-5) var(--space-0-5) var(--space-2-5);
+  border-radius: var(--radius-full);
+  background: var(--admin-field-bg);
+  color: var(--admin-field-ink);
+  font-size: var(--text-2xs);
+}
+
+.admin-article-tags__remove {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.admin-article-tags__remove:hover {
+  background: var(--admin-ghost-hover);
+}
+
+.admin-article-tags__remove:focus-visible {
+  outline: 2px solid var(--admin-focus);
+}
+
+/* Event form: a tall description box (`.admin-input` alone is one line high). */
+.admin-dark-page .admin-textarea {
+  height: auto;
+  min-height: calc(var(--space-16) * 2 + var(--space-2));
+  resize: vertical;
+}
+
+/* Uploaded banner: kept inside the drop zone's height. */
+.admin-dark-page .admin-dropzone__image {
+  position: absolute;
+  inset: 0;
+}
+
+/* Guest/Speakers, Rundown and Sponsors sections (components/ui/editable-list.tsx). */
+/* The gap sits under each section (not above its line), so the last list keeps clear of the
+   Back · Save draft · Publish line, which is pushed down with margin-top: auto. */
+.admin-dark-page .admin-form-separator {
+  margin-top: 0;
+  padding-bottom: var(--space-5);
+  border-top-color: var(--color-brand-50);
+}
+
+.admin-dark-page .admin-form-separator__head {
+  margin-bottom: var(--space-3);
+}
+
+.admin-dark-page .admin-form-separator__head .admin-field__label {
+  font-size: var(--text-lg);
+  font-weight: var(--font-medium);
+}
+
+.admin-dark-page .admin-form-separator > .admin-card__subtitle {
+  color: var(--color-brand-50);
+  font-style: italic;
+}
+
+/* One row: cream card with grip · photo · fields · red Delete; the fields are dark wells. */
+.admin-list-panel {
+  border-radius: var(--radius-lg);
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+}
+
+.admin-list-panel--dragging {
+  opacity: 0.5;
+}
+
+.admin-list-panel__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+.admin-list-panel__handle {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: var(--space-8);
+  color: var(--color-brand-950);
+  cursor: grab;
+}
+
+.admin-list-panel__body > .admin-btn--danger {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+.admin-guest,
+.admin-rundown,
+.admin-sponsor {
+  display: grid;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.admin-guest {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.admin-rundown {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-sponsor {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* Square photo / logo well (components/ui/photo-drop.tsx). */
+.admin-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--space-16) + var(--space-2));
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-200);
+  color: var(--color-brand-950);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.admin-photo:focus-visible {
+  outline: 2px solid var(--color-brand-950);
+  outline-offset: var(--space-0-5);
+}
+
+.admin-photo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-photo .admin-photo__clear {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  min-height: 0;
+  width: var(--space-5);
+  height: var(--space-5);
+  padding: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-950);
+  color: var(--color-brand-50);
+}
+
+@media (max-width: 767px) {
+  .admin-list-panel__body {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .admin-guest,
+  .admin-rundown,
+  .admin-sponsor {
+    grid-template-columns: minmax(0, 1fr);
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .admin-list-panel__body > .admin-btn--danger {
+    margin-left: auto;
+  }
+
+  .admin-dark-page .admin-tabs {
+    gap: var(--space-2);
+    overflow-x: auto;
+  }
+}
+
+/* ===================== Tools page (components/tools-page.tsx) ===================== */
+/* The Tools page: cream cards on the dark canvas (scoped to `.admin-tools`, the page wrapper). */
+
+/* Cream cards with roomy padding. */
+.admin-tools-grid > .admin-card {
+  background: var(--color-brand-50);
+  border: 0;
+  border-radius: calc(var(--radius-xl) + var(--space-1));
+}
+
+.admin-tools-grid .admin-card__header {
+  padding: var(--space-6) var(--space-6) var(--space-3);
+}
+
+.admin-tools-grid .admin-card__body {
+  padding: var(--space-3) var(--space-6) var(--space-6);
+}
+
+/* Choices read as regular text, not bold. */
+.admin-tools .admin-radio,
+.admin-tools .admin-radio__stack strong,
+.admin-tools .admin-qr-switch__label {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: var(--font-regular);
+}
+
+.admin-tools .admin-radio {
+  gap: var(--space-2);
+}
+
+.admin-tools .admin-radio input {
+  width: var(--space-4);
+  height: var(--space-4);
+  margin: 0;
+  accent-color: var(--admin-page-dark);
+}
+
+.admin-tools .admin-radio-row {
+  gap: var(--space-6);
+}
+
+.admin-tools .admin-radio__stack .admin-card__subtitle,
+.admin-tools .admin-qr-switch__hint {
+  color: var(--color-text);
+}
+
+/* Extra air above the Generate QR button. */
+.admin-tools .admin-qr-switch + .admin-btn {
+  margin-top: var(--space-5);
+}
+
+.admin-tools .admin-qr-switch__track {
+  background: var(--admin-page-dark);
+  border-color: var(--admin-page-dark);
+}
+
+.admin-tools-grid .admin-dropzone__title {
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-weight: var(--font-regular);
+}
+
+.admin-tools-grid .admin-dropzone .admin-card__subtitle {
+  color: var(--color-text);
+}
+
+/* Toolbar: maroon divider, search box, red Delete. */
+.admin-tools .admin-toolbar {
+  padding: var(--space-10) var(--space-6) var(--space-6);
+}
+
+.admin-tools .admin-toolbar::before {
+  left: var(--space-6);
+  right: var(--space-6);
+  background: color-mix(in srgb, var(--color-brand-800) 45%, transparent);
+}
+
+/* Link list: a dark block of rows inside the cream card (no header row). */
+.admin-tools .admin-table-wrap {
+  margin-inline: var(--space-6);
+  background: var(--admin-page-dark);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.admin-tools .admin-table td {
+  padding-block: var(--space-4);
+}
+
+/* The list has no header row, so column widths are set here: checkbox hugs the link,
+   the date starts about a third of the way across. */
+.admin-tools .admin-table td:first-child {
+  width: 1%;
+  padding-left: var(--space-4);
+  padding-right: var(--space-3);
+}
+
+.admin-tools .admin-table td:nth-child(2) {
+  width: 35%;
+}
+
+.admin-tools .admin-table td:nth-child(3) {
+  color: var(--color-on-panel-muted);
+}
+
+.admin-table__sub--redirect {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.admin-table__sub--redirect svg {
+  flex: none;
+}
+
+.admin-table__sub--redirect span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-tools .admin-table__actions {
+  gap: var(--space-4);
+}
+
+.admin-tools .admin-table__actions .admin-btn--icon {
+  width: var(--size-control);
+  height: var(--size-control);
+}
+
+.admin-tools .admin-table__actions .admin-table__delete {
+  color: var(--color-danger-bright);
+}
+
+/* Pagination bar: the bottom of the dark block. */
+.admin-tools .admin-darkbar {
+  margin: 0 var(--space-6) var(--space-6);
+  background: var(--admin-page-dark);
+  border-top: 1px solid var(--color-panel-line);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.admin-tools .admin-darkbar__info + .admin-darkbar__info {
+  margin-left: var(--space-4);
+  color: var(--color-on-panel-muted);
+}
+
+/* ===================== Newsletter (components/newsletter-page.tsx) ===================== */
+/* Dark page pattern of Event/Gallery; these rules add only what the newsletter needs. */
+
+/* Status dropdown (cream pill like the header buttons; menu reuses .admin-row-menu__panel). */
+.admin-newsletter-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--size-control-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-brand-50);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.admin-newsletter-status:hover {
+  background: var(--color-brand-200);
+}
+
+.admin-newsletter-status strong {
+  font-weight: var(--font-semibold);
+}
+
+.admin-newsletter-status__menu {
+  left: 0;
+  right: auto;
+  min-width: 100%;
+}
+
+.admin-newsletter-status__menu [aria-checked="true"] {
+  font-weight: var(--font-semibold);
+}
+
+/* KPI strip: three cream cards (icon + label, big number + trend). */
+.admin-newsletter-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.admin-newsletter-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+}
+
+.admin-newsletter-kpi__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--font-medium);
+}
+
+.admin-newsletter-kpi__row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.admin-newsletter-kpi__value {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: var(--font-bold);
+}
+
+.admin-newsletter-kpi__trend {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--font-medium);
+}
+
+.admin-newsletter-kpi__trend--up {
+  color: var(--color-success);
+}
+
+.admin-newsletter-kpi__trend--down {
+  color: var(--color-gold);
+}
+
+/* "All subscribers" / e-mail line with the user glyph. */
+.admin-newsletter-audience {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.admin-newsletter-subscriber {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Status pills: tinted on the dark rows (Sent green, Scheduled blue, Draft gold). */
+.admin-newsletter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.admin-newsletter-badge--sent,
+.admin-newsletter-badge--sending {
+  background: color-mix(in srgb, var(--color-success-bright) 16%, transparent);
+  color: var(--color-success-bright);
+}
+
+.admin-newsletter-badge--scheduled {
+  background: color-mix(in srgb, var(--color-info) 18%, transparent);
+  color: var(--color-info);
+}
+
+.admin-newsletter-badge--draft,
+.admin-newsletter-badge--pending {
+  background: color-mix(in srgb, var(--color-gold) 16%, transparent);
+  color: var(--color-gold);
+}
+
+.admin-newsletter-badge--unsubscribed,
+.admin-newsletter-badge--suppressed {
+  background: var(--color-panel-hover);
+  color: var(--color-on-panel-muted);
+}
+
+.admin-newsletter-number {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-dark-page .admin-newsletter-when--scheduled {
+  color: var(--color-info);
+  font-weight: var(--font-regular);
+}
+
+.admin-dark-page .admin-table__actions .admin-newsletter-trash {
+  color: var(--color-danger-bright);
+}
+
+/* Results popup: label / value pairs. */
+.admin-newsletter-results {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-6);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.admin-newsletter-results dt {
+  color: var(--color-on-panel-muted);
+}
+
+.admin-newsletter-results dd {
+  margin: 0;
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Preview: the e-mail in a sandboxed frame (white, like a mail app). */
+.admin-newsletter-preview {
+  display: block;
+  width: 100%;
+  min-height: 60vh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+}
+
+/* ---- Rich-text composer (Newsletter Content Blocks; same markup as the article type boxes) ---- */
+.admin-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.admin-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 420px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-brand-50);
+  border-radius: var(--radius-md);
+  background: var(--admin-page-dark);
+  color: var(--color-brand-50);
+}
+
+/* Composer page: the Content Blocks box fills the page down to the actions (no line above them). */
+.admin-newsletter-form > .admin-form-grid {
+  flex: 1;
+  grid-template-rows: auto 1fr;
+}
+
+.admin-newsletter-form > .admin-form-grid > .admin-field:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-newsletter-form .admin-editor-list,
+.admin-newsletter-form .admin-editor {
+  flex: 1;
+}
+
+.admin-dark-page .admin-newsletter-form > .admin-form-actions {
+  border-top: 0;
+}
+
+.admin-editor--drag-over {
+  outline: 2px dashed var(--color-brand-50);
+  outline-offset: var(--space-0-5);
+}
+
+.admin-editor__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.admin-editor__top-btn,
+.admin-editor__top-drag {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-brand-50);
+  cursor: pointer;
+}
+
+.admin-editor__top-drag {
+  cursor: grab;
+}
+
+.admin-editor__top-btn:hover,
+.admin-editor__top-drag:hover {
+  background: var(--color-panel-hover);
+}
+
+.admin-editor__top-btn--danger {
+  color: var(--color-danger-bright);
+}
+
+/* Toolbar: a cream strip of dark square tiles (the PNG tiles carry the glyphs). */
+.admin-editor__toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-50);
+}
+
+.admin-editor__btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.admin-editor__btn:hover:not(:disabled),
+.admin-editor__btn--active {
+  background: var(--color-brand-200);
+}
+
+.admin-editor__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-editor__btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: var(--space-0-5);
+}
+
+.admin-editor__btn-img {
+  display: block;
+  width: var(--space-6);
+  height: var(--space-6);
+}
+
+.admin-editor__body {
+  flex: 1;
+  min-height: 300px;
+  padding: var(--space-2) 0;
+  outline: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  overflow-wrap: anywhere;
+}
+
+.admin-editor__body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.admin-editor__body blockquote {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--color-brand-50);
+}
+
+.admin-editor__body hr {
+  border: 0;
+  border-top: 1px solid var(--color-panel-line);
+}
+
+.admin-editor__body a {
+  color: var(--color-info);
+}
+
+/* Link popover (Text + Hyperlink + Apply), placed under the selection. */
+.admin-link-pop {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  width: 280px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-950);
+  border: 1px solid var(--color-panel-line);
+  box-shadow: var(--shadow-popover);
+}
+
+.admin-link-pop__label {
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-2xs);
+}
+
+@media (max-width: 1023px) {
+  .admin-newsletter-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ===================== Audit Log page (components/audit-page.tsx) ===================== */
+/* Dark list page like Event (`.admin-dark-page` + `.admin-events-header` header controls). */
+
+/* Header pickers: cream pill with a label, a native select and a chevron. */
+.admin-audit-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--size-control-sm);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+}
+
+.admin-audit-pick select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.admin-audit-pick:focus-within {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.admin-audit-pick select:focus {
+  outline: none;
+}
+
+/* Tabs on the left, "Reversible only" switch on the right, one line below both. */
+.admin-audit-tabbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-audit-tabbar .admin-tabs {
+  flex: 1;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+/* Switch: off = knob left on a dark track, on = knob right on a cream track. */
+.admin-audit-switch {
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+.admin-audit-switch .admin-qr-switch__label {
+  color: var(--color-brand-50);
+  font-weight: var(--font-regular);
+  font-size: var(--text-sm);
+}
+
+.admin-audit-switch .admin-qr-switch__track {
+  width: 32px;
+  height: 18px;
+  background: var(--color-panel-line);
+  border-color: var(--color-panel-line);
+}
+
+.admin-audit-switch .admin-qr-switch__track::after {
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  transform: none;
+}
+
+.admin-audit-switch .admin-qr-switch__input:checked + .admin-qr-switch__track {
+  background: var(--color-brand-50);
+  border-color: var(--color-brand-50);
+}
+
+.admin-audit-switch .admin-qr-switch__input:checked + .admin-qr-switch__track::after {
+  background: var(--color-brand-950);
+  transform: translateX(14px);
+}
+
+/* Rows: chevron, action badge + page + title, record ref, days left + Revert. */
+.admin-audit-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-brand-50);
+  cursor: pointer;
+}
+
+.admin-audit-icon-btn:hover {
+  background: var(--color-panel-hover);
+}
+
+.admin-audit-action {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.admin-audit-action__line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-audit-badge {
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.admin-audit-badge--created {
+  background: color-mix(in srgb, var(--color-success-bright) 16%, transparent);
+  color: var(--color-success-bright);
+}
+
+.admin-audit-badge--updated {
+  background: color-mix(in srgb, var(--color-info) 18%, transparent);
+  color: var(--color-info);
+}
+
+.admin-audit-badge--deleted {
+  background: color-mix(in srgb, var(--color-danger-bright) 18%, transparent);
+  color: var(--color-danger-bright);
+}
+
+.admin-audit-badge--reverted {
+  background: color-mix(in srgb, var(--color-violet) 18%, transparent);
+  color: var(--color-violet);
+}
+
+.admin-audit-badge--muted {
+  background: var(--color-panel-hover);
+  color: var(--color-on-panel-muted);
+}
+
+.admin-audit-ref {
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-audit-revert {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  white-space: nowrap;
+}
+
+.admin-audit-revert__left {
+  font-size: var(--text-xs);
+}
+
+.admin-audit-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* The open row and its panel share a lighter band. */
+.admin-audit .admin-table tbody tr:has(+ .admin-table__expanded-row) td,
+.admin-audit .admin-table__expanded-row td {
+  background: var(--color-panel-hover);
+}
+
+.admin-audit .admin-table__expanded-row td {
+  padding: 0 var(--space-6) var(--space-4) var(--space-12);
+}
+
+/* Expanded panel: Field / Before / After. */
+.admin-audit-diff {
+  border-radius: var(--radius-md);
+  background: var(--admin-page-dark);
+  font-size: var(--text-xs);
+}
+
+.admin-audit-diff__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 3fr) minmax(0, 3fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-2-5) var(--space-4);
+  border-bottom: 1px solid var(--color-panel-line);
+}
+
+.admin-audit-diff__head {
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.admin-audit-diff__field {
+  display: inline-flex;
+  flex-direction: column;
+  font-weight: var(--font-semibold);
+}
+
+.admin-audit-diff__sub,
+.admin-audit-diff__count,
+.admin-audit-diff__none {
+  color: var(--color-on-panel-muted);
+  font-weight: var(--font-regular);
+}
+
+.admin-audit-diff__old {
+  padding: var(--space-0-5) var(--space-1);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-danger-bright) 16%, transparent);
+  color: var(--color-danger-bright);
+}
+
+.admin-audit-diff__new {
+  padding: var(--space-0-5) var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-success);
+  color: var(--color-brand-50);
+  text-decoration: none;
+}
+
+.admin-audit-photos {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.admin-audit-photo {
+  position: relative;
+  width: var(--space-10);
+  height: var(--space-10);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+.admin-audit-photo img {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.admin-audit-photo--added {
+  border-color: var(--color-success-bright);
+}
+
+.admin-audit-photo--removed {
+  border-color: var(--color-danger-bright);
+}
+
+.admin-audit-photo__mark {
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  right: calc(-1 * var(--space-1));
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-3-5);
+  height: var(--space-3-5);
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  color: var(--color-brand-50);
+  font-size: var(--text-3xs);
+  line-height: var(--leading-5xl); /* 1 */
+}
+
+.admin-audit-photo--removed .admin-audit-photo__mark {
+  background: var(--color-danger);
+}
+
+.admin-audit-diff__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-1) var(--space-4);
+  color: var(--color-on-panel-muted);
+}
+
+.admin-audit-diff__id {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-audit-raw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-brand-50);
+  font: inherit;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.admin-audit-raw-btn:hover {
+  background: var(--color-panel-hover);
+}
+
+.admin-audit-diff__raw {
+  max-height: 320px;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  overflow: auto;
+  border-top: 1px solid var(--color-panel-line);
+  color: var(--color-brand-50);
+  font-size: var(--text-2xs);
+}
+
+.admin-audit-note {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+  color: var(--color-on-panel-muted);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 767px) {
+  .admin-audit-tabbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-audit .admin-table__expanded-row td {
+    padding: 0 var(--space-2) var(--space-3);
+  }
+
+  .admin-audit-diff__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
 }

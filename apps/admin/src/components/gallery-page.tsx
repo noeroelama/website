@@ -12,63 +12,50 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
-import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { SortHeader, type Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
-import { Modal } from "@/components/ui/modal";
-import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
 import {
-  PAGE_SIZE_OPTIONS,
-  type AlbumEventOption,
-  type AlbumItem,
-  type AlbumStatus,
-} from "./gallery-model";
+  FiltersButton,
+  ListCard,
+  ListEmpty,
+  MenuDivider,
+  MenuItem,
+  RowMenu,
+  SearchBox,
+  SelectCheckbox,
+  useBulkActions,
+  useListTable,
+} from "@/components/ui/list-controls";
+import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { matchesDate, type DateFilter } from "./list-model";
+import { type AlbumEventOption, type AlbumItem, type AlbumStatus } from "./gallery-model";
+import { Select } from "@/components/ui/select";
 
 /* ==================================================================
    Gallery — album list (search, filters, bulk actions) + create/edit
-   form. Ported from the Figma "GALLERY ADMIN" screens.
+   form. Matches the Figma "GALLERY ADMIN" screens (dark page).
 
-   NOTE on CSS reuse: the table/card and header reuse the `.admin-events-*`
-   scopes on purpose — `.admin-events-card` and `.admin-events-header`
-   exist in the light theme (globals.css) with the dark layers added by
-   preview-dark.css, so the gallery list gets the matching dark table,
-   sortable headers, bulk bar and pagination for free. The form surface
-   is scoped under `.admin-gallery-form` (mirror of `.admin-events-form`).
-   Colours come from the shared design tokens, no hex values outside
-   globals.css.
+   The dark table / form rules are shared by every admin page (globals.css
+   "Dark admin pages").
+   The header reuses the `.admin-events-header` controls (cream Add /
+   Filters buttons, outlined search). Colours come from the shared design
+   tokens, no hex values outside globals.css.
    ================================================================== */
 
 /** Public album path on the web app (apps/web /gallery/[slug]). */
 const ALBUM_PATH = "/gallery/";
 
-/** Sortable album-table columns (checkbox and actions are never sorted). */
-type SortKey = "title" | "total" | "date";
+/** Thumbnails shown per row before the "N+" tile. */
+const STACK_SIZE = 4;
 
-/** Sortable table header: label + arrow icon. Active column shows a filled arrow. */
-function SortHeader({
-  label,
-  active,
-  dir,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`admin-th-sort${active ? " admin-th-sort--active" : ""}`}
-      onClick={onClick}
-    >
-      <span>{label}</span>
-      <Icon name={active ? (dir === "asc" ? "arrowUp" : "arrowDown") : "sort"} size={12} />
-    </button>
-  );
-}
+/** Sortable album-table columns (checkbox and actions are never sorted). */
+type SortKey = "title" | "date";
+
+const sortValue = (a: AlbumItem, key: SortKey): string =>
+  key === "title" ? a.event.toLowerCase() : a.modifiedAt;
 
 interface AlbumForm {
   eventId: string;
@@ -83,10 +70,6 @@ const EMPTY_FORM: AlbumForm = { eventId: "", total: "", albumLink: "", url: "", 
 
 /** Filter choice for the status select: any status, or "all". */
 type StatusFilter = "all" | AlbumStatus;
-
-/** Filter choice for the "Last Modified" select — same bucketing as the Events
- *  and Articles filter panels. */
-type DateFilter = "all" | "today" | "month" | "year" | "past";
 
 /** Pending delete action shown in the dark confirm modal (one album or many). */
 type DeleteConfirm = { kind: "one"; album: AlbumItem } | { kind: "many"; count: number };
@@ -115,24 +98,16 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   const toast = useToastMessage();
   const router = useRouter();
   const upload = useImageUpload("gallery");
-  /* A server action is running: the action buttons are disabled meanwhile. */
-  const [busy, setBusy] = useState(false);
   /* Server validation messages per field (GuardedResult `fields`). */
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
-  /* ---- list state ---- */
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState(""); // diterapkan hanya saat Search diklik / Enter ditekan
+  /* ---- list state (sorting, paging and selection: useListTable) ---- */
+  const [query, setQuery] = useState(""); // applied on Search / Enter
+  const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   /* ---- form view state ---- */
@@ -144,100 +119,19 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
 
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (dateFilter !== "all" ? 1 : 0);
 
-  /* ---- header sort: click toggles asc → desc (first click on a new column = asc) ---- */
-  const onSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  };
-
-  const sortValue = (a: AlbumItem, key: SortKey): string => {
-    switch (key) {
-      case "title":
-        return a.event.toLowerCase();
-      case "total":
-        return String(a.photoCount).padStart(9, "0");
-      case "date":
-        return a.modifiedAt;
-    }
-  };
-
   /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const m = today.slice(0, 7); // YYYY-MM, for the "this month" filter
-    const y = today.slice(0, 4); // YYYY, for the "this year" filter
-    return albums.filter((a) => {
-      if (statusFilter !== "all" && a.status !== statusFilter) return false;
-      if (dateFilter !== "all") {
-        const d = a.modifiedAt.slice(0, 10); // ISO date part of the timestamp
-        if (dateFilter === "today") {
-          if (d !== today) return false;
-        } else if (dateFilter === "month") {
-          if (!d.startsWith(m)) return false;
-        } else if (dateFilter === "year") {
-          if (!d.startsWith(y)) return false;
-        } else if (dateFilter === "past") {
-          if (d >= today) return false;
-        }
-      }
-      if (q) {
-        const hay = [a.event, a.url, a.albumLink].join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
+    return albums.filter(
+      (a) =>
+        (statusFilter === "all" || a.status === statusFilter) &&
+        matchesDate(a.modifiedAt, dateFilter, today) &&
+        (!q || [a.event, a.url, a.albumLink].join(" ").toLowerCase().includes(q)),
+    );
   }, [albums, query, today, statusFilter, dateFilter]);
 
-  const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
-    const copy = [...filtered];
-    copy.sort((a, b) => {
-      const av = sortValue(a, sortKey);
-      const bv = sortValue(b, sortKey);
-      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return copy;
-  }, [filtered, sortKey, sortDir]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const pageAllSelected = pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
-  const pageSomeSelected = pageRows.some((r) => selected.has(r.id));
-  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
-
-  /* ---- selection helpers ---- */
-  const togglePage = () => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (pageAllSelected) pageRows.forEach((r) => next.delete(r.id));
-      else pageRows.forEach((r) => next.add(r.id));
-      return next;
-    });
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAllFiltered = () => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (allFilteredSelected) filtered.forEach((r) => next.delete(r.id));
-      else filtered.forEach((r) => next.add(r.id));
-      return next;
-    });
-  };
+  const table = useListTable(filtered, sortValue);
+  const { selected } = table;
 
   /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
   type Failure = Parameters<typeof actionMessage>[0];
@@ -245,46 +139,26 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setFieldErrors(result.fields ?? {});
     toast.show(actionMessage(result));
   };
-
-  /* One action per album, one after the other (each has its own version check). */
-  const runForEach = async (
-    ids: readonly string[],
-    run: (a: AlbumItem) => Promise<{ ok: true } | Failure>,
-    done: string,
-  ) => {
-    setBusy(true);
-    setMenuFor(null);
-    let count = 0;
-    let failure: Failure | null = null;
-    for (const a of albums.filter((x) => ids.includes(x.id))) {
-      const result = await run(a);
-      if (!result.ok) {
-        failure = result;
-        break;
-      }
-      count++;
-    }
-    setBusy(false);
-    setSelected(new Set());
-    router.refresh();
-    if (failure) fail(failure);
-    else toast.show(`${count} album${count === 1 ? "" : "s"} ${done}`);
-  };
+  const bulk = useBulkActions({
+    noun: "album",
+    show: toast.show,
+    onFailure: fail,
+    onFinish: table.clearSelection,
+  });
+  const { busy, setBusy } = bulk;
+  const albumsWith = (ids: readonly string[]) => albums.filter((a) => ids.includes(a.id));
 
   const setPublishedFor = (ids: readonly string[], published: boolean) => {
     if (ids.length === 0) {
       toast.show("Select albums first");
       return;
     }
-    void runForEach(
-      ids,
+    void bulk.run(
+      albumsWith(ids),
       (a) => setAlbumPublishedAction({ id: a.id, version: a.version, published }),
-      published ? "published" : "unpublished",
+      published ? "published" : "made private",
     );
   };
-
-  const publishSelected = () => setPublishedFor(Array.from(selected), true);
-  const unpublishSelected = () => setPublishedFor(Array.from(selected), false);
 
   const deleteSelected = () => {
     if (selected.size === 0) {
@@ -294,24 +168,21 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setDeleteConfirm({ kind: "many", count: selected.size });
   };
 
-  const deleteAlbum = (a: AlbumItem) => {
-    setMenuFor(null);
-    setDeleteConfirm({ kind: "one", album: a });
-  };
-
-  /* Deletes are confirmed in the dark modal (like Events/Tools) instead of
-     window.confirm. Soft delete: the images stay in Storage. */
+  /* Deletes are confirmed in the popup first. Soft delete: the images stay in Storage. */
   const doDelete = () => {
     if (!deleteConfirm) return;
     const ids = deleteConfirm.kind === "one" ? [deleteConfirm.album.id] : Array.from(selected);
     setDeleteConfirm(null);
-    void runForEach(ids, (a) => removeAlbumAction({ id: a.id, version: a.version }), "deleted");
+    void bulk.run(
+      albumsWith(ids),
+      (a) => removeAlbumAction({ id: a.id, version: a.version }),
+      "deleted",
+    );
   };
 
   const copyLink = (a: AlbumItem) => {
     void navigator.clipboard?.writeText(`${publicBase}${ALBUM_PATH}${a.url}`);
     toast.show(`Link for "${a.event}" copied`);
-    setMenuFor(null);
   };
 
   /* ---- form open / save ---- */
@@ -328,7 +199,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
             url: a.url,
             photos: a.images,
           }
-        : { ...EMPTY_FORM, eventId: events[0]?.id ?? "" },
+        : EMPTY_FORM,
     );
     setView("form");
   };
@@ -356,7 +227,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setFieldErrors({});
     toast.show(publish ? "Album published" : "Draft saved");
     router.refresh();
-    setPage(1);
+    table.setPage(1);
     setView("list");
   };
 
@@ -384,36 +255,33 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   );
 
   /* ---- table columns ---- */
+  const sortHeader = (key: SortKey, text: string) => (
+    <SortHeader
+      label={text}
+      active={table.sort.key === key}
+      dir={table.sort.dir}
+      onClick={() => table.onSort(key)}
+    />
+  );
+
   const checkboxCol: Column<AlbumItem> = {
     key: "check",
     width: "4%",
     align: "left",
     header: (
-      <label className="admin-checkbox">
-        <input
-          type="checkbox"
-          aria-label="Select all on page"
-          checked={pageAllSelected}
-          ref={(el) => {
-            if (el) el.indeterminate = pageSomeSelected && !pageAllSelected;
-          }}
-          onChange={togglePage}
-          className="admin-table__checkbox"
-        />
-        <span aria-hidden="true" />
-      </label>
+      <SelectCheckbox
+        label="Select all on page"
+        checked={table.pageAll}
+        indeterminate={table.pageSome && !table.pageAll}
+        onChange={table.togglePage}
+      />
     ),
     render: (r) => (
-      <label className="admin-checkbox">
-        <input
-          type="checkbox"
-          aria-label={`Select ${r.event}`}
-          checked={selected.has(r.id)}
-          onChange={() => toggleSelect(r.id)}
-          className="admin-table__checkbox"
-        />
-        <span aria-hidden="true" />
-      </label>
+      <SelectCheckbox
+        label={`Select ${r.event}`}
+        checked={selected.has(r.id)}
+        onChange={() => table.toggle(r.id)}
+      />
     ),
   };
 
@@ -421,82 +289,62 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     checkboxCol,
     {
       key: "title",
-      header: (
-        <SortHeader
-          label="Gallery"
-          active={sortKey === "title"}
-          dir={sortDir}
-          onClick={() => onSort("title")}
-        />
-      ),
+      header: sortHeader("title", "Gallery"),
       width: "38%",
-      render: (r) => (
-        <div className="admin-gallery-album">
-          <span className="admin-gallery-stack" aria-hidden="true">
-            {r.images.slice(0, 5).map((image, i) => (
-              <span
-                key={`${r.id}-${i}`}
-                className={`admin-gallery-stack__item${
-                  i === 4 ? " admin-gallery-stack__item--more" : ""
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
-                <img className="admin-gallery-stack__img" src={image.thumbUrl} alt="" />
-                {i === 4 && <span className="admin-gallery-stack__count">{r.photoCount}+</span>}
-              </span>
-            ))}
-          </span>
-          <div>
-            <div className="admin-table__title">{r.event}</div>
-            <div className="admin-table__sub">
-              {r.status === "published" ? "Public" : "Draft"} · {ALBUM_PATH}
-              {r.url}
+      render: (r) => {
+        /* Four thumbnails, then a dark tile counting the photos not shown ("48+"). */
+        const thumbs = r.images.slice(0, STACK_SIZE);
+        const more = r.photoCount - thumbs.length;
+        return (
+          <div className="admin-gallery-album">
+            <span className="admin-gallery-stack" aria-hidden="true">
+              {thumbs.map((image, i) => (
+                // eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP)
+                <img
+                  key={`${r.id}-${i}`}
+                  className="admin-gallery-stack__img"
+                  src={image.thumbUrl}
+                  alt=""
+                />
+              ))}
+              {more > 0 ? <span className="admin-gallery-stack__more">{more}+</span> : null}
+            </span>
+            <div>
+              <div className="admin-table__title">{r.event}</div>
+              <div className="admin-table__sub">{r.eventType}</div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: "event",
-      header: (
-        <SortHeader
-          label="Photos"
-          active={sortKey === "total"}
-          dir={sortDir}
-          onClick={() => onSort("total")}
-        />
-      ),
-      width: "26%",
-      render: (r) => (
-        <div className="admin-gallery-event">
-          <div>
-            <div className="admin-table__title">{r.photoCount} photos</div>
-            <a
-              className="admin-table__sub"
-              href={r.albumLink}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Full album
-            </a>
+      key: "author",
+      header: "Author",
+      width: "30%",
+      render: (r) =>
+        r.author ? (
+          <div className="admin-gallery-author">
+            <span className="admin-gallery-author__avatar" aria-hidden="true">
+              {r.author.initials}
+            </span>
+            <div>
+              <div className="admin-table__title">{r.author.name}</div>
+              <div className="admin-table__sub">{r.author.email}</div>
+            </div>
           </div>
-        </div>
-      ),
+        ) : (
+          <span className="admin-table__sub">—</span>
+        ),
     },
     {
       key: "date",
-      header: (
-        <SortHeader
-          label="Last Modified"
-          active={sortKey === "date"}
-          dir={sortDir}
-          onClick={() => onSort("date")}
-        />
-      ),
-      width: "16%",
+      header: sortHeader("date", "Last Modified"),
+      width: "20%",
       render: (r) => (
         <span className="admin-gallery-meta">
-          <span className="admin-table__title">{formatInZone(r.modifiedAt, "UTC")} UTC</span>
+          <span className="admin-table__title" title="UTC">
+            {formatInZone(r.modifiedAt, "UTC")}
+          </span>
           <span className="admin-table__sub">{timeAgo(r.modifiedAt)}</span>
         </span>
       ),
@@ -505,7 +353,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
       key: "aksi",
       header: "",
       align: "right",
-      width: "12%",
+      width: "8%",
       render: (r) => (
         <div className="admin-table__actions">
           {canEdit ? (
@@ -518,99 +366,71 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               title="Edit"
             />
           ) : null}
-          <div className="admin-row-menu">
-            {menuFor === r.id ? (
-              <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
-            ) : null}
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="more"
-              aria-label="More actions"
-              title="More actions"
-              onClick={() => setMenuFor(menuFor === r.id ? null : r.id)}
-            />
-            {menuFor === r.id ? (
-              <div className="admin-row-menu__panel" role="menu">
-                {canEdit ? (
-                  <button
-                    type="button"
-                    className="admin-row-menu__item"
-                    role="menuitem"
-                    disabled={busy}
-                    onClick={() => setPublishedFor([r.id], r.status === "draft")}
-                  >
-                    {r.status === "draft" ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset */}
-                        <img
-                          src="/globe.png"
-                          alt=""
-                          width={14}
-                          height={14}
-                          className="admin-status-badge__img"
-                        />{" "}
-                        Publish
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="lock" size={14} /> Unpublish
-                      </>
-                    )}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="admin-row-menu__item"
-                  role="menuitem"
-                  onClick={() => copyLink(r)}
+          <RowMenu>
+            {canEdit ? (
+              <>
+                {/* Both always listed (as in the design); the current state is disabled. */}
+                <MenuItem
+                  icon="globe"
+                  disabled={busy || r.status === "published"}
+                  onClick={() => setPublishedFor([r.id], true)}
                 >
-                  <Icon name="copy" size={14} /> Copy Link
-                </button>
-                {canEdit ? (
-                  <>
-                    {/* Divider above the destructive action, separating Delete from the rest. */}
-                    <div className="admin-row-menu__divider" role="separator" />
-                    <button
-                      type="button"
-                      className="admin-row-menu__item admin-row-menu__item--danger"
-                      role="menuitem"
-                      onClick={() => deleteAlbum(r)}
-                    >
-                      <Icon name="trash" size={14} /> Delete Gallery
-                    </button>
-                  </>
-                ) : null}
-              </div>
+                  Publish
+                </MenuItem>
+                <MenuItem
+                  icon="lock"
+                  disabled={busy || r.status === "draft"}
+                  onClick={() => setPublishedFor([r.id], false)}
+                >
+                  Make Private
+                </MenuItem>
+              </>
             ) : null}
-          </div>
+            <MenuItem icon="copy" onClick={() => copyLink(r)}>
+              Copy Link
+            </MenuItem>
+            {canEdit ? (
+              <>
+                <MenuDivider />
+                <MenuItem
+                  icon="trash"
+                  danger
+                  onClick={() => setDeleteConfirm({ kind: "one", album: r })}
+                >
+                  Delete Gallery
+                </MenuItem>
+              </>
+            ) : null}
+          </RowMenu>
         </div>
       ),
     },
   ];
 
-  const shownStart = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
-  const shownEnd = Math.min(safePage * pageSize, filtered.length);
+  /* "Delete 10 Albums" / "Delete Album": the delete modal's title (+ "?") and its button. */
+  const deleteCount = deleteConfirm?.kind === "many" ? deleteConfirm.count : 1;
+  const deleteLabel = deleteCount === 1 ? "Delete Album" : `Delete ${deleteCount} Albums`;
 
-  /* ---- pagination: sliding window of 5 consecutive page numbers ---- */
-  const pageNumbers: number[] = [];
-  const winStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
-  const winEnd = Math.min(totalPages, winStart + 4);
-  for (let i = winStart; i <= winEnd; i++) pageNumbers.push(i);
+  /* A changed filter starts again at page 1. */
+  const filterBy =
+    <T,>(set: (value: T) => void) =>
+    (value: T) => {
+      set(value);
+      table.setPage(1);
+    };
 
   const clearFilters = () => {
     setQuery("");
-    setSearch("");
+    setSearchKey((k) => k + 1);
     setStatusFilter("all");
     setDateFilter("all");
     setFiltersOpen(false);
-    setPage(1);
-    setMenuFor(null);
+    table.setPage(1);
   };
 
   if (view === "form") {
     return (
-      <>
+      <div>
         <div className="admin-page-header">
           <div>
             <h1 className="admin-page-header__title">
@@ -624,39 +444,43 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
           </div>
         </div>
 
-        <div className="admin-gallery-form">
+        <div className="admin-dark-form">
           <div className="admin-form-grid">
             {/* Event */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-event">
                 Event *
               </label>
-              <select
+              <Select
                 id="album-event"
+                required
                 className="admin-select"
                 value={form.eventId}
                 onChange={(e) => setForm({ ...form, eventId: e.target.value })}
                 {...errorProps("eventId")}
               >
                 <option value="" disabled>
-                  Select a published event...
+                  Select an event...
                 </option>
                 {events.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.title}
                   </option>
                 ))}
-              </select>
+              </Select>
               {errorFor("eventId")}
             </div>
 
             {/* Total Photos/Videos */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-total">
-                Total Photos/Videos
+                Total Photos/Videos *
               </label>
               <input
                 id="album-total"
+                required
+                pattern="[0-9]+"
+                title="A whole number, e.g. 150"
                 className="admin-input"
                 type="text"
                 inputMode="numeric"
@@ -675,6 +499,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               </label>
               <input
                 id="album-link"
+                required
                 className="admin-input"
                 type="url"
                 placeholder="https://photos.app.goo.gl/xxxxxxxxxxxxxxxxx"
@@ -711,11 +536,9 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
             </div>
 
             {/* Event Banner — the label sits above the photos, then the
-                dropzone below the grid (matches the Edit Album design). */}
+                dropzone below the grid while fewer than 10 images are set. */}
             <div className="admin-field admin-form-grid__full">
-              <span className="admin-field__label">
-                Featured Images * (1 to {ALBUM_MAX_IMAGES})
-              </span>
+              <span className="admin-field__label">Event Banner *</span>
 
               <PhotoGrid
                 photos={form.photos}
@@ -725,25 +548,36 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                 }
               />
 
-              <div
-                className="admin-dropzone"
-                onClick={() => bannerInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) void addPhoto(file);
-                }}
-              >
-                <Icon name="upload" size={34} />
-                <span className="admin-dropzone__title">
-                  {upload.busy ? "Uploading…" : "Drag & drop an image or click to browse"}
-                </span>
-                <span className="admin-card__subtitle">
-                  Any image format • Converted to WebP • Max 5MB •{" "}
-                  {ALBUM_MAX_IMAGES - form.photos.length} Remaining
-                </span>
-              </div>
+              {form.photos.length < ALBUM_MAX_IMAGES ? (
+                <div
+                  className="admin-dropzone"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload a banner image"
+                  onClick={() => bannerInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      bannerInputRef.current?.click();
+                    }
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) void addPhoto(file);
+                  }}
+                >
+                  <Icon name="upload" size={34} />
+                  <span className="admin-dropzone__title">
+                    {upload.busy ? "Uploading…" : "Drag & drop banner image or click to browse"}
+                  </span>
+                  <span className="admin-card__subtitle">
+                    Any image format • Converted to WebP • Max 5MB •{" "}
+                    {ALBUM_MAX_IMAGES - form.photos.length} Remaining
+                  </span>
+                </div>
+              ) : null}
               <input
                 ref={bannerInputRef}
                 type="file"
@@ -796,12 +630,12 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
         </div>
 
         <ToastBanner message={toast.message} />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div>
       <div className="admin-page-header admin-events-header">
         <div>
           <h1 className="admin-page-header__title">Gallery</h1>
@@ -811,329 +645,128 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
         </div>
         <div className="admin-page-header__actions">
           {canEdit ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="plus"
-              className="admin-btn--events-add"
-              onClick={() => toForm("create")}
-            >
+            <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
               Add New Album
             </Button>
           ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            icon="filter"
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={activeFilterCount > 0 ? "admin-btn--filter-on" : ""}
-          >
-            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
-          </Button>
-          <form
-            className="admin-searchbox"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setQuery(search);
-              setPage(1);
-              setPageSize(10);
-              setMenuFor(null);
-            }}
-          >
-            <Icon name="search" size={16} className="admin-searchbox__icon" />
-            <input
-              className="admin-searchbox__input"
-              type="search"
-              placeholder="Search"
-              aria-label="Search albums"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                // Emptying the box (✕ or clear) drops the applied query too,
-                // so the list returns to its default view.
-                if (e.target.value === "") {
-                  setQuery("");
-                  setPage(1);
-                  setMenuFor(null);
-                }
-              }}
-            />
-            <button type="submit" className="admin-searchbox__submit">
-              Search
-            </button>
-          </form>
+          <FiltersButton
+            count={activeFilterCount}
+            open={filtersOpen}
+            onToggle={() => setFiltersOpen((v) => !v)}
+          />
+          <SearchBox
+            key={searchKey}
+            placeholder="Search by title..."
+            label="Search albums"
+            onSearch={filterBy(setQuery)}
+          />
         </div>
       </div>
 
-      <Card className="admin-events-card admin-gallery-card">
-        <CardBody flush>
-          {/* Toggle filter panel */}
-          {filtersOpen ? (
+      <ListCard
+        table={table}
+        total={filtered.length}
+        noun="album"
+        columns={columns}
+        filters={
+          filtersOpen ? (
             <div className="admin-filter-panel">
               <div className="admin-field">
                 <span className="admin-field__label">Status</span>
-                <select
+                <Select
                   className="admin-select"
                   value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value as StatusFilter);
-                    setPage(1);
-                    setMenuFor(null);
-                  }}
+                  onChange={(e) => filterBy(setStatusFilter)(e.target.value as StatusFilter)}
                 >
                   <option value="all">All statuses</option>
                   <option value="published">Public</option>
                   <option value="draft">Draft</option>
-                </select>
+                </Select>
               </div>
               <div className="admin-field">
                 <span className="admin-field__label">Last Modified</span>
-                <select
+                <Select
                   className="admin-select"
                   value={dateFilter}
-                  onChange={(e) => {
-                    setDateFilter(e.target.value as DateFilter);
-                    setPage(1);
-                    setMenuFor(null);
-                  }}
+                  onChange={(e) => filterBy(setDateFilter)(e.target.value as DateFilter)}
                 >
                   <option value="all">All dates</option>
                   <option value="today">Today</option>
                   <option value="month">This month</option>
                   <option value="year">This year</option>
                   <option value="past">Before today</option>
-                </select>
+                </Select>
               </div>
               <button type="button" className="admin-filter-panel__clear" onClick={clearFilters}>
                 <Icon name="x" size={12} />
                 Clear filters
               </button>
             </div>
-          ) : null}
-
-          {/* Table — always rendered so it keeps its full height; the empty
-              message becomes one body row inside the static table. */}
-          <DataTable
-            columns={columns}
-            rows={pageRows}
-            rowKey={(r) => r.id}
-            emptyText="No albums yet"
-            hideHeader={false}
-            minRows={pageSize}
-            emptyState={
-              <div className="admin-empty admin-empty--stack">
-                <span className="admin-empty__heading">
-                  <Icon name="inbox" size={16} />
-                  <span className="admin-empty__title">
-                    {query.trim()
-                      ? `No albums match “${query.trim()}”`
-                      : "No albums match your filters"}
-                  </span>
-                </span>
-                <span className="admin-empty__hint">
-                  {activeFilterCount > 0
-                    ? `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} are on. Try a new search or clear them.`
-                    : "Try a new search or clear them."}
-                </span>
-                <span className="admin-empty__actions">
-                  {query.trim() || activeFilterCount > 0 ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon="x"
-                      className="admin-gallery-clear"
-                      onClick={clearFilters}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : null}
-                  {canEdit ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon="plus"
-                      onClick={() => toForm("create")}
-                    >
-                      Add New Album
-                    </Button>
-                  ) : null}
-                </span>
-              </div>
-            }
+          ) : null
+        }
+        empty={
+          <ListEmpty
+            noun="album"
+            query={query}
+            filters={activeFilterCount}
+            emptyHint="Add the first album of a published event."
+            onClear={clearFilters}
+            addLabel="Add New Album"
+            onAdd={canEdit ? () => toForm("create") : null}
           />
+        }
+        bulkActions={
+          canEdit ? (
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                icon="globe"
+                disabled={busy}
+                onClick={() => setPublishedFor(Array.from(selected), true)}
+              >
+                Publish
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon="lock"
+                disabled={busy}
+                onClick={() => setPublishedFor(Array.from(selected), false)}
+              >
+                Make private
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                icon="trash"
+                disabled={busy}
+                onClick={deleteSelected}
+              >
+                Delete
+              </Button>
+            </>
+          ) : null
+        }
+      />
 
-          {/* Bulk action bar — shown in place of the pagination bar while rows are selected */}
-          {selected.size > 0 ? (
-            <div className="admin-bulkbar">
-              <span className="admin-bulkbar__summary">
-                <label className="admin-checkbox">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all matching albums"
-                    checked={allFilteredSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = selected.size > 0 && !allFilteredSelected;
-                    }}
-                    onChange={selectAllFiltered}
-                    className="admin-table__checkbox"
-                  />
-                  <span aria-hidden="true" />
-                </label>
-                {selected.size} selected
-              </span>
-              <button
-                type="button"
-                className="admin-bulkbar__select-all"
-                onClick={selectAllFiltered}
-              >
-                Select all {filtered.length} albums
-              </button>
-              <div className="admin-bulkbar__actions">
-                {canEdit ? (
-                  <>
-                    <Button variant="primary" size="sm" disabled={busy} onClick={publishSelected}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
-                      <img
-                        src="/globe.png"
-                        alt=""
-                        width={14}
-                        height={14}
-                        className="admin-status-badge__img"
-                      />{" "}
-                      Publish
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon="lock"
-                      disabled={busy}
-                      onClick={unpublishSelected}
-                    >
-                      Unpublish
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      icon="trash"
-                      disabled={busy}
-                      onClick={deleteSelected}
-                    >
-                      Delete
-                    </Button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            /* Pagination: Showing … of N · Rows per page · page numbers */
-            <div className="admin-darkbar">
-              <span className="admin-darkbar__info">
-                Showing {shownStart}–{shownEnd} of {filtered.length}
-              </span>
-              <span className="admin-darkbar__info">
-                Rows per page
-                <select
-                  className="admin-darkbar__select"
-                  aria-label="Rows per page"
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setPage(1);
-                  }}
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </span>
-              <span className="admin-darkbar__spacer" />
-              <button
-                type="button"
-                className="admin-darkbar__btn"
-                disabled={safePage <= 1}
-                onClick={() => setPage(safePage - 1)}
-                aria-label="Previous page"
-              >
-                <Icon name="chevronLeft" size={14} />
-              </button>
-              {pageNumbers.map((p) => (
-                <button
-                  type="button"
-                  key={p}
-                  className={`admin-darkbar__btn${p === safePage ? " admin-darkbar__btn--active" : ""}`}
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="admin-darkbar__btn"
-                disabled={safePage >= totalPages}
-                onClick={() => setPage(safePage + 1)}
-                aria-label="Next page"
-              >
-                <Icon name="chevronRight" size={14} />
-              </button>
-            </div>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* Delete confirmation popup — dark, compact, styled like the Tools page
-          delete modal; the two actions sit flush right. */}
-      <Modal
+      <ConfirmDialog
         open={deleteConfirm !== null}
-        title={
-          deleteConfirm?.kind === "many"
-            ? `Delete ${deleteConfirm.count} Album${deleteConfirm.count === 1 ? "" : "s"}?`
-            : deleteConfirm
-              ? `Delete the "${deleteConfirm.album.event}" album?`
-              : "Delete album"
-        }
-        width={420}
-        className="admin-modal--dark admin-modal--delete"
-        hideClose
-        onClose={() => setDeleteConfirm(null)}
-        footer={
-          <div className="admin-modal__footer-row admin-modal__footer-row--end">
-            <Button
-              variant="ghost"
-              className="admin-btn--light admin-modal__foot-btn"
-              icon="chevronLeft"
-              onClick={() => setDeleteConfirm(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              className="admin-modal__foot-btn"
-              icon="trash"
-              onClick={doDelete}
-            >
-              Delete
-            </Button>
-          </div>
-        }
+        title={`${deleteLabel}?`}
+        confirmLabel={deleteLabel}
+        icon="trash"
+        onConfirm={doDelete}
+        onCancel={() => setDeleteConfirm(null)}
       >
-        <p className="admin-delete-confirm__message">
-          {deleteConfirm ? (
-            <span className="admin-delete-confirm__hint">
-              They disappear from the public page now. You can revert deletion on the admin log
-              before 14 days.
-            </span>
-          ) : null}
-        </p>
-      </Modal>
+        {DELETE_HINT}
+      </ConfirmDialog>
 
       <ToastBanner message={toast.message} />
-    </>
+    </div>
   );
 }
 
-/** 5×2 photo grid of the album form (10 tiles): pick a tile to upload or replace its image. */
+/** Uploaded banner images, five per row with a red remove button; click an image to replace it. */
 function PhotoGrid({
   photos,
   onPick,
@@ -1144,64 +777,53 @@ function PhotoGrid({
   onRemove: (index: number) => void;
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
+  if (photos.length === 0) return null;
 
   return (
     <div className="admin-gallery-grid">
-      {Array.from({ length: ALBUM_MAX_IMAGES }, (_, i) => {
-        const photo = photos[i];
-        return (
-          <div
-            key={i}
-            className={`admin-gallery-tile${photo ? " admin-gallery-tile--filled" : ""}`}
-            role="button"
-            tabIndex={0}
-            aria-label={`Album photo ${i + 1}`}
-            onClick={() => refs.current[i]?.click()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                refs.current[i]?.click();
-              }
+      {photos.map((photo, i) => (
+        <div
+          key={`${photo.path}-${i}`}
+          className="admin-gallery-tile"
+          role="button"
+          tabIndex={0}
+          aria-label={`Replace banner image ${i + 1}`}
+          onClick={() => refs.current[i]?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              refs.current[i]?.click();
+            }
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
+          <img src={photo.thumbUrl} alt="" className="admin-gallery-tile__img" />
+          <button
+            type="button"
+            className="admin-gallery-tile__clear"
+            aria-label={`Remove banner image ${i + 1}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(i);
             }}
           >
-            {photo ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
-                <img src={photo.thumbUrl} alt="" className="admin-gallery-tile__img" />
-                <span className="admin-gallery-tile__status admin-gallery-tile__status--uploaded">
-                  Uploaded
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  icon="x"
-                  className="admin-gallery-tile__clear"
-                  aria-label={`Remove photo ${i + 1}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(i);
-                  }}
-                />
-              </>
-            ) : (
-              <Icon name="gallery" size={20} />
-            )}
-            <input
-              ref={(el) => {
-                refs.current[i] = el;
-              }}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onPick(Math.min(i, photos.length), file);
-                e.target.value = "";
-              }}
-            />
-          </div>
-        );
-      })}
+            <Icon name="x" size={14} />
+          </button>
+          <input
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onPick(i, file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      ))}
     </div>
   );
 }

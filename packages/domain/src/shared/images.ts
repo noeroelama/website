@@ -50,6 +50,8 @@ export const IMAGE_PRESETS = {
   newsletter: { folder: "newsletter/images", maxPx: 1600, visibility: "public" },
   gallery: { folder: "galleries", maxPx: 2400, visibility: "public" },
   logo: { folder: "chapters/logos", maxPx: 1024, visibility: "public" },
+  /** Member photos on a unit's cabinet page (Organizations → Structure). */
+  cabinet: { folder: "structure/photos", maxPx: 1024, visibility: "public" },
   ktm: { folder: "members/ktm", maxPx: 2400, visibility: "private" },
   signature: { folder: "members/signatures", maxPx: 1200, visibility: "private" },
 } as const satisfies Record<string, ImagePreset>;

@@ -5,6 +5,7 @@ import { can, normalizePermissions, type Principal } from "@website/permissions"
 import { createOrgUnitActions } from "../../apps/admin/src/server/org-units";
 import { createPeriodActions } from "../../apps/admin/src/server/periods";
 import { fakeFirestore } from "../support/fake-firestore";
+import { revertEntry } from "../support/revert";
 
 type Db = Parameters<typeof createFirestoreOrgUnitStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
@@ -61,12 +62,7 @@ beforeEach(async () => {
   });
   const saved = await periods.save(...as(secretary))({
     name: "2026/2027",
-    cabinet: "",
-    startsOn: "2026-11-01",
-    endsOn: "2027-10-31",
-    vision: "",
-    mission: "",
-    lpjDeadlineDays: 30,
+    cabinet: "Kolaborasi Asiania",
     version: null,
   });
   periodId = saved.ok ? saved.data.id : "";
@@ -194,6 +190,73 @@ describe("organisation structure (org units)", () => {
     ).toMatchObject({ ok: false, error: "conflict" });
   });
 
+  it("keeps the unit's core members and divisions (cabinet photo), in order", async () => {
+    const person = (name: string, role: string, head = false) => ({
+      name,
+      role,
+      head,
+      photo: null,
+    });
+    const members = [person("Sari", "Kepala Direktorat", true), person("Budi", "Sekretaris")];
+    const divisions = [
+      { name: "Bidang Audit", members: [person("Ayu", "Ketua Bidang Audit", true)] },
+      { name: "Bidang Desain", members: [] },
+    ];
+    const saved = await actions().save(...as(secretary))({
+      ...unit("Direktorat Media", "MED", null),
+      members,
+      divisions,
+      version: null,
+    });
+    const id = saved.ok ? saved.data.id : "";
+    expect(await units.get(id)).toMatchObject({ members, divisions });
+    expect(auditEntries().at(-1)?.["after"]).toMatchObject({ members, divisions });
+    // Units saved before members existed read as empty.
+    fake.docs.set(`orgUnits/${id}`, {
+      ...fake.docs.get(`orgUnits/${id}`),
+      members: undefined,
+      divisions: undefined,
+    });
+    expect(await units.get(id)).toMatchObject({ members: [], divisions: [] });
+  });
+
+  it("deletes softly a unit without units below it; the delete can be reverted", async () => {
+    const koor = await create("Koordinator", "KOOR", null, "koordinator");
+    const media = await create("Direktorat Media", "MED", koor);
+    expect(
+      await actions().remove(...as(staff(["structure.read"])))({ id: media, version: 1 }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    expect(await actions().remove(...as(secretary))({ id: koor, version: 1 })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("units below")],
+    });
+    expect(await actions().remove(...as(secretary))({ id: media, version: 1 })).toMatchObject({
+      ok: true,
+    });
+    const deleted = auditEntries().at(-1);
+    expect(deleted).toMatchObject({ action: "DELETE", resourceType: "orgUnit", revertible: true });
+    expect((await units.listForPeriod(periodId)).map((u) => u.code)).toEqual(["KOOR"]);
+    // With its only unit gone, the coordinator can be deleted too.
+    expect(await actions().remove(...as(secretary))({ id: koor, version: 1 })).toMatchObject({
+      ok: true,
+    });
+    expect(await revertEntry(fake.db, deleted?.["id"] as string, now)).toMatchObject({ ok: true });
+    expect((await units.listForPeriod(periodId)).map((u) => u.code)).toEqual(["MED"]);
+  });
+
+  it("refuses to delete a unit that still has active appointments", async () => {
+    const media = await create("Direktorat Media", "MED", null);
+    fake.docs.set("appointments/a1", { orgUnitId: media, periodId, status: "active" });
+    expect(await actions().remove(...as(secretary))({ id: media, version: 1 })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("appointment")],
+    });
+    fake.docs.set("appointments/a1", { orgUnitId: media, periodId, status: "ended" });
+    expect(await actions().remove(...as(secretary))({ id: media, version: 1 })).toMatchObject({
+      ok: true,
+    });
+  });
+
   it("an archived period's structure is read-only", async () => {
     const koor = await create("Koordinator", "KOOR", null, "koordinator");
     const media = await create("Direktorat Media", "MED", koor);
@@ -204,12 +267,7 @@ describe("organisation structure (org units)", () => {
     });
     const next = await periods.save(...as(secretary))({
       name: "2027/2028",
-      cabinet: "",
-      startsOn: "2027-11-01",
-      endsOn: "2028-10-31",
-      vision: "",
-      mission: "",
-      lpjDeadlineDays: 30,
+      cabinet: "Kabinet Berikutnya",
       version: null,
     });
     await periods.activate(...as(secretary))({ id: periodId, version: 1 });
@@ -220,5 +278,9 @@ describe("organisation structure (org units)", () => {
     expect(
       await actions().move(...as(secretary))({ id: media, version: 1, parentId: null }),
     ).toMatchObject({ error: "refused", issues: [expect.stringContaining("archived")] });
+    expect(await actions().remove(...as(secretary))({ id: media, version: 1 })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("archived")],
+    });
   });
 });

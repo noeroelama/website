@@ -10,6 +10,8 @@ import {
   type OrgUnitInput,
   type OrgUnitType,
   type PeriodStatus,
+  type UnitDivision,
+  type UnitMember,
 } from "@website/domain/organizations";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
@@ -30,6 +32,9 @@ function toOrgUnit(id: string, data: Record<string, unknown>): OrgUnit {
     description: data["description"] as string,
     sort: data["sort"] as number,
     active: data["active"] as boolean,
+    // Units saved before the cabinet members existed read as empty.
+    members: (data["members"] as UnitMember[] | undefined) ?? [],
+    divisions: (data["divisions"] as UnitDivision[] | undefined) ?? [],
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -48,8 +53,12 @@ export function orgUnitSnapshot(u: OrgUnitFields): Snapshot {
     description: u.description,
     sort: u.sort,
     active: u.active,
+    members: u.members.map(copyMember),
+    divisions: u.divisions.map((d) => ({ name: d.name, members: d.members.map(copyMember) })),
   };
 }
+
+const copyMember = (m: UnitMember) => ({ ...m, photo: m.photo ? { ...m.photo } : null });
 
 /** Same arguments as the audit callback of the other stores (`before` is null on create). */
 export type OrgUnitAudit = (
@@ -77,11 +86,15 @@ export function createFirestoreOrgUnitStore(db: Firestore) {
     fixed: () => ({}),
   });
   const periods = db.collection("periods");
+  const appointments = db.collection("appointments");
   const auditLog = createFirestoreAuditWriter(db);
 
   const periodIn = async (tx: Transaction, id: string) => {
     const snapshot = await tx.get(periods.doc(safeId.parse(id)));
-    return snapshot.exists ? { status: snapshot.get("status") as PeriodStatus } : null;
+    // A deleted period is treated as missing: nothing is added to it.
+    return snapshot.exists && !snapshot.get("deletedAt")
+      ? { status: snapshot.get("status") as PeriodStatus }
+      : null;
   };
   const unitIn = async (tx: Transaction, id: string | null) => {
     if (id === null) return null;
@@ -130,6 +143,37 @@ export function createFirestoreOrgUnitStore(db: Firestore) {
           ]);
           const path = placeOrgUnit(input.periodId, period, input.parentId, parent);
           return { ...input, path, deletedAt: null };
+        },
+        audit,
+        now,
+      );
+    },
+
+    /**
+     * Soft delete (`deletedAt`), revertible in the Audit Log. Refused while units sit below it
+     * (their paths would point to a deleted unit), while someone holds an active appointment in
+     * it (the roles it gives would stay), and in an archived period.
+     */
+    remove(id: string, expectedVersion: number, audit: OrgUnitAudit, now: Date): Promise<OrgUnit> {
+      return store.write(
+        id,
+        expectedVersion,
+        async (current, tx) => {
+          const unit = current as OrgUnit;
+          const [period, below, appointed] = await Promise.all([
+            periodIn(tx, unit.periodId),
+            tx.get(store.docs.where("path", "array-contains", unit.id)),
+            tx.get(appointments.where("orgUnitId", "==", unit.id).where("status", "==", "active")),
+          ]);
+          // Same period rule as a save (missing or archived period refused).
+          placeOrgUnit(unit.periodId, period, null, null);
+          if (below.docs.some((doc) => !doc.get("deletedAt"))) {
+            throw new RuleViolationError("Delete or move the units below this unit first.");
+          }
+          if (!appointed.empty) {
+            throw new RuleViolationError("End the active appointments in this unit first.");
+          }
+          return { ...unit, deletedAt: now };
         },
         audit,
         now,

@@ -2,9 +2,12 @@
 
 ## What it does
 
-Every public page has the same header (Home, News, Events, Gallery, Map, About, language switch,
-Sign in) and footer (Terms and Conditions, Privacy). Visitors read the site in Indonesian by
-default and can switch to English; the choice is kept in the `lang` cookie for a year. Home
+Every public page has the same dark header and footer (Figma design). Header: logo (links home),
+About Us, Events, Gallery, News, Map; the current section is bold (`aria-current="page"`). Footer:
+logo and tagline; Explore (Home … Map) and Services (E-Commerce = `SHOP_URL`, hidden when unset);
+Our Community (five PPIs, linking to `/map`); address and social icons (new tab); copyright year,
+Terms of Use, Privacy Policy. The header has no language switch or Sign in link (design choice):
+visitors read the site in Indonesian unless the `lang` cookie says `en` (kept for a year). Home
 explains the purpose of the site and shows the Google data notice; About, Terms and Privacy are
 static pages. Home also lists the 3 latest news.
 
@@ -32,8 +35,11 @@ member's own registrations.
 photos** (external album, new tab, `rel="noopener noreferrer"`). Rules:
 `packages/domain/docs/gallery.md`.
 
-**Newsletter**: the field on Home and in the footer subscribes with double opt-in; the
-confirm and unsubscribe pages act only when their button is pressed. Rules:
+**Newsletter**: the field on Home subscribes with double opt-in; the
+confirm and unsubscribe pages act only when their button is pressed. `/newsletter/[id]` is the
+public archive of a sent campaign (admin "Copy Link"; not cached, so a deleted campaign is gone at
+once). Campaign e-mails load `/newsletter/o?t=` (open pixel) and link through `/newsletter/c?t=`
+(counts the click, then redirects to the signed address). Rules:
 `packages/domain/docs/newsletter.md`.
 
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one
@@ -44,7 +50,9 @@ same chapters with their count. Rules: `packages/domain/docs/organization.md`.
 
 - Dictionaries: `src/i18n/dictionaries.ts` (`DICTIONARIES.id` / `.en`, `languageFrom`, `LEGAL_VERSION`).
 - Rendering helper: `src/i18n/localized.tsx` (`<Localized render={(t, language) => …} />`).
-- Frame: `src/components/site-frame.tsx` (header, footer, legal page), `language-switch.tsx`.
+- Frame: `src/components/site-frame.tsx` (header, footer, legal page; address, community list and
+  social profile URLs are constants at the top), `site-nav.tsx` (header links, current section).
+  Logo: `public/logo.svg` — a placeholder; replace the file with the official logo (same name).
 - Pages: `src/app/{page,about,terms,privacy,news}/…`, styles `src/app/globals.css`.
 - Events: cached reads and registration wiring `src/server/events.ts`, rules
   `src/server/registrations.ts`, captcha `src/server/captcha.ts`, e-mails
@@ -77,6 +85,10 @@ completeness test fail until both exist.
 - Content from Firestore (news, events) is shown in the language it was written in.
 - `LEGAL_VERSION` is the "last updated" date of Terms and Privacy: change it with the text.
 - `<html lang>` stays `id` (the root layout is static).
+- The social icons link to the networks' home pages until the organisation's profile URLs are put in
+  `SOCIAL` (`site-frame.tsx`).
+- The copyright year comes from a cached component (`"use cache"`, `cacheLife("days")`): the
+  prerendered shell may not read the clock directly.
 - News reads are cached for minutes (`cacheTag("news")`, `cacheLife("minutes")`): an admin change
   or a scheduled article shows up within a few minutes (admin is a separate app and cannot
   revalidate the web cache). The list holds the newest 300 visible articles.

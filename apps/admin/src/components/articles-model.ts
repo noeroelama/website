@@ -5,6 +5,7 @@ import {
   type NewsCategory,
 } from "@website/domain/content";
 import { label, NEWS_CATEGORY_LABELS } from "../labels";
+import { toAuthor, type Author } from "./authors";
 
 /**
  * What the Article page shows and edits, mapped on the server from `content/{id}` (kind news).
@@ -21,8 +22,12 @@ export interface ArticleItem {
   /** Category key and its label (shown under the title). */
   categoryKey: NewsCategory;
   category: string;
+  /** The stored byline (sent back unchanged on save). */
   author: string;
-  authorInitials: string;
+  /** The byline for the Author column ("Nevyllo K." / "NK"); null when empty. */
+  byline: Author | null;
+  /** Who made the last change (from the audit log), shown under Last Modified; null when unknown. */
+  editor: Author | null;
   /** Thumbnail for the table (empty when there is no featured image). */
   image: string;
   featuredImage: FeaturedImage | null;
@@ -41,7 +46,13 @@ export interface ArticleItem {
   createdAt: string;
 }
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+/** Save fields edited in the Settings panel (the editor page only has the image and the content). */
+const SETTINGS_FIELDS = ["title", "category", "publishAt", "slug", "summary", "tags"];
+
+/** True when the server refused a Settings field, so the editor opens the Settings panel. */
+export function needsSettings(fields: Readonly<Record<string, string>>): boolean {
+  return SETTINGS_FIELDS.some((field) => field in fields);
+}
 
 /** "Published" tab = published and scheduled; "Drafts" tab = drafts. */
 export function matchesArticleTab(a: ArticleItem, tab: ArticleTab): boolean {
@@ -60,7 +71,7 @@ export function articleStatus(
 }
 
 /** Server-side mapping from `content/{id}` to a table row (plain JSON for the client page). */
-export function toArticleItem(item: ContentItem, now: Date): ArticleItem {
+export function toArticleItem(item: ContentItem, now: Date, editor: Author | null): ArticleItem {
   const author = item.author.trim();
   return {
     id: item.id,
@@ -69,13 +80,8 @@ export function toArticleItem(item: ContentItem, now: Date): ArticleItem {
     categoryKey: item.category,
     category: label(NEWS_CATEGORY_LABELS, item.category),
     author,
-    authorInitials:
-      author
-        .split(/\s+/)
-        .map((word) => word[0] ?? "")
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "AR",
+    byline: toAuthor(author, null),
+    editor,
     image: item.featuredImage?.thumbUrl ?? "",
     featuredImage: item.featuredImage,
     status: articleStatus(item, now),

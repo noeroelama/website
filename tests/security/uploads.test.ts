@@ -135,4 +135,16 @@ describe("image upload route (POST /api/uploads/<preset>)", () => {
     expect((await asEditor("../../etc", post(png))).status).toBe(404);
     expect(saved.size).toBe(0);
   });
+
+  it("cabinet photos (Structure → unit members) need structure.edit and are public", async () => {
+    const png = await sharp({ create: { width: 10, height: 10, channels: 3, background: "#000" } })
+      .png()
+      .toBuffer();
+    expect((await asEditor("cabinet", post(png))).status).toBe(403);
+    const response = await asEditor("cabinet", post(png), staff(["structure.edit"]));
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { path: string; url: string | null };
+    expect(body.path).toMatch(/^structure\/photos\/cabinet_/);
+    expect(body.url).toEqual(expect.any(String));
+  });
 });

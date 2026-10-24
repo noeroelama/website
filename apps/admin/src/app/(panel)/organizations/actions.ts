@@ -17,6 +17,12 @@ export async function setChapterActiveAction(input: unknown) {
   return result;
 }
 
+export async function deleteChapterAction(input: unknown) {
+  const result = await chapterActions().remove(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
 export async function savePeriodAction(input: unknown) {
   const result = await periodActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
@@ -29,6 +35,12 @@ export async function activatePeriodAction(input: unknown) {
   return result;
 }
 
+export async function deletePeriodAction(input: unknown) {
+  const result = await periodActions().remove(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
 export async function saveOrgUnitAction(input: unknown) {
   const result = await orgUnitActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
@@ -37,6 +49,12 @@ export async function saveOrgUnitAction(input: unknown) {
 
 export async function moveOrgUnitAction(input: unknown) {
   const result = await orgUnitActions().move(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
+export async function deleteOrgUnitAction(input: unknown) {
+  const result = await orgUnitActions().remove(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
   return result;
 }

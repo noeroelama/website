@@ -30,9 +30,10 @@ describe("gallery album (GALLERY DASHBOARD)", () => {
     expect(AlbumInputSchema.safeParse({ ...valid, eventId: "" }).success).toBe(false);
   });
 
-  it("total photos is optional and never negative; the album link must be http(s)", () => {
-    expect(AlbumInputSchema.parse({ ...valid, totalPhotos: null }).totalPhotos).toBeNull();
+  it("total photos is required and never negative; the album link must be http(s)", () => {
+    expect(AlbumInputSchema.parse({ ...valid, totalPhotos: 0 }).totalPhotos).toBe(0);
     for (const bad of [
+      { totalPhotos: null },
       { totalPhotos: -1 },
       { totalPhotos: 1.5 },
       { albumUrl: "" },
@@ -79,27 +80,74 @@ describe("gallery album (GALLERY DASHBOARD)", () => {
 });
 
 describe("Gallery page rows (server mapping)", () => {
-  it("maps status and the photo count", async () => {
+  const now = new Date("2026-10-18T00:00:00Z");
+  const album: Album = {
+    id: "a1",
+    version: 1,
+    slug: "s",
+    eventId: "e1",
+    eventTitle: "S",
+    images: [image],
+    totalPhotos: null,
+    albumUrl: "https://photos.app.goo.gl/abc",
+    published: false,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+
+  it("maps status, the photo count, the event type and the author", async () => {
     const { toAlbumItem } = await import("../../apps/admin/src/components/gallery-model");
-    const now = new Date("2026-10-18T00:00:00Z");
-    const album: Album = {
-      id: "a1",
-      version: 1,
-      slug: "s",
-      eventId: "e1",
-      eventTitle: "S",
-      images: [image],
-      totalPhotos: null,
-      albumUrl: "https://photos.app.goo.gl/abc",
-      published: false,
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-    };
-    expect(toAlbumItem(album)).toMatchObject({ status: "draft", photoCount: 1, total: null });
-    expect(toAlbumItem({ ...album, published: true, totalPhotos: 9 })).toMatchObject({
+    const author = { name: "Nevyllo K.", email: "nk@example.org", initials: "NK" };
+    expect(toAlbumItem(album, "Symposium", null)).toMatchObject({
+      status: "draft",
+      photoCount: 1,
+      total: null,
+      eventType: "Symposium",
+      author: null,
+    });
+    expect(toAlbumItem({ ...album, published: true, totalPhotos: 9 }, "", author)).toMatchObject({
       status: "published",
       photoCount: 9,
+      author,
     });
+  });
+
+  it("the author is whoever made the album's newest audited change", async () => {
+    const { lastEditors } = await import("../../apps/admin/src/components/authors");
+    const entry = (resourceId: string, id: string, resourceType = "album") => ({
+      resourceType,
+      resourceId,
+      actor: { type: "staff" as const, id, email: `${id}@example.org` },
+    });
+    // Audit entries come newest first: the first entry per album wins.
+    const editors = lastEditors(
+      [entry("a1", "ana"), entry("a2", "budi"), entry("a1", "citra"), entry("x", "dewi", "event")],
+      "album",
+    );
+    expect([...editors.entries()].map(([album, actor]) => [album, actor.id])).toEqual([
+      ["a1", "ana"],
+      ["a2", "budi"],
+    ]);
+  });
+
+  it("shows the author as first name + last initial, falling back to the e-mail", async () => {
+    const { toAuthor } = await import("../../apps/admin/src/components/authors");
+    expect(toAuthor("Nevyllo Zamuel Kalangi", "nk@example.org")).toEqual({
+      name: "Nevyllo K.",
+      email: "nk@example.org",
+      initials: "NK",
+    });
+    expect(toAuthor("  Ana  ", "ana@example.org")).toEqual({
+      name: "Ana",
+      email: "ana@example.org",
+      initials: "A",
+    });
+    expect(toAuthor(null, "budi.santoso@example.org")).toEqual({
+      name: "budi.santoso",
+      email: "budi.santoso@example.org",
+      initials: "B",
+    });
+    expect(toAuthor(null, null)).toBeNull();
   });
 });

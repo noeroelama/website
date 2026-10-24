@@ -148,7 +148,7 @@ export function AdminSidebar(props: {
         </div>
       </aside>
 
-      <main id="main" className="admin-main">
+      <main id="main" className="admin-main admin-dark-page">
         {props.children}
       </main>
     </div>

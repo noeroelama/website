@@ -1,14 +1,21 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreSubscriberStore } from "@website/db/firestore";
+import {
+  createFirestoreCampaignWebStore,
+  createFirestoreSubscriberStore,
+} from "@website/db/firestore";
 import { createRecaptchaVerifier, passesCaptcha } from "./captcha";
 import { webDb } from "./db";
 import { getWebEnv } from "./env";
 import { messenger } from "./messaging";
 import { createNewsletter } from "./newsletter";
+import { logger } from "./session";
 
-/** Newsletter field, confirm and unsubscribe pages (needs SUBSCRIBER_HASH_SECRET, LINK_SIGNING_SECRET). */
+/**
+ * Newsletter field, confirm and unsubscribe pages, open/click tracking and the campaign archive
+ * (needs SUBSCRIBER_HASH_SECRET, LINK_SIGNING_SECRET).
+ */
 export const newsletter = lazyEnv(() => {
   const env = getWebEnv();
   if (!env.SUBSCRIBER_HASH_SECRET || !env.LINK_SIGNING_SECRET || !env.WEB_URL) {
@@ -19,6 +26,8 @@ export const newsletter = lazyEnv(() => {
     : null;
   return createNewsletter({
     store: createFirestoreSubscriberStore(webDb()),
+    campaigns: createFirestoreCampaignWebStore(webDb()),
+    onTrackError: (error) => logger().error("newsletter_tracking_failed", { error: String(error) }),
     captcha: (token) =>
       passesCaptcha(
         verifier,

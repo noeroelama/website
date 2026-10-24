@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardBody } from "@/components/ui/card";
 import { useToastMessage, ToastBanner } from "@/components/ui/toast";
 import { Icon } from "@/components/ui/icon";
+import { Select } from "@/components/ui/select";
 
 interface ProfileValues {
   fullName: string;
@@ -188,6 +189,16 @@ function FieldValue({ label, children }: { label: string; children: ReactNode })
   );
 }
 
+/** One field of the Edit Profile form: the shared label above the control. */
+function EditField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="admin-field">
+      <span className="admin-field__label">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 /**
  * Recovered admin Profile page (view + Edit Profile form, Vite admin session
  * b561ba27) ported to the new admin. The view shows the member fields
@@ -292,37 +303,37 @@ export function ProfilePage() {
         <CardBody className="admin-acct-edit">
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
             <div className="admin-acct-fields">
-              <FieldValue label="Full Name">
+              <EditField label="Full Name">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   defaultValue={v.fullName}
                   onChange={(e) => setV({ ...v, fullName: e.target.value })}
                 />
-              </FieldValue>
-              <FieldValue label="Gender">
-                <select
-                  className="admin-acct-input-cream"
+              </EditField>
+              <EditField label="Gender">
+                <Select
+                  className="admin-input"
                   defaultValue={v.gender}
                   onChange={(e) => setV({ ...v, gender: e.target.value })}
                 >
                   <option>Male</option>
                   <option>Female</option>
-                </select>
-              </FieldValue>
-              <FieldValue label="Date of Birth">
+                </Select>
+              </EditField>
+              <EditField label="Date of Birth">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   type="date"
                   defaultValue={v.dateOfBirth}
                   onChange={(e) => setV({ ...v, dateOfBirth: e.target.value })}
                 />
-              </FieldValue>
+              </EditField>
             </div>
 
             <div className="admin-acct-fields">
-              <FieldValue label="PPI Country">
-                <select
-                  className="admin-acct-input-cream"
+              <EditField label="PPI Country">
+                <Select
+                  className="admin-input"
                   defaultValue={v.ppiCountry}
                   onChange={(e) =>
                     setV({
@@ -336,19 +347,19 @@ export function ProfilePage() {
                   {COUNTRIES.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
-                </select>
-              </FieldValue>
-              <FieldValue label="University">
+                </Select>
+              </EditField>
+              <EditField label="University">
                 {uniOther ? (
                   <input
-                    className="admin-acct-input-cream"
+                    className="admin-input"
                     placeholder="Type your university"
                     value={v.university}
                     onChange={(e) => setV({ ...v, university: e.target.value })}
                   />
                 ) : (
-                  <select
-                    className="admin-acct-input-cream"
+                  <Select
+                    className="admin-input"
                     value={v.university}
                     onChange={(e) => {
                       if (e.target.value === "__other__") {
@@ -363,91 +374,91 @@ export function ProfilePage() {
                       <option key={u}>{u}</option>
                     ))}
                     <option value="__other__">Other</option>
-                  </select>
+                  </Select>
                 )}
-              </FieldValue>
-              <FieldValue label="Education Level">
-                <select
-                  className="admin-acct-input-cream"
+              </EditField>
+              <EditField label="Education Level">
+                <Select
+                  className="admin-input"
                   defaultValue={v.educationLevel}
                   onChange={(e) => setV({ ...v, educationLevel: e.target.value })}
                 >
                   {EDUCATION.map((l) => (
                     <option key={l}>{l}</option>
                   ))}
-                </select>
-              </FieldValue>
+                </Select>
+              </EditField>
             </div>
 
             <div className="admin-acct-fields">
-              <FieldValue label="Majors">
+              <EditField label="Majors">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   defaultValue={v.majors}
                   onChange={(e) => setV({ ...v, majors: e.target.value })}
                 />
-              </FieldValue>
-              <FieldValue label="Year of Entry">
+              </EditField>
+              <EditField label="Year of Entry">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   type="date"
                   defaultValue={v.yearOfEntry}
                   onChange={(e) => setV({ ...v, yearOfEntry: e.target.value })}
                 />
-              </FieldValue>
-              <FieldValue label="Estimated Year of Graduation">
+              </EditField>
+              <EditField label="Estimated Year of Graduation">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   type="date"
                   defaultValue={v.estimatedGraduation}
                   onChange={(e) => setV({ ...v, estimatedGraduation: e.target.value })}
                 />
-              </FieldValue>
+              </EditField>
             </div>
 
             <div className="admin-acct-divider" />
 
             <div className="admin-acct-fields admin-acct-fields--2">
-              <FieldValue label="Detail Address Abroad">
+              <EditField label="Detail Address Abroad">
                 <textarea
-                  className="admin-acct-input-cream"
+                  className="admin-input admin-textarea"
                   rows={3}
                   defaultValue={v.addressAbroad}
                   onChange={(e) => setV({ ...v, addressAbroad: e.target.value })}
                 />
-              </FieldValue>
-              <FieldValue label="Detail Address in Indonesia">
+              </EditField>
+              <EditField label="Detail Address in Indonesia">
                 <textarea
-                  className="admin-acct-input-cream"
+                  className="admin-input admin-textarea"
                   rows={3}
                   defaultValue={v.addressId}
                   onChange={(e) => setV({ ...v, addressId: e.target.value })}
                 />
-              </FieldValue>
+              </EditField>
             </div>
 
             <div className="admin-acct-fields admin-acct-fields--2">
-              <FieldValue label="WhatsApp Number">
+              <EditField label="WhatsApp Number">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   defaultValue={v.whatsapp}
                   onChange={(e) => setV({ ...v, whatsapp: e.target.value })}
                 />
-              </FieldValue>
-              <FieldValue label="Emergency Contact Number">
+              </EditField>
+              <EditField label="Emergency Contact Number">
                 <input
-                  className="admin-acct-input-cream"
+                  className="admin-input"
                   defaultValue={v.emergencyContact}
                   onChange={(e) => setV({ ...v, emergencyContact: e.target.value })}
                 />
-              </FieldValue>
+              </EditField>
             </div>
 
             <div className="admin-acct-fields">
               <div className="admin-acct-field admin-acct-field--full">
                 <span className="admin-acct-field__label">Timezone</span>
-                <select
-                  className="admin-acct-input-cream"
+                <Select
+                  className="admin-input"
                   value={v.timezone}
                   onChange={(e) => setV({ ...v, timezone: e.target.value })}
                 >
@@ -457,7 +468,7 @@ export function ProfilePage() {
                   {tzOptions.map((t) => (
                     <option key={t}>{t}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 

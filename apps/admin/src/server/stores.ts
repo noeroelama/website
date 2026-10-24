@@ -22,6 +22,7 @@ import {
   createFirestoreRoleStore,
   createFirestoreUniversityStore,
   createFirestoreSubscriberReader,
+  createFirestoreSubscriberStore,
   getFirestoreForRole,
 } from "@website/db/firestore";
 import { createLogger } from "@website/observability";
@@ -68,7 +69,10 @@ export const adminStores = lazyEnv(() => {
     universities: createFirestoreUniversityStore(db),
     appointments: createFirestoreAppointmentStore(db),
     campaigns: createFirestoreCampaignStore(db),
-    subscribers: createFirestoreSubscriberReader(db),
+    subscribers: {
+      ...createFirestoreSubscriberReader(db),
+      ...createFirestoreSubscriberStore(db),
+    },
     dashboardCounts: createFirestoreDashboardCounts(db),
     authAdmin: createFirebaseAccountAdmin({
       appEnv: env.APP_ENV,

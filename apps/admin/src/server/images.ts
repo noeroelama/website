@@ -26,6 +26,7 @@ export const ADMIN_UPLOAD_PRESETS = {
   newsletter: "newsletter.edit",
   gallery: "gallery.edit",
   logo: "organizations.edit",
+  cabinet: "structure.edit",
   ktm: "members.edit",
 } as const satisfies Partial<Record<ImagePresetName, PagePermission>>;
 type AdminPreset = keyof typeof ADMIN_UPLOAD_PRESETS;

@@ -3,7 +3,7 @@
 ## What it does
 
 Staff attach a photo album to a published event on the admin **Gallery** page: 1 to 10 featured
-images, an optional total photo count and the link to the full external album (e.g. Google
+images, the total photo/video count and the link to the full external album (e.g. Google
 Photos). Visitors see one card per published album on `/gallery`; the album page shows the
 featured images in a lightbox and a **See all photos** button that opens the external album in a
 new tab. An event page whose registration has closed links its album.
@@ -23,14 +23,19 @@ new tab. An event page whose registration has closed links its album.
 ## Rules and assumptions
 
 - An album needs a published, live event and 1 to 10 images (upload preset `gallery`); the total
-  count is optional (whole number ≥ 0; empty = the number of featured images); the album link must
-  be http(s).
+  count is required on save (whole number ≥ 0; albums saved before may still store null, then the
+  site shows the number of featured images); the album link must be http(s).
 - The URL slug is unique; empty = the event's URL. The public page is `/gallery/<slug>` (a slug
   instead of the id keeps links readable).
 - Permission `gallery.edit` for every change, `gallery.read` to see the page.
 - Every change is one transaction with a version check and an audit entry (module `gallery`,
   resource `album`). Delete is a soft delete; images stay in Storage until a later cleanup.
   Revertible for 14 days except edits that changed the URL.
+- Admin list (the shared dark admin look, "Dark admin pages" in `apps/admin/src/app/globals.css`): Gallery (4 thumbnails + "N+", event title, event type), **Author** = the staff
+  member of the album's newest change, read from the newest 500 `gallery` audit entries
+  (`lastEditors` / `authorsById` in `apps/admin/src/components/authors.ts`) + names from
+  `users/{uid}` in one batched read (`accounts.getMany`); "—" when no entry is in that window (or
+  after a revert, which is logged under module `audit`).
 - The site shows published albums only, cached for minutes (`cacheTag("gallery")`).
 
 ## Configuration

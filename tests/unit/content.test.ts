@@ -62,23 +62,47 @@ describe("slugs, tags and categories", () => {
 });
 
 describe("news form validation (strict)", () => {
+  const image = {
+    url: "https://x.example/a.webp",
+    thumbUrl: "https://x.example/t.webp",
+    path: "content/images/a.webp",
+    thumbPath: "content/images/a_thumb.webp",
+    width: 10,
+    height: 10,
+  };
   const valid = {
     title: "Simposium berakhir sukses",
-    slug: "",
+    slug: "simposium-berakhir-sukses",
     author: "Divisi Media",
     category: "community",
     publishAt: "2026-10-20T05:00:00.000Z",
     summary: "Ringkasan singkat.",
     tags: ["Simposium"],
     body: "<p>Isi</p>",
-    featuredImage: null,
+    featuredImage: image,
   };
 
   it("accepts a complete article and normalises tags", () => {
     const parsed = NewsInputSchema.parse(valid);
     expect(parsed.tags).toEqual(["simposium"]);
     expect(parsed.publishAt).toEqual(later);
-    expect(NewsInputSchema.parse({ ...valid, summary: "  " }).summary).toBe("");
+  });
+
+  it("requires the featured image, publish date, URL and short summary (marked * in the form)", () => {
+    const fields = (input: unknown) => {
+      const result = NewsInputSchema.safeParse(input);
+      return result.success
+        ? {}
+        : Object.fromEntries(result.error.issues.map((i) => [String(i.path[0]), i.message]));
+    };
+    expect(fields({ ...valid, featuredImage: null })).toEqual({
+      featuredImage: "Add a featured image.",
+    });
+    expect(fields({ ...valid, publishAt: null })).toEqual({
+      publishAt: "Choose the publish date and time.",
+    });
+    expect(fields({ ...valid, slug: "" })).toEqual({ slug: "Enter the URL." });
+    expect(fields({ ...valid, summary: "  " })).toEqual({ summary: "Write a short summary." });
   });
 
   it("refuses missing required fields, unknown keys, too many tags and bad image URLs", () => {
@@ -98,14 +122,7 @@ describe("news form validation (strict)", () => {
     expect(
       issues({
         ...valid,
-        featuredImage: {
-          url: "javascript:alert(1)",
-          thumbUrl: "https://x.example/t.webp",
-          path: "content/images/a.webp",
-          thumbPath: "content/images/a_thumb.webp",
-          width: 10,
-          height: 10,
-        },
+        featuredImage: { ...image, url: "javascript:alert(1)" },
       }),
     ).toContain("featuredImage");
   });

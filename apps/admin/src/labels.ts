@@ -7,7 +7,12 @@ import {
 import { NEWS_CATEGORIES, type NewsCategory } from "@website/domain/content";
 import { EVENT_TYPES, type EventType } from "@website/domain/events";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
-import { ORG_UNIT_TYPES, type OrgUnitType } from "@website/domain/organizations";
+import {
+  CHAPTER_RISKS,
+  ORG_UNIT_TYPES,
+  type ChapterRisk,
+  type OrgUnitType,
+} from "@website/domain/organizations";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 
 /**
@@ -34,15 +39,16 @@ export const ROLE_TYPE_LABELS = {
   custom: { id: "Kustom", en: "Custom" },
 } as const satisfies Record<"builtIn" | "custom", Label>;
 
+/** What happened (past tense): Audit Log badges and filter, dashboard "latest changes". */
 export const AUDIT_ACTION_LABELS = {
-  CREATE: { id: "Buat", en: "Create" },
-  UPDATE: { id: "Ubah", en: "Update" },
-  DELETE: { id: "Hapus", en: "Delete" },
-  PUBLISH: { id: "Terbitkan", en: "Publish" },
-  UNPUBLISH: { id: "Batal terbit", en: "Unpublish" },
-  SEND: { id: "Kirim", en: "Send" },
-  UPLOAD: { id: "Unggah", en: "Upload" },
-  REVERT: { id: "Kembalikan", en: "Revert" },
+  CREATE: { id: "Dibuat", en: "Created" },
+  UPDATE: { id: "Diubah", en: "Updated" },
+  DELETE: { id: "Dihapus", en: "Deleted" },
+  PUBLISH: { id: "Diterbitkan", en: "Published" },
+  UNPUBLISH: { id: "Batal terbit", en: "Unpublished" },
+  SEND: { id: "Dikirim", en: "Sent" },
+  UPLOAD: { id: "Diunggah", en: "Uploaded" },
+  REVERT: { id: "Dikembalikan", en: "Reverted" },
 } as const satisfies Record<AuditAction, Label>;
 
 /** Why a REVERT button is disabled (tooltip) or a revert was refused. */
@@ -105,6 +111,13 @@ export const ORG_UNIT_TYPE_LABELS = {
   staf: { id: "Staf", en: "Staff" },
 } as const satisfies Record<OrgUnitType, Label>;
 
+/** Organizations → PPI status badge (the board's rating of a chapter). */
+export const CHAPTER_RISK_LABELS = {
+  none: { id: "Tidak ada risiko", en: "No risk" },
+  needs_checking: { id: "Perlu dicek", en: "Needs checking" },
+  at_risk: { id: "Berisiko kekosongan", en: "At risk of a vacuum" },
+} as const satisfies Record<ChapterRisk, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -120,6 +133,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "news category", keys: NEWS_CATEGORIES, labels: NEWS_CATEGORY_LABELS },
   { name: "event type", keys: EVENT_TYPES, labels: EVENT_TYPE_LABELS },
   { name: "org unit type", keys: ORG_UNIT_TYPES, labels: ORG_UNIT_TYPE_LABELS },
+  { name: "chapter risk", keys: CHAPTER_RISKS, labels: CHAPTER_RISK_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

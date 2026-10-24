@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { useToastMessage, ToastBanner } from "@/components/ui/toast";
+import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 
 interface PasskeyInfo {
@@ -274,11 +275,10 @@ export function AccountAccountPage() {
         title="Email Verification"
         subtitle="Enter the verification code sent to youremail@example.com"
         width={480}
-        className="admin-modal--dark"
         hideClose
         footer={
           <div
-            className="admin-modal__footer-row--end"
+            className="admin-modal__footer-row"
             style={{ marginTop: "calc(var(--space-0-5) * -1)" }}
           >
             <button
@@ -339,11 +339,11 @@ export function AccountAccountPage() {
         title="Add Passkey"
         subtitle="Your device will ask for a fingerprint, face, or PIN."
         width={480}
-        className="admin-modal--dark admin-acct-edit"
+        className="admin-acct-edit"
         hideClose
         footer={
           <div
-            className="admin-modal__footer-row--end"
+            className="admin-modal__footer-row"
             style={{ marginTop: "calc(var(--space-0-5) * -1)" }}
           >
             <button
@@ -398,11 +398,12 @@ export function AccountAccountPage() {
           </div>
 
           {/* PASSKEY NAME */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1-5)" }}>
-            <span className="admin-acct-fieldlabel">Passkey Name</span>
+          <div className="admin-field">
+            <span className="admin-field__label">Passkey Name</span>
             <div style={{ position: "relative" }}>
               <input
-                className="admin-acct-input-cream"
+                className="admin-input"
+                required
                 value={passkeyName}
                 maxLength={32}
                 onChange={(e) => setPasskeyName(e.target.value)}
@@ -421,6 +422,7 @@ export function AccountAccountPage() {
                 {passkeyName.length}/32
               </span>
             </div>
+            <FieldError id="passkey-add-name-error" />
           </div>
         </div>
       </Modal>
@@ -432,11 +434,11 @@ export function AccountAccountPage() {
         title="Edit Passkey"
         subtitle="Edit passkey name."
         width={480}
-        className="admin-modal--dark admin-acct-edit"
+        className="admin-acct-edit"
         hideClose
         footer={
           <div
-            className="admin-modal__footer-row--end"
+            className="admin-modal__footer-row"
             style={{ marginTop: "calc(var(--space-0-5) * -1)" }}
           >
             <button
@@ -481,11 +483,12 @@ export function AccountAccountPage() {
           </div>
 
           {/* PASSKEY NAME */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1-5)" }}>
-            <span className="admin-acct-fieldlabel">Passkey Name</span>
+          <div className="admin-field">
+            <span className="admin-field__label">Passkey Name</span>
             <div style={{ position: "relative" }}>
               <input
-                className="admin-acct-input-cream"
+                className="admin-input"
+                required
                 value={passkeyName}
                 maxLength={32}
                 onChange={(e) => setPasskeyName(e.target.value)}
@@ -504,6 +507,7 @@ export function AccountAccountPage() {
                 {passkeyName.length}/32
               </span>
             </div>
+            <FieldError id="passkey-edit-name-error" />
           </div>
         </div>
       </Modal>
@@ -519,11 +523,11 @@ export function AccountAccountPage() {
             : "Edit your backup email address."
         }
         width={480}
-        className="admin-modal--dark admin-acct-edit"
+        className="admin-acct-edit"
         hideClose
         footer={
           <div
-            className="admin-modal__footer-row--end"
+            className="admin-modal__footer-row"
             style={{ marginTop: "calc(var(--space-0-5) * -1)" }}
           >
             <button
@@ -552,14 +556,16 @@ export function AccountAccountPage() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3-5)" }}>
           {/* EMAIL ADDRESS */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1-5)" }}>
-            <span className="admin-acct-fieldlabel">Email Address</span>
+          <div className="admin-field">
+            <span className="admin-field__label">Email Address</span>
             <input
-              className="admin-acct-input-cream"
+              className="admin-input"
               type="email"
+              required
               value={emailValue}
               onChange={(e) => setEmailValue(e.target.value)}
             />
+            <FieldError id="account-email-error" />
           </div>
         </div>
       </Modal>
@@ -571,11 +577,11 @@ export function AccountAccountPage() {
         title="Delete Account?"
         subtitle="Once you delete your account, there is no going back."
         width={480}
-        className="admin-modal--dark admin-acct-delete"
+        className="admin-acct-delete"
         hideClose
         footer={
           <div
-            className="admin-modal__footer-row--end"
+            className="admin-modal__footer-row"
             style={{ marginTop: "calc(var(--space-0-5) * -1)" }}
           >
             <button
@@ -625,15 +631,15 @@ export function AccountAccountPage() {
           </div>
 
           {/* CONFIRMATION */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1-5)" }}>
-            <span className="admin-acct-fieldlabel">Confirmation</span>
+          <div className="admin-field">
+            <span className="admin-field__label">Confirmation</span>
             <input
-              className="admin-acct-input-cream"
+              className="admin-input"
               placeholder={DELETE_CONFIRM_HINT}
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
             />
-            <span className="admin-acct-input-hint">{DELETE_CONFIRM_HINT}</span>
+            <FieldError id="account-delete-confirm" hint={DELETE_CONFIRM_HINT} />
           </div>
         </div>
       </Modal>
@@ -645,11 +651,11 @@ export function AccountAccountPage() {
         title="Delete Passkey?"
         subtitle="Once you delete this passkey, you will no longer be able to sign in from this device."
         width={480}
-        className="admin-modal--dark admin-acct-delete"
+        className="admin-acct-delete"
         hideClose
         footer={
           <div
-            className="admin-modal__footer-row--end"
+            className="admin-modal__footer-row"
             style={{ marginTop: "calc(var(--space-0-5) * -1)" }}
           >
             <button

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Fragment } from "react";
+import { PAGE_SIZE_OPTIONS } from "../list-model";
 import { Icon } from "./icon";
+import { Select } from "./select";
 
 /** Render a raw cell value safely: strings/numbers pass through, others fall back to empty. */
 function cellText(value: unknown): string {
@@ -135,67 +137,107 @@ export function DataTable<T>({
 
 export interface PaginationProps {
   page: number;
-  totalPages: number;
-  totalItems: number;
   pageSize: number;
-  onChange: (page: number) => void;
+  totalItems: number;
+  /** Rows-per-page choices (default 10 / 20 / 50). */
+  pageSizeOptions?: readonly number[];
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
 }
 
-/** Page numbers with ellipsis windowing; returns null when there is only one page. */
-export function Pagination({ page, totalPages, totalItems, pageSize, onChange }: PaginationProps) {
-  if (totalPages <= 1) return null;
-
-  const start = (page - 1) * pageSize + 1;
+/**
+ * Footer of the dark list pages: "Showing 1–10 of 112", rows per page and a sliding window of
+ * five page numbers (`.admin-darkbar` in globals.css).
+ */
+export function Pagination({
+  page,
+  pageSize,
+  totalItems,
+  pageSizeOptions = PAGE_SIZE_OPTIONS,
+  onPageChange,
+  onPageSizeChange,
+}: PaginationProps) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
-
+  const first = Math.max(1, Math.min(page - 2, totalPages - 4));
   const pages: number[] = [];
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || Math.abs(i - page) <= 1) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== -1) {
-      pages.push(-1);
-    }
-  }
+  for (let p = first; p <= Math.min(totalPages, first + 4); p++) pages.push(p);
 
   return (
-    <div className="admin-pagination">
-      <span className="admin-pagination__info">
-        {start}–{end} of {totalItems}
+    <div className="admin-darkbar">
+      <span className="admin-darkbar__info">
+        Showing {start}–{end} of {totalItems}
       </span>
+      <span className="admin-darkbar__info">
+        Rows per page
+        <Select
+          className="admin-darkbar__select"
+          aria-label="Rows per page"
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+        >
+          {pageSizeOptions.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </Select>
+      </span>
+      <span className="admin-darkbar__spacer" />
       <button
         type="button"
-        className="admin-pagination__btn"
+        className="admin-darkbar__btn"
         disabled={page <= 1}
-        onClick={() => onChange(page - 1)}
-        aria-label="Previous"
+        onClick={() => onPageChange(page - 1)}
+        aria-label="Previous page"
       >
-        <Icon name="chevronLeft" size={16} />
+        <Icon name="chevronLeft" size={14} />
       </button>
-      {pages.map((p, idx) =>
-        p === -1 ? (
-          <span key={`ellipsis-${idx}`} className="admin-pagination__info">
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            type="button"
-            className={`admin-pagination__btn${p === page ? " admin-pagination__btn--active" : ""}`}
-            onClick={() => onChange(p)}
-          >
-            {p}
-          </button>
-        ),
-      )}
+      {pages.map((p) => (
+        <button
+          type="button"
+          key={p}
+          className={`admin-darkbar__btn${p === page ? " admin-darkbar__btn--active" : ""}`}
+          aria-current={p === page ? "page" : undefined}
+          onClick={() => onPageChange(p)}
+        >
+          {p}
+        </button>
+      ))}
       <button
         type="button"
-        className="admin-pagination__btn"
+        className="admin-darkbar__btn"
         disabled={page >= totalPages}
-        onClick={() => onChange(page + 1)}
-        aria-label="Next"
+        onClick={() => onPageChange(page + 1)}
+        aria-label="Next page"
       >
-        <Icon name="chevronRight" size={16} />
+        <Icon name="chevronRight" size={14} />
       </button>
     </div>
+  );
+}
+
+/** Sortable table header: label + arrow icon. Active column shows a filled arrow. */
+export function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`admin-th-sort${active ? " admin-th-sort--active" : ""}`}
+      onClick={onClick}
+    >
+      <span>{label}</span>
+      <Icon name={active ? (dir === "asc" ? "arrowUp" : "arrowDown") : "sort"} size={12} />
+    </button>
   );
 }

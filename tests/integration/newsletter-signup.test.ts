@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createFirestoreSubscriberStore } from "@website/db/firestore";
+import {
+  createFirestoreCampaignWebStore,
+  createFirestoreSubscriberStore,
+} from "@website/db/firestore";
+import { trackingLinkData } from "@website/domain/newsletter";
+import { signLink } from "@website/security";
 import { createNewsletter } from "../../apps/web/src/server/newsletter";
 import { fakeFirestore } from "../support/fake-firestore";
 
@@ -13,14 +18,18 @@ let fake: ReturnType<typeof fakeFirestore>;
 let send: ReturnType<typeof vi.fn<(message: unknown, key: string) => Promise<string>>>;
 let tokens: string[];
 let newsletter: ReturnType<typeof createNewsletter>;
+let trackErrors: unknown[];
 
 beforeEach(() => {
   now = new Date("2026-10-18T00:00:00Z");
   fake = fakeFirestore();
   send = vi.fn((_message: unknown, _key: string) => Promise.resolve("sent"));
   tokens = ["token-1", "token-2", "token-3"];
+  trackErrors = [];
   newsletter = createNewsletter({
     store: createFirestoreSubscriberStore(fake.db as unknown as Db),
+    campaigns: createFirestoreCampaignWebStore(fake.db as unknown as Db),
+    onTrackError: (error) => trackErrors.push(error),
     captcha: (token) => Promise.resolve(token === "good"),
     send,
     newToken: () => tokens.shift() ?? "token-x",
@@ -85,6 +94,7 @@ describe("newsletter sign-up with double opt-in", () => {
     expect(await newsletter.confirm(second)).toBe("confirmed");
     expect(await newsletter.confirm(second)).toBe("invalid");
     expect(await newsletter.confirm({ s: "bad/id", t: "x" })).toBe("invalid");
+    expect(await newsletter.confirm({ s: "0".repeat(64), t: "x" })).toBe("invalid");
   });
 
   it("unsubscribes only through a validly signed link", async () => {
@@ -103,5 +113,78 @@ describe("newsletter sign-up with double opt-in", () => {
     // Unsubscribed people may sign up again (a new opt-in).
     await newsletter.subscribe({ email: "sari@example.org", token: "good" }, "id");
     expect(send).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("campaign open/click tracking and the public archive", () => {
+  const sid = "a".repeat(64);
+  // A campaign stored before tracking existed (no openCount / clickCount yet).
+  const campaign = (status: string, deletedAt: string | null = null) =>
+    fake.docs.set("campaigns/c1", {
+      subject: "Edisi Oktober",
+      body: "<p>Halo</p>",
+      segment: "all",
+      status,
+      sendAt: "2026-10-01T00:00:00.000Z",
+      cursor: null,
+      sentCount: 10,
+      sentAt: "2026-10-01T01:00:00.000Z",
+      version: 2,
+      createdAt: "2026-09-30T00:00:00.000Z",
+      updatedAt: "2026-10-01T01:00:00.000Z",
+      deletedAt,
+    });
+  const token = (data: Record<string, string>) => signLink(data, secrets.linkSecret);
+
+  it("an open pixel counts once; a click redirects to the signed address only", async () => {
+    campaign("sent");
+    const open = token(trackingLinkData("open", "c1", sid));
+    await newsletter.trackOpen(open);
+    await newsletter.trackOpen(open);
+    await newsletter.trackOpen(`${open}x`);
+    await newsletter.trackOpen("garbage");
+    expect(fake.docs.get("campaigns/c1")).toMatchObject({ openCount: 1, clickCount: 0 });
+    const click = token(trackingLinkData("click", "c1", sid, "https://ppi.id/a"));
+    expect(await newsletter.trackClick(click)).toBe("https://ppi.id/a");
+    expect(fake.docs.get("campaigns/c1")).toMatchObject({ openCount: 1, clickCount: 1 });
+    // An open token is not a redirect; a changed token is refused.
+    expect(await newsletter.trackClick(open)).toBeNull();
+    expect(await newsletter.trackClick(`${click}x`)).toBeNull();
+    expect(trackErrors).toEqual([]);
+  });
+
+  it("a failing counter never blocks the reader: the click still redirects, the error is reported", async () => {
+    campaign("sent");
+    const broken = createNewsletter({
+      store: createFirestoreSubscriberStore(fake.db as unknown as Db),
+      campaigns: {
+        track: () => Promise.reject(new Error("down")),
+        findPublic: () => Promise.resolve(null),
+      },
+      onTrackError: (error) => trackErrors.push(error),
+      captcha: () => Promise.resolve(true),
+      send,
+      newToken: () => "t",
+      webUrl: "https://ppiasiania.id",
+      now: () => now,
+      ...secrets,
+    });
+    const click = token(trackingLinkData("click", "c1", sid, "https://ppi.id/a"));
+    expect(await broken.trackClick(click)).toBe("https://ppi.id/a");
+    await broken.trackOpen(token(trackingLinkData("open", "c1", sid)));
+    expect(trackErrors).toHaveLength(2);
+  });
+
+  it("the archive shows sent campaigns only", async () => {
+    campaign("draft");
+    expect(await newsletter.publicCampaign("c1")).toBeNull();
+    campaign("sent");
+    expect(await newsletter.publicCampaign("c1")).toMatchObject({
+      subject: "Edisi Oktober",
+      body: "<p>Halo</p>",
+    });
+    expect(await newsletter.publicCampaign("../x")).toBeNull();
+    campaign("sent", "2026-10-02T00:00:00.000Z");
+    expect(await newsletter.publicCampaign("c1")).toBeNull();
   });
 });

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { label, SCOPE_LABELS } from "@/labels";
 import { assignRoleAction, revokeRoleAction, setStatusAction } from "../actions";
+import { Select } from "@/components/ui/select";
 
 export function UserRoleEditor(props: {
   readonly uid: string;
@@ -98,7 +99,7 @@ export function UserRoleEditor(props: {
             );
           }}
         >
-          <select
+          <Select
             className="admin-select"
             aria-label="Role"
             value={roleId}
@@ -109,7 +110,7 @@ export function UserRoleEditor(props: {
                 {role.name}
               </option>
             ))}
-          </select>
+          </Select>
           <input
             className="admin-input"
             aria-label="Chapter id (empty = all chapters)"

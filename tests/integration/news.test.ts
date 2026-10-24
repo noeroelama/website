@@ -29,16 +29,25 @@ let fake: ReturnType<typeof fakeFirestore>;
 let store: ReturnType<typeof createFirestoreContentStore>;
 const actions = () => createNewsActions({ content: store, now: () => now });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
+const image = {
+  url: "https://storage.example/content/images/a.webp",
+  thumbUrl: "https://storage.example/content/images/a_thumb.webp",
+  path: "content/images/a.webp",
+  thumbPath: "content/images/a_thumb.webp",
+  width: 1200,
+  height: 800,
+};
+/** Every field the form marks with * (featured image, publish date, URL, summary) is filled. */
 const article = {
   title: "Simposium Berakhir Sukses",
-  slug: "",
+  slug: "simposium-berakhir-sukses",
   author: "Divisi Media",
   category: "community",
-  publishAt: null,
+  publishAt: "2026-10-18T04:00:00.000Z",
   summary: "Ringkasan.",
   tags: ["Simposium"],
   body: '<p>Isi <script>alert(1)</script><a href="javascript:x()">x</a></p>',
-  featuredImage: null,
+  featuredImage: image,
 };
 const auditEntries = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);
@@ -50,7 +59,7 @@ beforeEach(() => {
 });
 
 describe("News CMS: save draft, publish, schedule", () => {
-  it("saves a draft with a slug built from the title, a sanitised body and a CREATE entry", async () => {
+  it("saves a draft with its URL, a sanitised body and a CREATE entry", async () => {
     const result = await actions().save(...as(editor))({
       ...article,
       version: null,
@@ -172,15 +181,26 @@ describe("News CMS: save draft, publish, schedule", () => {
     });
   });
 
-  it("refuses a title without letters or numbers, and keeps re-saving a scheduled article an UPDATE", async () => {
+  it("refuses an article without its required fields, and keeps re-saving a scheduled article an UPDATE", async () => {
     expect(
       await actions().save(...as(editor))({
         ...article,
-        title: "!!!",
+        slug: "",
+        publishAt: null,
+        summary: "",
+        featuredImage: null,
         version: null,
         intent: "draft",
       }),
-    ).toMatchObject({ error: "refused", issues: [expect.stringContaining("letters or numbers")] });
+    ).toMatchObject({
+      error: "invalid_input",
+      fields: {
+        slug: "Enter the URL.",
+        publishAt: "Choose the publish date and time.",
+        summary: "Write a short summary.",
+        featuredImage: "Add a featured image.",
+      },
+    });
     const scheduled = await actions().save(...as(publisher))({
       ...article,
       publishAt: "2026-10-19T00:00:00.000Z",
@@ -201,24 +221,14 @@ describe("News CMS: save draft, publish, schedule", () => {
 
 describe("News CMS: published articles", () => {
   it("editing a public article keeps it an UPDATE and stores the featured image", async () => {
-    const image = {
-      url: "https://storage.example/content/images/a.webp",
-      thumbUrl: "https://storage.example/content/images/a_thumb.webp",
-      path: "content/images/a.webp",
-      thumbPath: "content/images/a_thumb.webp",
-      width: 1200,
-      height: 800,
-    };
     const created = await actions().save(...as(publisher))({
       ...article,
-      featuredImage: image,
       version: null,
       intent: "publish",
     });
     const id = created.ok ? created.data.id : "";
     await actions().save(...as(publisher))({
       ...article,
-      featuredImage: image,
       id,
       version: 1,
       intent: "publish",
@@ -236,6 +246,30 @@ describe("News CMS: published articles", () => {
     const id = created.ok ? created.data.id : "";
     await actions().save(...as(publisher))({ ...article, id, version: 1, intent: "publish" });
     expect(auditEntries().map((e) => e["action"])).toEqual(["CREATE", "PUBLISH"]);
+  });
+});
+
+describe("News CMS: articles saved before the image and date were required", () => {
+  it("still publish and move to trash from the list (row menu / bulk bar)", async () => {
+    const created = await actions().save(...as(publisher))({
+      ...article,
+      version: null,
+      intent: "draft",
+    });
+    const id = created.ok ? created.data.id : "";
+    // An older article: no featured image and no publish date in Firestore.
+    const path = `content/${id}`;
+    fake.docs.set(path, { ...fake.docs.get(path), featuredImage: null, publishAt: null });
+    expect(
+      await actions().setPublished(...as(publisher))({ id, version: 1, published: true }),
+    ).toMatchObject({ ok: true });
+    expect(auditEntries().at(-1)).toMatchObject({
+      action: "PUBLISH",
+      before: { status: "draft", publishAt: null },
+    });
+    expect(await actions().remove(...as(publisher))({ id, version: 2 })).toMatchObject({
+      ok: true,
+    });
   });
 });
 
@@ -278,12 +312,12 @@ describe("content store reads", () => {
 describe("public news reader (web)", () => {
   it("lists only visible news, newest first, and finds the detail by slug", async () => {
     const reader = createFirestoreNewsReader(fake.db as unknown as Db);
-    const save = (slug: string, intent: "draft" | "publish", publishAt: string | null) =>
+    const save = (slug: string, intent: "draft" | "publish", publishAt: string) =>
       actions().save(...as(publisher))({ ...article, slug, publishAt, version: null, intent });
     await save("draft", "draft", "2026-10-01T00:00:00.000Z");
     await save("future", "publish", "2026-10-30T00:00:00.000Z");
     await save("older", "publish", "2026-10-02T00:00:00.000Z");
-    await save("newer", "publish", null);
+    await save("newer", "publish", "2026-10-18T04:00:00.000Z");
     const gone = await save("deleted", "publish", "2026-10-03T00:00:00.000Z");
     await actions().remove(...as(publisher))({ id: gone.ok ? gone.data.id : "", version: 1 });
 

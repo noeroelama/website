@@ -8,6 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { reviewUniversityAction } from "./actions";
+import { Select } from "@/components/ui/select";
 
 export interface ProposalRow {
   id: string;
@@ -77,7 +78,7 @@ export function ReviewQueue({ rows, canEdit }: { rows: ProposalRow[]; canEdit: b
                     >
                       Approve
                     </Button>
-                    <select
+                    <Select
                       className="admin-select"
                       aria-label={`Merge ${row.name} into`}
                       value={targets[row.id] ?? ""}
@@ -91,7 +92,7 @@ export function ReviewQueue({ rows, canEdit }: { rows: ProposalRow[]; canEdit: b
                           {c.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <Button
                       size="sm"
                       variant="outline"

@@ -3,6 +3,11 @@ export function formatUtc(date: Date | null): string {
   return date ? `${date.toISOString().slice(0, 16).replace("T", " ")} UTC` : "—";
 }
 
+/** URL shown without its scheme or trailing slash, e.g. "https://goppi.id/" → "goppi.id". */
+export function withoutScheme(url: string): string {
+  return url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+}
+
 /** Humanised "x time ago" (e.g. "2 hours ago", "3 days ago") from an ISO timestamp. */
 export function timeAgo(iso: string, now = Date.now()): string {
   const d = new Date(iso);
@@ -20,11 +25,17 @@ export function timeAgo(iso: string, now = Date.now()): string {
   return `${years} year${years === 1 ? "" : "s"} ago`;
 }
 
-/** ISO instant shown on the clock of `timeZone`, e.g. "20 Nov 2026, 11:00" (same on server and browser). */
-export function formatInZone(iso: string, timeZone: string): string {
+/**
+ * ISO instant shown on the clock of `timeZone`, e.g. "20 Nov 2026, 11:00", or "20 Nov 2026" with
+ * `withTime = false` (same on server and browser).
+ */
+export function formatInZone(iso: string, timeZone: string, withTime = true): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone,
     dateStyle: "medium",
-    timeStyle: "short",
+    ...(withTime ? { timeStyle: "short" } : {}),
   }).format(new Date(iso));
 }
+
+/** One CSV cell, quoted (inner quotes doubled); rows go to `downloadCsv` (csv.ts). */
+export const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;

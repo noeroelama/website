@@ -10,6 +10,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { withoutScheme } from "@/components/format";
 import {
   INITIAL_LINKS,
   PREFIX,
@@ -17,9 +18,10 @@ import {
   formatDate,
   type ShortLink,
 } from "@/data/mock/short-links";
+import { Select } from "@/components/ui/select";
 
 /* ==================================================================
-   Tools — QR Generator (left ~30%) & URL Shortener (right ~70%)
+   Tools — QR Generator (left ~25%) & URL Shortener (right ~75%)
    Ported from the earlier Vite admin; colours come from the shared
    design tokens. No hex values are allowed outside styles.css, so QR
    colours are read from the resolved `--color-*` custom properties.
@@ -32,10 +34,11 @@ function tokenValue(name: string): string {
   return value;
 }
 
-/** QR foreground/background from the brand tokens; undefined → qrcode's own defaults. */
+/** QR foreground/background from the brand tokens (dark ink on the cream card, as in the
+ *  design); undefined → qrcode's own defaults. */
 function colorForQr(): { dark: string; light: string } | undefined {
   const dark = tokenValue("--color-brand-950");
-  const light = tokenValue("--color-white");
+  const light = tokenValue("--color-brand-50");
   return dark && light ? { dark, light } : undefined;
 }
 
@@ -125,12 +128,13 @@ function QrPreview({
         type: "svg",
         width: size,
         margin: 2,
+        errorCorrectionLevel: "H",
         ...(colorForQr() ? { color: colorForQr() } : {}),
       });
 
       let mark = "";
       if (showLogo) {
-        /* Centre overlay: white chip + logo, mirroring the on-screen .admin-qr-preview__logo.
+        /* Centre overlay: dark chip + logo, mirroring the on-screen .admin-qr-preview__logo.
            Colours come from the resolved design tokens (never literal hex/rgb — tokens test). */
         const viewBox = (svg.match(/viewBox="0 0 ([0-9.]+) ([0-9.]+)"/) ?? [])[1] ?? "";
         const vb = parseFloat(viewBox) || size;
@@ -139,13 +143,11 @@ function QrPreview({
           const markSize = Math.round(vb * 0.24);
           const offset = Math.round((vb - markSize) / 2);
           const radius = Math.max(1, Math.round(markSize * 0.18));
-          /* Semi-transparent ink border: brand-950 + "33" alpha (≈20%), built at runtime. */
-          const ink = tokenValue("--color-brand-950");
-          const chipFill = tokenValue("--color-white");
+          const chipFill = tokenValue("--color-brand-950");
           mark =
             `<g>` +
             `<rect x="${offset}" y="${offset}" width="${markSize}" height="${markSize}" ` +
-            `rx="${radius}" fill="${chipFill}" stroke="${ink}${ink ? "33" : ""}"/>` +
+            `rx="${radius}" fill="${chipFill}"/>` +
             `<image x="${offset}" y="${offset}" width="${markSize}" height="${markSize}" ` +
             `href="${logoHref}" preserveAspectRatio="xMidYMid meet"/>` +
             `</g>`;
@@ -208,20 +210,11 @@ function QrPreview({
         </div>
       </div>
       <div className="admin-qr-preview__actions">
-        <Button
-          variant="primary"
-          size="sm"
-          className="admin-btn--black"
-          icon="download"
-          onClick={downloadPng}
-          disabled={!ready}
-        >
+        <Button variant="primary" icon="download" onClick={downloadPng} disabled={!ready}>
           Download PNG
         </Button>
         <Button
           variant="primary"
-          size="sm"
-          className="admin-btn--black"
           icon="download"
           onClick={() => void downloadSvg()}
           disabled={!ready}
@@ -239,14 +232,9 @@ type QrSize = "small" | "medium" | "large";
 /** Pending delete action shown in the dark confirm modal (one link or many). */
 type DeleteConfirm = { kind: "one"; link: ShortLink } | { kind: "many"; count: number };
 
-/* Dark result banner (brand-950) shown after a link is created/updated.
-   Left: check + "Short Link Created", the link, "Redirect to …".
-   Right: cream buttons Generate QR / Copy / Visit URL (logo before text). */
-
-/** Button look for a result banner: maroon on cream, light-on-dark ghost otherwise. */
-function bannerButtonProps(isCream: boolean): { variant: "maroon" | "ghost"; className?: string } {
-  return isCream ? { variant: "maroon" } : { variant: "ghost", className: "admin-btn--light" };
-}
+/* Result banner shown after a link is created/updated (dark on the page, cream in the
+   Edit Link popup). Left: check + "Short link created", the link, "Redirects to …".
+   Right: Generate QR / Copy / Visit URL in the opposite colour (icon before text). */
 
 function LinkResultBanner({
   title,
@@ -278,19 +266,19 @@ function LinkResultBanner({
           {title}
         </div>
         <div className="admin-link-result__link">
-          https://{PREFIX}
+          {PREFIX}
           {link.slug}
         </div>
-        <div className="admin-link-result__meta">Redirect to {link.original}</div>
+        <div className="admin-link-result__meta">Redirects to {withoutScheme(link.original)}</div>
       </div>
       <div className="admin-link-result__actions">
-        <Button {...bannerButtonProps(isCream)} icon="qr" size="sm" onClick={onGenerateQr}>
+        <Button variant="primary" icon="qr" onClick={onGenerateQr}>
           Generate QR
         </Button>
-        <Button {...bannerButtonProps(isCream)} icon="copy" size="sm" onClick={onCopy}>
+        <Button variant="primary" icon="copy" onClick={onCopy}>
           Copy
         </Button>
-        <Button {...bannerButtonProps(isCream)} icon="external" size="sm" onClick={onVisit}>
+        <Button variant="primary" icon="external" onClick={onVisit}>
           Visit URL
         </Button>
       </div>
@@ -299,9 +287,9 @@ function LinkResultBanner({
 }
 
 const QR_SIZE_OPTIONS: { value: QrSize; label: string; hint: string; px: number }[] = [
-  { value: "small", label: "Small", hint: "For Screens", px: 132 },
-  { value: "medium", label: "Medium", hint: "For A4 Print", px: 180 },
-  { value: "large", label: "Large", hint: "For Posters", px: 230 },
+  { value: "small", label: "Small", hint: "For screens", px: 132 },
+  { value: "medium", label: "Medium", hint: "For A4 print", px: 180 },
+  { value: "large", label: "Large", hint: "For posters", px: 230 },
 ];
 
 export function ToolsPage() {
@@ -612,12 +600,14 @@ function ToolsList() {
       width: "30%",
       render: (r) => (
         <div>
-          <div className="admin-table__title admin-table__title--row">
-            <Icon name="link" size={14} />
+          <div className="admin-table__title">
             {PREFIX}
             {r.slug}
           </div>
-          <div className="admin-table__sub">{r.original}</div>
+          <div className="admin-table__sub admin-table__sub--redirect">
+            <Icon name="cornerDownRight" size={16} />
+            <span>{withoutScheme(r.original)}</span>
+          </div>
         </div>
       ),
     },
@@ -683,7 +673,7 @@ function ToolsList() {
   const shownEnd = Math.min(safePage * pageSize, filtered.length);
 
   return (
-    <>
+    <div className="admin-tools">
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-header__title">Tools</h1>
@@ -695,7 +685,7 @@ function ToolsList() {
         {/* ============ QR GENERATOR (left 30%) ============ */}
         <Card>
           <CardHeader title={<span className="admin-card__title">QR Generator</span>} />
-          <CardBody style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+          <CardBody style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
             {/* Type */}
             <div className="admin-field">
               <span className="admin-field__label">Type</span>
@@ -716,7 +706,7 @@ function ToolsList() {
                     checked={qrType === "text"}
                     onChange={() => setQrType("text")}
                   />
-                  Plain Text
+                  Plain text
                 </label>
               </div>
             </div>
@@ -726,9 +716,9 @@ function ToolsList() {
               <label className="admin-field">
                 <span className="admin-field__label">Link *</span>
                 <input
-                  className="admin-input admin-input--dark"
+                  className="admin-input"
                   type="url"
-                  placeholder="e.g. https://goppi.id"
+                  placeholder="https://"
                   value={qrLink}
                   onChange={(e) => setQrLink(e.target.value)}
                 />
@@ -737,7 +727,7 @@ function ToolsList() {
               <label className="admin-field">
                 <span className="admin-field__label">Text</span>
                 <textarea
-                  className="admin-input admin-input--dark admin-textarea"
+                  className="admin-input admin-textarea"
                   rows={3}
                   placeholder="Type your content here…"
                   value={qrText}
@@ -777,15 +767,13 @@ function ToolsList() {
               />
               <span className="admin-qr-switch__track" aria-hidden="true" />
               <span className="admin-qr-switch__text">
-                <span className="admin-qr-switch__label">
-                  Add PPIDK Asiania logo in the centre.
-                </span>
+                <span className="admin-qr-switch__label">Add PPIDK Asiania logo in the centre</span>
                 <span className="admin-qr-switch__hint">Turn this off for long content.</span>
               </span>
             </label>
 
             <Button
-              variant="maroon"
+              variant="primary"
               size="lg"
               icon="qr"
               className="admin-btn--regular"
@@ -870,7 +858,7 @@ function ToolsList() {
             {/* Result container (appears above Long URL after Generate) */}
             {createdLink ? (
               <LinkResultBanner
-                title="Short Link Created"
+                title="Short link created"
                 link={createdLink}
                 onCopy={() => copyShort(createdLink)}
                 onVisit={() => goToLink(createdLink)}
@@ -884,7 +872,7 @@ function ToolsList() {
               <input
                 className="admin-input"
                 type="url"
-                placeholder="Paste the URL to be shortened, e.g. https://goppi.id/"
+                placeholder="https://example.com/register"
                 value={longUrl}
                 onChange={(e) => setLongUrl(e.target.value)}
               />
@@ -896,7 +884,7 @@ function ToolsList() {
               <input
                 className="admin-input"
                 type="text"
-                placeholder="URL title, e.g. PPIDK Asiania News"
+                placeholder="Title"
                 value={linkTitle}
                 onChange={(e) => setLinkTitle(e.target.value)}
               />
@@ -914,6 +902,7 @@ function ToolsList() {
                     className="admin-url-slug__slug"
                     type="text"
                     aria-label="Short URL slug"
+                    placeholder="simkongresppidkasiania"
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                     onKeyDown={(e) => {
@@ -922,7 +911,7 @@ function ToolsList() {
                   />
                 </div>
                 <Button
-                  variant="maroon"
+                  variant="primary"
                   icon="link"
                   onClick={generateLink}
                   style={{ whiteSpace: "nowrap" }}
@@ -945,11 +934,10 @@ function ToolsList() {
                   setPageSize(10);
                 }}
               >
-                <Icon name="search" size={16} className="admin-searchbox__icon" />
                 <input
                   className="admin-searchbox__input"
                   type="search"
-                  placeholder="Search"
+                  placeholder="Search by title..."
                   aria-label="Search links"
                   value={search}
                   onChange={(e) => {
@@ -966,7 +954,7 @@ function ToolsList() {
                   Search
                 </button>
               </form>
-              <Button variant="danger" size="sm" icon="trash" onClick={deleteSelected}>
+              <Button variant="danger" icon="trash" onClick={deleteSelected}>
                 Delete
               </Button>
             </div>
@@ -1017,7 +1005,7 @@ function ToolsList() {
 
               <span className="admin-darkbar__info">
                 Rows per page
-                <select
+                <Select
                   className="admin-darkbar__select"
                   aria-label="Rows per page"
                   value={pageSize}
@@ -1031,7 +1019,7 @@ function ToolsList() {
                       {n}
                     </option>
                   ))}
-                </select>
+                </Select>
               </span>
 
               <span className="admin-darkbar__spacer" />
@@ -1074,7 +1062,7 @@ function ToolsList() {
         open={editOpen}
         title="Edit Link"
         subtitle="Edit shortened link details."
-        className="admin-modal--dark"
+        width={790}
         hideClose
         onClose={() => {
           setEditOpen(false);
@@ -1084,8 +1072,7 @@ function ToolsList() {
         footer={
           <div className="admin-modal__footer-row">
             <Button
-              variant="ghost"
-              className="admin-btn--light admin-modal__foot-btn"
+              variant="outline"
               icon="chevronLeft"
               onClick={() => {
                 setEditOpen(false);
@@ -1095,14 +1082,8 @@ function ToolsList() {
             >
               Back
             </Button>
-            <Button
-              variant="ghost"
-              className="admin-btn--light admin-modal__foot-btn"
-              icon="cloud"
-              onClick={saveEdit}
-              disabled={editSaved}
-            >
-              {editSaved ? "Saved" : "Save Draft"}
+            <Button variant="outline" icon="cloud" onClick={saveEdit} disabled={editSaved}>
+              {editSaved ? "Saved" : "Save draft"}
             </Button>
           </div>
         }
@@ -1110,33 +1091,33 @@ function ToolsList() {
         <div className="admin-form-grid">
           <div className="admin-field admin-form-grid__full">
             <label className="admin-field__label" htmlFor="edit-original">
-              Long URL
+              Long URL *
             </label>
             <input
               id="edit-original"
               className="admin-input"
               type="url"
-              placeholder="https://…"
+              placeholder="https://example.com/register"
               value={editForm.original}
               onChange={(e) => setEditForm({ ...editForm, original: e.target.value })}
             />
           </div>
           <div className="admin-field admin-form-grid__full">
             <label className="admin-field__label" htmlFor="edit-title">
-              Title
+              Title *
             </label>
             <input
               id="edit-title"
               className="admin-input"
               type="text"
-              placeholder="URL title"
+              placeholder="Title"
               value={editForm.title}
               onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
             />
           </div>
           <div className="admin-field admin-form-grid__full">
             <label className="admin-field__label" htmlFor="edit-slug">
-              URL
+              URL *
             </label>
             <div className="admin-field__row">
               <div className="admin-url-slug">
@@ -1148,13 +1129,13 @@ function ToolsList() {
                   className="admin-url-slug__slug"
                   type="text"
                   aria-label="Short URL slug"
+                  placeholder="simkongresppidkasiania"
                   value={editForm.slug}
                   onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
                 />
               </div>
               <Button
-                variant="ghost"
-                className="admin-btn--light"
+                variant="outline"
                 icon="link"
                 onClick={saveEdit}
                 style={{ whiteSpace: "nowrap" }}
@@ -1169,7 +1150,7 @@ function ToolsList() {
             <div className="admin-form-grid__full">
               <LinkResultBanner
                 tone="cream"
-                title="Short Link Updated"
+                title="Short link updated"
                 link={editingLink}
                 onCopy={() => copyShort(editingLink)}
                 onVisit={() => goToLink(editingLink)}
@@ -1186,25 +1167,14 @@ function ToolsList() {
         open={deleteConfirm !== null}
         title="Delete link"
         width={420}
-        className="admin-modal--dark admin-modal--delete"
         hideClose
         onClose={() => setDeleteConfirm(null)}
         footer={
-          <div className="admin-modal__footer-row admin-modal__footer-row--end">
-            <Button
-              variant="ghost"
-              className="admin-btn--light admin-modal__foot-btn"
-              icon="chevronLeft"
-              onClick={() => setDeleteConfirm(null)}
-            >
-              Cancel
+          <div className="admin-modal__footer-row">
+            <Button variant="outline" icon="chevronLeft" onClick={() => setDeleteConfirm(null)}>
+              Back
             </Button>
-            <Button
-              variant="danger"
-              className="admin-modal__foot-btn"
-              icon="trash"
-              onClick={doDelete}
-            >
+            <Button variant="danger" icon="trash" onClick={doDelete}>
               Delete
             </Button>
           </div>
@@ -1220,6 +1190,6 @@ function ToolsList() {
       </Modal>
 
       <ToastBanner message={toast.message} />
-    </>
+    </div>
   );
 }

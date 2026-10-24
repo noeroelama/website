@@ -3,7 +3,7 @@
 ## What it does
 
 Staff upload images (event banners, speaker photos, article images, gallery photos, chapter
-logos, KTM scans) exactly as the Figma flowchart's image pipeline says: only jpg, jpeg, png or
+logos, unit member photos, KTM scans) exactly as the Figma flowchart's image pipeline says: only jpg, jpeg, png or
 webp, at most 5 MB, checked in the browser and again on the server; the server stores a WebP
 copy (longest side ≤ 2400 px or the preset's limit, quality 82, metadata stripped) plus a 480 px
 wide thumbnail for tables and card grids.
@@ -39,7 +39,8 @@ const { upload, busy, error } = useImageUpload("banner");
 
 - `POST /api/uploads/<preset>`: same origin (request guard), staff only, the page's edit
   permission (`banner`/`speaker` → `events.edit`, `thumbnail` → `articles.edit`, `gallery` →
-  `gallery.edit`, `logo` → `organizations.edit`, `ktm` → `members.edit`) checked before the body
+  `gallery.edit`, `logo` → `organizations.edit`, `cabinet` → `structure.edit`, `ktm` →
+  `members.edit`) checked before the body
   is read; body > 5 MB → 413 "Maximum file size is 5 MB"; real type from the bytes (SVG, GIF and
   broken files → 400 "File type not supported"). Signatures are uploaded on web later.
 - Browser: `checkImageFile` first (nothing is uploaded when it fails), then the native canvas

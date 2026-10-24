@@ -71,26 +71,36 @@ const rename = createGuardedAction({
 
 ## Audit Log page and revert
 
-Admin `/audit` (`audit.read`, global): one card per entry, newest first, 20 per page ("Load
-more"), filters admin e-mail, page (module), action and date range (UTC). Headline
-`[ACTION] [Page] [title] - #[id]`, chips with the admin e-mail and the time, and the changed-field
-table (Field, Before, After). Read-only: there is no edit or delete route.
+Admin `/audit` (`audit.read`, global), a dark list page like the Event page. The server loads the
+entries of the chosen date range (`?range=` 1d / 7d (default) / 14d / 30d / all, newest
+`AUDIT_PAGE_LIMIT` = 500; a note says when the range has more) and maps them to rows
+(`toAuditRow` in `apps/admin/src/components/audit-model.ts`, user names from `users/{uid}`). The
+browser then filters and pages them: tabs per admin page with counts (Organizations = PPI, Period,
+Structure, Appointments), User and Action pickers, title search, "Reversible only", sort by date
+or action, 10/20/50 rows per page, and Export CSV of the filtered rows. Each row shows the time
+(UTC), the user, the action badge, page and title, `#` + the record id, and either "N days left" +
+Revert or "Irreversible" (reason as tooltip). The chevron opens the changed fields (Field,
+Before · time of the record's previous change, After · time of this change): text changes with
+the added words marked, photo fields as thumbnails with + / − marks, the Change ID (copy) and the
+raw JSON (without request metadata). Read-only: there is no edit or delete route.
 
 **Revert** (`audit.revert`, sign-in in the last 15 minutes): the button is disabled with the
-reason as tooltip — "Revert window expired" (> 14 days), "Already reverted", "A revert cannot be
+reason on "Irreversible" — "Revert window expired" (> 14 days), "Already reverted", "A revert cannot be
 reverted", "The record changed after this entry", or "This change cannot be reverted" (sends,
 uploads, role and account changes, and any record type not registered for revert). Otherwise a
-confirm dialog shows the same table, then ONE transaction re-checks everything
+confirm dialog names the fields, then ONE transaction re-checks everything
 (`evaluateRevert`), writes the Before values of only the listed fields back (a create is moved to
 trash, a delete is restored) with version + 1, and appends a NEW `REVERT` entry
 (`buildRevertEvent`, `revertOf` = the original). A security event `audit.revert` is logged.
 
-- Code: `apps/admin/src/app/(panel)/audit/**`, `apps/admin/src/server/audit-log.ts`
+- Code: `apps/admin/src/app/(panel)/audit/**`, `apps/admin/src/components/audit-{model,page}.ts(x)`,
+  `apps/admin/src/server/audit-log.ts`
   (`REVERTIBLE_COLLECTIONS`), `packages/db/src/firestore/audit.ts` (`createFirestoreAuditStore`).
 - A module makes its records revertible by adding `resourceType: "collection"` to
   `REVERTIBLE_COLLECTIONS` (its documents must carry `version`, `updatedAt`, `deletedAt`). The map
   is empty until the content modules (news, events, gallery) add theirs.
-- Tests: `tests/integration/audit-log.test.ts`.
+- Tests: `tests/integration/audit-log.test.ts` (revert), `tests/unit/admin-audit.test.ts` (rows,
+  tabs, days left, word diff, CSV).
 
 ## Integrity
 

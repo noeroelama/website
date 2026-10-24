@@ -38,6 +38,7 @@ export {
 export {
   createFirestoreSubscriberReader,
   createFirestoreSubscriberStore,
+  subscriberSnapshot,
   type FirestoreSubscriberReader,
   type FirestoreSubscriberStore,
   type SubscriberRow,
@@ -45,8 +46,10 @@ export {
 export {
   campaignSnapshot,
   createFirestoreCampaignStore,
+  createFirestoreCampaignWebStore,
   type CampaignFields,
   type FirestoreCampaignStore,
+  type FirestoreCampaignWebStore,
 } from "./campaigns";
 export {
   chapterSnapshot,

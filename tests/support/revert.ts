@@ -1,0 +1,39 @@
+import { createFirestoreAuditStore } from "@website/db/firestore";
+import { normalizePermissions, type Principal } from "@website/permissions";
+import {
+  createAuditLogActions,
+  REVERTIBLE_COLLECTIONS,
+} from "../../apps/admin/src/server/audit-log";
+
+type Db = Parameters<typeof createFirestoreAuditStore>[0];
+
+const auditor: Principal = {
+  kind: "user",
+  userId: "auditor-1",
+  active: true,
+  assignments: [
+    {
+      roleId: "r",
+      scope: { type: "global" },
+      permissions: new Set(normalizePermissions(["audit.read", "audit.revert"])),
+    },
+  ],
+};
+
+/** Reverts one audit entry the way the Audit Log page does (production revert collections). */
+export function revertEntry(db: unknown, id: string, now: Date) {
+  return createAuditLogActions({
+    audit: createFirestoreAuditStore(db as Db),
+    revertible: REVERTIBLE_COLLECTIONS,
+    now: () => now,
+    logSecurityEvent: () => undefined,
+  }).revert(
+    () => Promise.resolve(auditor),
+    () =>
+      Promise.resolve({
+        actorEmail: "auditor@example.org",
+        requestId: "req-777777",
+        authTime: Date.now() / 1000, // the recent-sign-in check uses the real clock
+      }),
+  )({ id });
+}

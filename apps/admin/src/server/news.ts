@@ -5,7 +5,6 @@ import {
   isPubliclyVisible,
   NewsInputSchema,
   publishState,
-  slugify,
   type ContentItem,
 } from "@website/domain/content";
 import { RuleViolationError } from "@website/domain/shared";
@@ -64,8 +63,7 @@ export function createNewsActions(deps: NewsDeps) {
       if (input.intent === "publish" && !can(principal, "articles.publish")) {
         throw new RuleViolationError(PUBLISH_NEEDED);
       }
-      const slug = input.slug || slugify(input.title);
-      if (!slug) throw new RuleViolationError("Use letters or numbers in the title or URL.");
+      const slug = input.slug;
       const now = deps.now();
       const { status, publishAt } = publishState(input.intent, input.publishAt, now);
       let action: "CREATE" | "UPDATE" | "PUBLISH" = "CREATE";

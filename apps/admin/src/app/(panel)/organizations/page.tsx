@@ -9,7 +9,11 @@ import { adminReads } from "@/server/wiring";
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-export default async function OrganizationsRoute() {
+export default async function OrganizationsRoute({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const viewer = await requireAdminViewer("/organizations", "organizations.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
   const canReadPeriods = can(viewer.principal, "periods.read");
@@ -25,6 +29,7 @@ export default async function OrganizationsRoute() {
       contactEditIds={contactScope === "all" ? [] : contactScope}
       periods={periods?.map(toPeriodItem) ?? null}
       canEditPeriods={can(viewer.principal, "periods.edit")}
+      initialView={(await searchParams)["view"] === "ppi" ? "ppi" : "period"}
     />
   );
 }

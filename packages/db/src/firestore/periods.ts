@@ -48,7 +48,7 @@ export type PeriodStatusAudit = (
 ) => AuditEvent;
 
 /**
- * `periods/{id}` (never deleted) and `settings/activePeriod` ({ periodId }), which the principal
+ * `periods/{id}` (deleted softly, never the active one) and `settings/activePeriod` ({ periodId }), which the principal
  * loader reads to decide which period-bound role assignments count.
  */
 export function createFirestorePeriodStore(db: Firestore) {
@@ -63,10 +63,10 @@ export function createFirestorePeriodStore(db: Firestore) {
   const auditLog = createFirestoreAuditWriter(db);
 
   return {
-    /** Every period, newest first. */
+    /** Every period that is not deleted, newest first. */
     async listForAdmin(): Promise<Period[]> {
       const snapshot = await store.docs.orderBy("startsOn", "desc").get();
-      return snapshot.docs.map((doc) => store.read(doc.id, doc.data()));
+      return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((p) => !p.deletedAt);
     },
     get: store.get,
     write: store.write,
@@ -82,6 +82,7 @@ export function createFirestorePeriodStore(db: Firestore) {
         const [snapshot, active] = await Promise.all([tx.get(ref), tx.get(activeRef)]);
         if (!snapshot.exists) throw new RuleViolationError("This item does not exist.");
         const current = store.read(id, snapshot.data());
+        if (current.deletedAt) throw new RuleViolationError("This item is in the trash.");
         if (current.version !== expectedVersion) {
           throw new ConcurrencyConflictError("periods version changed");
         }

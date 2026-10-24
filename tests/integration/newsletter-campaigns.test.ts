@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createFirestoreCampaignStore,
+  createFirestoreCampaignWebStore,
   createFirestoreSubscriberReader,
   createFirestoreSubscriberStore,
 } from "@website/db/firestore";
@@ -8,6 +9,7 @@ import type { Message } from "@website/domain/messaging";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createNewsletterActions } from "../../apps/admin/src/server/newsletter";
 import { fakeFirestore } from "../support/fake-firestore";
+import { revertEntry } from "../support/revert";
 
 type Db = Parameters<typeof createFirestoreCampaignStore>[0];
 let now = new Date("2026-10-18T05:00:00Z");
@@ -38,7 +40,10 @@ const actions = () => {
   const db = fake.db as unknown as Db;
   return createNewsletterActions({
     campaigns: createFirestoreCampaignStore(db),
-    subscribers: createFirestoreSubscriberReader(db),
+    subscribers: {
+      ...createFirestoreSubscriberReader(db),
+      ...createFirestoreSubscriberStore(db),
+    },
     // Like the messenger: a key is claimed once; a repeat answers "duplicate".
     send: vi.fn((message: Message, key: string) => {
       if (crashAfter !== null && mails.length >= crashAfter) throw new Error("crash");
@@ -48,6 +53,12 @@ const actions = () => {
       return Promise.resolve("sent" as const);
     }),
     unsubscribeUrl: (id) => `https://ppiasiania.id/newsletter/unsubscribe?t=signed-${id}`,
+    openUrl: (c, s) => `https://ppiasiania.id/newsletter/o?t=open-${c}-${s}`,
+    clickUrl: (c, s, url) => `https://ppiasiania.id/newsletter/c?t=click-${c}-${s}-${url}`,
+    subscriberId: (email) => `h${email.replace(/[^a-z0-9]/g, "")}`.padEnd(64, "0"),
+    newToken: () => "token-1",
+    confirmUrl: (id, token) => `https://ppiasiania.id/newsletter/confirm?s=${id}&t=${token}`,
+    chapters: () => Promise.resolve([{ id: "jp", name: "PPI Jepang" }]),
     staffEmail: (uid) => Promise.resolve(uid === "staff-1" ? "staff@example.org" : null),
     logExport: (actor, rows) => exports.push([actor, rows]),
     now: () => now,
@@ -61,6 +72,7 @@ const subscribe = async (n: number, status: "confirmed" | "pending" | "unsubscri
   if (status === "confirmed") await store.confirm(id, "hash", now);
   if (status === "unsubscribed") await store.unsubscribe(id, now);
 };
+const later = () => new Date(now.getTime() + 1e9);
 const auditEntries = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);
 const draft = async () => {
@@ -111,10 +123,16 @@ describe("newsletter campaigns", () => {
     expect(mails[0]?.message.html).toContain("unsubscribe?t=signed-");
     expect(mails[0]?.message.text).toContain("Unsubscribe: https://");
     expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ status: "sent", sentCount: 3 });
-    // A sent campaign can no longer be changed, sent or deleted.
-    expect(await actions().remove(...as(editor))({ id, version: 2 })).toMatchObject({
-      error: "refused",
-    });
+    // A sent campaign can no longer be changed or sent again.
+    expect(
+      await actions().save(...as(editor))({
+        id,
+        subject: "Edisi Oktober",
+        body: "<p>x</p>",
+        segment: "all",
+        version: 2,
+      }),
+    ).toMatchObject({ error: "refused" });
   });
 
   it("a crash mid-batch repeats the batch without mailing anyone twice", async () => {
@@ -208,10 +226,208 @@ describe("newsletter campaigns", () => {
     });
     const result = await actions().exportSubscribers(...as(sender))({});
     expect(result.ok && result.data.csv.split("\r\n")).toEqual([
-      "email,status,subscribed,confirmed",
-      expect.stringContaining('"user1@example.org","confirmed"'),
-      expect.stringContaining('"user2@example.org","pending"'),
+      "email,name,status,subscribed,confirmed",
+      expect.stringContaining('"user1@example.org","","confirmed"'),
+      expect.stringContaining('"user2@example.org","","pending"'),
     ]);
     expect(exports).toEqual([["staff-1", 2]]);
+  });
+
+  it("every campaign e-mail has an open pixel and tracked links; Send Test has neither", async () => {
+    await subscribe(1, "confirmed");
+    const saved = await actions().save(...as(editor))({
+      subject: "Links",
+      body: '<p><a href="https://ppi.id/a">a</a></p>',
+      segment: "all",
+      version: null,
+    });
+    const id = saved.ok ? saved.data.id : "";
+    await actions().sendTest(...as(editor))({ id });
+    expect(mails[0]?.message.html).toContain('href="https://ppi.id/a"');
+    expect(mails[0]?.message.html).not.toContain("newsletter/o?");
+    await actions().send(...as(sender))({ id, version: 1, sendAt: null });
+    await actions().runBatch();
+    const html = mails[1]?.message.html ?? "";
+    expect(html).toContain(`newsletter/c?t=click-${id}-c`);
+    expect(html).toContain("-https://ppi.id/a");
+    expect(html).toMatch(
+      new RegExp(`<img src="https://ppiasiania.id/newsletter/o\\?t=open-${id}-c0+1"`),
+    );
+    // The unsubscribe link is never wrapped.
+    expect(html).toContain('href="https://ppiasiania.id/newsletter/unsubscribe?t=signed-');
+  });
+
+  it("sent campaigns can be deleted and the deletion reverted; a sending one cannot", async () => {
+    await subscribe(1, "confirmed");
+    await subscribe(2, "confirmed");
+    await subscribe(3, "confirmed");
+    const id = await draft();
+    await actions().send(...as(sender))({ id, version: 1, sendAt: null });
+    await actions().runBatch();
+    expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ status: "sending" });
+    expect(await actions().remove(...as(editor))({ id, version: 2 })).toMatchObject({
+      error: "refused",
+    });
+    await actions().runBatch();
+    expect(await actions().remove(...as(editor))({ id, version: 2 })).toMatchObject({ ok: true });
+    const store = createFirestoreCampaignStore(fake.db as unknown as Db);
+    expect(await store.listForAdmin()).toEqual([]);
+    const entry = auditEntries().at(-1) as { id: string; action: string };
+    expect(entry.action).toBe("DELETE");
+    expect(await revertEntry(fake.db, entry.id, now)).toMatchObject({ ok: true });
+    expect((await store.listForAdmin()).map((c) => c.id)).toEqual([id]);
+  });
+
+  it("Add New Subscriber: opt-in e-mail, pending with name and PPI, audited without the address", async () => {
+    const add = (input: Record<string, unknown>, who = editor) =>
+      actions().addSubscriber(...as(who))({ name: "", chapterId: null, ...input });
+    expect(await add({ email: "sari@example.org" }, staff(["newsletter.read"]))).toMatchObject({
+      error: "forbidden",
+    });
+    expect(await add({ email: "nope" })).toMatchObject({ ok: false, error: "invalid_input" });
+    expect(await add({ email: "sari@example.org", chapterId: "xx" })).toMatchObject({
+      error: "refused",
+      issues: ["Choose a PPI from the list."],
+    });
+    expect(
+      await add({ email: " Sari@Example.org ", name: "Sari Wulandari", chapterId: "jp" }),
+    ).toMatchObject({ ok: true, data: { outcome: "start" } });
+    expect(mails).toHaveLength(1);
+    expect(mails[0]?.message.to).toBe("sari@example.org");
+    expect(mails[0]?.message.text).toContain("newsletter/confirm?s=hsariexampleorg");
+    expect(mails[0]?.key).toMatch(/^newsletter:hsariexampleorg0+:optin:1$/);
+    const list = await createFirestoreSubscriberReader(fake.db as unknown as Db).listForAdmin();
+    expect(list).toEqual([
+      expect.objectContaining({ status: "pending", name: "Sari Wulandari", chapterId: "jp" }),
+    ]);
+    const entry = auditEntries().at(-1);
+    expect(entry).toMatchObject({
+      action: "CREATE",
+      resourceType: "subscriber",
+      revertible: false,
+    });
+    expect(JSON.stringify(entry)).not.toContain("sari@example.org");
+    // Already pending (live link): nothing new is sent.
+    expect(await add({ email: "sari@example.org" })).toMatchObject({
+      ok: true,
+      data: { outcome: "exists" },
+    });
+    const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+    const gone = "hgoneexampleorg".padEnd(64, "0");
+    await store.startOptIn(gone, "gone@example.org", "x", now, now);
+    await store.unsubscribe(gone, now);
+    // Someone who unsubscribed is never re-mailed by staff (they can sign up again themselves).
+    expect(await add({ email: "gone@example.org" })).toMatchObject({
+      ok: true,
+      data: { outcome: "unsubscribed" },
+    });
+    expect(mails).toHaveLength(1);
+  });
+
+  it("Import CSV: new people get the opt-in e-mail; known, unsubscribed and bad rows are reported", async () => {
+    await actions().addSubscriber(...as(editor))({
+      email: "user1@example.org",
+      name: "",
+      chapterId: null,
+    });
+    const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+    const gone = "hgoneexampleorg".padEnd(64, "0");
+    await store.startOptIn(gone, "gone@example.org", "x", now, now);
+    await store.unsubscribe(gone, now);
+    const csv = [
+      "email,name,ppi",
+      "new@example.org,Budi,ppi jepang",
+      "user1@example.org,,",
+      "gone@example.org,,",
+      "broken,,",
+      "other@example.org,,PPI Mars",
+    ].join("\n");
+    expect(await actions().importSubscribers(...as(sender))({ csv })).toEqual({
+      ok: true,
+      data: { added: 2, existing: 1, unsubscribed: 1, invalid: [5] },
+    });
+    expect(mails.map((m) => m.message.to)).toEqual([
+      "user1@example.org",
+      "new@example.org",
+      "other@example.org",
+    ]);
+    const rows = await createFirestoreSubscriberReader(fake.db as unknown as Db).listForAdmin();
+    expect(rows.find((r) => r.email === "new@example.org")).toMatchObject({ chapterId: "jp" });
+    expect(rows.find((r) => r.email === "other@example.org")).toMatchObject({ chapterId: null });
+    expect(await actions().importSubscribers(...as(sender))({ csv: "name\nx" })).toMatchObject({
+      error: "refused",
+    });
+  });
+
+  it("deleting a subscriber hides and stops mailing them; revertible; a new sign-up brings them back", async () => {
+    await subscribe(1, "confirmed");
+    await subscribe(2, "confirmed");
+    const id = `c${"1".padStart(63, "0")}`;
+    expect(await actions().removeSubscriber(...as(editor))({ id })).toMatchObject({ ok: true });
+    expect(await actions().removeSubscriber(...as(editor))({ id })).toMatchObject({
+      error: "refused",
+    });
+    const reader = createFirestoreSubscriberReader(fake.db as unknown as Db);
+    expect((await reader.listForAdmin()).map((r) => r.email)).toEqual(["user2@example.org"]);
+    const campaign = await draft();
+    await actions().send(...as(sender))({ id: campaign, version: 1, sendAt: null });
+    expect(await actions().runBatch()).toMatchObject({ processed: 2 });
+    expect(mails.map((m) => m.message.to)).toEqual(["user2@example.org"]);
+    const exported = await actions().exportSubscribers(...as(sender))({});
+    expect(exported.ok && exported.data.csv).not.toContain("user1@");
+
+    const entry = auditEntries().find((e) => e["resourceType"] === "subscriber") as {
+      id: string;
+    };
+    expect(entry).toMatchObject({ action: "DELETE", revertible: true });
+    expect(await revertEntry(fake.db, entry.id, now)).toMatchObject({ ok: true });
+    expect(await reader.listForAdmin()).toHaveLength(2);
+
+    await actions().removeSubscriber(...as(editor))({ id });
+    // A subscriber stored before name, PPI and version existed can be deleted too.
+    const legacy = "l".padEnd(64, "0");
+    fake.docs.set(`subscribers/${legacy}`, {
+      subscriberId: legacy,
+      email: "old@example.org",
+      status: "confirmed",
+      confirmedAt: "2026-01-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(await actions().removeSubscriber(...as(editor))({ id: legacy })).toMatchObject({
+      ok: true,
+    });
+    expect(fake.docs.get(`subscribers/${legacy}`)).toMatchObject({ version: 1 });
+    const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+    expect(await store.startOptIn(id, "user1@example.org", "h2", later(), now)).toEqual({
+      optIn: 2,
+    });
+    expect(await reader.listForAdmin()).toHaveLength(2);
+  });
+});
+
+describe("open and click tracking (web routes) and the public archive", () => {
+  const sid = "c" + "1".padStart(63, "0");
+  const sendOne = async () => {
+    await subscribe(1, "confirmed");
+    const id = await draft();
+    await actions().send(...as(sender))({ id, version: 1, sendAt: null });
+    return id;
+  };
+
+  it("counts each subscriber's open and click once; a click also counts as an open", async () => {
+    const id = await sendOne();
+    const web = createFirestoreCampaignWebStore(fake.db as unknown as Db);
+    expect(await web.findPublic("missing")).toBeNull();
+    await actions().runBatch();
+    expect(await web.track("click", id, sid, now)).toBe(true);
+    expect(await web.track("open", id, sid, now)).toBe(true);
+    expect(await web.track("click", id, sid, now)).toBe(true);
+    expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ openCount: 1, clickCount: 1 });
+    expect(await web.track("open", "missing", sid, now)).toBe(false);
+    expect(await web.findPublic(id)).toMatchObject({ id, subject: "Edisi Oktober" });
+    // Deleting hides the archive page and stops counting.
+    await actions().remove(...as(editor))({ id, version: 2 });
+    expect(await web.findPublic(id)).toBeNull();
+    expect(await web.track("open", id, sid, now)).toBe(false);
   });
 });
