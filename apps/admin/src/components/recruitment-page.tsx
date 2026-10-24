@@ -221,9 +221,9 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
       header: "",
       align: "right",
       width: "10%",
-      render: (r) =>
-        canEdit ? (
-          <div className="admin-table__actions">
+      render: (r) => (
+        <div className="admin-table__actions">
+          {canEdit ? (
             <Button
               variant="ghost"
               size="icon"
@@ -231,28 +231,36 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
               aria-label="Edit"
               onClick={() => open(r)}
             />
-            <RowMenu>
-              <MenuItem
-                icon="globe"
-                disabled={busy || r.published}
-                onClick={() => setPublished(r, true)}
-              >
-                Publish
-              </MenuItem>
-              <MenuItem
-                icon="lock"
-                disabled={busy || !r.published}
-                onClick={() => setPublished(r, false)}
-              >
-                Unpublish
-              </MenuItem>
-              <MenuDivider />
-              <MenuItem icon="trash" danger onClick={() => setDeleting(r)}>
-                Delete Recruitment
-              </MenuItem>
-            </RowMenu>
-          </div>
-        ) : null,
+          ) : null}
+          <RowMenu>
+            <MenuItem icon="inbox" onClick={() => router.push(`/recruitment/${r.id}/applications`)}>
+              Applications
+            </MenuItem>
+            {canEdit ? (
+              <>
+                <MenuItem
+                  icon="globe"
+                  disabled={busy || r.published}
+                  onClick={() => setPublished(r, true)}
+                >
+                  Publish
+                </MenuItem>
+                <MenuItem
+                  icon="lock"
+                  disabled={busy || !r.published}
+                  onClick={() => setPublished(r, false)}
+                >
+                  Unpublish
+                </MenuItem>
+                <MenuDivider />
+                <MenuItem icon="trash" danger onClick={() => setDeleting(r)}>
+                  Delete Recruitment
+                </MenuItem>
+              </>
+            ) : null}
+          </RowMenu>
+        </div>
+      ),
     },
   ];
 

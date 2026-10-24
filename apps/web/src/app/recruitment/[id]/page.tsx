@@ -8,6 +8,7 @@ import { formatEventTime } from "@/lib/event-time";
 import { hasCompleteProfile } from "@/server/profile-wiring";
 import { recruitmentStore } from "@/server/recruitment-wiring";
 import { getSignedInUser } from "@/server/session";
+import { OfferButtons } from "./offer-buttons";
 import { WithdrawButton } from "./withdraw-button";
 
 // Per request: the applicant's own application and the window.
@@ -33,12 +34,13 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
   if (!r) notFound();
   const language = languageFrom(jar.get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language].recruitment;
-  const [application, complete] = user
+  const [application, complete, revisions] = user
     ? await Promise.all([
         recruitmentStore().ownApplication(r.id, user.uid),
         hasCompleteProfile(user.uid),
+        recruitmentStore().ownRevisions(r.id, user.uid),
       ])
-    : [null, false];
+    : [null, false, []];
   const action = nextAction(r, application, new Date());
   const path = `/recruitment/${r.id}`;
   const canApply = action === "start" || action === "complete" || action === "revise";
@@ -77,6 +79,24 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
             <p>
               {t.statusLabel}: <strong>{t.statuses[application.status]}</strong>
             </p>
+          )}
+          {action === "revise" && revisions.at(-1) && (
+            <p className="site-notice">
+              {t.revisionNote}: {revisions.at(-1)?.request}
+            </p>
+          )}
+          {action === "respond_offer" && application?.offer && (
+            <>
+              <p>
+                {t.offerUnit}:{" "}
+                <strong>
+                  {r.units.find((u) => u.orgUnitId === application.offer?.orgUnitId)?.name}
+                </strong>
+                <br />
+                {t.offerUntil} {formatEventTime(application.offer.expiresAt, "UTC", language)} (UTC)
+              </p>
+              <OfferButtons recruitmentId={r.id} labels={t} />
+            </>
           )}
           {/* ONE next action (C3): a button when the applicant can act, else what happens next. */}
           {canApply ? (

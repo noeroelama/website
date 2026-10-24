@@ -4804,3 +4804,46 @@ form.admin-toolbar::before {
 .admin-recruit-unit__quota {
   width: calc(var(--space-16) + var(--space-4));
 }
+
+/* Application detail (components/applications-page.tsx): label / value pairs. */
+.admin-detail-list {
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  color: var(--admin-ink, var(--color-text));
+  font-size: var(--text-sm);
+}
+
+.admin-detail-list dt {
+  color: var(--admin-ink-muted, var(--color-text-muted));
+}
+
+.admin-detail-list dd {
+  margin: 0;
+}
+
+/* A question + answer pair keeps the two grid columns. */
+.admin-detail-list__row {
+  display: contents;
+}
+
+.admin-detail-list__text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-detail-rounds {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--admin-ink, var(--color-text));
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 767px) {
+  .admin-detail-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

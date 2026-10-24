@@ -21,7 +21,13 @@ import { safeId, safeText } from "@website/security/validation";
 export interface ApplyingDeps {
   readonly store: Pick<
     FirestoreRecruitmentWebStore,
-    "getPublished" | "saveDraft" | "setPortfolio" | "setAnswerFile" | "submit" | "withdraw"
+    | "getPublished"
+    | "saveDraft"
+    | "setPortfolio"
+    | "setAnswerFile"
+    | "submit"
+    | "withdraw"
+    | "respondOffer"
   >;
   readonly profileComplete: (uid: string) => Promise<boolean>;
   /** Private Storage (portfolios have no public URL). */
@@ -94,6 +100,14 @@ export function createApplying(deps: ApplyingDeps) {
       const g = await gate(user, Ref, input);
       if (!g.ok) return g.result;
       return toResult(await deps.store.submit(g.data.recruitmentId, g.uid, deps.now()));
+    },
+
+    /** Accept (takes the seat, refused when full) or decline the own offer before it expires. */
+    async respondOffer(user: Applicant, input: unknown): Promise<ApplyResult> {
+      const g = await gate(user, Ref.extend({ accept: z.boolean() }).strict(), input);
+      if (!g.ok) return g.result;
+      const { recruitmentId, accept } = g.data;
+      return toResult(await deps.store.respondOffer(recruitmentId, g.uid, accept, deps.now()));
     },
 
     async withdraw(user: Applicant, input: unknown): Promise<ApplyResult> {

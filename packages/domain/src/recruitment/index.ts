@@ -212,6 +212,42 @@ export const isPdf = (bytes: Uint8Array) =>
   bytes[3] === 0x46 &&
   bytes[4] === 0x2d;
 
+export const revisionDocId = (applicationId: string, round: number) => `${applicationId}_${round}`;
+
+/** One revision round (`applicationRevisions/{applicationId}_{round}`); never overwritten. */
+export interface RevisionRound {
+  readonly applicationId: string;
+  readonly round: number;
+  /** What the committee asks the applicant to change. */
+  readonly request: string;
+  readonly requestedAt: Date;
+  readonly requestedBy: string;
+  /** Set when the applicant submits again. */
+  readonly resubmittedAt: Date | null;
+}
+
+export const RevisionRequestSchema = safeText(2000, { multiline: true });
+
+/** An offer of one of the recruitment's units, valid for `offerDays` from now. */
+export function makeOffer(
+  r: Pick<Recruitment, "units" | "offerDays">,
+  orgUnitId: string,
+  now: Date,
+): Offer {
+  if (!r.units.some((u) => u.orgUnitId === orgUnitId)) {
+    throw new RuleViolationError("Offer one of the units of this recruitment.");
+  }
+  return { orgUnitId, expiresAt: new Date(now.getTime() + r.offerDays * 86_400_000) };
+}
+
+/** The seat rule: a seat is taken only while `filled < quota` (one counter per unit). */
+export function takeSeat(counter: { quota: number; filled: number } | null): number {
+  if (!counter || counter.filled >= counter.quota) {
+    throw new RuleViolationError("All seats of this unit are taken.");
+  }
+  return counter.filled + 1;
+}
+
 /** An offer counts until its expiry (read-time rule: no job releases it). */
 export const offerExpired = (offer: Offer | null, now: Date) =>
   offer !== null && offer.expiresAt <= now;

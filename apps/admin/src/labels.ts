@@ -14,6 +14,7 @@ import {
   type FormUsage,
   type QuestionType,
 } from "@website/domain/forms";
+import { APPLICATION_STATUSES, type ApplicationStatus } from "@website/domain/recruitment";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
 import {
   CHAPTER_RISKS,
@@ -149,6 +150,22 @@ export const QUESTION_TYPE_LABELS = {
   consent: { id: "Persetujuan", en: "Consent" },
 } as const satisfies Record<QuestionType, Label>;
 
+export const APPLICATION_STATUS_LABELS = {
+  draft: { id: "Draf", en: "Draft" },
+  submitted: { id: "Terkirim", en: "Submitted" },
+  revision: { id: "Perlu revisi", en: "Revision requested" },
+  admin_rejected: { id: "Gugur administrasi", en: "Failed document check" },
+  interview: { id: "Wawancara", en: "Interview" },
+  offered: { id: "Ditawari", en: "Offered" },
+  accepted: { id: "Menerima tawaran", en: "Accepted" },
+  declined: { id: "Menolak tawaran", en: "Declined" },
+  approved: { id: "Penempatan disetujui", en: "Placement approved" },
+  pakta_review: { id: "Pakta diperiksa", en: "Pact in review" },
+  confirmed: { id: "Dikukuhkan", en: "Confirmed" },
+  rejected: { id: "Tidak lolos", en: "Rejected" },
+  withdrawn: { id: "Mengundurkan diri", en: "Withdrawn" },
+} as const satisfies Record<ApplicationStatus, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -168,6 +185,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "form usage", keys: FORM_USAGES, labels: FORM_USAGE_LABELS },
   { name: "form status", keys: FORM_STATUSES, labels: FORM_STATUS_LABELS },
   { name: "question type", keys: QUESTION_TYPES, labels: QUESTION_TYPE_LABELS },
+  { name: "application status", keys: APPLICATION_STATUSES, labels: APPLICATION_STATUS_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

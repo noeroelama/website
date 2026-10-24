@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Recruitment } from "@website/domain/recruitment";
 import {
+  matchesQueueTab,
+  toApplicationItem,
+} from "../../apps/admin/src/components/applications-model";
+import {
   toRecruitmentItem,
   unitDrafts,
   unitsInput,
@@ -75,5 +79,98 @@ describe("Recruitment page model", () => {
       },
     ]);
     expect(unitsInput(drafts)).toEqual([{ orgUnitId: "media", quota: 2, portfolioRequired: true }]);
+  });
+});
+
+describe("selection queue model", () => {
+  const at = new Date("2026-11-10T00:00:00Z");
+  const application = {
+    id: "rec1_ari",
+    recruitmentId: "rec1",
+    userId: "ari",
+    status: "offered" as const,
+    choices: ["media", "gone"],
+    answers: {
+      q_why: "Because.",
+      q_cv: {
+        path: "forms/f1/ari_1.pdf",
+        name: "cv.pdf",
+        contentType: "application/pdf" as const,
+        size: 3,
+      },
+    },
+    portfolio: null,
+    revisionRound: 1,
+    offer: { orgUnitId: "media", expiresAt: new Date("2026-11-09T00:00:00Z") },
+    submittedAt: at,
+    version: 4,
+    createdAt: at,
+    updatedAt: at,
+  };
+  const question = (id: string, type: "short_text" | "file") => ({
+    id,
+    type,
+    label: id,
+    description: "",
+    required: true,
+    options: [],
+    allowOther: false,
+    maxSelections: null,
+    min: null,
+    max: null,
+  });
+
+  it("maps an application with unit names, answers, files, expired offer and its rounds", () => {
+    const item = toApplicationItem(
+      application,
+      r,
+      [question("q_why", "short_text"), question("q_cv", "file")],
+      { name: "Ari Wibowo", email: "ari@example.org" },
+      [
+        {
+          applicationId: "rec1_ari",
+          round: 1,
+          request: "More",
+          requestedAt: at,
+          requestedBy: "c",
+          resubmittedAt: null,
+        },
+        {
+          applicationId: "other",
+          round: 1,
+          request: "x",
+          requestedAt: at,
+          requestedBy: "c",
+          resubmittedAt: at,
+        },
+      ],
+      at,
+    );
+    expect(item).toMatchObject({
+      name: "Ari Wibowo",
+      statusLabel: "Offered",
+      choices: [
+        { id: "media", name: "Media" },
+        { id: "gone", name: "gone" },
+      ],
+      offer: { unitName: "Media", expired: true },
+      answers: [
+        { id: "q_why", text: "Because.", file: null },
+        { id: "q_cv", text: "cv.pdf", file: { name: "cv.pdf" } },
+      ],
+      revisions: [{ round: 1, request: "More", resubmittedAt: null }],
+    });
+    // Without a user record the uid stands in; drafts have no submission time.
+    expect(
+      toApplicationItem({ ...application, offer: null, submittedAt: null }, r, [], null, [], at),
+    ).toMatchObject({ name: "ari", email: "", offer: null, submittedAt: null });
+  });
+
+  it("puts every status in exactly one step tab", () => {
+    expect(matchesQueueTab({ status: "submitted" }, "review")).toBe(true);
+    expect(matchesQueueTab({ status: "confirmed" }, "placement")).toBe(true);
+    expect(matchesQueueTab({ status: "withdrawn" }, "closed")).toBe(true);
+    expect(matchesQueueTab({ status: "withdrawn" }, "all")).toBe(true);
+    expect(matchesQueueTab({ status: "interview" }, "offered")).toBe(false);
   });
 });

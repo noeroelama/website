@@ -16,13 +16,14 @@ shows ONE next action.
   window, choices, portfolio rule, `nextAction`, offer expiry).
 - Storage: `packages/db/src/firestore/recruitment.ts` — admin store (`recruitments`,
   `seatCounters`) and web store (the applicant's own `applications/{recruitmentId}_{uid}`).
-- Admin: `apps/admin/src/server/recruitment.ts`, page `/recruitment`
-  (`src/components/recruitment-page.tsx`, `recruitment-model.ts`).
+- Admin: `apps/admin/src/server/recruitment.ts` (set-up) and `applications.ts` (selection), pages
+  `/recruitment` (`src/components/recruitment-page.tsx`, `recruitment-model.ts`) and
+  `/recruitment/{id}/applications` (`applications-page.tsx`, `applications-model.ts`).
 - Web: `/recruitment`, `/recruitment/[id]` (status + next action), `/recruitment/[id]/apply`,
   upload route `POST /api/recruitment/[id]/portfolio[?question=q_…]`; logic
   `apps/web/src/server/recruitment.ts`, wiring `recruitment-wiring.ts`.
 - Tests: `tests/unit/recruitment.test.ts`, `tests/unit/admin-recruitment.test.ts`,
-  `tests/integration/recruitment.test.ts`.
+  `tests/integration/recruitment.test.ts`, `tests/integration/selection.test.ts`.
 
 ## How to use it
 
@@ -50,7 +51,20 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
   5 MB, stored privately (no URL): `recruitment/{id}/{uid}/portfolio_…pdf` and
   `forms/{formId}/{uid}_…pdf`. File answers come only from the upload route; a file "answer" sent
   with a draft is ignored, so no path can point at another applicant's file.
-- **Offers** expire at read time (`offerExpired`): no job releases them.
+- **Selection** (admin `/recruitment/{id}/applications`, tabs per step; `src/server/applications.ts`):
+  `recruitment.review` requests a revision (a new round `applicationRevisions/{appId}_{n}` with
+  the request; rounds are never overwritten, a resubmission sets `resubmittedAt`), fails
+  (`admin_rejected`), passes (`interview`) and rejects; `recruitment.offer` offers one unit of the
+  recruitment, valid `offerDays` (a full unit cannot be offered). Each decision is one
+  transaction with its audit entry. The queue page needs review, offer or confirm.
+- **Seats**: taken only when the applicant ACCEPTS on the website: the accept transaction reads
+  and writes `seatCounters/{recruitmentId}_{unitId}` and refuses when `filled >= quota`, so
+  concurrent accepts never exceed the quota. Rejecting an accepted applicant gives the seat back
+  in the same transaction. Declining takes nothing.
+- **Offers** expire at read time (`offerExpired`): no job releases them; an expired offer cannot
+  be answered and the committee may offer again.
+- **Files** are opened by the committee through 15-minute signed links, only for paths that
+  belong to that application (`fileUrl`, `recruitment.review`).
 - **Audit**: set-up changes (module `recruitment`, resource `recruitment`; CREATE and DELETE
   revertible). Applicant changes are logged with the member as actor (resource `application`):
   status, choices, round, offer and portfolio name — never the answers.

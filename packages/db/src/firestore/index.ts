@@ -129,11 +129,15 @@ export {
 } from "./forms";
 export {
   applicationSnapshot,
+  createFirestoreApplicationStore,
   createFirestoreRecruitmentStore,
   createFirestoreRecruitmentWebStore,
   recruitmentSnapshot,
   toApplication,
+  type ApplicationAudit,
   type ApplyOutcome,
+  type Decision,
+  type FirestoreApplicationStore,
   type FirestoreRecruitmentStore,
   type FirestoreRecruitmentWebStore,
   type RecruitmentAudit,

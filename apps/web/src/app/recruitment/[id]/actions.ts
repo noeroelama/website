@@ -20,3 +20,7 @@ export async function submitApplicationAction(input: unknown) {
 export async function withdrawApplicationAction(input: unknown) {
   return applying().withdraw(await applicant(), input);
 }
+
+export async function respondOfferAction(input: unknown) {
+  return applying().respondOffer(await applicant(), input);
+}

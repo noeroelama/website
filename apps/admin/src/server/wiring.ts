@@ -7,6 +7,7 @@ import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newslette
 import { logSecurityEvent } from "@website/observability";
 import { keyedHash, signLink } from "@website/security";
 import { createAccountActions } from "./accounts";
+import { createApplicationActions } from "./applications";
 import { createAppointmentActions } from "./appointments";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createChapterActions } from "./chapters";
@@ -85,6 +86,15 @@ export const formActions = lazyEnv(() =>
 /** Recruitment page: set-up (window, units and seats, form). */
 export const recruitmentActions = lazyEnv(() =>
   createRecruitmentActions({ recruitments: adminStores().recruitments, now: () => new Date() }),
+);
+
+/** Recruitment → Applications: the selection queue (review, offers, files). */
+export const applicationActions = lazyEnv(() =>
+  createApplicationActions({
+    applications: adminStores().applications,
+    signedUrl: (path) => imageStorage().signedReadUrl(path),
+    now: () => new Date(),
+  }),
 );
 
 /** Universities page: review of proposed campuses. */
@@ -232,6 +242,12 @@ export const adminReads = {
   listEvents: () => adminStores().events.listForAdmin(),
   listForms: () => adminStores().forms.listForAdmin(),
   listRecruitments: () => adminStores().recruitments.listForAdmin(),
+  getRecruitment: (id: string) => adminStores().recruitments.get(id),
+  listApplications: (recruitmentId: string) =>
+    adminStores().applications.listForRecruitment(recruitmentId),
+  listRevisions: (recruitmentId: string) =>
+    adminStores().applications.revisionsForRecruitment(recruitmentId),
+  getFormVersion: (formId: string, n: number) => adminStores().forms.getVersion(formId, n),
   recruitmentSeats: (ids: readonly string[]) => adminStores().recruitments.seats(ids),
   getForm: (id: string) => adminStores().forms.get(id),
   listFormVersions: (id: string) => adminStores().forms.listVersions(id),

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { CollectionReference, Firestore, Transaction } from "firebase-admin/firestore";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import { parseAnswers, versionDocId, type Answers, type FileAnswer } from "@website/domain/forms";
 import {
@@ -7,8 +7,13 @@ import {
   assertTransition,
   checkChoices,
   isRecruitmentOpen,
+  offerExpired,
   portfolioRequired,
+  revisionDocId,
   seatCounterId,
+  takeSeat,
+  type Offer,
+  type RevisionRound,
   type Application,
   type ApplicationStatus,
   type Recruitment,
@@ -108,6 +113,45 @@ const applicationDoc = (a: Application) => ({
   createdAt: a.createdAt,
   updatedAt: a.updatedAt,
 });
+
+function toRevision(data: Record<string, unknown>): RevisionRound {
+  return {
+    applicationId: data["applicationId"] as string,
+    round: data["round"] as number,
+    request: data["request"] as string,
+    requestedAt: toDate(data["requestedAt"]) as Date,
+    requestedBy: data["requestedBy"] as string,
+    resubmittedAt: toDate(data["resubmittedAt"]),
+  };
+}
+
+const listRevisions = async (
+  revisions: CollectionReference,
+  id: string,
+): Promise<RevisionRound[]> => {
+  const snapshot = await revisions.where("applicationId", "==", id).get();
+  return snapshot.docs.map((doc) => toRevision(doc.data())).sort((a, b) => a.round - b.round);
+};
+
+/** What an admin decision does to an application (built by the action from the rules). */
+export interface Decision {
+  readonly status: ApplicationStatus;
+  /** Set on an offer; kept otherwise. */
+  readonly offer?: Offer;
+  /** A revision request opens round n+1 (`applicationRevisions/{id}_{n+1}`). */
+  readonly revision?: { readonly request: string; readonly requestedBy: string };
+}
+
+/** Sort key of the queue: never-submitted (withdrawn drafts) first. */
+const submittedTime = (a: Application) => a.submittedAt?.getTime() ?? 0;
+
+export type ApplicationAudit = (
+  before: Snapshot,
+  after: Snapshot,
+  current: Application,
+  next: Application,
+  recruitmentTitle: string,
+) => AuditEvent;
 
 export type RecruitmentAudit = (
   before: Snapshot | null,
@@ -276,6 +320,138 @@ export function createFirestoreRecruitmentStore(db: Firestore) {
 
 export type FirestoreRecruitmentStore = ReturnType<typeof createFirestoreRecruitmentStore>;
 
+/**
+ * The committee's side of applications (C3 steps 3-6): the queue and the decisions. Every
+ * decision is ONE transaction: the application (status, version), its recruitment and, when a
+ * seat is involved, the unit's seat counter are read; the transition rule is checked; the
+ * application, the revision round, the counter and the audit entry are written together.
+ */
+export function createFirestoreApplicationStore(db: Firestore) {
+  const recruitments = db.collection("recruitments");
+  const applications = db.collection("applications");
+  const revisions = db.collection("applicationRevisions");
+  const counters = db.collection("seatCounters");
+  const auditLog = createFirestoreAuditWriter(db);
+
+  return {
+    /** Every application that left the draft stage, first submitted first. */
+    async listForRecruitment(recruitmentId: string): Promise<Application[]> {
+      const snapshot = await applications
+        .where("recruitmentId", "==", safeId.parse(recruitmentId))
+        .get();
+      return snapshot.docs
+        .map((doc) => toApplication(doc.id, doc.data()))
+        .filter((a) => a.status !== "draft")
+        .sort((a, b) => submittedTime(a) - submittedTime(b));
+    },
+
+    async get(id: string): Promise<Application | null> {
+      if (!safeId.safeParse(id).success) return null;
+      const snapshot = await applications.doc(id).get();
+      return snapshot.exists
+        ? toApplication(snapshot.id, snapshot.data() as Record<string, unknown>)
+        : null;
+    },
+
+    /** Revision rounds of one application, oldest first (kept forever). */
+    revisions: (id: string) => listRevisions(revisions, safeId.parse(id)),
+
+    /** Every revision round of a recruitment's applications (one query), oldest first. */
+    async revisionsForRecruitment(recruitmentId: string): Promise<RevisionRound[]> {
+      const snapshot = await revisions
+        .where("recruitmentId", "==", safeId.parse(recruitmentId))
+        .get();
+      return snapshot.docs.map((doc) => toRevision(doc.data())).sort((a, b) => a.round - b.round);
+    },
+
+    decide(
+      id: string,
+      expectedVersion: number,
+      decide: (application: Application, recruitment: Recruitment) => Decision,
+      audit: ApplicationAudit,
+      now: Date,
+    ): Promise<Application> {
+      const ref = applications.doc(safeId.parse(id));
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        if (!snapshot.exists) throw new RuleViolationError("This application does not exist.");
+        const current = toApplication(snapshot.id, snapshot.data() as Record<string, unknown>);
+        if (current.version !== expectedVersion) {
+          throw new ConcurrencyConflictError("applications version changed");
+        }
+        const rSnapshot = await tx.get(recruitments.doc(current.recruitmentId));
+        const recruitment = toRecruitment(
+          rSnapshot.id,
+          rSnapshot.data() as Record<string, unknown>,
+        );
+        const decision = decide(current, recruitment);
+        assertTransition(current.status, decision.status);
+        // An offer needs a free seat; leaving "accepted" gives the seat back.
+        const offerCounter = decision.offer
+          ? counters.doc(seatCounterId(recruitment.id, decision.offer.orgUnitId))
+          : null;
+        const releaseCounter =
+          current.status === "accepted" && current.offer
+            ? counters.doc(seatCounterId(recruitment.id, current.offer.orgUnitId))
+            : null;
+        const [offerSeat, releaseSeat] = await Promise.all([
+          offerCounter && tx.get(offerCounter),
+          releaseCounter && tx.get(releaseCounter),
+        ]);
+        if (offerSeat) {
+          takeSeat(
+            offerSeat.exists
+              ? {
+                  quota: offerSeat.get("quota") as number,
+                  filled: offerSeat.get("filled") as number,
+                }
+              : null,
+          );
+        }
+        const round = decision.revision ? current.revisionRound + 1 : current.revisionRound;
+        const next: Application = {
+          ...current,
+          status: decision.status,
+          offer: decision.offer ?? current.offer,
+          revisionRound: round,
+          version: current.version + 1,
+          updatedAt: now,
+        };
+        const log = await auditLog.begin(tx);
+        tx.set(ref, applicationDoc(next));
+        if (decision.revision) {
+          tx.create(revisions.doc(revisionDocId(current.id, round)), {
+            applicationId: current.id,
+            recruitmentId: current.recruitmentId,
+            round,
+            request: decision.revision.request,
+            requestedAt: now,
+            requestedBy: decision.revision.requestedBy,
+            resubmittedAt: null,
+          });
+        }
+        if (releaseSeat?.exists) {
+          tx.update(releaseCounter as NonNullable<typeof releaseCounter>, {
+            filled: Math.max(0, (releaseSeat.get("filled") as number) - 1),
+          });
+        }
+        log.append(
+          audit(
+            applicationSnapshot(current),
+            applicationSnapshot(next),
+            current,
+            next,
+            recruitment.title,
+          ),
+        );
+        return next;
+      });
+    },
+  };
+}
+
+export type FirestoreApplicationStore = ReturnType<typeof createFirestoreApplicationStore>;
+
 /* ------------------------------------------------------------------ website (applicants) */
 
 export type ApplyOutcome =
@@ -328,6 +504,8 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
   const recruitments = db.collection("recruitments");
   const applications = db.collection("applications");
   const versions = db.collection("formVersions");
+  const revisions = db.collection("applicationRevisions");
+  const counters = db.collection("seatCounters");
   const auditLog = createFirestoreAuditWriter(db);
 
   const readRecruitment = async (tx: Transaction, id: string) => {
@@ -352,6 +530,8 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
       questions: Parameters<typeof parseAnswers>[0],
     ) => Application | Exclude<ApplyOutcome, { ok: true }>,
     markAnswered = false,
+    /** Extra writes in the same transaction (after the application is written). */
+    also?: (tx: Transaction, current: Application | null, next: Application) => void,
   ): Promise<ApplyOutcome> =>
     db.runTransaction(async (tx): Promise<ApplyOutcome> => {
       const r = await readRecruitment(tx, recruitmentId);
@@ -369,6 +549,7 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
       if ("ok" in result) return result;
       const log = await auditLog.begin(tx);
       tx.set(ref, applicationDoc(result));
+      also?.(tx, current, result);
       if (markAnswered && version.exists && !version.get("answered")) {
         tx.update(versionRef, { answered: true });
       }
@@ -529,7 +710,71 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
           return bump(current, now, { status: "submitted", submittedAt: now });
         },
         true,
+        // A resubmission closes the open revision round (the round's request stays as it was).
+        (tx, current, next) => {
+          if (current?.status === "revision") {
+            tx.update(revisions.doc(revisionDocId(next.id, current.revisionRound)), {
+              resubmittedAt: now,
+            });
+          }
+        },
       );
+    },
+
+    /** The applicant's own revision rounds, oldest first. */
+    async ownRevisions(recruitmentId: string, uid: string): Promise<RevisionRound[]> {
+      return listRevisions(
+        revisions,
+        applicationId(safeId.parse(recruitmentId), safeId.parse(uid)),
+      );
+    },
+
+    /**
+     * Accept or decline an offer (C3 step 6). Accepting takes the seat: ONE transaction reads
+     * and writes `seatCounters/{recruitmentId}_{orgUnitId}` and refuses when it is full, so
+     * concurrent accepts never exceed the quota. An expired offer cannot be answered.
+     */
+    respondOffer(
+      recruitmentId: string,
+      uid: string,
+      accept: boolean,
+      now: Date,
+    ): Promise<ApplyOutcome> {
+      return db.runTransaction(async (tx): Promise<ApplyOutcome> => {
+        const r = await readRecruitment(tx, recruitmentId);
+        if (!r) return { ok: false, error: "closed" };
+        const ref = applications.doc(applicationId(r.id, safeId.parse(uid)));
+        const snapshot = await tx.get(ref);
+        const current = snapshot.exists
+          ? toApplication(snapshot.id, snapshot.data() as Record<string, unknown>)
+          : null;
+        if (!current || current.status !== "offered" || !current.offer) {
+          return { ok: false, error: "locked" };
+        }
+        if (offerExpired(current.offer, now)) {
+          return { ok: false, error: "refused", message: "This offer has expired." };
+        }
+        const counterRef = counters.doc(seatCounterId(r.id, current.offer.orgUnitId));
+        let filled = 0;
+        if (accept) {
+          const counter = await tx.get(counterRef);
+          try {
+            filled = takeSeat(
+              counter.exists
+                ? { quota: counter.get("quota") as number, filled: counter.get("filled") as number }
+                : null,
+            );
+          } catch (error) {
+            return { ok: false, error: "refused", message: (error as Error).message };
+          }
+        }
+        const next = bump(current, now, { status: accept ? "accepted" : "declined" });
+        const log = await auditLog.begin(tx);
+        tx.set(ref, applicationDoc(next));
+        if (accept) tx.update(counterRef, { filled });
+        log.append(applicantAudit(uid, now, r.title, current, next));
+        return { ok: true, application: next };
+      });
     },
 
     /** The applicant withdraws (before any seat was taken). */
