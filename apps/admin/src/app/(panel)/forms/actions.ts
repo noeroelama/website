@@ -16,3 +16,20 @@ export async function removeFormAction(input: unknown) {
   if (result.ok) revalidatePath("/forms");
   return result;
 }
+
+export async function publishFormAction(input: unknown) {
+  const result = await formActions().publish(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/forms");
+  return result;
+}
+
+export async function closeFormAction(input: unknown) {
+  const result = await formActions().close(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/forms");
+  return result;
+}
+
+/** Responses → Export CSV (forms.export; logged as a data.export security event). */
+export async function exportFormResponsesAction(input: unknown) {
+  return formActions().exportResponses(getPrincipal, getAuditContext)(input);
+}

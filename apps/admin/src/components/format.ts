@@ -37,5 +37,9 @@ export function formatInZone(iso: string, timeZone: string, withTime = true): st
   }).format(new Date(iso));
 }
 
-/** One CSV cell, quoted (inner quotes doubled); rows go to `downloadCsv` (csv.ts). */
-export const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+/**
+ * One CSV cell, quoted (inner quotes doubled); rows go to `downloadCsv` (csv.ts). A cell that a
+ * spreadsheet would run as a formula (starts with = + - @, tab or carriage return) gets a
+ * leading apostrophe, so typed-in answers can never execute ("CSV injection").
+ */
+export const esc = (v: string) => `"${(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`;

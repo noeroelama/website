@@ -59,6 +59,8 @@ export default defineConfig({
         "packages/domain/src/forms/index.ts",
         "packages/db/src/firestore/forms.ts",
         "apps/admin/src/server/forms.ts",
+        "apps/web/src/server/forms.ts",
+        "apps/web/src/lib/form-answers.ts",
         "packages/db/src/firestore/chapters.ts",
         "apps/admin/src/server/chapters.ts",
       ],

@@ -4,6 +4,7 @@ import { authorsById, lastEditors } from "@/components/authors";
 import { toFormItem } from "@/components/forms-model";
 import { FormsPage } from "@/components/forms-page";
 import { requireAdminViewer } from "@/server/context";
+import { getAppUrls } from "@/server/env";
 import { adminReads } from "@/server/wiring";
 
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
@@ -29,6 +30,9 @@ export default async function AdminFormsPage() {
     <FormsPage
       initial={forms.map((f) => toFormItem(f, versions.get(f.id), authors.get(f.id) ?? null))}
       canEdit={can(viewer.principal, "forms.edit")}
+      canPublish={can(viewer.principal, "forms.publish")}
+      canSeeResponses={can(viewer.principal, "forms.responses")}
+      publicBase={getAppUrls().WEB_URL ?? ""}
     />
   );
 }

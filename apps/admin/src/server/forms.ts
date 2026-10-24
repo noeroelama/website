@@ -4,29 +4,41 @@ import type { FirestoreFormStore } from "@website/db/firestore";
 import {
   assertPublishable,
   FormInputSchema,
+  responseTable,
   withQuestionIds,
   type Form,
 } from "@website/domain/forms";
+import { RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface FormDeps {
-  readonly forms: Pick<FirestoreFormStore, "save" | "write">;
+  readonly forms: Pick<
+    FirestoreFormStore,
+    "save" | "write" | "get" | "versionIn" | "listVersions" | "listResponses"
+  >;
   readonly now: () => Date;
   readonly uuid: () => string;
+  /** Public URL token: 128 random bits, base64url. */
+  readonly token: () => string;
+  /** `data.export` security event (responses are personal data when they hold names/e-mails). */
+  readonly logExport: (actorId: string, details: Record<string, unknown>) => void;
 }
+
+/** Most responses one export reads. */
+export const EXPORT_LIMIT = 10_000;
 
 const SaveInput = FormInputSchema.and(
   z.object({ id: safeId.optional(), version: z.number().int().min(1).nullable() }).strict(),
 );
 const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).strict();
 
-type Action = "CREATE" | "UPDATE" | "DELETE";
+type Action = "CREATE" | "UPDATE" | "DELETE" | "PUBLISH" | "UNPUBLISH";
 
 /**
  * Audit entry for one form change (module `forms`, resource `form`). A CREATE (revert = trash)
- * and a DELETE (revert = restore) are revertible; an edit is not: it may have created a new
- * question version, which a revert of the form document would leave behind.
+ * and a DELETE (revert = restore) are revertible; an edit is not (it may have created a new
+ * question version), nor is publishing or closing (the link is already out).
  */
 const formAudit =
   (audit: AuditBuilder, action: Action) =>
@@ -46,7 +58,7 @@ const formAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      revertible: action !== "UPDATE",
+      revertible: action === "CREATE" || action === "DELETE",
     });
 
 /** Forms page actions: save (settings + questions, versioned) and delete (soft). */
@@ -93,5 +105,67 @@ export function createFormActions(deps: FormDeps) {
     },
   });
 
-  return { save, remove };
+  /** Publishes a public form at /f/{token}; the token is created once and kept (re-opening). */
+  const publish = createGuardedAction({
+    permission: "forms.publish",
+    input: RefInput,
+    handler: async ({ id, version }, _principal, audit) => {
+      const saved = await deps.forms.write(
+        id,
+        version,
+        async (current, tx) => {
+          const form = current as Form;
+          const questions = await deps.forms.versionIn(tx, form.id, form.currentVersion);
+          assertPublishable(form, questions?.questions ?? []);
+          return { ...form, status: "published", publicToken: form.publicToken ?? deps.token() };
+        },
+        formAudit(audit, "PUBLISH"),
+        deps.now(),
+      );
+      return { version: saved.version, publicToken: saved.publicToken as string };
+    },
+  });
+
+  /** Stops answers; the link then shows "closed". */
+  const close = createGuardedAction({
+    permission: "forms.publish",
+    input: RefInput,
+    handler: async ({ id, version }, _principal, audit) => {
+      const saved = await deps.forms.write(
+        id,
+        version,
+        (current) => {
+          const form = current as Form;
+          if (form.status !== "published") {
+            throw new RuleViolationError("Only a published form can be closed.");
+          }
+          return { ...form, status: "closed" };
+        },
+        formAudit(audit, "UNPUBLISH"),
+        deps.now(),
+      );
+      return { version: saved.version };
+    },
+  });
+
+  /**
+   * The responses as a table (header + rows, newest first) for the CSV download. Needs
+   * `forms.export` and is logged as a `data.export` security event.
+   */
+  const exportResponses = createGuardedAction({
+    permission: "forms.export",
+    input: z.object({ id: safeId }).strict(),
+    handler: async ({ id }, principal) => {
+      const form = await deps.forms.get(id);
+      if (!form || form.deletedAt) throw new RuleViolationError("This form does not exist.");
+      const [versions, responses] = await Promise.all([
+        deps.forms.listVersions(id),
+        deps.forms.listResponses(id, EXPORT_LIMIT),
+      ]);
+      deps.logExport(principal.userId, { formId: id, responses: responses.length });
+      return { title: form.title, ...responseTable(versions, responses) };
+    },
+  });
+
+  return { save, remove, publish, close, exportResponses };
 }

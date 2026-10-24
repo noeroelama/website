@@ -64,6 +64,8 @@ export interface Form extends EntityMeta {
   /** Answer window (public forms); null = no limit. */
   readonly opensAt: Date | null;
   readonly closesAt: Date | null;
+  /** Responses received (counted in the response transaction). */
+  readonly responseCount: number;
 }
 
 export interface FormVersion {
@@ -90,8 +92,6 @@ export interface FormResponse {
   readonly formId: string;
   readonly version: number;
   readonly answers: Answers;
-  /** Signed-in respondent, or null for a guest. */
-  readonly userId: string | null;
   readonly submittedAt: Date;
 }
 
@@ -233,6 +233,10 @@ export function assertPublishable(form: Pick<Form, "usage">, questions: readonly
   }
 }
 
+/** Public URL token: 128 random bits, base64url (never the form id). */
+export const PUBLIC_TOKEN_PATTERN = /^[A-Za-z0-9_-]{22,64}$/;
+export const isPublicToken = (value: string) => PUBLIC_TOKEN_PATTERN.test(value);
+
 export type FormWindow = "upcoming" | "open" | "closed";
 
 /** Where a form is in its answer window (closed forms and drafts count as closed). */
@@ -244,6 +248,46 @@ export function formWindow(
   if (form.closesAt && form.closesAt <= now) return "closed";
   if (form.opensAt && form.opensAt > now) return "upcoming";
   return "open";
+}
+
+export type PublicAnswerState = FormWindow | "not_found";
+
+/**
+ * The guard of the public path /f/{token} (C2): recruitment forms, deleted forms and forms
+ * without a token do not exist there ("not_found"); otherwise the answer window decides.
+ * Recruitment applications never go through this path.
+ */
+export function publicAnswerState(
+  form: Pick<Form, "usage" | "status" | "publicToken" | "deletedAt" | "opensAt" | "closesAt">,
+  now: Date,
+): PublicAnswerState {
+  if (form.usage !== "public" || form.deletedAt !== null || form.publicToken === null) {
+    return "not_found";
+  }
+  if (form.status === "draft") return "not_found";
+  return formWindow(form, now);
+}
+
+/** What /f/{token} shows: no ids, no counts, no staff data. */
+export interface PublicForm {
+  readonly title: string;
+  readonly description: string;
+  /** The version the answers are checked against (sent back with the answers). */
+  readonly version: number;
+  readonly questions: readonly Question[];
+  readonly opensAt: Date | null;
+  readonly closesAt: Date | null;
+}
+
+export function toPublicForm(form: Form, version: FormVersion): PublicForm {
+  return {
+    title: form.title,
+    description: form.description,
+    version: version.number,
+    questions: version.questions,
+    opensAt: form.opensAt,
+    closesAt: form.closesAt,
+  };
 }
 
 /* ---------------------------------------------------------------- answers */

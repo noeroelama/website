@@ -27,6 +27,9 @@ export interface FormItem {
   /** ISO times (UTC) or null. */
   opensAt: string | null;
   closesAt: string | null;
+  /** Public link token (/f/{token} on the website), set on the first publish. */
+  publicToken: string | null;
+  responseCount: number;
   currentVersion: number;
   /** Someone answered the current version: saving changed questions creates the next one. */
   answered: boolean;
@@ -51,6 +54,8 @@ export function toFormItem(
     statusLabel: label(FORM_STATUS_LABELS, form.status),
     opensAt: form.opensAt?.toISOString() ?? null,
     closesAt: form.closesAt?.toISOString() ?? null,
+    publicToken: form.publicToken,
+    responseCount: form.responseCount,
     currentVersion: form.currentVersion,
     answered: current?.answered ?? false,
     questions: current ? [...current.questions] : [],

@@ -42,6 +42,14 @@ once). Campaign e-mails load `/newsletter/o?t=` (open pixel) and link through `/
 (counts the click, then redirects to the signed address). Rules:
 `packages/domain/docs/newsletter.md`.
 
+**Public forms**: `/f/[token]` shows a published public form (surveys, sign-ups, suggestion box;
+no account needed). The token is random (never the form id); unknown, draft, deleted and
+recruitment forms are a 404, and the page is `noindex`. Answers go through reCAPTCHA v3 (action
+`form_submit`) and are validated on the server against the form's current version in one
+transaction (`src/server/forms.ts`, wiring `src/server/forms-wiring.ts`, renderer
+`src/components/form-fields.tsx`, answers `src/lib/form-answers.ts`). Rules:
+`packages/domain/docs/forms.md`.
+
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one
 marker per chapter; selecting it shows the chapter card) and lists them below; About lists the
 same chapters with their count. Rules: `packages/domain/docs/organization.md`.

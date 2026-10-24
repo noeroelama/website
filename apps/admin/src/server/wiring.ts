@@ -71,7 +71,14 @@ export const orgUnitActions = lazyEnv(() =>
 
 /** Forms page: the form builder (versioned questions). */
 export const formActions = lazyEnv(() =>
-  createFormActions({ forms: adminStores().forms, now: () => new Date(), uuid: randomUUID }),
+  createFormActions({
+    forms: adminStores().forms,
+    now: () => new Date(),
+    uuid: randomUUID,
+    token: () => randomBytes(16).toString("base64url"),
+    logExport: (actorId, details) =>
+      logSecurityEvent(adminStores().logger, { type: "data.export", actorId, details }),
+  }),
 );
 
 /** Universities page: review of proposed campuses. */
@@ -218,6 +225,9 @@ export const adminReads = {
   getContent: (id: string) => adminStores().content.get(id),
   listEvents: () => adminStores().events.listForAdmin(),
   listForms: () => adminStores().forms.listForAdmin(),
+  getForm: (id: string) => adminStores().forms.get(id),
+  listFormVersions: (id: string) => adminStores().forms.listVersions(id),
+  listFormResponses: (id: string, limit: number) => adminStores().forms.listResponses(id, limit),
   currentFormVersions: (forms: Parameters<FirestoreFormStore["currentVersions"]>[0]) =>
     adminStores().forms.currentVersions(forms),
   listAlbums: () => adminStores().galleries.listForAdmin(),

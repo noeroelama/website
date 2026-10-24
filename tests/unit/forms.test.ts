@@ -3,6 +3,9 @@ import {
   answersSchema,
   answerText,
   assertPublishable,
+  isPublicToken,
+  publicAnswerState,
+  toPublicForm,
   FormInputSchema,
   formWindow,
   newQuestionId,
@@ -210,6 +213,59 @@ describe("publishing and the answer window (C2)", () => {
   });
 });
 
+describe("the public path guard (C2: recruitment never accepted at /f/{token})", () => {
+  const now = new Date("2026-10-10T12:00:00Z");
+  const form = {
+    usage: "public",
+    status: "published",
+    publicToken: "AAAAAAAAAAAAAAAAAAAAAA",
+    deletedAt: null,
+    opensAt: null,
+    closesAt: null,
+  } as const;
+
+  it("answers only published (or closed) public forms with a token", () => {
+    expect(publicAnswerState(form, now)).toBe("open");
+    expect(publicAnswerState({ ...form, usage: "recruitment" }, now)).toBe("not_found");
+    expect(publicAnswerState({ ...form, deletedAt: now }, now)).toBe("not_found");
+    expect(publicAnswerState({ ...form, publicToken: null }, now)).toBe("not_found");
+    expect(publicAnswerState({ ...form, status: "draft" }, now)).toBe("not_found");
+    expect(publicAnswerState({ ...form, status: "closed" }, now)).toBe("closed");
+    expect(publicAnswerState({ ...form, opensAt: new Date("2026-10-11T00:00:00Z") }, now)).toBe(
+      "upcoming",
+    );
+  });
+
+  it("recognises tokens (128 bits, base64url) and builds the public view without ids", () => {
+    expect(isPublicToken("AAAAAAAAAAAAAAAAAAAAAA")).toBe(true);
+    expect(isPublicToken("short")).toBe(false);
+    expect(isPublicToken("../../forms/abcdefghijklmnop")).toBe(false);
+    const q = question("q_1", "email");
+    const view = toPublicForm(
+      {
+        ...form,
+        id: "f1",
+        title: "Survey",
+        description: "Hi",
+        currentVersion: 3,
+        responseCount: 9,
+        version: 5,
+        createdAt: now,
+        updatedAt: now,
+      },
+      version(3, [q]),
+    );
+    expect(view).toEqual({
+      title: "Survey",
+      description: "Hi",
+      version: 3,
+      questions: [q],
+      opensAt: null,
+      closesAt: null,
+    });
+  });
+});
+
 describe("answers schema built from a version (C1)", () => {
   const all: Question[] = [
     question("q_short", "short_text"),
@@ -346,7 +402,6 @@ describe("responses table (C2 export)", () => {
           formId: "f1",
           version: 1,
           answers: { q_a: "Ari" },
-          userId: null,
           submittedAt: new Date("2026-10-01T01:00:00Z"),
         },
         {
@@ -354,7 +409,6 @@ describe("responses table (C2 export)", () => {
           formId: "f1",
           version: 2,
           answers: { q_a: "Budi", q_b: ["Red", "Blue"] },
-          userId: null,
           submittedAt: new Date("2026-10-02T01:00:00Z"),
         },
       ],

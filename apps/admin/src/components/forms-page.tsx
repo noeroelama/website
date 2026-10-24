@@ -9,7 +9,12 @@ import {
   type QuestionType,
 } from "@website/domain/forms";
 import { utcToWallTime, wallTimeToUtc } from "@website/domain/shared";
-import { removeFormAction, saveFormAction } from "@/app/(panel)/forms/actions";
+import {
+  closeFormAction,
+  publishFormAction,
+  removeFormAction,
+  saveFormAction,
+} from "@/app/(panel)/forms/actions";
 import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { Button } from "@/components/ui/button";
@@ -101,7 +106,16 @@ type DeleteConfirm = { kind: "one"; form: FormItem } | { kind: "many"; count: nu
 interface FormsPageProps {
   initial: FormItem[];
   canEdit: boolean;
+  /** forms.publish: Publish / Close. */
+  canPublish: boolean;
+  /** forms.responses: the Responses page. */
+  canSeeResponses: boolean;
+  /** WEB_URL, for "Copy Link" (/f/{token}). */
+  publicBase: string;
 }
+
+/** Public form path on the web app (apps/web /f/[token]). */
+const FORM_PATH = "/f/";
 
 export function FormsPage(props: FormsPageProps) {
   const pathname = usePathname();
@@ -109,7 +123,13 @@ export function FormsPage(props: FormsPageProps) {
   return <FormsList key={pathname} {...props} />;
 }
 
-function FormsList({ initial: forms, canEdit }: FormsPageProps) {
+function FormsList({
+  initial: forms,
+  canEdit,
+  canPublish,
+  canSeeResponses,
+  publicBase,
+}: FormsPageProps) {
   const toast = useToastMessage();
   const router = useRouter();
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
@@ -160,6 +180,18 @@ function FormsList({ initial: forms, canEdit }: FormsPageProps) {
       (f) => removeFormAction({ id: f.id, version: f.version }),
       "deleted",
     );
+  };
+
+  const setPublished = (f: FormItem, publish: boolean) =>
+    void bulk.run(
+      [f],
+      (x) => (publish ? publishFormAction : closeFormAction)({ id: x.id, version: x.version }),
+      publish ? "published" : "closed",
+    );
+
+  const copyLink = (f: FormItem) => {
+    void navigator.clipboard?.writeText(`${publicBase}${FORM_PATH}${f.publicToken ?? ""}`);
+    toast.show(`Link for "${f.title}" copied`);
   };
 
   const toForm = (f?: FormItem) => {
@@ -294,9 +326,9 @@ function FormsList({ initial: forms, canEdit }: FormsPageProps) {
       header: "",
       align: "right",
       width: "10%",
-      render: (r) =>
-        canEdit ? (
-          <div className="admin-table__actions">
+      render: (r) => (
+        <div className="admin-table__actions">
+          {canEdit ? (
             <Button
               variant="ghost"
               size="icon"
@@ -305,21 +337,51 @@ function FormsList({ initial: forms, canEdit }: FormsPageProps) {
               title="Edit"
               onClick={() => toForm(r)}
             />
-            <RowMenu>
-              <MenuItem icon="edit" onClick={() => toForm(r)}>
-                Edit Form
+          ) : null}
+          <RowMenu>
+            {canPublish && r.usage === "public" ? (
+              <>
+                <MenuItem
+                  icon="globe"
+                  disabled={busy || r.status === "published"}
+                  onClick={() => setPublished(r, true)}
+                >
+                  Publish
+                </MenuItem>
+                <MenuItem
+                  icon="lock"
+                  disabled={busy || r.status !== "published"}
+                  onClick={() => setPublished(r, false)}
+                >
+                  Close
+                </MenuItem>
+              </>
+            ) : null}
+            {r.publicToken ? (
+              <MenuItem icon="copy" onClick={() => copyLink(r)}>
+                Copy Link
               </MenuItem>
-              <MenuDivider />
-              <MenuItem
-                icon="trash"
-                danger
-                onClick={() => setDeleteConfirm({ kind: "one", form: r })}
-              >
-                Delete Form
+            ) : null}
+            {canSeeResponses ? (
+              <MenuItem icon="inbox" onClick={() => router.push(`/forms/${r.id}/responses`)}>
+                Responses ({r.responseCount})
               </MenuItem>
-            </RowMenu>
-          </div>
-        ) : null,
+            ) : null}
+            {canEdit ? (
+              <>
+                <MenuDivider />
+                <MenuItem
+                  icon="trash"
+                  danger
+                  onClick={() => setDeleteConfirm({ kind: "one", form: r })}
+                >
+                  Delete Form
+                </MenuItem>
+              </>
+            ) : null}
+          </RowMenu>
+        </div>
+      ),
     },
   ];
 

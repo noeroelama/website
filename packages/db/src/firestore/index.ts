@@ -118,8 +118,11 @@ export {
 } from "./content";
 export {
   createFirestoreFormStore,
+  createFirestoreFormWebStore,
   formSnapshot,
   type FirestoreFormStore,
+  type FirestoreFormWebStore,
+  type SubmitOutcome,
   type FormAudit,
   type FormFields,
   type FormSettings,

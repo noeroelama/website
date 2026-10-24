@@ -8,6 +8,7 @@ import {
   toDraft,
   toFormItem,
 } from "../../apps/admin/src/components/forms-model";
+import { esc } from "../../apps/admin/src/components/format";
 
 const form: Form = {
   id: "f1",
@@ -19,6 +20,7 @@ const form: Form = {
   currentVersion: 2,
   opensAt: new Date("2026-10-01T00:00:00Z"),
   closesAt: null,
+  responseCount: 3,
   version: 4,
   createdAt: new Date("2026-09-01T00:00:00Z"),
   updatedAt: new Date("2026-10-02T00:00:00Z"),
@@ -53,6 +55,8 @@ describe("Forms page model", () => {
       opensAt: "2026-10-01T00:00:00.000Z",
       closesAt: null,
       answered: true,
+      publicToken: "tok",
+      responseCount: 3,
       questions: version.questions,
       modifiedAt: "2026-10-02T00:00:00.000Z",
     });
@@ -85,5 +89,14 @@ describe("Forms page model", () => {
     expect(fromDraft({ ...blankQuestion(), type: "number", min: "abc" }).min).toBeNaN();
     expect(hasOptions("single_choice")).toBe(true);
     expect(hasOptions("date")).toBe(false);
+  });
+});
+
+describe("CSV cells", () => {
+  it("quotes, doubles inner quotes and never lets a cell run as a formula", () => {
+    expect(esc('Say "hi"')).toBe('"Say ""hi"""');
+    expect(esc("=HYPERLINK(1)")).toBe(`"'=HYPERLINK(1)"`);
+    for (const start of ["+", "-", "@", "\t", "\r"]) expect(esc(`${start}1`)).toBe(`"'${start}1"`);
+    expect(esc("1-2")).toBe('"1-2"');
   });
 });

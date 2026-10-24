@@ -55,6 +55,8 @@ const actions = () =>
     forms: store,
     now: () => now,
     uuid: () => `${String(++uuids).padStart(8, "0")}-0000-4000-8000-000000000000`,
+    token: () => "unused-token-0000000000000",
+    logExport: () => undefined,
   });
 const auditEntries = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);

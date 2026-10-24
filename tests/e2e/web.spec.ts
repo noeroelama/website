@@ -103,3 +103,10 @@ test("the language switch shows English after the lang cookie is set", async ({ 
   const response = await request.get("/about", { headers: { cookie: "lang=en" } });
   expect(await response.text()).toContain(`<h1 class="ui-shell-title">About us</h1>`);
 });
+
+test("unknown public form links show the 404 page", async ({ request }) => {
+  for (const path of ["/f/unknownToken000000000000", "/f/not-a-token"]) {
+    const html = await (await request.get(path)).text();
+    expect(html, path).toContain("Page not found");
+  }
+});

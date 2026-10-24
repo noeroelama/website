@@ -1,14 +1,20 @@
 import { randomUUID } from "node:crypto";
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import {
+  isPublicToken,
+  parseAnswers,
   planVersion,
+  publicAnswerState,
   versionDocId,
+  type Answers,
+  type FormResponse,
   type Form,
   type FormStatus,
   type FormUsage,
   type FormVersion,
   type Question,
+  type PublicAnswerState,
   type VersionPlan,
 } from "@website/domain/forms";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
@@ -34,6 +40,7 @@ function toForm(id: string, data: Record<string, unknown>): Form {
     currentVersion: data["currentVersion"] as number,
     opensAt: toDate(data["opensAt"]),
     closesAt: toDate(data["closesAt"]),
+    responseCount: (data["responseCount"] as number | undefined) ?? 0,
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -48,6 +55,16 @@ function toVersion(data: Record<string, unknown>): FormVersion {
     questions: data["questions"] as Question[],
     answered: data["answered"] as boolean,
     createdAt: toDate(data["createdAt"]) as Date,
+  };
+}
+
+function toResponse(id: string, data: Record<string, unknown>): FormResponse {
+  return {
+    id,
+    formId: data["formId"] as string,
+    version: data["version"] as number,
+    answers: data["answers"] as Answers,
+    submittedAt: toDate(data["submittedAt"]) as Date,
   };
 }
 
@@ -85,7 +102,7 @@ export function createFirestoreFormStore(db: Firestore) {
     slug: null,
     fromDoc: toForm,
     snapshot: formSnapshot,
-    fixed: (f) => ({ publicToken: f.publicToken }),
+    fixed: (f) => ({ publicToken: f.publicToken, responseCount: f.responseCount }),
   });
   const versions = db.collection("formVersions");
   const auditLog = createFirestoreAuditWriter(db);
@@ -119,6 +136,23 @@ export function createFirestoreFormStore(db: Firestore) {
         if (data) result.set(data["formId"] as string, toVersion(data));
       }
       return result;
+    },
+
+    /** The questions of a version, read inside a transaction (e.g. publishing). */
+    async versionIn(tx: Transaction, formId: string, n: number): Promise<FormVersion | null> {
+      const snapshot = await tx.get(versionRef(formId, n));
+      return snapshot.exists ? toVersion(snapshot.data() as Record<string, unknown>) : null;
+    },
+
+    /** The newest responses of a form (at most `limit`). */
+    async listResponses(formId: string, limit: number): Promise<FormResponse[]> {
+      const snapshot = await db
+        .collection("formResponses")
+        .where("formId", "==", safeId.parse(formId))
+        .orderBy("submittedAt", "desc")
+        .limit(limit)
+        .get();
+      return snapshot.docs.map((doc) => toResponse(doc.id, doc.data()));
     },
 
     /** Every version of a form, oldest first. */
@@ -169,6 +203,7 @@ export function createFirestoreFormStore(db: Firestore) {
           id: ref.id,
           status: current?.status ?? "draft",
           publicToken: current?.publicToken ?? null,
+          responseCount: current?.responseCount ?? 0,
           currentVersion: plan.number,
           version: (current?.version ?? 0) + 1,
           createdAt: current?.createdAt ?? now,
@@ -179,6 +214,7 @@ export function createFirestoreFormStore(db: Firestore) {
         tx.set(ref, {
           ...formSnapshot(next),
           publicToken: next.publicToken,
+          responseCount: next.responseCount,
           version: next.version,
           createdAt: next.createdAt,
           updatedAt: now,
@@ -212,3 +248,76 @@ export function createFirestoreFormStore(db: Firestore) {
 }
 
 export type FirestoreFormStore = ReturnType<typeof createFirestoreFormStore>;
+
+export type SubmitOutcome =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: "not_found" | "closed" | "changed" }
+  | {
+      readonly ok: false;
+      readonly error: "answers";
+      readonly fields: Readonly<Record<string, string>>;
+    };
+
+/**
+ * The website's side of public forms (C2): read a form by its public token and store a
+ * response. Only public forms are reachable (`publicAnswerState`); recruitment forms never are.
+ */
+export function createFirestoreFormWebStore(db: Firestore) {
+  const forms = db.collection("forms");
+  const versions = db.collection("formVersions");
+  const responses = db.collection("formResponses");
+  const byToken = (token: string) => forms.where("publicToken", "==", token).limit(1);
+
+  return {
+    /** The form and its current version, or null when the token answers nothing. */
+    async findPublic(
+      token: string,
+      now: Date,
+    ): Promise<{ form: Form; version: FormVersion; state: PublicAnswerState } | null> {
+      if (!isPublicToken(token)) return null;
+      const [doc] = (await byToken(token).get()).docs;
+      if (!doc) return null;
+      const form = toForm(doc.id, doc.data());
+      const state = publicAnswerState(form, now);
+      if (state === "not_found") return null;
+      const version = await versions.doc(versionDocId(form.id, form.currentVersion)).get();
+      if (!version.exists) return null;
+      return { form, version: toVersion(version.data() as Record<string, unknown>), state };
+    },
+
+    /**
+     * ONE transaction: the form (by token) and its current version are read; the window, the
+     * version the visitor saw and the answers are checked; the response is written, the
+     * version is marked answered (frozen) and the form's response count goes up.
+     */
+    submit(token: string, version: number, raw: unknown, now: Date): Promise<SubmitOutcome> {
+      if (!isPublicToken(token)) return Promise.resolve({ ok: false, error: "not_found" });
+      return db.runTransaction(async (tx): Promise<SubmitOutcome> => {
+        const [doc] = (await tx.get(byToken(token))).docs;
+        if (!doc) return { ok: false, error: "not_found" };
+        const form = toForm(doc.id, doc.data());
+        const state = publicAnswerState(form, now);
+        if (state === "not_found") return { ok: false, error: "not_found" };
+        if (state !== "open") return { ok: false, error: "closed" };
+        if (version !== form.currentVersion) return { ok: false, error: "changed" };
+        const ref = versions.doc(versionDocId(form.id, form.currentVersion));
+        const current = await tx.get(ref);
+        if (!current.exists) return { ok: false, error: "not_found" };
+        const questions = toVersion(current.data() as Record<string, unknown>);
+        const parsed = parseAnswers(questions.questions, raw);
+        if (!parsed.ok) return { ok: false, error: "answers", fields: parsed.fields };
+        tx.create(responses.doc(randomUUID()), {
+          formId: form.id,
+          version: form.currentVersion,
+          answers: parsed.answers,
+          submittedAt: now,
+        });
+        if (!questions.answered) tx.update(ref, { answered: true });
+        tx.update(forms.doc(form.id), { responseCount: form.responseCount + 1 });
+        return { ok: true };
+      });
+    },
+  };
+}
+
+export type FirestoreFormWebStore = ReturnType<typeof createFirestoreFormWebStore>;

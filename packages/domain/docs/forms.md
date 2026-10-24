@@ -14,12 +14,15 @@ Zod schema built from the version.
 - Rules: `packages/domain/src/forms/index.ts` (question types, `FormInputSchema`,
   `planVersion`, `assertPublishable`, `formWindow`, `answersSchema`/`parseAnswers`,
   `responseTable`).
-- Storage: `packages/db/src/firestore/forms.ts` — `forms/{id}` and
-  `formVersions/{formId}_{n}`.
-- Admin: `apps/admin/src/server/forms.ts` (guarded actions), page `/forms`
-  (`src/components/forms-page.tsx`, `forms-model.ts`).
+- Storage: `packages/db/src/firestore/forms.ts` — `forms/{id}`,
+  `formVersions/{formId}_{n}` and `formResponses/{id}` (index: formId + submittedAt desc).
+- Admin: `apps/admin/src/server/forms.ts` (guarded actions), pages `/forms`
+  (`src/components/forms-page.tsx`, `forms-model.ts`) and `/forms/{id}/responses`
+  (`form-responses-page.tsx`).
+- Web: `/f/[token]` (`apps/web/docs/public-site.md`).
 - Tests: `tests/unit/forms.test.ts`, `tests/unit/admin-forms.test.ts`,
-  `tests/integration/forms.test.ts`.
+  `tests/unit/web-forms.test.ts`, `tests/integration/forms.test.ts`,
+  `tests/integration/public-forms.test.ts`.
 
 ## How to use it
 
@@ -49,11 +52,24 @@ store(result.answers); // keyed by question id
 - **Files** are for signed-in applicants only: a public form cannot have a file question
   (`assertPublishable`), so guests never upload anything. A file answer is a private Storage
   path under `forms/{formId}/…`.
-- **Permissions:** page `forms` — `forms.read` (list), `forms.edit` (build, delete).
+- **Public forms (C2):** `forms.publish` publishes a public form at `/f/{token}` on the website
+  (128-bit random token, created once and kept when a closed form is re-opened) and closes it.
+  `publicAnswerState` is the guard of that path: recruitment, draft and deleted forms are "not
+  found" there, closed forms and answers outside `opensAt`–`closesAt` are refused. A response is
+  written in ONE transaction with the version it answers (marked answered = frozen) and the
+  form's `responseCount`; a visitor whose page shows an older version is asked to reload.
+  reCAPTCHA v3 runs before anything is read; the per-IP limit of the request guard applies.
+- **Responses:** `/forms/{id}/responses` shows the newest 500 (`forms.responses`). Export CSV
+  needs `forms.export`, reads up to 10,000, and is logged as a `data.export` security event
+  (answers are personal data). CSV cells that would run as spreadsheet formulas get a leading
+  apostrophe (`esc` in `apps/admin/src/components/format.ts`).
+- **Permissions:** page `forms` — `forms.read` (list), `forms.edit` (build, delete),
+  `forms.publish`, `forms.responses`, `forms.export`.
 - **Audit:** module `forms`, resource `form`. A CREATE (revert = trash) and a DELETE (revert =
   restore) can be reverted; edits cannot (they may have created a version). Question versions
   are never deleted.
 
 ## Configuration
 
-None.
+Existing `RECAPTCHA_SECRET_KEY`, `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_MIN_SCORE` (web)
+and `WEB_URL` (admin, for "Copy Link").
