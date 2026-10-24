@@ -34,7 +34,7 @@ const sortable = (value: unknown): string | number =>
 
 /**
  * Minimal in-memory stand-in for the parts of the Firestore Admin SDK our adapters use:
- * documents, simple queries (==, array-contains, in, <=, >=, orderBy, startAfter, limit, count)
+ * documents, simple queries (==, array-contains(-any), in, <=, >=, orderBy, startAfter, limit, count)
  * and transactions (serializable, reads before writes, writes applied only on success).
  */
 export function fakeFirestore(options: { failWith?: Error } = {}) {
@@ -114,6 +114,9 @@ export function fakeFirestore(options: { failWith?: Error } = {}) {
           const v = at(data, field);
           if (op === "==") return JSON.stringify(v) === JSON.stringify(value);
           if (op === "array-contains") return Array.isArray(v) && v.includes(value);
+          if (op === "array-contains-any") {
+            return Array.isArray(v) && (value as unknown[]).some((x) => v.includes(x));
+          }
           if (op === "in") return (value as unknown[]).includes(v);
           if (op === ">=") return v !== undefined && sortable(v) >= sortable(value);
           if (op === "<=") return v !== undefined && sortable(v) <= sortable(value);

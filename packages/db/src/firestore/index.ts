@@ -27,6 +27,16 @@ export {
 } from "./audit";
 export { getDocumentsByIds } from "./batch";
 export { nextNumbers } from "./counters";
+export {
+  createFirestoreLetterStore,
+  createFirestoreLetterTypeStore,
+  letterSnapshot,
+  letterTypeSnapshot,
+  type FirestoreLetterStore,
+  type FirestoreLetterTypeStore,
+  type LetterAudit,
+  type LetterListQuery,
+} from "./letters";
 export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";

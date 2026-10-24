@@ -3,7 +3,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
-import type { AuditListQuery, FirestoreFormStore } from "@website/db/firestore";
+import type { AuditListQuery, FirestoreFormStore, LetterListQuery } from "@website/db/firestore";
+import { orgUnitPath } from "@website/domain/organizations";
 import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newsletter";
 import { logSecurityEvent } from "@website/observability";
 import { keyedHash, signLink } from "@website/security";
@@ -22,6 +23,7 @@ import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
 import { createInterviewActions } from "./interviews";
+import { createLetterActions } from "./letters";
 import { createMemberActions } from "./members";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
@@ -82,6 +84,19 @@ export const formActions = lazyEnv(() =>
     token: () => randomBytes(16).toString("base64url"),
     logExport: (actorId, details) =>
       logSecurityEvent(adminStores().logger, { type: "data.export", actorId, details }),
+  }),
+);
+
+/** Letters page (D1, D2): drafts, desks, issue; Letter types page. */
+export const letterActions = lazyEnv(() =>
+  createLetterActions({
+    letters: adminStores().letters,
+    types: adminStores().letterTypes,
+    unitPath: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit ? orgUnitPath(unit) : null;
+    },
+    now: () => new Date(),
   }),
 );
 
@@ -267,6 +282,9 @@ export const adminReads = {
   getContent: (id: string) => adminStores().content.get(id),
   listEvents: () => adminStores().events.listForAdmin(),
   listForms: () => adminStores().forms.listForAdmin(),
+  listLetters: (query: LetterListQuery) => adminStores().letters.list(query),
+  getLetter: (id: string) => adminStores().letters.get(id),
+  listLetterTypes: () => adminStores().letterTypes.list(),
   listRecruitments: () => adminStores().recruitments.listForAdmin(),
   getRecruitment: (id: string) => adminStores().recruitments.get(id),
   listApplications: (recruitmentId: string) =>

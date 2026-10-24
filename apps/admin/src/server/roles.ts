@@ -108,12 +108,18 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
       "articles.edit",
       "gallery.edit",
       "appointments.read",
+      "letters.edit",
     ]),
   },
   {
     id: "directorate_secretary",
     name: "Directorate secretary",
-    permissions: normalizePermissions(["events.edit", "articles.edit", "appointments.read"]),
+    permissions: normalizePermissions([
+      "events.edit",
+      "articles.edit",
+      "appointments.read",
+      "letters.edit",
+    ]),
   },
   {
     id: "coordinator",
@@ -128,6 +134,8 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
       "articles.read",
       "users.read",
       "audit.read",
+      "letters.sign_coordinator",
+      "letters.cancel",
     ]),
   },
   {
@@ -143,6 +151,12 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
       "articles.read",
       "users.read",
       "universities.edit",
+      "letters.edit",
+      "letters.review",
+      "letters.sign",
+      "letters.issue",
+      "letters.cancel",
+      "letter_types.edit",
     ]),
   },
   {

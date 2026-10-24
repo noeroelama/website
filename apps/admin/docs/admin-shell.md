@@ -126,6 +126,10 @@ router.push("/things"); router.refresh();
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
   (`packages/domain/docs/newsletter.md`), Forms (`packages/domain/docs/forms.md`), Audit Log and
   Users/Roles are the real, data-backed pages.
+- **Letters** (`/letters`, `src/components/letters-page.tsx`, model `letters-model.ts`): tabs
+  per desk (Drafts, To correct, To sign, To issue, Issued, Cancelled), the write/edit form and a
+  detail view with only the buttons the viewer's desks allow (`letterActions`); **Letter types**
+  at `/letters/types`. Rules: `packages/domain/docs/documents.md`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

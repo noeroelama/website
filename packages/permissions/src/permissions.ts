@@ -51,6 +51,17 @@ export const ADMIN_PAGES = {
       confirm: "Approve placements and ratify (Sekjen)",
     },
   },
+  letters: {
+    label: "Letters",
+    extras: {
+      review: "Correct and pass or return letters (secretariat)",
+      sign: "Sign as Secretary-General",
+      sign_coordinator: "Sign as Coordinator",
+      issue: "Issue letters (give the number)",
+      cancel: "Cancel issued letters",
+    },
+  },
+  letter_types: { label: "Letter types (number patterns)" },
   organizations: { label: "Organizations" },
   periods: { label: "Board periods" },
   structure: { label: "Organisation structure" },

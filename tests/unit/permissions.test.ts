@@ -18,6 +18,7 @@ import {
   requirePermission,
   resolveAssignments,
   scopedChapterIds,
+  scopedOrgUnitIds,
   SUPERADMIN_ROLE_ID,
   SYSTEM_ROLES,
   type Principal,
@@ -217,6 +218,22 @@ describe("can()", () => {
       [],
     );
     expect(scopedChapterIds(null, "events.edit")).toEqual([]);
+  });
+
+  it("lists are filtered to the org units a principal covers (letters of a directorate, D1)", () => {
+    const director = principal([
+      { roleId: "chapter_admin", scope: { type: "orgUnit", orgUnitId: "media" } },
+      { roleId: "chapter_admin", scope: { type: "orgUnit", orgUnitId: "edu" } },
+      { roleId: "chapter_admin", scope: { type: "orgUnit", orgUnitId: "media" } },
+      { roleId: "chapter_admin", scope: jp },
+    ]);
+    expect(scopedOrgUnitIds(director, "events.edit")).toEqual(["media", "edu"]);
+    expect(scopedOrgUnitIds(director, "gallery.read")).toEqual([]);
+    expect(scopedOrgUnitIds(principal([{ roleId: "chapter_admin" }]), "events.edit")).toBe("all");
+    expect(scopedOrgUnitIds(principal([{ roleId: "everything" }], false), "events.edit")).toEqual(
+      [],
+    );
+    expect(scopedOrgUnitIds(null, "events.edit")).toEqual([]);
   });
 
   it("appointing gives only roles whose permissions the appointer holds, never built-in ones (B7)", () => {

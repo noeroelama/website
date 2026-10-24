@@ -25,6 +25,49 @@ with each step.
 - `sha256Hex(bytes)` (`@website/security`) is stored with an archived file and compared when
   the file is served.
 
+## Letters workflow (D1, D2)
+
+`src/documents/letters.ts` (pure rules, from PPIDK `SuratService`), `packages/db/src/firestore/letters.ts`
+(store), `apps/admin/src/server/letters.ts` (guarded actions), admin pages `/letters` and
+`/letters/types`.
+
+```text
+draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued ─→ cancelled
+  ↑________________________________|  "Return to draft" with a note (clears both desks)
+```
+
+- **Write** (`letters.edit`): type, issuing unit (of the active period; its code is `{unit}`),
+  subject, recipient (only for types that have one: a type without recipient clears it on save),
+  letter date, place, attachment note, body (rich text, sanitized with the news allowlist;
+  images are not printed). Drafts and letters in review can be edited; drafts can be deleted
+  (softly). Everything required is checked on **Submit**, not at the desk.
+- **Scope**: an org-unit assignment of `letters.edit` (directors, directorate secretaries) covers
+  the letters of that unit and the units below it (`orgUnitPath`, `scopedOrgUnitIds`); the list
+  shows only those letters. A global assignment covers all.
+- **Desks** (Letters page extras, roles are data): `review` (secretariat: pass the correction
+  or return it), `sign` (Secretary-General desk), `sign_coordinator` (second desk, only for
+  types that require it), `issue`, `cancel`. Nobody signs before the correction is passed;
+  one person never holds both desks of a letter.
+- **Issue** (`letters.issue`), ONE transaction: the next number from
+  `letterCounters/{periodId}_{typeId}` (formatted with the type's pattern), a verification code
+  (`8F3KM-QRTVW`, alphabet without I L O 0 1, `verificationCodes/{code}` — the space shared with
+  certificates), the signers frozen with their desk, name and seat at that time (`signers`), and
+  `contentDigest` = sha256 of `letterCanonical` (number, date, type, subject, recipient, body,
+  signers' ids; line endings unified). A failure uses no number and writes no audit entry.
+- **Cancel** (`letters.cancel`): issued letters only, with a reason (shown on the public
+  verification page later); the number is never reused.
+- **Audit**: module `letters` (CREATE / UPDATE per step / DELETE / PUBLISH = issue / UNPUBLISH =
+  cancel), never revertible (a step is undone by returning or cancelling). The snapshot stores
+  the body's length, not the body.
+- **Letter types** (`letter_types.edit`, `/letters/types`): name, code (unique case-insensitively,
+  trimmed), number pattern (checked, with a live example), digits of `{nomor}`, Coordinator desk,
+  recipient, whether the verification page shows the content to anyone, in use, order.
+  Deactivated, never deleted. Suggested roles: Secretary General (all desks but the
+  Coordinator's, letter types), Coordinator (`sign_coordinator`, `cancel`), Director and
+  Directorate secretary (`letters.edit`, scoped to their unit by the appointment).
+- Not built yet: the PDF and archive (4.3), the public verification page (4.4), the upload path
+  (`awaiting_file`, 4.7), PPIDK's format checker (warnings) and notifications to the desks.
+
 ## QR codes (D8)
 
 One set of rules (`src/documents/qr.ts`, from PPIDK `PembuatQr`) for the Tools page and the
@@ -37,4 +80,5 @@ the QR without a logo (the letterhead already shows the emblem).
 ## Tests
 
 `tests/unit/documents.test.ts`, `tests/integration/numbering.test.ts`,
-`tests/security/field-encryption.test.ts`, `tests/unit/admin-tools.test.ts` (QR rules).
+`tests/security/field-encryption.test.ts`, `tests/unit/admin-tools.test.ts` (QR rules),
+`tests/unit/letters.test.ts`, `tests/unit/admin-letters.test.ts`, `tests/integration/letters.test.ts`.

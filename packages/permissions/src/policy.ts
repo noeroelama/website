@@ -148,6 +148,24 @@ export function scopedChapterIds(
   ];
 }
 
+/**
+ * Which org units' records a list may show (letters of a directorate, PPIDK CakupanSurat): "all"
+ * with a global assignment, otherwise the unit ids of its org-unit assignments (each covers the
+ * unit and everything below it: query `orgUnitPath array-contains-any`). Chapter scopes give no
+ * unit.
+ */
+export function scopedOrgUnitIds(
+  principal: Principal | null,
+  permission: PagePermission,
+): "all" | string[] {
+  if (principal === null || !principal.active) return [];
+  const holding = principal.assignments.filter((a) => a.permissions.has(permission));
+  if (holding.some((a) => a.scope.type === "global")) return "all";
+  return [
+    ...new Set(holding.flatMap((a) => (a.scope.type === "orgUnit" ? [a.scope.orgUnitId] : []))),
+  ];
+}
+
 /** True when the principal may enter the admin area at all (any admin-page permission). */
 export function canAccessAdmin(principal: Principal | null): boolean {
   if (principal === null || !principal.active) return false;
