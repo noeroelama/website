@@ -48,6 +48,7 @@ interface Draft {
   closesAt: string;
   maxChoices: string;
   offerDays: string;
+  pactTemplateUrl: string;
   formId: string;
   units: UnitDraft[];
 }
@@ -107,6 +108,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
       closesAt: r ? wall(r.closesAt) : "",
       maxChoices: String(r?.maxChoices ?? 2),
       offerDays: String(r?.offerDays ?? 3),
+      pactTemplateUrl: r?.pactTemplateUrl ?? "",
       formId: r?.formId ?? forms[0]?.id ?? "",
       units: unitDrafts(unitsByPeriod[periodId] ?? [], r?.units ?? []),
     });
@@ -126,6 +128,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
       closesAt: wallTimeToUtc(draft.closesAt, zone)?.toISOString() ?? "",
       maxChoices: Number(draft.maxChoices),
       offerDays: Number(draft.offerDays),
+      pactTemplateUrl: draft.pactTemplateUrl,
       formId: draft.formId,
       units: unitsInput(draft.units),
     });
@@ -415,6 +418,23 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
               />
               {errorFor("description")}
+            </div>
+            <div className="admin-field admin-form-grid__full">
+              <label className="admin-field__label" htmlFor="rec-pact">
+                Integrity pact template (link)
+              </label>
+              <input
+                id="rec-pact"
+                className="admin-input"
+                type="url"
+                placeholder="https://…"
+                value={draft.pactTemplateUrl}
+                onChange={(e) => setDraft({ ...draft, pactTemplateUrl: e.target.value })}
+              />
+              {errorFor(
+                "pactTemplateUrl",
+                "Applicants with an approved placement download it, sign it and upload it.",
+              )}
             </div>
           </div>
 

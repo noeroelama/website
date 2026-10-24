@@ -227,6 +227,16 @@ export function canAppointInto(principal: Principal | null, role: RoleDefinition
   return holdsGlobally(principal, role.permissions);
 }
 
+/**
+ * Ratifying a recruited officer (C3 step 9) gives the roles of the appointment: the Sekjen
+ * (`recruitment.confirm`) may give a role only when holding all its permissions globally, never
+ * a built-in role - the same anti-escalation rule as an appointment.
+ */
+export function canRatifyInto(principal: Principal | null, role: RoleDefinition): boolean {
+  if (isSystemRoleId(role.id) || !can(principal, "recruitment.confirm")) return false;
+  return holdsGlobally(principal, role.permissions);
+}
+
 /** Why an account change is refused; null = allowed. */
 export type AccountChangeRefusal = "self" | "forbidden" | "last_superadmin";
 

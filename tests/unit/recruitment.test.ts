@@ -49,6 +49,11 @@ const input = {
 describe("recruitment set-up (C3)", () => {
   it("validates window, choices, units and offer validity", () => {
     expect(RecruitmentInputSchema.safeParse(input).success).toBe(true);
+    expect(RecruitmentInputSchema.parse(input).pactTemplateUrl).toBeNull();
+    expect(
+      RecruitmentInputSchema.parse({ ...input, pactTemplateUrl: " https://drive.example/p " })
+        .pactTemplateUrl,
+    ).toBe("https://drive.example/p");
     for (const bad of [
       { closesAt: "2026-10-01T00:00:00Z" },
       { maxChoices: 0 },
@@ -58,6 +63,7 @@ describe("recruitment set-up (C3)", () => {
       { units: [input.units[0], input.units[0]] },
       { units: [{ orgUnitId: "media", quota: 0, portfolioRequired: false }] },
       { formId: "a/b" },
+      { pactTemplateUrl: "http://insecure.example/pakta" },
       { title: "ab" },
       { extra: true },
     ]) {

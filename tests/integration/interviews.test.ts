@@ -12,6 +12,7 @@ import { createInterviewActions } from "../../apps/admin/src/server/interviews";
 import { createRecruitmentActions } from "../../apps/admin/src/server/recruitment";
 import { createApplying } from "../../apps/web/src/server/recruitment";
 import { fakeFirestore } from "../support/fake-firestore";
+import { noRatification } from "../support/recruitment";
 
 type Db = Parameters<typeof createFirestoreInterviewStore>[0];
 let clock = new Date("2026-11-10T05:00:00Z");
@@ -68,6 +69,7 @@ const inInterview = async (uid: string) => {
   await createApplicationActions({
     applications: createFirestoreApplicationStore(db()),
     signedUrl: () => Promise.resolve(""),
+    ...noRatification,
     now: () => clock,
   }).pass(...as(reviewer))({ id: `${recruitmentId}_${uid}`, version });
 };

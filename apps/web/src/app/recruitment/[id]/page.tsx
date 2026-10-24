@@ -10,6 +10,7 @@ import { recruitmentStore } from "@/server/recruitment-wiring";
 import { getSignedInUser } from "@/server/session";
 import { InterviewTimes } from "./interview-times";
 import { OfferButtons } from "./offer-buttons";
+import { PactUpload } from "./pact-upload";
 import { WithdrawButton } from "./withdraw-button";
 
 // Per request: the applicant's own application and the window.
@@ -20,7 +21,7 @@ export async function generateMetadata({
 }: PageProps<"/recruitment/[id]">): Promise<Metadata> {
   // Params first: the store (and its env) is only touched at request time, never at build.
   const { id } = await params;
-  const r = await recruitmentStore().getPublished(id);
+  const r = await recruitmentStore().getVisible(id);
   return r ? { title: r.title } : {};
 }
 
@@ -28,7 +29,7 @@ export async function generateMetadata({
 export default async function RecruitmentPage({ params }: PageProps<"/recruitment/[id]">) {
   const { id } = await params;
   const [r, user, jar] = await Promise.all([
-    recruitmentStore().getPublished(id),
+    recruitmentStore().getVisible(id),
     getSignedInUser(),
     cookies(),
   ]);
@@ -42,6 +43,8 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
         recruitmentStore().ownRevisions(r.id, user.uid),
       ])
     : [null, false, []];
+  // An unpublished recruitment is shown only to applicants who are already in it.
+  if (!r.published && !application) notFound();
   const now = new Date();
   const action = nextAction(r, application, now);
   const [slots, zone] =
@@ -120,6 +123,23 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
               location={slots.find((s) => s.id === application.interview?.slotId)?.location ?? ""}
               labels={t}
             />
+          )}
+          {action === "upload_pact" && (
+            <>
+              {application?.pactNote && (
+                <p className="site-notice">
+                  {t.pactSentBack}: {application.pactNote}
+                </p>
+              )}
+              {r.pactTemplateUrl && (
+                <p>
+                  <a href={r.pactTemplateUrl} rel="noopener noreferrer" target="_blank">
+                    {t.pactTemplate}
+                  </a>
+                </p>
+              )}
+              <PactUpload recruitmentId={r.id} labels={t} />
+            </>
           )}
           {/* ONE next action (C3): a button when the applicant can act, else what happens next. */}
           {canApply ? (

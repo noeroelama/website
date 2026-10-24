@@ -10,6 +10,7 @@ import { createApplicationActions } from "../../apps/admin/src/server/applicatio
 import { createRecruitmentActions } from "../../apps/admin/src/server/recruitment";
 import { createApplying } from "../../apps/web/src/server/recruitment";
 import { fakeFirestore } from "../support/fake-firestore";
+import { noRatification } from "../support/recruitment";
 
 type Db = Parameters<typeof createFirestoreApplicationStore>[0];
 let clock = new Date("2026-11-10T05:00:00Z");
@@ -37,6 +38,7 @@ const decisions = () =>
   createApplicationActions({
     applications: createFirestoreApplicationStore(db()),
     signedUrl: (path) => Promise.resolve(`https://signed.test/${path}`),
+    ...noRatification,
     now: () => clock,
   });
 const web = () => createFirestoreRecruitmentWebStore(db());

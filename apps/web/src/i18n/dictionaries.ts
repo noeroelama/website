@@ -255,6 +255,10 @@ const id = {
     move: "Pindah ke jadwal ini",
     booked: "Jadwal tersimpan.",
     timesIn: "Waktu dalam zona waktumu",
+    pactTemplate: "Unduh templat pakta integritas",
+    pactUpload: "Unggah pakta yang sudah ditandatangani (PDF, maks. 5 MB)",
+    pactUploaded: "Pakta terunggah. Panitia akan memeriksanya.",
+    pactSentBack: "Pakta dikembalikan panitia",
   },
   newsletter: {
     label: "Buletin",
@@ -690,6 +694,10 @@ const en: Dictionary = {
     move: "Move to this time",
     booked: "Interview time saved.",
     timesIn: "Times in your time zone",
+    pactTemplate: "Download the integrity pact template",
+    pactUpload: "Upload the signed pact (PDF, max 5 MB)",
+    pactUploaded: "Pact uploaded. The committee will review it.",
+    pactSentBack: "The committee sent your pact back",
   },
   newsletter: {
     label: "Newsletter",

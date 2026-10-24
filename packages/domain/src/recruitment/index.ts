@@ -89,6 +89,8 @@ export interface Recruitment extends EntityMeta {
   /** The recruitment form and the version applicants answer (frozen once answered). */
   readonly formId: string;
   readonly formVersion: number;
+  /** Where applicants download the integrity pact template ([OWNER] provides it). */
+  readonly pactTemplateUrl: string | null;
   readonly published: boolean;
 }
 
@@ -118,6 +120,12 @@ export interface Application {
   readonly offer: Offer | null;
   /** The booked interview slot (C3-I), or null. */
   readonly interview: Booking | null;
+  /** Every signed integrity pact uploaded (private PDFs), oldest first; the last one counts. */
+  readonly pacts: readonly FileAnswer[];
+  /** Why the committee sent the pact back (shown to the applicant), or null. */
+  readonly pactNote: string | null;
+  /** The appointment created at ratification (C3 step 9). */
+  readonly appointmentId: string | null;
   readonly submittedAt: Date | null;
   readonly version: number;
   readonly createdAt: Date;
@@ -151,6 +159,13 @@ export const RecruitmentInputSchema = z
     maxChoices: z.number().int().min(1).max(MAX_CHOICES),
     offerDays: z.number().int().min(1).max(60),
     formId: safeId,
+    pactTemplateUrl: z
+      .string()
+      .trim()
+      .max(2000)
+      .refine((v) => v === "" || /^https:\/\/[^\s]+$/i.test(v), "Use an https:// link.")
+      .optional()
+      .transform((v) => v || null),
     units: z
       .array(RecruitmentUnitInputSchema)
       .min(1, "Offer at least one unit.")
@@ -212,6 +227,11 @@ export function formFilePath(formId: string, userId: string, now: Date, uuid: st
   return `forms/${formId}/${userId}_${now.getTime()}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 }
 
+/** Storage path of a signed integrity pact (private). */
+export function pactPath(recruitmentId: string, userId: string, now: Date, uuid: string) {
+  return `recruitment/${recruitmentId}/${userId}/pact_${now.getTime()}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
+}
+
 /** `%PDF-` at the start: the only format of portfolios and file answers. */
 export const isPdf = (bytes: Uint8Array) =>
   bytes.length > 4 &&
@@ -236,6 +256,8 @@ export interface RevisionRound {
 }
 
 export const RevisionRequestSchema = safeText(2000, { multiline: true });
+/** The note when the committee sends a pact back. */
+export const PactNoteSchema = safeText(1000, { multiline: true });
 
 /** An offer of one of the recruitment's units, valid for `offerDays` from now. */
 export function makeOffer(

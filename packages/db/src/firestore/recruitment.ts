@@ -24,8 +24,10 @@ import {
   type RecruitmentInput,
   type RecruitmentUnit,
 } from "@website/domain/recruitment";
+import type { Appointment, DerivedAssignment } from "@website/domain/organizations";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
+import { prepareAppointment, writeAppointment, type AppointmentAudit } from "./appointments";
 import { createFirestoreAuditWriter } from "./audit";
 import { createSluggedStore, toDate } from "./slugged";
 
@@ -44,6 +46,7 @@ function toRecruitment(id: string, data: Record<string, unknown>): Recruitment {
     offerDays: data["offerDays"] as number,
     formId: data["formId"] as string,
     formVersion: data["formVersion"] as number,
+    pactTemplateUrl: (data["pactTemplateUrl"] as string | null | undefined) ?? null,
     published: data["published"] as boolean,
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
@@ -65,6 +68,7 @@ export function recruitmentSnapshot(r: RecruitmentFields): Snapshot {
     offerDays: r.offerDays,
     formId: r.formId,
     formVersion: r.formVersion,
+    pactTemplateUrl: r.pactTemplateUrl,
     published: r.published,
   };
 }
@@ -87,6 +91,9 @@ export function toApplication(id: string, data: Record<string, unknown>): Applic
     interview: interview
       ? { slotId: interview.slotId, startsAt: toDate(interview.startsAt) as Date }
       : null,
+    pacts: (data["pacts"] as FileAnswer[] | undefined) ?? [],
+    pactNote: (data["pactNote"] as string | null | undefined) ?? null,
+    appointmentId: (data["appointmentId"] as string | null | undefined) ?? null,
     submittedAt: toDate(data["submittedAt"]),
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
@@ -104,6 +111,8 @@ export function applicationSnapshot(a: Application): Snapshot {
       ? { orgUnitId: a.offer.orgUnitId, expiresAt: a.offer.expiresAt.toISOString() }
       : null,
     portfolio: a.portfolio ? a.portfolio.name : null,
+    pacts: a.pacts.map((p) => p.name),
+    appointmentId: a.appointmentId,
   };
 }
 
@@ -117,6 +126,9 @@ const applicationDoc = (a: Application) => ({
   revisionRound: a.revisionRound,
   offer: a.offer,
   interview: a.interview,
+  pacts: a.pacts,
+  pactNote: a.pactNote,
+  appointmentId: a.appointmentId,
   submittedAt: a.submittedAt,
   version: a.version,
   createdAt: a.createdAt,
@@ -170,6 +182,8 @@ export interface Decision {
   readonly offer?: Offer;
   /** A revision request opens round n+1 (`applicationRevisions/{id}_{n+1}`). */
   readonly revision?: { readonly request: string; readonly requestedBy: string };
+  /** Why a pact was sent back (shown to the applicant). */
+  readonly pactNote?: string;
 }
 
 /** Sort key of the queue: never-submitted (withdrawn drafts) first. */
@@ -316,6 +330,7 @@ export function createFirestoreRecruitmentStore(db: Firestore) {
           formId: input.formId,
           // Applicants answer the form's current version (frozen once someone submits).
           formVersion: form.get("currentVersion") as number,
+          pactTemplateUrl: input.pactTemplateUrl,
           published: current?.published ?? false,
           version: (current?.version ?? 0) + 1,
           createdAt: current?.createdAt ?? now,
@@ -394,6 +409,64 @@ export function createFirestoreApplicationStore(db: Firestore) {
       return snapshot.docs.map((doc) => toRevision(doc.data())).sort((a, b) => a.round - b.round);
     },
 
+    /**
+     * Ratification (C3 step 9): pakta_review → confirmed AND the appointment (step 3.7, same
+     * rules and derived roles) in ONE transaction, so an applicant is confirmed exactly when the
+     * appointment exists, and only once.
+     */
+    ratify(
+      id: string,
+      expectedVersion: number,
+      appointment: { readonly title: string },
+      checked: readonly DerivedAssignment[],
+      audits: { readonly appointment: AppointmentAudit; readonly application: ApplicationAudit },
+      now: Date,
+    ): Promise<{ application: Application; appointment: Appointment }> {
+      const ref = applications.doc(safeId.parse(id));
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        if (!snapshot.exists) throw new RuleViolationError("This application does not exist.");
+        const current = toApplication(snapshot.id, snapshot.data() as Record<string, unknown>);
+        if (current.version !== expectedVersion) {
+          throw new ConcurrencyConflictError("applications version changed");
+        }
+        assertTransition(current.status, "confirmed");
+        const rSnapshot = await tx.get(recruitments.doc(current.recruitmentId));
+        const recruitment = toRecruitment(
+          rSnapshot.id,
+          rSnapshot.data() as Record<string, unknown>,
+        );
+        const orgUnitId = (current.offer as Offer).orgUnitId;
+        const prepared = await prepareAppointment(
+          db,
+          tx,
+          { userId: current.userId, orgUnitId, seat: "member", title: appointment.title },
+          checked,
+          now,
+        );
+        const next: Application = {
+          ...current,
+          status: "confirmed",
+          appointmentId: prepared.appointment.id,
+          version: current.version + 1,
+          updatedAt: now,
+        };
+        const log = await auditLog.begin(tx);
+        tx.set(ref, applicationDoc(next));
+        const created = writeAppointment(db, tx, log, prepared, audits.appointment);
+        log.append(
+          audits.application(
+            applicationSnapshot(current),
+            applicationSnapshot(next),
+            current,
+            next,
+            recruitment.title,
+          ),
+        );
+        return { application: next, appointment: created };
+      });
+    },
+
     decide(
       id: string,
       expectedVersion: number,
@@ -443,6 +516,7 @@ export function createFirestoreApplicationStore(db: Firestore) {
           ...current,
           status: decision.status,
           offer: decision.offer ?? current.offer,
+          pactNote: decision.pactNote ?? current.pactNote,
           revisionRound: round,
           version: current.version + 1,
           updatedAt: now,
@@ -608,7 +682,9 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
     const r = snapshot.exists
       ? toRecruitment(snapshot.id, snapshot.data() as Record<string, unknown>)
       : null;
-    return r && r.published && !r.deletedAt ? r : null;
+    // Unpublished is still "there" for applicants already in the process (offers, interviews,
+    // pacts); drafts and submissions check the window (which includes `published`) themselves.
+    return r && !r.deletedAt ? r : null;
   };
 
   /**
@@ -667,6 +743,9 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
       revisionRound: 0,
       offer: null,
       interview: null,
+      pacts: [],
+      pactNote: null,
+      appointmentId: null,
       submittedAt: null,
       version: 0,
       createdAt: now,
@@ -688,6 +767,16 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
         .map((doc) => toRecruitment(doc.id, doc.data()))
         .filter((r) => !r.deletedAt)
         .sort((a, b) => b.opensAt.getTime() - a.opensAt.getTime());
+    },
+
+    /** A recruitment that is not deleted (published or not): pages of applicants in progress. */
+    async getVisible(id: string): Promise<Recruitment | null> {
+      if (!safeId.safeParse(id).success) return null;
+      const snapshot = await recruitments.doc(id).get();
+      const r = snapshot.exists
+        ? toRecruitment(snapshot.id, snapshot.data() as Record<string, unknown>)
+        : null;
+      return r && !r.deletedAt ? r : null;
     },
 
     async getPublished(id: string): Promise<Recruitment | null> {
@@ -757,6 +846,21 @@ export function createFirestoreRecruitmentWebStore(db: Firestore) {
         if (!isRecruitmentOpen(r, now)) return { ok: false, error: "closed" };
         if (!editable(current)) return { ok: false, error: "locked" };
         return bump(base(r, uid, current, now), now, { portfolio: file });
+      });
+    },
+
+    /**
+     * The signed integrity pact (C3 step 8): approved → pakta_review. Every upload is kept
+     * (`pacts`, oldest first), also when the committee sends a pact back.
+     */
+    setPact(recruitmentId: string, uid: string, file: FileAnswer, now: Date) {
+      return change(recruitmentId, uid, now, (_r, current) => {
+        if (!current || current.status !== "approved") return { ok: false, error: "locked" };
+        return bump(current, now, {
+          status: "pakta_review",
+          pacts: [...current.pacts, file],
+          pactNote: null,
+        });
       });
     },
 

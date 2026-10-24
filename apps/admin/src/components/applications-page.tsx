@@ -4,11 +4,14 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   applicationFileUrlAction,
+  approvePlacementAction,
   failApplicationAction,
   offerApplicationAction,
   passApplicationAction,
+  ratifyApplicationAction,
   rejectApplicationAction,
   requestRevisionAction,
+  returnPactAction,
 } from "@/app/(panel)/recruitment/actions";
 import { actionMessage } from "@/components/action-message";
 import { formatInZone } from "@/components/format";
@@ -40,12 +43,15 @@ const sortValue = (a: ApplicationItem, key: SortKey) =>
 type Pending =
   | { kind: "revision" }
   | { kind: "offer" }
-  | { kind: "confirm"; action: "fail" | "pass" | "reject" };
+  | { kind: "returnPact" }
+  | { kind: "ratify" }
+  | { kind: "confirm"; action: "fail" | "pass" | "reject" | "approve" };
 
 const CONFIRM = {
   fail: { title: "Fail the document check?", label: "Fail", tone: "danger" },
   pass: { title: "Pass to the interview?", label: "Pass to interview", tone: "success" },
   reject: { title: "Reject this applicant?", label: "Reject", tone: "danger" },
+  approve: { title: "Approve this placement?", label: "Approve placement", tone: "success" },
 } as const;
 
 export function ApplicationsPage(props: {
@@ -53,8 +59,10 @@ export function ApplicationsPage(props: {
   initial: ApplicationItem[];
   canReview: boolean;
   canOffer: boolean;
+  /** recruitment.confirm (the Sekjen): approve placements and ratify. */
+  canConfirm: boolean;
 }) {
-  const { recruitment, initial: items, canReview, canOffer } = props;
+  const { recruitment, initial: items, canReview, canOffer, canConfirm } = props;
   const router = useRouter();
   const toast = useToastMessage();
   const [tab, setTab] = useState<QueueTab>("review");
@@ -63,6 +71,7 @@ export function ApplicationsPage(props: {
   const [pending, setPending] = useState<Pending | null>(null);
   const [request, setRequest] = useState("");
   const [unit, setUnit] = useState("");
+  const [seatTitle, setSeatTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
@@ -247,6 +256,25 @@ export function ApplicationsPage(props: {
                 </dd>
               </div>
             ))}
+            {current.pacts.length > 0 ? (
+              <>
+                <dt>Integrity pact</dt>
+                <dd>
+                  {current.pacts.map((p, i) => (
+                    <Button
+                      key={p.path}
+                      variant="outline"
+                      size="sm"
+                      icon="download"
+                      onClick={() => void openFile(p.path)}
+                    >
+                      {i === current.pacts.length - 1 ? p.name : `${p.name} (earlier)`}
+                    </Button>
+                  ))}
+                  {current.pactNote ? ` Sent back: ${current.pactNote}` : ""}
+                </dd>
+              </>
+            ) : null}
           </dl>
           {current.revisions.length > 0 ? (
             <div className="admin-form-separator">
@@ -313,6 +341,42 @@ export function ApplicationsPage(props: {
                   }}
                 >
                   {s === "offered" ? "Offer again" : "Offer a seat"}
+                </Button>
+              ) : null}
+              {canConfirm && s === "accepted" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="check"
+                  disabled={busy}
+                  onClick={() => setPending({ kind: "confirm", action: "approve" })}
+                >
+                  Approve placement
+                </Button>
+              ) : null}
+              {canReview && s === "pakta_review" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="undo"
+                  disabled={busy}
+                  onClick={() => setPending({ kind: "returnPact" })}
+                >
+                  Send pact back
+                </Button>
+              ) : null}
+              {canConfirm && s === "pakta_review" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="crown"
+                  disabled={busy}
+                  onClick={() => {
+                    setSeatTitle(`Staf ${current.offer?.unitName ?? ""}`.trim());
+                    setPending({ kind: "ratify" });
+                  }}
+                >
+                  Ratify
                 </Button>
               ) : null}
               {canReview && (s === "interview" || s === "offered" || s === "accepted") ? (
@@ -421,6 +485,94 @@ export function ApplicationsPage(props: {
           </div>
         </Modal>
 
+        <Modal
+          open={pending?.kind === "returnPact"}
+          title="Send the pact back"
+          subtitle="The applicant sees this note and uploads the pact again; earlier files are kept."
+          onClose={() => setPending(null)}
+          footer={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="chevronLeft"
+                onClick={() => setPending(null)}
+              >
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="send"
+                disabled={busy}
+                onClick={() => void run(returnPactAction, { note: request }, "Pact sent back")}
+              >
+                Send back
+              </Button>
+            </>
+          }
+        >
+          <div className="admin-field">
+            <label className="admin-field__label" htmlFor="pact-note">
+              What is wrong with the pact? *
+            </label>
+            <textarea
+              id="pact-note"
+              required
+              className="admin-input admin-textarea"
+              rows={3}
+              value={request}
+              onChange={(e) => setRequest(e.target.value)}
+            />
+            <FieldError id="pact-note-error" message={fieldErrors["note"]} />
+          </div>
+        </Modal>
+
+        <Modal
+          open={pending?.kind === "ratify"}
+          title="Ratify and appoint"
+          subtitle={`${current.name} is confirmed and appointed to ${current.offer?.unitName ?? "the unit"} (member seat) of the active period, with the roles of that seat.`}
+          onClose={() => setPending(null)}
+          footer={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="chevronLeft"
+                onClick={() => setPending(null)}
+              >
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="crown"
+                disabled={busy}
+                onClick={() =>
+                  void run(ratifyApplicationAction, { title: seatTitle }, "Ratified and appointed")
+                }
+              >
+                Ratify
+              </Button>
+            </>
+          }
+        >
+          <div className="admin-field">
+            <label className="admin-field__label" htmlFor="seat-title">
+              Title of the seat *
+            </label>
+            <input
+              id="seat-title"
+              required
+              minLength={2}
+              className="admin-input"
+              value={seatTitle}
+              onChange={(e) => setSeatTitle(e.target.value)}
+            />
+            <FieldError id="seat-title-error" message={fieldErrors["title"]} />
+          </div>
+        </Modal>
+
         <ConfirmDialog
           open={pending?.kind === "confirm"}
           title={pending?.kind === "confirm" ? CONFIRM[pending.action].title : ""}
@@ -433,6 +585,7 @@ export function ApplicationsPage(props: {
               fail: failApplicationAction,
               pass: passApplicationAction,
               reject: rejectApplicationAction,
+              approve: approvePlacementAction,
             }[pending.action];
             void run(action, {}, "Saved");
           }}

@@ -1,5 +1,6 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
+import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
 import type { AuditListQuery, FirestoreFormStore } from "@website/db/firestore";
@@ -94,6 +95,25 @@ export const applicationActions = lazyEnv(() =>
   createApplicationActions({
     applications: adminStores().applications,
     signedUrl: (path) => imageStorage().signedReadUrl(path),
+    appointments: adminStores().appointments,
+    units: adminStores().orgUnits,
+    roles: adminStores().roles,
+    hasSecondFactor: async (uid) => {
+      const { authAdmin, passkeys } = adminStores();
+      const [methods, keys] = await Promise.all([
+        authAdmin.signInMethods(uid),
+        passkeys.listByUser(uid),
+      ]);
+      return hasTwoSignInMethods({ ...methods, passkeys: keys.length });
+    },
+    afterRoleChange: async (actor, uid, details) => {
+      await adminStores().authAdmin.revokeSessions(uid);
+      logSecurityEvent(adminStores().logger, {
+        type: "staff.role_changed",
+        actorId: actor.userId,
+        details: { targetId: uid, ...details },
+      });
+    },
     now: () => new Date(),
   }),
 );

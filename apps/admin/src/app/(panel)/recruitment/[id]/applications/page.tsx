@@ -47,6 +47,7 @@ export default async function ApplicationsRoute({ params }: { params: Promise<{ 
       )}
       canReview={can(viewer.principal, "recruitment.review")}
       canOffer={can(viewer.principal, "recruitment.offer")}
+      canConfirm={can(viewer.principal, "recruitment.confirm")}
     />
   );
 }

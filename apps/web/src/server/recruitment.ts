@@ -6,6 +6,7 @@ import {
   formFilePath,
   isPdf,
   MAX_PORTFOLIO_BYTES,
+  pactPath,
   portfolioPath,
   type Recruitment,
 } from "@website/domain/recruitment";
@@ -21,7 +22,7 @@ import { safeId, safeText } from "@website/security/validation";
 export interface ApplyingDeps {
   readonly store: Pick<
     FirestoreRecruitmentWebStore,
-    | "getPublished"
+    | "getVisible"
     | "saveDraft"
     | "setPortfolio"
     | "setAnswerFile"
@@ -29,6 +30,7 @@ export interface ApplyingDeps {
     | "withdraw"
     | "respondOffer"
     | "bookInterview"
+    | "setPact"
   >;
   readonly profileComplete: (uid: string) => Promise<boolean>;
   /** Private Storage (portfolios have no public URL). */
@@ -126,20 +128,21 @@ export function createApplying(deps: ApplyingDeps) {
     },
 
     /**
-     * POST /api/recruitment/{id}/portfolio (or ?question={id} for a file question): the
-     * applicant's PDF (magic bytes), at most 5 MB, stored privately; the file name comes from
-     * `X-File-Name` (URI-encoded).
+     * POST /api/recruitment/{id}/portfolio — `target` null: the portfolio; "pact": the signed
+     * integrity pact; a question id: a file question. PDF only (magic bytes), at most 5 MB,
+     * stored privately; the file name comes from `X-File-Name` (URI-encoded).
      */
     async uploadFile(
       user: Applicant,
       recruitmentId: string,
-      questionId: string | null,
+      target: string | null,
       request: Request,
     ): Promise<Response> {
+      const questionId = target === "pact" ? null : target;
       if (!user) return jsonError("unauthenticated");
       const g = await gate(user, Ref, { recruitmentId });
       if (!g.ok) return Response.json(g.result, { status: 400 });
-      const recruitment: Recruitment | null = await deps.store.getPublished(recruitmentId);
+      const recruitment: Recruitment | null = await deps.store.getVisible(recruitmentId);
       if (!recruitment) return Response.json({ error: "closed" }, { status: 400 });
       if (questionId !== null && !/^q_[A-Za-z0-9]{1,32}$/.test(questionId)) {
         return Response.json({ error: "invalid" }, { status: 400 });
@@ -150,23 +153,27 @@ export function createApplying(deps: ApplyingDeps) {
       if (!isPdf(bytes)) return Response.json({ error: "not_pdf" }, { status: 400 });
       const now = deps.now();
       const path =
-        questionId === null
-          ? portfolioPath(recruitment.id, g.uid, now, deps.uuid())
-          : formFilePath(recruitment.formId, g.uid, now, deps.uuid());
+        target === "pact"
+          ? pactPath(recruitment.id, g.uid, now, deps.uuid())
+          : questionId === null
+            ? portfolioPath(recruitment.id, g.uid, now, deps.uuid())
+            : formFilePath(recruitment.formId, g.uid, now, deps.uuid());
       await deps.storage.save(path, bytes, {
         visibility: "private",
         contentType: "application/pdf",
       });
       const file = {
         path,
-        name: name.success ? name.data : questionId === null ? "portfolio.pdf" : "file.pdf",
+        name: name.success ? name.data : target === null ? "portfolio.pdf" : "file.pdf",
         contentType: "application/pdf" as const,
         size: bytes.byteLength,
       };
       const outcome =
-        questionId === null
-          ? await deps.store.setPortfolio(recruitment.id, g.uid, file, now)
-          : await deps.store.setAnswerFile(recruitment.id, g.uid, questionId, file, now);
+        target === "pact"
+          ? await deps.store.setPact(recruitment.id, g.uid, file, now)
+          : questionId === null
+            ? await deps.store.setPortfolio(recruitment.id, g.uid, file, now)
+            : await deps.store.setAnswerFile(recruitment.id, g.uid, questionId, file, now);
       const result = toResult(outcome);
       return Response.json(result.ok ? { ok: true, name: file.name } : result, {
         status: result.ok ? 201 : 400,

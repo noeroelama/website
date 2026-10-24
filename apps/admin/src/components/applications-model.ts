@@ -50,6 +50,10 @@ export interface ApplicationItem {
   offer: { orgUnitId: string; unitName: string; expiresAt: string; expired: boolean } | null;
   answers: { id: string; label: string; text: string; file: FileAnswer | null }[];
   portfolio: FileAnswer | null;
+  /** Every uploaded integrity pact, oldest first (the last one counts). */
+  pacts: FileAnswer[];
+  pactNote: string | null;
+  appointmentId: string | null;
   revisions: {
     round: number;
     request: string;
@@ -97,6 +101,9 @@ export function toApplicationItem(
       };
     }),
     portfolio: a.portfolio,
+    pacts: [...a.pacts],
+    pactNote: a.pactNote,
+    appointmentId: a.appointmentId,
     revisions: revisions
       .filter((rev) => rev.applicationId === a.id)
       .map((rev) => ({

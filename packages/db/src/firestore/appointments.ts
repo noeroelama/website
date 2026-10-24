@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Firestore } from "firebase-admin/firestore";
-import type { AuditEvent, Snapshot } from "@website/audit";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { AuditAppender, AuditEvent, Snapshot } from "@website/audit";
 import {
   derivedAssignments,
   type Appointment,
@@ -53,6 +53,121 @@ export type AppointmentAudit = (
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
 
+/** Who is appointed where (the caller vetted escalation and the second factor). */
+export interface AppointmentRequest {
+  readonly userId: string;
+  readonly orgUnitId: string;
+  readonly seat: AppointmentSeat;
+  readonly title: string;
+}
+
+/** Everything an appointment writes, read and checked inside the caller's transaction. */
+export interface PreparedAppointment {
+  readonly appointment: Appointment;
+  readonly user: UserSummary;
+  readonly added: readonly RoleAssignment[];
+}
+
+/**
+ * The reads and rules of an appointment (step 3.7), inside `tx`: the unit must be active in the
+ * ACTIVE period, the account must exist, nobody is appointed twice in one unit, and the roles of
+ * `settings/appointmentRoles` must still be the ones the caller `checked` (else a conflict).
+ * Used by `appoint` and by the recruitment ratification (C3 step 9), so roles are derived the
+ * same way. Nothing is written here.
+ */
+export async function prepareAppointment(
+  db: Firestore,
+  tx: Transaction,
+  input: AppointmentRequest,
+  checked: readonly DerivedAssignment[],
+  now: Date,
+): Promise<PreparedAppointment> {
+  const docs = db.collection("appointments");
+  const settings = db.collection("settings");
+  const [active, unitSnapshot, userSnapshot, mapSnapshot, same] = await Promise.all([
+    tx.get(settings.doc("activePeriod")),
+    tx.get(db.collection("orgUnits").doc(safeId.parse(input.orgUnitId))),
+    tx.get(db.collection("users").doc(safeId.parse(input.userId))),
+    tx.get(settings.doc("appointmentRoles")),
+    tx.get(
+      docs
+        .where("userId", "==", input.userId)
+        .where("orgUnitId", "==", input.orgUnitId)
+        .where("status", "==", "active"),
+    ),
+  ]);
+  const unit = unitSnapshot.data() as Omit<OrgUnit, "id"> | undefined;
+  const periodId = active.get("periodId") as string;
+  if (!unit || !unit.active || unit.deletedAt || unit.periodId !== periodId) {
+    throw new RuleViolationError("Appointments are made in an active unit of the active period.");
+  }
+  if (!userSnapshot.exists) throw new RuleViolationError("No account with this e-mail.");
+  if (!same.empty) throw new RuleViolationError("This person is already appointed in this unit.");
+  const { map } = mapSnapshot.data() as { map: AppointmentRoleMap };
+  const derived = derivedAssignments(input.seat, { id: input.orgUnitId, type: unit.type }, map);
+  if (JSON.stringify(derived) !== JSON.stringify(checked)) {
+    throw new ConcurrencyConflictError("appointment roles changed");
+  }
+  const user = toUserSummary(input.userId, userSnapshot.data() as Record<string, unknown>);
+  const id = randomUUID();
+  const appointment: Appointment = {
+    ...input,
+    id,
+    name: user.name ?? user.email ?? input.userId,
+    periodId,
+    status: "active",
+    startsOn: day(now),
+    endsOn: null,
+    version: 1,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  const added: RoleAssignment[] = derived.map((d) => ({
+    ...d,
+    periodId,
+    source: "appointment",
+    revokedAt: null,
+    appointmentId: id,
+  }));
+  return { appointment, user, added };
+}
+
+/** Writes a prepared appointment, its roles and its audit entries in the same transaction. */
+export function writeAppointment(
+  db: Firestore,
+  tx: Transaction,
+  log: AuditAppender,
+  { appointment, user, added }: PreparedAppointment,
+  audit: AppointmentAudit,
+): Appointment {
+  const next = {
+    ...user,
+    roleAssignments: [...user.roleAssignments, ...added],
+    version: user.version + 1,
+  };
+  const { id, ...fields } = appointment;
+  tx.set(db.collection("appointments").doc(id), fields);
+  tx.update(db.collection("users").doc(user.uid), {
+    roleAssignments: plainAssignments(next.roleAssignments),
+    roleIds: roleIdsOf(next.roleAssignments),
+    version: next.version,
+  });
+  const change = {
+    before: accountSnapshot(user),
+    after: accountSnapshot(next),
+    versionBefore: user.version,
+    versionAfter: next.version,
+  };
+  for (const event of audit(
+    { before: null, after: appointmentSnapshot(appointment), next: appointment },
+    { change, user },
+  )) {
+    log.append(event);
+  }
+  return appointment;
+}
+
 /**
  * `appointments/{id}` and the roles they give (`users/{uid}.roleAssignments`, source
  * "appointment", bound to the period, linked by `appointmentId`), changed together in ONE
@@ -62,7 +177,6 @@ const day = (date: Date) => date.toISOString().slice(0, 10);
 export function createFirestoreAppointmentStore(db: Firestore) {
   const docs = db.collection("appointments");
   const users = db.collection("users");
-  const units = db.collection("orgUnits");
   const settings = db.collection("settings");
   const mapRef = settings.doc("appointmentRoles");
   const auditLog = createFirestoreAuditWriter(db);
@@ -141,92 +255,15 @@ export function createFirestoreAppointmentStore(db: Firestore) {
      * changed meanwhile, the roles would differ and the appointment is refused as a conflict.
      */
     appoint(
-      input: { userId: string; orgUnitId: string; seat: AppointmentSeat; title: string },
+      input: AppointmentRequest,
       checked: readonly DerivedAssignment[],
       audit: AppointmentAudit,
       now: Date,
     ): Promise<Appointment> {
-      const ref = docs.doc(randomUUID());
-      const userRef = users.doc(safeId.parse(input.userId));
       return db.runTransaction(async (tx) => {
-        const [active, unitSnapshot, userSnapshot, mapSnapshot, same] = await Promise.all([
-          tx.get(settings.doc("activePeriod")),
-          tx.get(units.doc(safeId.parse(input.orgUnitId))),
-          tx.get(userRef),
-          tx.get(mapRef),
-          tx.get(
-            docs
-              .where("userId", "==", input.userId)
-              .where("orgUnitId", "==", input.orgUnitId)
-              .where("status", "==", "active"),
-          ),
-        ]);
-        const unit = unitSnapshot.data() as Omit<OrgUnit, "id"> | undefined;
-        const periodId = active.get("periodId") as string;
-        if (!unit || !unit.active || unit.deletedAt || unit.periodId !== periodId) {
-          throw new RuleViolationError(
-            "Appointments are made in an active unit of the active period.",
-          );
-        }
-        if (!userSnapshot.exists) throw new RuleViolationError("No account with this e-mail.");
-        if (!same.empty)
-          throw new RuleViolationError("This person is already appointed in this unit.");
-        const { map } = mapSnapshot.data() as { map: AppointmentRoleMap };
-        const derived = derivedAssignments(
-          input.seat,
-          { id: input.orgUnitId, type: unit.type },
-          map,
-        );
-        if (JSON.stringify(derived) !== JSON.stringify(checked)) {
-          throw new ConcurrencyConflictError("appointment roles changed");
-        }
-
-        const user = toUserSummary(input.userId, userSnapshot.data() as Record<string, unknown>);
-        const fields: Omit<Appointment, "id"> = {
-          ...input,
-          name: user.name ?? user.email ?? input.userId,
-          periodId,
-          status: "active",
-          startsOn: day(now),
-          endsOn: null,
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        const appointment: Appointment = { id: ref.id, ...fields };
-        const added: RoleAssignment[] = derived.map((d) => ({
-          ...d,
-          periodId,
-          source: "appointment",
-          revokedAt: null,
-          appointmentId: ref.id,
-        }));
-        const next = {
-          ...user,
-          roleAssignments: [...user.roleAssignments, ...added],
-          version: user.version + 1,
-        };
+        const prepared = await prepareAppointment(db, tx, input, checked, now);
         const log = await auditLog.begin(tx);
-        tx.set(ref, fields);
-        tx.update(userRef, {
-          roleAssignments: plainAssignments(next.roleAssignments),
-          roleIds: roleIdsOf(next.roleAssignments),
-          version: next.version,
-        });
-        const change = {
-          before: accountSnapshot(user),
-          after: accountSnapshot(next),
-          versionBefore: user.version,
-          versionAfter: next.version,
-        };
-        for (const event of audit(
-          { before: null, after: appointmentSnapshot(appointment), next: appointment },
-          { change, user },
-        )) {
-          log.append(event);
-        }
-        return appointment;
+        return writeAppointment(db, tx, log, prepared, audit);
       });
     },
 

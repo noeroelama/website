@@ -399,13 +399,22 @@ describe("applying (C3 steps 1-2)", () => {
       published: false,
     });
     expect(await web().getPublished(recruitmentId)).toBeNull();
+    // Still visible to applicants already in it (offers, interviews, pacts), not open for new
+    // drafts or uploads.
+    expect(await web().getVisible(recruitmentId)).toMatchObject({ published: false });
     expect(await applying().withdraw(ari, { recruitmentId })).toEqual({
       ok: false,
-      error: "closed",
+      error: "locked",
     });
-    expect(await (await upload(ari, pdf)).json()).toEqual({ error: "closed" });
+    expect(await (await upload(ari, pdf)).json()).toEqual({ ok: false, error: "closed" });
+    expect(await web().getVisible("a/b")).toBeNull();
+    expect(await web().getVisible("missing")).toBeNull();
     expect(await web().getPublished("a/b")).toBeNull();
     expect(await web().listPublished()).toEqual([]);
+    // A deleted recruitment is gone for everyone.
+    await recruitmentActions().remove(...as(committee))({ id: recruitmentId, version: 3 });
+    expect(await web().getVisible(recruitmentId)).toBeNull();
+    expect(await (await upload(ari, pdf)).json()).toEqual({ error: "closed" });
   });
 
   it("withdraws before a seat is taken", async () => {
@@ -552,6 +561,8 @@ describe("edge cases kept safe", () => {
       revisionRound: 0,
       offer: { orgUnitId: "media", expiresAt: "2026-11-13T00:00:00.000Z" },
       portfolio: null,
+      pacts: [],
+      appointmentId: null,
     });
     expect(
       applicationSnapshot({

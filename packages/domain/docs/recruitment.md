@@ -25,7 +25,7 @@ shows ONE next action.
   `apps/web/src/server/recruitment.ts`, wiring `recruitment-wiring.ts`.
 - Tests: `tests/unit/recruitment.test.ts`, `tests/unit/admin-recruitment.test.ts`,
   `tests/integration/recruitment.test.ts`, `tests/integration/selection.test.ts`,
-  `tests/integration/interviews.test.ts`.
+  `tests/integration/interviews.test.ts`, `tests/integration/ratification.test.ts`.
 
 ## How to use it
 
@@ -71,6 +71,17 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
   their profile time zone: ONE transaction reads the application, the chosen slot
   (`booked < capacity`, future, same recruitment) and the old slot, so capacity holds under
   concurrency and a re-booking frees the old time. A time with bookings is never deleted.
+- **Placement, pact, ratification** (C3 steps 7-9): `recruitment.confirm` (give it only to the
+  Sekjen's role) approves the placement (accepted → approved). The applicant downloads the pact
+  template (the recruitment's "Integrity pact template" link — [OWNER] provides the file) and
+  uploads the signed PDF (private) → `pakta_review`; `recruitment.review` may send it back with a
+  note (→ approved); every uploaded pact is kept (`pacts`). Ratify (`recruitment.confirm`,
+  recent sign-in) sets `confirmed` AND creates the appointment (member seat in the offered unit
+  of the ACTIVE period) in ONE transaction through the step 3.7 functions
+  (`prepareAppointment`/`writeAppointment`), so roles are derived the normal way; the ratifier
+  must hold the roles' permissions (`canRatifyInto`), staff roles need the applicant's second
+  sign-in method, nobody ratifies themselves, and the applicant's sessions are renewed.
+  `confirmed` is final: the appointment is created once.
 - **Offers** expire at read time (`offerExpired`): no job releases them; an expired offer cannot
   be answered and the committee may offer again.
 - **Files** are opened by the committee through 15-minute signed links, only for paths that

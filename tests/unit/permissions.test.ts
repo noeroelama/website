@@ -6,6 +6,7 @@ import {
   can,
   canAccessAdmin,
   canAppointInto,
+  canRatifyInto,
   canAssignRole,
   canDeleteRole,
   canInSomeScope,
@@ -241,6 +242,28 @@ describe("can()", () => {
     expect(canAppointInto(sekjen, { id: "superadmin", name: "x", permissions: [] })).toBe(false);
     expect(canAppointInto(principal([{ roleId: "viewer" }]), officer)).toBe(false);
     lookup.delete(secretary.id);
+  });
+
+  it("ratifying gives only roles the ratifier holds, never built-in ones (C3 step 9)", () => {
+    const sekjenRole: RoleDefinition = {
+      id: "sekjen",
+      name: "Sekjen",
+      permissions: normalizePermissions(["recruitment.confirm", "events.read"]),
+    };
+    const officer: RoleDefinition = {
+      id: "officer",
+      name: "Officer",
+      permissions: normalizePermissions(["events.read"]),
+    };
+    lookup.set(sekjenRole.id, sekjenRole);
+    const sekjen = principal([{ roleId: "sekjen" }]);
+    expect(canRatifyInto(sekjen, officer)).toBe(true);
+    expect(
+      canRatifyInto(sekjen, { ...officer, permissions: normalizePermissions(["members.pii"]) }),
+    ).toBe(false);
+    expect(canRatifyInto(sekjen, { id: "member", name: "x", permissions: [] })).toBe(false);
+    expect(canRatifyInto(principal([{ roleId: "viewer" }]), officer)).toBe(false);
+    lookup.delete(sekjenRole.id);
   });
 
   it("*_own permissions belong to every active account, for its own resources only", () => {

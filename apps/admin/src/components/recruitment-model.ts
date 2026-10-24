@@ -15,6 +15,7 @@ export interface RecruitmentItem {
   offerDays: number;
   formId: string;
   formVersion: number;
+  pactTemplateUrl: string | null;
   published: boolean;
   /** Published and inside the window right now. */
   open: boolean;
@@ -46,6 +47,7 @@ export function toRecruitmentItem(
     offerDays: r.offerDays,
     formId: r.formId,
     formVersion: r.formVersion,
+    pactTemplateUrl: r.pactTemplateUrl,
     published: r.published,
     open: isRecruitmentOpen(r, now),
     units: r.units.map((u) => ({ ...u, filled: seats.get(u.orgUnitId)?.filled ?? 0 })),

@@ -50,6 +50,19 @@ export async function offerApplicationAction(input: unknown) {
   return queued(await applicationActions().offer(getPrincipal, getAuditContext)(input));
 }
 
+export async function approvePlacementAction(input: unknown) {
+  return queued(await applicationActions().approve(getPrincipal, getAuditContext)(input));
+}
+
+export async function returnPactAction(input: unknown) {
+  return queued(await applicationActions().returnPact(getPrincipal, getAuditContext)(input));
+}
+
+/** Ratify: confirmed + the appointment (needs a recent sign-in). */
+export async function ratifyApplicationAction(input: unknown) {
+  return queued(await applicationActions().ratify(getPrincipal, getAuditContext)(input));
+}
+
 /** A 15-minute link to a portfolio or file answer of the application. */
 export async function applicationFileUrlAction(input: unknown) {
   return applicationActions().fileUrl(getPrincipal, getAuditContext)(input);
