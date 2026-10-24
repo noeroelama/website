@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
 import type { UserListQuery } from "@website/db";
-import type { AuditListQuery } from "@website/db/firestore";
+import type { AuditListQuery, FirestoreFormStore } from "@website/db/firestore";
 import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newsletter";
 import { logSecurityEvent } from "@website/observability";
 import { keyedHash, signLink } from "@website/security";
@@ -15,6 +15,7 @@ import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { createDashboard } from "./dashboard";
 import { createEventActions } from "./events";
+import { createFormActions } from "./forms";
 import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
@@ -66,6 +67,11 @@ export const periodActions = lazyEnv(() =>
 /** Organizations → Period → Structure (org units) actions. */
 export const orgUnitActions = lazyEnv(() =>
   createOrgUnitActions({ units: adminStores().orgUnits, now: () => new Date() }),
+);
+
+/** Forms page: the form builder (versioned questions). */
+export const formActions = lazyEnv(() =>
+  createFormActions({ forms: adminStores().forms, now: () => new Date(), uuid: randomUUID }),
 );
 
 /** Universities page: review of proposed campuses. */
@@ -211,6 +217,9 @@ export const adminReads = {
   listNews: () => adminStores().content.listForAdmin("news"),
   getContent: (id: string) => adminStores().content.get(id),
   listEvents: () => adminStores().events.listForAdmin(),
+  listForms: () => adminStores().forms.listForAdmin(),
+  currentFormVersions: (forms: Parameters<FirestoreFormStore["currentVersions"]>[0]) =>
+    adminStores().forms.currentVersions(forms),
   listAlbums: () => adminStores().galleries.listForAdmin(),
   listChapters: () => adminStores().chapters.listForAdmin(),
   listPeriods: () => adminStores().periods.listForAdmin(),

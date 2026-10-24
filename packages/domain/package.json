@@ -13,7 +13,8 @@
     "./members": "./src/members/index.ts",
     "./shared": "./src/shared/index.ts",
     "./messaging": "./src/messaging/index.ts",
-    "./gallery": "./src/gallery/index.ts"
+    "./gallery": "./src/gallery/index.ts",
+    "./forms": "./src/forms/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

@@ -33,6 +33,14 @@ export const ADMIN_PAGES = {
     label: "Newsletter",
     extras: { send: "Send campaigns", export: "Export subscribers" },
   },
+  forms: {
+    label: "Forms",
+    extras: {
+      publish: "Publish and close public forms",
+      responses: "See responses",
+      export: "Export responses",
+    },
+  },
   organizations: { label: "Organizations" },
   periods: { label: "Board periods" },
   structure: { label: "Organisation structure" },

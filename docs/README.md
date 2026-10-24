@@ -28,6 +28,7 @@ and link to it from the others.
 | Public site (frame, language ID/EN, Home, News, About, Terms, Privacy) | [apps/web/docs/public-site.md](../apps/web/docs/public-site.md)                             |
 | News CMS (Article page, publish/schedule, rich text, preview)          | [packages/domain/docs/content.md](../packages/domain/docs/content.md)                       |
 | Member profiles                                                        | [packages/domain/docs/members.md](../packages/domain/docs/members.md)                       |
+| Forms (versioned questions, Forms page)                                | [packages/domain/docs/forms.md](../packages/domain/docs/forms.md)                           |
 | Image uploads (5 MB, WebP, thumbnail, Firebase Storage)                | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
 | Database                                                               | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
 | Authentication (Google, email/password, passkeys, reset)               | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |

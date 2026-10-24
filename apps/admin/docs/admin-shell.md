@@ -124,7 +124,8 @@ router.push("/things"); router.refresh();
   its mock import with a server read and its buttons with guarded actions (pattern above), then
   delete the mock file. Articles (`packages/domain/docs/content.md`), Events
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
-  (`packages/domain/docs/newsletter.md`), Audit Log and Users/Roles are the real, data-backed pages.
+  (`packages/domain/docs/newsletter.md`), Forms (`packages/domain/docs/forms.md`), Audit Log and
+  Users/Roles are the real, data-backed pages.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

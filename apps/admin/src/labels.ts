@@ -6,6 +6,14 @@ import {
 } from "@website/audit";
 import { NEWS_CATEGORIES, type NewsCategory } from "@website/domain/content";
 import { EVENT_TYPES, type EventType } from "@website/domain/events";
+import {
+  FORM_STATUSES,
+  FORM_USAGES,
+  QUESTION_TYPES,
+  type FormStatus,
+  type FormUsage,
+  type QuestionType,
+} from "@website/domain/forms";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
 import {
   CHAPTER_RISKS,
@@ -118,6 +126,29 @@ export const CHAPTER_RISK_LABELS = {
   at_risk: { id: "Berisiko kekosongan", en: "At risk of a vacuum" },
 } as const satisfies Record<ChapterRisk, Label>;
 
+export const FORM_USAGE_LABELS = {
+  public: { id: "Formulir publik", en: "Public form" },
+  recruitment: { id: "Formulir Oprec", en: "Recruitment form" },
+} as const satisfies Record<FormUsage, Label>;
+
+export const FORM_STATUS_LABELS = {
+  draft: { id: "Draf", en: "Draft" },
+  published: { id: "Dipublikasikan", en: "Published" },
+  closed: { id: "Ditutup", en: "Closed" },
+} as const satisfies Record<FormStatus, Label>;
+
+export const QUESTION_TYPE_LABELS = {
+  short_text: { id: "Jawaban singkat", en: "Short answer" },
+  long_text: { id: "Paragraf", en: "Paragraph" },
+  email: { id: "E-mail", en: "E-mail" },
+  number: { id: "Angka", en: "Number" },
+  date: { id: "Tanggal", en: "Date" },
+  single_choice: { id: "Pilihan ganda", en: "Multiple choice (one)" },
+  multi_choice: { id: "Kotak centang", en: "Checkboxes (several)" },
+  file: { id: "Unggah berkas", en: "File upload" },
+  consent: { id: "Persetujuan", en: "Consent" },
+} as const satisfies Record<QuestionType, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -134,6 +165,9 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "event type", keys: EVENT_TYPES, labels: EVENT_TYPE_LABELS },
   { name: "org unit type", keys: ORG_UNIT_TYPES, labels: ORG_UNIT_TYPE_LABELS },
   { name: "chapter risk", keys: CHAPTER_RISKS, labels: CHAPTER_RISK_LABELS },
+  { name: "form usage", keys: FORM_USAGES, labels: FORM_USAGE_LABELS },
+  { name: "form status", keys: FORM_STATUSES, labels: FORM_STATUS_LABELS },
+  { name: "question type", keys: QUESTION_TYPES, labels: QUESTION_TYPE_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

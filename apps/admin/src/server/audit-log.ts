@@ -33,6 +33,9 @@ export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
   // not revertible: the confirmation e-mail is already out).
   campaign: "campaigns",
   subscriber: "subscribers",
+  // Forms: a CREATE (moves the new form to the trash) and a DELETE (restores it); edits create
+  // question versions and are never revertible.
+  form: "forms",
 };
 
 export interface AuditLogDeps {

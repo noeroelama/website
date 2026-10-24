@@ -4743,3 +4743,46 @@ form.admin-toolbar::before {
     gap: var(--space-1);
   }
 }
+
+/* ================================================================
+   Forms page (components/forms-page.tsx): one question per list panel.
+   ================================================================ */
+.admin-question {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-3) var(--space-5);
+  min-width: 0;
+}
+
+.admin-question__wide {
+  grid-column: 1 / -1;
+}
+
+.admin-question__flags {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+/* A visible label next to a native checkbox ("Required", "Allow other"). */
+.admin-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--admin-ink, var(--color-text));
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.admin-check-label input {
+  accent-color: var(--color-gold);
+}
+
+@media (max-width: 767px) {
+  .admin-question {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
