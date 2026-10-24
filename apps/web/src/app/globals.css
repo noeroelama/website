@@ -310,3 +310,10 @@
 .site-choice input {
   accent-color: var(--color-primary);
 }
+
+/* Personality test (/test/personality/{token}): the 7-step scale wraps on small screens. */
+.site-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}

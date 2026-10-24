@@ -274,6 +274,7 @@ export const adminReads = {
   listRevisions: (recruitmentId: string) =>
     adminStores().applications.revisionsForRecruitment(recruitmentId),
   getFormVersion: (formId: string, n: number) => adminStores().forms.getVersion(formId, n),
+  personalityResults: (uids: readonly string[]) => adminStores().personality.getMany(uids),
   listInterviewSlots: (recruitmentId: string) =>
     adminStores().interviews.listForRecruitment(recruitmentId),
   recruitmentSeats: (ids: readonly string[]) => adminStores().recruitments.seats(ids),

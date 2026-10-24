@@ -256,6 +256,12 @@ export function ApplicationsPage(props: {
                 </dd>
               </div>
             ))}
+            <dt>Personality</dt>
+            <dd>
+              {current.personality
+                ? `${current.personality.full} (${current.personality.axes})`
+                : "Not taken yet"}
+            </dd>
             {current.pacts.length > 0 ? (
               <>
                 <dt>Integrity pact</dt>

@@ -25,7 +25,8 @@ shows ONE next action.
   `apps/web/src/server/recruitment.ts`, wiring `recruitment-wiring.ts`.
 - Tests: `tests/unit/recruitment.test.ts`, `tests/unit/admin-recruitment.test.ts`,
   `tests/integration/recruitment.test.ts`, `tests/integration/selection.test.ts`,
-  `tests/integration/interviews.test.ts`, `tests/integration/ratification.test.ts`.
+  `tests/integration/interviews.test.ts`, `tests/integration/ratification.test.ts`,
+  `tests/unit/personality.test.ts`, `tests/integration/personality.test.ts`.
 
 ## How to use it
 
@@ -82,6 +83,13 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
   must hold the roles' permissions (`canRatifyInto`), staff roles need the applicant's second
   sign-in method, nobody ratifies themselves, and the applicant's sessions are renewed.
   `confirmed` is final: the appointment is created once.
+- **Personality test** (C5, `src/recruitment/personality.ts`, ported from PPIDK
+  `TesKepribadian`): 60 IPIP-adapted statements (Indonesian and English), 5 axes, a 16-type
+  label plus an A/T suffix; not a clinical tool, not affiliated with any brand. After submitting,
+  the application page shows a signed 7-day link `/test/personality/{token}` (LINK_SIGNING_SECRET,
+  purpose "personality"; no sign-in needed). The server scores the answers (-3..3, all 60
+  required) and stores ONE result in `personalityResults/{uid}` (scores only, never
+  overwritten). The committee sees it on the application.
 - **Offers** expire at read time (`offerExpired`): no job releases them; an expired offer cannot
   be answered and the committee may offer again.
 - **Files** are opened by the committee through 15-minute signed links, only for paths that
@@ -92,4 +100,5 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
 
 ## Configuration
 
-`FIREBASE_STORAGE_BUCKET` on web (portfolio uploads).
+`FIREBASE_STORAGE_BUCKET` on web (portfolio uploads); `LINK_SIGNING_SECRET` on web (the
+personality test links; the same secret signs newsletter links, the purpose keeps them apart).

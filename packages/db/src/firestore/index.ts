@@ -128,6 +128,11 @@ export {
   type FormSettings,
 } from "./forms";
 export {
+  createFirestorePersonalityStore,
+  type FirestorePersonalityStore,
+  type PersonalityResult,
+} from "./personality";
+export {
   applicationSnapshot,
   createFirestoreApplicationStore,
   createFirestoreInterviewStore,

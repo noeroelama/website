@@ -6,7 +6,7 @@ import { canBook, nextAction } from "@website/domain/recruitment";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { formatEventTime } from "@/lib/event-time";
 import { hasCompleteProfile, ownTimezone } from "@/server/profile-wiring";
-import { recruitmentStore } from "@/server/recruitment-wiring";
+import { personalityResults, personalityTest, recruitmentStore } from "@/server/recruitment-wiring";
 import { getSignedInUser } from "@/server/session";
 import { InterviewTimes } from "./interview-times";
 import { OfferButtons } from "./offer-buttons";
@@ -45,6 +45,16 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
     : [null, false, []];
   // An unpublished recruitment is shown only to applicants who are already in it.
   if (!r.published && !application) notFound();
+  // After submitting, the applicant gets a signed 7-day link to the personality test (C5).
+  const tested =
+    user && application && application.submittedAt
+      ? await personalityResults().get(user.uid)
+      : null;
+  const personalityLink =
+    user && application?.submittedAt && !tested && application.status !== "withdrawn"
+      ? `/test/personality/${personalityTest().linkFor(user.uid)}`
+      : null;
+  const p = DICTIONARIES[language].personality;
   const now = new Date();
   const action = nextAction(r, application, now);
   const [slots, zone] =
@@ -140,6 +150,16 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
               )}
               <PactUpload recruitmentId={r.id} labels={t} />
             </>
+          )}
+          {personalityLink && (
+            <p className="site-notice">
+              <a href={personalityLink}>{p.linkLabel}</a>
+            </p>
+          )}
+          {tested && (
+            <p className="site-muted">
+              {p.done}: {tested.full}
+            </p>
           )}
           {/* ONE next action (C3): a button when the applicant can act, else what happens next. */}
           {canApply ? (

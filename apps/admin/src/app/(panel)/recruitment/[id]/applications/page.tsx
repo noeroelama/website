@@ -26,7 +26,11 @@ export default async function ApplicationsRoute({ params }: { params: Promise<{ 
     adminReads.listRevisions(recruitment.id),
     adminReads.getFormVersion(recruitment.formId, recruitment.formVersion),
   ]);
-  const users = await adminReads.getUsers([...new Set(applications.map((a) => a.userId))]);
+  const uids = [...new Set(applications.map((a) => a.userId))];
+  const [users, personality] = await Promise.all([
+    adminReads.getUsers(uids),
+    adminReads.personalityResults(uids),
+  ]);
   const now = new Date();
   return (
     <ApplicationsPage
@@ -43,6 +47,7 @@ export default async function ApplicationsRoute({ params }: { params: Promise<{ 
           users.get(a.userId) ?? null,
           revisions,
           now,
+          personality.get(a.userId) ?? null,
         ),
       )}
       canReview={can(viewer.principal, "recruitment.review")}

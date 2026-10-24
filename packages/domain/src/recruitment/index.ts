@@ -427,3 +427,4 @@ export function assertBookable(slot: InterviewSlot | null, now: Date): Interview
   if (slot.booked >= slot.capacity) throw new RuleViolationError("This interview time is full.");
   return slot;
 }
+export * from "./personality";

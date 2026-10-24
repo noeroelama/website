@@ -168,7 +168,27 @@ describe("selection queue model", () => {
     // Without a user record the uid stands in; drafts have no submission time.
     expect(
       toApplicationItem({ ...application, offer: null, submittedAt: null }, r, [], null, [], at),
-    ).toMatchObject({ name: "ari", email: "", offer: null, submittedAt: null });
+    ).toMatchObject({
+      name: "ari",
+      email: "",
+      offer: null,
+      submittedAt: null,
+      personality: null,
+    });
+    // The committee sees the personality result (C5) with its five axes.
+    const axis = (letter: string, pct: number) => ({ letter, pct, lean: 0 });
+    expect(
+      toApplicationItem(application, r, [], null, [], at, {
+        full: "ENFJ-A",
+        axes: {
+          mind: axis("E", 80),
+          energy: axis("N", 60),
+          nature: axis("F", 55),
+          tactics: axis("J", 70),
+          identity: axis("A", 51),
+        },
+      }).personality,
+    ).toEqual({ full: "ENFJ-A", axes: "80% E · 60% N · 55% F · 70% J · 51% A" });
   });
 
   it("puts every status in exactly one step tab", () => {

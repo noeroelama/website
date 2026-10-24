@@ -54,6 +54,8 @@ transaction (`src/server/forms.ts`, wiring `src/server/forms-wiring.ts`, rendere
 `/recruitment/[id]` shows the units and, for a signed-in member, the own application with ONE
 next action; `/recruitment/[id]/apply` (session + complete profile) takes the choices, the
 portfolio and the answers. Uploads: `POST /api/recruitment/[id]/portfolio` (PDF, 5 MB, private).
+`/test/personality/[token]` is the personality test of a submitted applicant (signed 7-day link,
+noindex; `src/server/personality.ts`).
 Rules: `packages/domain/docs/recruitment.md`.
 
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one

@@ -1,7 +1,9 @@
 import { answerText, type FileAnswer, type Question } from "@website/domain/forms";
 import {
   offerExpired,
+  AXES,
   type Application,
+  type PersonalityScore,
   type ApplicationStatus,
   type Recruitment,
   type RevisionRound,
@@ -54,6 +56,8 @@ export interface ApplicationItem {
   pacts: FileAnswer[];
   pactNote: string | null;
   appointmentId: string | null;
+  /** Personality test result (C5), e.g. "ENFJ-A" with the axes; null = not taken. */
+  personality: { full: string; axes: string } | null;
   revisions: {
     round: number;
     request: string;
@@ -72,6 +76,7 @@ export function toApplicationItem(
   user: { name: string | null; email: string | null } | null,
   revisions: readonly RevisionRound[],
   now: Date,
+  personality: Pick<PersonalityScore, "full" | "axes"> | null = null,
 ): ApplicationItem {
   const unitName = (id: string) => r.units.find((u) => u.orgUnitId === id)?.name ?? id;
   return {
@@ -104,6 +109,12 @@ export function toApplicationItem(
     pacts: [...a.pacts],
     pactNote: a.pactNote,
     appointmentId: a.appointmentId,
+    personality: personality && {
+      full: personality.full,
+      axes: AXES.map(
+        (axis) => `${personality.axes[axis].pct}% ${personality.axes[axis].letter}`,
+      ).join(" · "),
+    },
     revisions: revisions
       .filter((rev) => rev.applicationId === a.id)
       .map((rev) => ({

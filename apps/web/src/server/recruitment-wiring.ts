@@ -5,12 +5,14 @@ import { lazyEnv } from "@website/config/env";
 import {
   appForRole,
   createFirebaseImageStorage,
+  createFirestorePersonalityStore,
   createFirestoreRecruitmentWebStore,
 } from "@website/db/firestore";
 import type { Recruitment } from "@website/domain/recruitment";
 import { webDb } from "./db";
 import { getWebEnv } from "./env";
 import { hasCompleteProfile } from "./profile-wiring";
+import { createPersonalityTest } from "./personality";
 import { createApplying } from "./recruitment";
 
 export const recruitmentStore = lazyEnv(() => createFirestoreRecruitmentWebStore(webDb()));
@@ -53,3 +55,17 @@ export const applying = lazyEnv(() =>
     uuid: randomUUID,
   }),
 );
+
+/** `personalityResults/{uid}` with the website's client (the applicant's own result). */
+export const personalityResults = lazyEnv(() => createFirestorePersonalityStore(webDb()));
+
+/** The personality test (C5): signed 7-day links (LINK_SIGNING_SECRET), one result per person. */
+export const personalityTest = lazyEnv(() => {
+  const secret = getWebEnv().LINK_SIGNING_SECRET;
+  if (!secret) throw new Error("LINK_SIGNING_SECRET is required for the personality test.");
+  return createPersonalityTest({
+    results: personalityResults(),
+    secret,
+    now: () => new Date(),
+  });
+});

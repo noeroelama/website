@@ -260,6 +260,109 @@ const id = {
     pactUploaded: "Pakta terunggah. Panitia akan memeriksanya.",
     pactSentBack: "Pakta dikembalikan panitia",
   },
+  personality: {
+    title: "Tes Kepribadian 16 Tipe",
+    intro:
+      "60 pernyataan, sekitar 10 menit. Pilih seberapa sesuai setiap pernyataan dengan dirimu. Tidak ada jawaban benar atau salah.",
+    notice:
+      "Butir diadaptasi dari International Personality Item Pool (IPIP, domain publik). Bukan alat diagnosis klinis dan tidak berafiliasi dengan merek mana pun. Hasil hanya sekali dan dilihat panitia rekrutmen.",
+    scale: [
+      "Sangat tidak setuju",
+      "Tidak setuju",
+      "Agak tidak setuju",
+      "Netral",
+      "Agak setuju",
+      "Setuju",
+      "Sangat setuju",
+    ],
+    submit: "Lihat hasil",
+    sending: "Menghitung…",
+    missing: "Jawab semua pernyataan dulu.",
+    invalidLink:
+      "Tautan tes ini tidak berlaku atau sudah kedaluwarsa. Minta tautan baru di halaman pendaftaranmu.",
+    taken: "Kamu sudah mengerjakan tes ini.",
+    failed: "Gagal menyimpan. Coba lagi sebentar lagi.",
+    resultTitle: "Hasilmu",
+    linkLabel: "Kerjakan tes kepribadian (wajib, berlaku 7 hari)",
+    done: "Tes kepribadian sudah dikerjakan",
+    axes: {
+      mind: { label: "Pikiran", pos: "Ekstrovert", neg: "Introvert" },
+      energy: { label: "Energi", pos: "Intuitif", neg: "Observan" },
+      nature: { label: "Sifat", pos: "Perasa", neg: "Pemikir" },
+      tactics: { label: "Taktik", pos: "Terencana", neg: "Spontan" },
+      identity: { label: "Identitas", pos: "Asertif", neg: "Turbulen" },
+    },
+    identityNote: {
+      A: "Asertif — cenderung percaya diri, santai, dan tahan tekanan; jarang meragukan diri.",
+      T: "Turbulen — cenderung perfeksionis dan peka; sering meninjau ulang diri dan terdorong untuk memperbaiki.",
+    },
+    types: {
+      INTJ: [
+        "Sang Perancang",
+        "Strategis dan mandiri. Senang menyusun sistem jangka panjang dan menuntaskan masalah rumit dengan visi yang jernih.",
+      ],
+      INTP: [
+        "Sang Penganalisis",
+        "Pemikir logis yang haus pemahaman. Gemar membongkar ide dan mencari pola tersembunyi di balik segala sesuatu.",
+      ],
+      ENTJ: [
+        "Sang Komandan",
+        "Pemimpin tegas dan berorientasi tujuan. Cepat mengorganisir orang dan sumber daya untuk mewujudkan rencana besar.",
+      ],
+      ENTP: [
+        "Sang Pendebat",
+        "Cerdik dan penuh rasa ingin tahu. Menikmati adu argumen dan menantang asumsi demi menemukan kemungkinan baru.",
+      ],
+      INFJ: [
+        "Sang Penasihat",
+        "Idealis yang mendalam dan penuh empati. Digerakkan oleh nilai dan keinginan membantu orang lain bertumbuh.",
+      ],
+      INFP: [
+        "Sang Idealis",
+        "Lembut, imajinatif, dan setia pada nilai pribadi. Mencari makna dan keaslian dalam hidup serta hubungan.",
+      ],
+      ENFJ: [
+        "Sang Pembina",
+        "Hangat dan karismatik. Pandai membaca orang dan mendorong mereka mencapai potensi terbaiknya.",
+      ],
+      ENFP: [
+        "Sang Penggerak",
+        "Antusias dan penuh gagasan. Melihat peluang di mana-mana dan menularkan semangatnya ke sekitar.",
+      ],
+      ISTJ: [
+        "Sang Pelaksana",
+        "Teliti, dapat diandalkan, dan menjunjung tanggung jawab. Menuntaskan tugas dengan tekun dan konsisten.",
+      ],
+      ISFJ: [
+        "Sang Pelindung",
+        "Setia dan penuh perhatian. Diam-diam menjaga orang-orang terdekat dengan kesungguhan dan ketelitian.",
+      ],
+      ESTJ: [
+        "Sang Pengelola",
+        "Praktis dan terorganisir. Senang menegakkan struktur dan aturan agar semuanya berjalan efisien.",
+      ],
+      ESFJ: [
+        "Sang Perawat",
+        "Ramah dan peduli. Menempatkan kebutuhan komunitas di depan dan menjaga hubungan tetap hangat.",
+      ],
+      ISTP: [
+        "Sang Perakit",
+        "Tenang dan cekatan. Gemar memahami cara kerja sesuatu dan memecahkan masalah secara langsung.",
+      ],
+      ISFP: [
+        "Sang Seniman",
+        "Peka dan artistik. Menghargai keindahan dan kebebasan, mengekspresikan diri lewat tindakan ketimbang kata.",
+      ],
+      ESTP: [
+        "Sang Pelopor",
+        "Berani dan spontan. Tumbuh dalam aksi nyata dan cepat menangkap peluang di depan mata.",
+      ],
+      ESFP: [
+        "Sang Penghibur",
+        "Ceria dan penuh energi. Menikmati momen saat ini dan menghidupkan suasana di sekitarnya.",
+      ],
+    } as Record<string, readonly [string, string]>,
+  },
   newsletter: {
     label: "Buletin",
     placeholder: "Alamat e-mail",
@@ -698,6 +801,109 @@ const en: Dictionary = {
     pactUpload: "Upload the signed pact (PDF, max 5 MB)",
     pactUploaded: "Pact uploaded. The committee will review it.",
     pactSentBack: "The committee sent your pact back",
+  },
+  personality: {
+    title: "16-type personality test",
+    intro:
+      "60 statements, about 10 minutes. Choose how well each statement describes you. There are no right or wrong answers.",
+    notice:
+      "Items adapted from the International Personality Item Pool (IPIP, public domain). Not a clinical tool and not affiliated with any brand. You take it once; the recruitment committee sees the result.",
+    scale: [
+      "Strongly disagree",
+      "Disagree",
+      "Slightly disagree",
+      "Neutral",
+      "Slightly agree",
+      "Agree",
+      "Strongly agree",
+    ],
+    submit: "See the result",
+    sending: "Scoring…",
+    missing: "Answer every statement first.",
+    invalidLink:
+      "This test link is not valid or has expired. Get a new one on your application page.",
+    taken: "You already took this test.",
+    failed: "Saving failed. Please try again shortly.",
+    resultTitle: "Your result",
+    linkLabel: "Take the personality test (required, valid for 7 days)",
+    done: "Personality test taken",
+    axes: {
+      mind: { label: "Mind", pos: "Extraverted", neg: "Introverted" },
+      energy: { label: "Energy", pos: "Intuitive", neg: "Observant" },
+      nature: { label: "Nature", pos: "Feeling", neg: "Thinking" },
+      tactics: { label: "Tactics", pos: "Judging", neg: "Prospecting" },
+      identity: { label: "Identity", pos: "Assertive", neg: "Turbulent" },
+    },
+    identityNote: {
+      A: "Assertive — tends to be self-assured, relaxed and resistant to stress; rarely doubts themselves.",
+      T: "Turbulent — tends to be perfectionist and sensitive; often reviews themselves and is driven to improve.",
+    },
+    types: {
+      INTJ: [
+        "The Designer",
+        "Strategic and independent. Likes building long-term systems and solving hard problems with a clear vision.",
+      ],
+      INTP: [
+        "The Analyst",
+        "A logical thinker hungry for understanding. Loves taking ideas apart and finding hidden patterns.",
+      ],
+      ENTJ: [
+        "The Commander",
+        "A decisive, goal-driven leader. Quickly organises people and resources to make big plans happen.",
+      ],
+      ENTP: [
+        "The Debater",
+        "Clever and curious. Enjoys arguments and challenging assumptions to find new possibilities.",
+      ],
+      INFJ: [
+        "The Counsellor",
+        "A deep, empathetic idealist. Driven by values and by helping others grow.",
+      ],
+      INFP: [
+        "The Idealist",
+        "Gentle, imaginative and true to personal values. Looks for meaning and authenticity.",
+      ],
+      ENFJ: [
+        "The Mentor",
+        "Warm and charismatic. Good at reading people and helping them reach their best.",
+      ],
+      ENFP: [
+        "The Motivator",
+        "Enthusiastic and full of ideas. Sees opportunities everywhere and spreads the energy.",
+      ],
+      ISTJ: [
+        "The Executor",
+        "Thorough, reliable and responsible. Finishes tasks with persistence and consistency.",
+      ],
+      ISFJ: [
+        "The Protector",
+        "Loyal and attentive. Quietly looks after the people close to them with care.",
+      ],
+      ESTJ: [
+        "The Manager",
+        "Practical and organised. Keeps structure and rules so everything runs efficiently.",
+      ],
+      ESFJ: [
+        "The Caregiver",
+        "Friendly and caring. Puts the community first and keeps relationships warm.",
+      ],
+      ISTP: [
+        "The Builder",
+        "Calm and handy. Likes understanding how things work and solving problems hands-on.",
+      ],
+      ISFP: [
+        "The Artist",
+        "Sensitive and artistic. Values beauty and freedom; expresses themselves through action.",
+      ],
+      ESTP: [
+        "The Pioneer",
+        "Bold and spontaneous. Thrives on action and seizes the opportunity in front of them.",
+      ],
+      ESFP: [
+        "The Entertainer",
+        "Cheerful and energetic. Enjoys the moment and brings life to the room.",
+      ],
+    },
   },
   newsletter: {
     label: "Newsletter",
