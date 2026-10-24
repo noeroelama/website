@@ -98,6 +98,23 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
   revertible). Applicant changes are logged with the member as actor (resource `application`):
   status, choices, round, offer and portfolio name — never the answers.
 
+## Import from PPIDK (block J, step 5.8)
+
+- Mapping: `packages/db/src/ppidk/recruitment.ts` (pure, tested in
+  `tests/unit/ppidk-recruitment-import.test.ts`); script:
+  `infrastructure/scripts/import-ppidk-recruitment.mjs --dir <tsv folder> [--files <PPIDK private
+storage>] [--apply]` (dry run by default, writes `import-recruitment-report.json`). Run it after
+  the people import (it refuses otherwise); accounts are matched the same way (e-mail, else
+  `ppidk-<id>`). Ids come from PPIDK (`ppidk-form-<id>`, `ppidk-recruitment-<id>`, ...), so a
+  second run writes the same documents.
+- Forms keep their versions and responses; guest forms get two extra questions (name and e-mail
+  of the respondent). PPIDK `url` fields become short answers.
+- Only the latest application per person and recruitment is imported, with its ranked choices,
+  revision rounds, interview and pact; seat counters are rebuilt from the applications that hold
+  a seat. Personality results keep the scores only.
+- Files: only real PDFs (checked by their first bytes) found under `--files` are referenced and
+  copied privately to `FIREBASE_STORAGE_BUCKET`; other files are listed in the report as skipped.
+
 ## Configuration
 
 `FIREBASE_STORAGE_BUCKET` on web (portfolio uploads); `LINK_SIGNING_SECRET` on web (the
