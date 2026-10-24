@@ -34,3 +34,30 @@ export function answersFrom(
   }
   return answers;
 }
+
+/** Saved answers back into renderer values (a choice outside the options is the "Other" text). */
+export function valuesFrom(
+  questions: readonly Question[],
+  answers: Readonly<Record<string, AnswerValue>>,
+): FieldValues {
+  const values: Record<string, string | readonly string[] | boolean> = {};
+  const others: Record<string, string> = {};
+  for (const q of questions) {
+    const value = answers[q.id];
+    if (value === undefined) continue;
+    if (q.type === "single_choice" && typeof value === "string" && !q.options.includes(value)) {
+      values[q.id] = OTHER;
+      others[q.id] = value;
+    } else if (q.type === "multi_choice" && Array.isArray(value)) {
+      const list = value as readonly string[];
+      const other = list.find((v) => !q.options.includes(v));
+      values[q.id] = list.map((v) => (v === other ? OTHER : v));
+      if (other !== undefined) others[q.id] = other;
+    } else if (typeof value === "number") {
+      values[q.id] = String(value);
+    } else if (typeof value === "string" || typeof value === "boolean") {
+      values[q.id] = value;
+    }
+  }
+  return { values, others };
+}

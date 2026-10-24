@@ -13,6 +13,7 @@ import { createFirestoreAuditWriter } from "./audit";
 export const toDate = (value: unknown): Date | null => {
   if (value === null || value === undefined) return null;
   if (typeof value === "string") return new Date(value);
+  if (value instanceof Date) return value;
   return (value as { toDate(): Date }).toDate();
 };
 

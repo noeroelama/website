@@ -25,6 +25,7 @@ import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
 import { createOrgUnitActions } from "./org-units";
 import { createPeriodActions } from "./periods";
+import { createRecruitmentActions } from "./recruitment";
 import { createRoleActions } from "./roles";
 import { createUniversityActions } from "./universities";
 import { adminStores, imageStorage } from "./stores";
@@ -79,6 +80,11 @@ export const formActions = lazyEnv(() =>
     logExport: (actorId, details) =>
       logSecurityEvent(adminStores().logger, { type: "data.export", actorId, details }),
   }),
+);
+
+/** Recruitment page: set-up (window, units and seats, form). */
+export const recruitmentActions = lazyEnv(() =>
+  createRecruitmentActions({ recruitments: adminStores().recruitments, now: () => new Date() }),
 );
 
 /** Universities page: review of proposed campuses. */
@@ -225,6 +231,8 @@ export const adminReads = {
   getContent: (id: string) => adminStores().content.get(id),
   listEvents: () => adminStores().events.listForAdmin(),
   listForms: () => adminStores().forms.listForAdmin(),
+  listRecruitments: () => adminStores().recruitments.listForAdmin(),
+  recruitmentSeats: (ids: readonly string[]) => adminStores().recruitments.seats(ids),
   getForm: (id: string) => adminStores().forms.get(id),
   listFormVersions: (id: string) => adminStores().forms.listVersions(id),
   listFormResponses: (id: string, limit: number) => adminStores().forms.listResponses(id, limit),

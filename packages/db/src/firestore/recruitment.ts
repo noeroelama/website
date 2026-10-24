@@ -1,0 +1,547 @@
+import { randomUUID } from "node:crypto";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { AuditEvent, Snapshot } from "@website/audit";
+import { parseAnswers, versionDocId, type Answers, type FileAnswer } from "@website/domain/forms";
+import {
+  applicationId,
+  assertTransition,
+  checkChoices,
+  isRecruitmentOpen,
+  portfolioRequired,
+  seatCounterId,
+  type Application,
+  type ApplicationStatus,
+  type Recruitment,
+  type RecruitmentInput,
+  type RecruitmentUnit,
+} from "@website/domain/recruitment";
+import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
+import { safeId } from "@website/security/validation";
+import { createFirestoreAuditWriter } from "./audit";
+import { createSluggedStore, toDate } from "./slugged";
+
+export type RecruitmentFields = Omit<Recruitment, "id" | "version" | "createdAt" | "updatedAt">;
+
+function toRecruitment(id: string, data: Record<string, unknown>): Recruitment {
+  return {
+    id,
+    periodId: data["periodId"] as string,
+    title: data["title"] as string,
+    description: data["description"] as string,
+    opensAt: toDate(data["opensAt"]) as Date,
+    closesAt: toDate(data["closesAt"]) as Date,
+    maxChoices: data["maxChoices"] as number,
+    units: data["units"] as RecruitmentUnit[],
+    offerDays: data["offerDays"] as number,
+    formId: data["formId"] as string,
+    formVersion: data["formVersion"] as number,
+    published: data["published"] as boolean,
+    version: data["version"] as number,
+    createdAt: toDate(data["createdAt"]) as Date,
+    updatedAt: toDate(data["updatedAt"]) as Date,
+    deletedAt: toDate(data["deletedAt"]),
+  };
+}
+
+/** Audit snapshot = the stored fields (dates as ISO strings, also stored that way). */
+export function recruitmentSnapshot(r: RecruitmentFields): Snapshot {
+  return {
+    periodId: r.periodId,
+    title: r.title,
+    description: r.description,
+    opensAt: r.opensAt.toISOString(),
+    closesAt: r.closesAt.toISOString(),
+    maxChoices: r.maxChoices,
+    units: r.units.map((u) => ({ ...u })),
+    offerDays: r.offerDays,
+    formId: r.formId,
+    formVersion: r.formVersion,
+    published: r.published,
+  };
+}
+
+export function toApplication(id: string, data: Record<string, unknown>): Application {
+  const offer = data["offer"] as { orgUnitId: string; expiresAt: unknown } | null | undefined;
+  return {
+    id,
+    recruitmentId: data["recruitmentId"] as string,
+    userId: data["userId"] as string,
+    status: data["status"] as ApplicationStatus,
+    choices: data["choices"] as string[],
+    answers: data["answers"] as Answers,
+    portfolio: (data["portfolio"] as FileAnswer | null | undefined) ?? null,
+    revisionRound: data["revisionRound"] as number,
+    offer: offer
+      ? { orgUnitId: offer.orgUnitId, expiresAt: toDate(offer.expiresAt) as Date }
+      : null,
+    submittedAt: toDate(data["submittedAt"]),
+    version: data["version"] as number,
+    createdAt: toDate(data["createdAt"]) as Date,
+    updatedAt: toDate(data["updatedAt"]) as Date,
+  };
+}
+
+/** What the audit log keeps of an application: never the answers or the portfolio. */
+export function applicationSnapshot(a: Application): Snapshot {
+  return {
+    status: a.status,
+    choices: [...a.choices],
+    revisionRound: a.revisionRound,
+    offer: a.offer
+      ? { orgUnitId: a.offer.orgUnitId, expiresAt: a.offer.expiresAt.toISOString() }
+      : null,
+    portfolio: a.portfolio ? a.portfolio.name : null,
+  };
+}
+
+const applicationDoc = (a: Application) => ({
+  recruitmentId: a.recruitmentId,
+  userId: a.userId,
+  status: a.status,
+  choices: a.choices,
+  answers: a.answers,
+  portfolio: a.portfolio,
+  revisionRound: a.revisionRound,
+  offer: a.offer,
+  submittedAt: a.submittedAt,
+  version: a.version,
+  createdAt: a.createdAt,
+  updatedAt: a.updatedAt,
+});
+
+export type RecruitmentAudit = (
+  before: Snapshot | null,
+  after: Snapshot | null,
+  current: Recruitment | null,
+  next: Recruitment,
+) => AuditEvent;
+
+/**
+ * `recruitments/{id}` (soft delete) with `seatCounters/{recruitmentId}_{orgUnitId}`
+ * ({ quota, filled }). Saving reads the period, the form and every offered unit and seat counter
+ * in the same transaction: a quota is never set below the seats already taken.
+ */
+export function createFirestoreRecruitmentStore(db: Firestore) {
+  const store = createSluggedStore<Recruitment>(db, {
+    collection: "recruitments",
+    slug: null,
+    fromDoc: toRecruitment,
+    snapshot: recruitmentSnapshot,
+    fixed: () => ({}),
+  });
+  const counters = db.collection("seatCounters");
+  const auditLog = createFirestoreAuditWriter(db);
+
+  return {
+    get: store.get,
+    write: store.write,
+
+    async listForAdmin(): Promise<Recruitment[]> {
+      const snapshot = await store.docs.orderBy("opensAt", "desc").get();
+      return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((r) => !r.deletedAt);
+    },
+
+    /** Seats per unit of each recruitment (one `in` query per 30 recruitments). */
+    async seats(
+      recruitmentIds: readonly string[],
+    ): Promise<Map<string, Map<string, { quota: number; filled: number }>>> {
+      const result = new Map<string, Map<string, { quota: number; filled: number }>>();
+      for (let i = 0; i < recruitmentIds.length; i += 30) {
+        const chunk = recruitmentIds.slice(i, i + 30);
+        const snapshot = await counters.where("recruitmentId", "in", chunk).get();
+        for (const doc of snapshot.docs) {
+          const id = doc.get("recruitmentId") as string;
+          const units = result.get(id) ?? new Map<string, { quota: number; filled: number }>();
+          units.set(doc.get("orgUnitId") as string, {
+            quota: doc.get("quota") as number,
+            filled: doc.get("filled") as number,
+          });
+          result.set(id, units);
+        }
+      }
+      return result;
+    },
+
+    save(
+      id: string | null,
+      expectedVersion: number | null,
+      input: RecruitmentInput,
+      audit: RecruitmentAudit,
+      now: Date,
+    ): Promise<Recruitment> {
+      const ref = store.docs.doc(id === null ? randomUUID() : safeId.parse(id));
+      return db.runTransaction(async (tx) => {
+        const snapshot = id === null ? null : await tx.get(ref);
+        if (id !== null && !snapshot?.exists) {
+          throw new RuleViolationError("This item does not exist.");
+        }
+        const current = snapshot?.exists ? store.read(ref.id, snapshot.data()) : null;
+        if ((current?.version ?? null) !== expectedVersion) {
+          throw new ConcurrencyConflictError("recruitments version changed");
+        }
+        if (current?.deletedAt) throw new RuleViolationError("This item is in the trash.");
+        if (current && current.periodId !== input.periodId) {
+          throw new RuleViolationError("A recruitment stays in its board period.");
+        }
+        const removed = (current?.units ?? []).filter(
+          (u) => !input.units.some((i) => i.orgUnitId === u.orgUnitId),
+        );
+        const unitIds = [
+          ...input.units.map((u) => u.orgUnitId),
+          ...removed.map((u) => u.orgUnitId),
+        ];
+        const [period, form, units, seats] = await Promise.all([
+          tx.get(db.collection("periods").doc(input.periodId)),
+          tx.get(db.collection("forms").doc(input.formId)),
+          Promise.all(input.units.map((u) => tx.get(db.collection("orgUnits").doc(u.orgUnitId)))),
+          Promise.all(unitIds.map((u) => tx.get(counters.doc(seatCounterId(ref.id, u))))),
+        ]);
+        if (!period.exists || period.get("deletedAt")) {
+          throw new RuleViolationError("Choose an existing board period.");
+        }
+        if (period.get("status") === "archived") {
+          throw new RuleViolationError("This period is archived and can no longer be changed.");
+        }
+        if (!form.exists || form.get("deletedAt") || form.get("usage") !== "recruitment") {
+          throw new RuleViolationError("Choose a recruitment form.");
+        }
+        const filled = new Map(
+          seats
+            .filter((s) => s.exists)
+            .map((s) => [s.get("orgUnitId") as string, s.get("filled") as number]),
+        );
+        const recruitmentUnits = input.units.map((u, i): RecruitmentUnit => {
+          const unit = units[i];
+          if (!unit?.exists || unit.get("deletedAt") || unit.get("periodId") !== input.periodId) {
+            throw new RuleViolationError("Choose units of this board period.");
+          }
+          const name = unit.get("name") as string;
+          if ((filled.get(u.orgUnitId) ?? 0) > u.quota) {
+            throw new RuleViolationError(`${name} already has more accepted seats than that.`);
+          }
+          return {
+            orgUnitId: u.orgUnitId,
+            name,
+            quota: u.quota,
+            portfolioRequired: u.portfolioRequired,
+          };
+        });
+        const taken = removed.find((u) => (filled.get(u.orgUnitId) ?? 0) > 0);
+        if (taken) throw new RuleViolationError(`${taken.name} has accepted seats; keep it.`);
+
+        const next: Recruitment = {
+          id: ref.id,
+          periodId: input.periodId,
+          title: input.title,
+          description: input.description,
+          opensAt: input.opensAt,
+          closesAt: input.closesAt,
+          maxChoices: input.maxChoices,
+          units: recruitmentUnits,
+          offerDays: input.offerDays,
+          formId: input.formId,
+          // Applicants answer the form's current version (frozen once someone submits).
+          formVersion: form.get("currentVersion") as number,
+          published: current?.published ?? false,
+          version: (current?.version ?? 0) + 1,
+          createdAt: current?.createdAt ?? now,
+          updatedAt: now,
+          deletedAt: null,
+        };
+        const log = await auditLog.begin(tx);
+        tx.set(ref, {
+          ...recruitmentSnapshot(next),
+          version: next.version,
+          createdAt: next.createdAt,
+          updatedAt: now,
+          deletedAt: null,
+        });
+        for (const unit of recruitmentUnits) {
+          tx.set(counters.doc(seatCounterId(ref.id, unit.orgUnitId)), {
+            recruitmentId: ref.id,
+            orgUnitId: unit.orgUnitId,
+            quota: unit.quota,
+            filled: filled.get(unit.orgUnitId) ?? 0,
+          });
+        }
+        for (const unit of removed) tx.delete(counters.doc(seatCounterId(ref.id, unit.orgUnitId)));
+        log.append(
+          audit(current && recruitmentSnapshot(current), recruitmentSnapshot(next), current, next),
+        );
+        return next;
+      });
+    },
+  };
+}
+
+export type FirestoreRecruitmentStore = ReturnType<typeof createFirestoreRecruitmentStore>;
+
+/* ------------------------------------------------------------------ website (applicants) */
+
+export type ApplyOutcome =
+  | { readonly ok: true; readonly application: Application }
+  | {
+      readonly ok: false;
+      readonly error: "closed" | "locked" | "refused";
+      readonly message?: string;
+    }
+  | {
+      readonly ok: false;
+      readonly error: "answers";
+      readonly fields: Readonly<Record<string, string>>;
+    };
+
+/** The entry for an applicant's own change (actor = the member). */
+const applicantAudit = (
+  uid: string,
+  now: Date,
+  title: string,
+  before: Application | null,
+  after: Application,
+): AuditEvent => ({
+  id: randomUUID(),
+  occurredAt: now,
+  actor: { type: "member", id: uid },
+  action: before ? "UPDATE" : "CREATE",
+  module: "recruitment",
+  title,
+  resourceType: "application",
+  resourceId: after.id,
+  operationId: randomUUID(),
+  before: before && applicationSnapshot(before),
+  after: applicationSnapshot(after),
+  versionBefore: before?.version ?? null,
+  versionAfter: after.version,
+  revertible: false,
+  revertOf: null,
+  request: { requestId: randomUUID() },
+  prevHash: null,
+  hash: null,
+});
+
+/**
+ * The applicant's side (apps/web): open recruitments, and the signed-in member's OWN application
+ * (`applications/{recruitmentId}_{uid}`, the uid always from the session). Every write is one
+ * transaction that re-reads the recruitment (window) and the application (status, version).
+ */
+export function createFirestoreRecruitmentWebStore(db: Firestore) {
+  const recruitments = db.collection("recruitments");
+  const applications = db.collection("applications");
+  const versions = db.collection("formVersions");
+  const auditLog = createFirestoreAuditWriter(db);
+
+  const readRecruitment = async (tx: Transaction, id: string) => {
+    const snapshot = await tx.get(recruitments.doc(safeId.parse(id)));
+    const r = snapshot.exists
+      ? toRecruitment(snapshot.id, snapshot.data() as Record<string, unknown>)
+      : null;
+    return r && r.published && !r.deletedAt ? r : null;
+  };
+
+  /**
+   * One change of the applicant's own application: `change` gets the recruitment, the current
+   * application (or null) and the questions, and returns the next application or an outcome.
+   */
+  const change = (
+    recruitmentId: string,
+    uid: string,
+    now: Date,
+    apply: (
+      r: Recruitment,
+      current: Application | null,
+      questions: Parameters<typeof parseAnswers>[0],
+    ) => Application | Exclude<ApplyOutcome, { ok: true }>,
+    markAnswered = false,
+  ): Promise<ApplyOutcome> =>
+    db.runTransaction(async (tx): Promise<ApplyOutcome> => {
+      const r = await readRecruitment(tx, recruitmentId);
+      if (!r) return { ok: false, error: "closed" };
+      const ref = applications.doc(applicationId(r.id, safeId.parse(uid)));
+      const versionRef = versions.doc(versionDocId(r.formId, r.formVersion));
+      const [snapshot, version] = await Promise.all([tx.get(ref), tx.get(versionRef)]);
+      const current = snapshot.exists
+        ? toApplication(snapshot.id, snapshot.data() as Record<string, unknown>)
+        : null;
+      const questions = version.exists
+        ? (version.get("questions") as Parameters<typeof parseAnswers>[0])
+        : [];
+      const result = apply(r, current, questions);
+      if ("ok" in result) return result;
+      const log = await auditLog.begin(tx);
+      tx.set(ref, applicationDoc(result));
+      if (markAnswered && version.exists && !version.get("answered")) {
+        tx.update(versionRef, { answered: true });
+      }
+      log.append(applicantAudit(uid, now, r.title, current, result));
+      return { ok: true, application: result };
+    });
+
+  const editable = (current: Application | null) =>
+    current === null || current.status === "draft" || current.status === "revision";
+
+  const base = (r: Recruitment, uid: string, current: Application | null, now: Date) =>
+    current ?? {
+      id: applicationId(r.id, uid),
+      recruitmentId: r.id,
+      userId: uid,
+      status: "draft" as const,
+      choices: [],
+      answers: {},
+      portfolio: null,
+      revisionRound: 0,
+      offer: null,
+      submittedAt: null,
+      version: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+  const bump = (a: Application, now: Date, patch: Partial<Application>): Application => ({
+    ...a,
+    ...patch,
+    version: a.version + 1,
+    updatedAt: now,
+  });
+
+  return {
+    /** Published recruitments, newest first (the page shows open and upcoming ones). */
+    async listPublished(): Promise<Recruitment[]> {
+      const snapshot = await recruitments.where("published", "==", true).get();
+      return snapshot.docs
+        .map((doc) => toRecruitment(doc.id, doc.data()))
+        .filter((r) => !r.deletedAt)
+        .sort((a, b) => b.opensAt.getTime() - a.opensAt.getTime());
+    },
+
+    async getPublished(id: string): Promise<Recruitment | null> {
+      if (!safeId.safeParse(id).success) return null;
+      const snapshot = await recruitments.doc(id).get();
+      const r = snapshot.exists
+        ? toRecruitment(snapshot.id, snapshot.data() as Record<string, unknown>)
+        : null;
+      return r && r.published && !r.deletedAt ? r : null;
+    },
+
+    /** The questions applicants answer (the recruitment's form version). */
+    async questions(r: Recruitment) {
+      const snapshot = await versions.doc(versionDocId(r.formId, r.formVersion)).get();
+      return snapshot.exists
+        ? (snapshot.get("questions") as Parameters<typeof parseAnswers>[0])
+        : [];
+    },
+
+    /** The member's OWN application (uid from the session), or null. */
+    async ownApplication(recruitmentId: string, uid: string): Promise<Application | null> {
+      if (!safeId.safeParse(recruitmentId).success || !safeId.safeParse(uid).success) return null;
+      const snapshot = await applications.doc(applicationId(recruitmentId, uid)).get();
+      return snapshot.exists
+        ? toApplication(snapshot.id, snapshot.data() as Record<string, unknown>)
+        : null;
+    },
+
+    /** Saves choices and answers as a draft (answers checked, but none required yet). */
+    saveDraft(
+      recruitmentId: string,
+      uid: string,
+      draft: { choices: string[]; answers: Readonly<Record<string, unknown>> },
+      now: Date,
+    ) {
+      return change(recruitmentId, uid, now, (r, current, questions) => {
+        if (!isRecruitmentOpen(r, now)) return { ok: false, error: "closed" };
+        if (!editable(current)) return { ok: false, error: "locked" };
+        let choices: string[] = [];
+        try {
+          choices = draft.choices.length === 0 ? [] : checkChoices(r, draft.choices);
+        } catch (error) {
+          return { ok: false, error: "refused", message: (error as Error).message };
+        }
+        // File answers come only from the upload route: whatever the browser sends for a file
+        // question is ignored and the stored file is kept (no path can point at another file).
+        const fileIds = new Set(questions.filter((q) => q.type === "file").map((q) => q.id));
+        const sent = Object.fromEntries(
+          Object.entries(draft.answers).filter(([id]) => !fileIds.has(id)),
+        );
+        const parsed = parseAnswers(
+          questions.filter((q) => !fileIds.has(q.id)).map((q) => ({ ...q, required: false })),
+          sent,
+        );
+        if (!parsed.ok) return { ok: false, error: "answers", fields: parsed.fields };
+        const application = base(r, uid, current, now);
+        const files = Object.fromEntries(
+          Object.entries(application.answers).filter(([id]) => fileIds.has(id)),
+        );
+        return bump(application, now, { choices, answers: { ...parsed.answers, ...files } });
+      });
+    },
+
+    /** Stores the uploaded portfolio (already checked and saved privately). */
+    setPortfolio(recruitmentId: string, uid: string, file: FileAnswer, now: Date) {
+      return change(recruitmentId, uid, now, (r, current) => {
+        if (!isRecruitmentOpen(r, now)) return { ok: false, error: "closed" };
+        if (!editable(current)) return { ok: false, error: "locked" };
+        return bump(base(r, uid, current, now), now, { portfolio: file });
+      });
+    },
+
+    /** Stores an uploaded PDF as the answer of one file question of the form version. */
+    setAnswerFile(
+      recruitmentId: string,
+      uid: string,
+      questionId: string,
+      file: FileAnswer,
+      now: Date,
+    ) {
+      return change(recruitmentId, uid, now, (r, current, questions) => {
+        if (!isRecruitmentOpen(r, now)) return { ok: false, error: "closed" };
+        if (!editable(current)) return { ok: false, error: "locked" };
+        if (!questions.some((q) => q.id === questionId && q.type === "file")) {
+          return { ok: false, error: "refused", message: "Unknown question." };
+        }
+        const application = base(r, uid, current, now);
+        return bump(application, now, { answers: { ...application.answers, [questionId]: file } });
+      });
+    },
+
+    /**
+     * Submit (draft or revision → submitted): window open, choices valid, every required answer
+     * given against the recruitment's form version, a portfolio when a chosen unit needs one.
+     * The version is marked answered (frozen) in the same transaction.
+     */
+    submit(recruitmentId: string, uid: string, now: Date) {
+      return change(
+        recruitmentId,
+        uid,
+        now,
+        (r, current, questions) => {
+          if (!isRecruitmentOpen(r, now)) return { ok: false, error: "closed" };
+          if (!current || !editable(current)) return { ok: false, error: "locked" };
+          try {
+            checkChoices(r, current.choices);
+          } catch (error) {
+            return { ok: false, error: "refused", message: (error as Error).message };
+          }
+          if (portfolioRequired(r, current.choices) && !current.portfolio) {
+            return { ok: false, error: "refused", message: "Upload your portfolio (PDF)." };
+          }
+          const parsed = parseAnswers(questions, current.answers);
+          if (!parsed.ok) return { ok: false, error: "answers", fields: parsed.fields };
+          assertTransition(current.status, "submitted");
+          return bump(current, now, { status: "submitted", submittedAt: now });
+        },
+        true,
+      );
+    },
+
+    /** The applicant withdraws (before any seat was taken). */
+    withdraw(recruitmentId: string, uid: string, now: Date) {
+      return change(recruitmentId, uid, now, (_r, current) => {
+        if (!current || !["draft", "submitted", "revision", "interview"].includes(current.status)) {
+          return { ok: false, error: "locked" };
+        }
+        return bump(current, now, { status: "withdrawn" });
+      });
+    },
+  };
+}
+
+export type FirestoreRecruitmentWebStore = ReturnType<typeof createFirestoreRecruitmentWebStore>;

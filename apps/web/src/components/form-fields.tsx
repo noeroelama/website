@@ -22,6 +22,14 @@ export function FormFields(props: {
   /** Server messages per question id. */
   errors: Readonly<Record<string, string>>;
   labels: FormFieldLabels;
+  /**
+   * File questions (recruitment only): uploads a PDF and resolves to the stored file's name.
+   * Without it a file question is shown as unavailable (public forms never have one).
+   */
+  onFile?: (questionId: string, file: File) => Promise<void>;
+  /** The uploaded file's name per file question. */
+  fileNames?: Readonly<Record<string, string>>;
+  disabled?: boolean;
 }) {
   const { values, others } = props.value;
   const set = (id: string, value: string | readonly string[] | boolean) =>
@@ -122,11 +130,36 @@ export function FormFields(props: {
         }
 
         if (q.type === "file") {
+          const onFile = props.onFile;
           // Public forms never have file questions (domain assertPublishable).
+          if (!onFile) {
+            return (
+              <p key={q.id} className="site-muted">
+                {q.label}: {props.labels.fileOnlyInApplication}
+              </p>
+            );
+          }
+          const name = props.fileNames?.[q.id];
           return (
-            <p key={q.id} className="site-muted">
-              {q.label}: {props.labels.fileOnlyInApplication}
-            </p>
+            <div key={q.id} className="ui-field">
+              <label htmlFor={id}>{title}</label>
+              {help}
+              {name ? <span className="site-muted">{name}</span> : null}
+              <input
+                id={id}
+                className="ui-input"
+                type="file"
+                accept="application/pdf"
+                disabled={props.disabled}
+                {...aria}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void onFile(q.id, file);
+                  e.target.value = "";
+                }}
+              />
+              {message}
+            </div>
           );
         }
 

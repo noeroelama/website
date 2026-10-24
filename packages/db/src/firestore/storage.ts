@@ -15,11 +15,11 @@ export function createFirebaseImageStorage(app: App, bucketName: string) {
   const storage: ImageStorage & {
     signedReadUrl(path: string, minutes?: number): Promise<string>;
   } = {
-    async save(path, bytes, { visibility }) {
+    async save(path, bytes, { visibility, contentType = "image/webp" }) {
       const token = visibility === "public" ? randomUUID() : null;
       await bucket.file(path).save(Buffer.from(bytes), {
         resumable: false,
-        contentType: "image/webp",
+        contentType,
         metadata: {
           cacheControl: token ? LONG_CACHE : "private, no-store",
           ...(token ? { metadata: { firebaseStorageDownloadTokens: token } } : {}),

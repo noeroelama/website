@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseAnswers, type Question, type QuestionType } from "@website/domain/forms";
-import { answersFrom, EMPTY_VALUES, OTHER } from "../../apps/web/src/lib/form-answers";
+import { answersFrom, EMPTY_VALUES, OTHER, valuesFrom } from "../../apps/web/src/lib/form-answers";
 
 const q = (id: string, type: QuestionType, extra: Partial<Question> = {}): Question => ({
   id,
@@ -51,5 +51,41 @@ describe("public form answers (web renderer → server)", () => {
     });
     expect(parseAnswers(questions, answers)).toMatchObject({ ok: true });
     expect(answersFrom(questions, EMPTY_VALUES)).toEqual({});
+  });
+
+  it("turns saved answers back into the renderer's values (drafts)", () => {
+    const saved = {
+      q_text: "Ari",
+      q_num: 7.5,
+      q_one: "Red",
+      q_other: "Purple",
+      q_many: ["Blue", "Black"],
+      q_ok: true,
+      q_skip: {
+        path: "forms/f/x.pdf",
+        name: "x.pdf",
+        contentType: "application/pdf" as const,
+        size: 1,
+      },
+    };
+    const values = valuesFrom(questions, saved);
+    expect(values).toEqual({
+      values: {
+        q_text: "Ari",
+        q_num: "7.5",
+        q_one: "Red",
+        q_other: OTHER,
+        q_many: ["Blue", OTHER],
+        q_ok: true,
+      },
+      others: { q_other: "Purple", q_many: "Black" },
+    });
+    const rest: Record<string, unknown> = { ...saved };
+    delete rest["q_skip"];
+    expect(answersFrom(questions, values)).toEqual(rest);
+    expect(valuesFrom(questions, { q_many: ["Red"] })).toEqual({
+      values: { q_many: ["Red"] },
+      others: {},
+    });
   });
 });

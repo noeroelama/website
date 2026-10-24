@@ -41,6 +41,9 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 - **Errors**: clients receive `{ "error": "<code>", "message": "<generic text>" }` (or RFC 9457 in
   the gateway). Stack traces and internal messages are only logged. Pages show the generic error
   pages instead ([error-pages.md](../../ui/docs/error-pages.md)).
+- **Uploads**: read bodies with `readBodyLimited(request, maxBytes)` (`src/body.ts`): it refuses by
+  the declared `Content-Length` and while streaming, so an oversized upload is never held in
+  memory (admin images, web recruitment PDFs).
 - Cost: each guarded request performs one Firestore transaction in staging/production (~1 read + 1 write).
   A delayed request keeps its server function running for the extra 500 ms (billed time).
 

@@ -14,7 +14,8 @@
     "./shared": "./src/shared/index.ts",
     "./messaging": "./src/messaging/index.ts",
     "./gallery": "./src/gallery/index.ts",
-    "./forms": "./src/forms/index.ts"
+    "./forms": "./src/forms/index.ts",
+    "./recruitment": "./src/recruitment/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

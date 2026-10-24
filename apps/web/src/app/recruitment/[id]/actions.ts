@@ -1,0 +1,22 @@
+"use server";
+
+import { applying } from "@/server/recruitment-wiring";
+import { getSignedInUser } from "@/server/session";
+
+// Thin wrappers: the applicant is always the session's user (src/server/recruitment.ts).
+const applicant = async () => {
+  const user = await getSignedInUser();
+  return user && { uid: user.uid };
+};
+
+export async function saveApplicationDraftAction(input: unknown) {
+  return applying().saveDraft(await applicant(), input);
+}
+
+export async function submitApplicationAction(input: unknown) {
+  return applying().submit(await applicant(), input);
+}
+
+export async function withdrawApplicationAction(input: unknown) {
+  return applying().withdraw(await applicant(), input);
+}

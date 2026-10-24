@@ -4786,3 +4786,21 @@ form.admin-toolbar::before {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Recruitment editor (components/recruitment-page.tsx): one line per unit of the period. */
+.admin-recruit-units {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.admin-recruit-unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--size-control);
+}
+
+.admin-recruit-unit__quota {
+  width: calc(var(--space-16) + var(--space-4));
+}

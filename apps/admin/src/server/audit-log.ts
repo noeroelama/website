@@ -36,6 +36,8 @@ export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
   // Forms: a CREATE (moves the new form to the trash) and a DELETE (restores it); edits create
   // question versions and are never revertible.
   form: "forms",
+  // Recruitment: a CREATE (trash) and a DELETE (restore); edits also wrote the seat counters.
+  recruitment: "recruitments",
 };
 
 export interface AuditLogDeps {

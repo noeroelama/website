@@ -15,7 +15,7 @@ import {
   type ImageStorage,
 } from "@website/domain/shared";
 import { type AdminPageId, type PagePermission, type Principal } from "@website/permissions";
-import { jsonError } from "@website/security";
+import { jsonError, readBodyLimited } from "@website/security";
 import { createGuardedAction, type AuditContext } from "./guarded-action";
 
 /** Which admin page may upload which kind of image (signatures are uploaded on web, later). */
@@ -60,28 +60,6 @@ async function encode(bytes: Uint8Array, preset: AdminPreset) {
   }
 }
 
-/** Reads the body, refusing (null) as soon as it passes the 5 MB limit. */
-async function readLimited(request: Request): Promise<Uint8Array | null> {
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > MAX_IMAGE_BYTES) return null;
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  if (request.body) {
-    for await (const chunk of request.body) {
-      size += chunk.byteLength;
-      if (size > MAX_IMAGE_BYTES) return null;
-      chunks.push(chunk);
-    }
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
-}
-
 /**
  * POST /api/uploads/<preset> (flowchart section 2): the page permission is checked BEFORE the
  * body is read (the guarded action's handler reads it), body ≤ 5 MB, real type from the bytes,
@@ -94,7 +72,7 @@ export function createImageUploads(deps: ImageUploadDeps) {
       permission: ADMIN_UPLOAD_PRESETS[preset],
       input: z.object({ request: z.instanceof(Request) }).strict(),
       handler: async ({ request }, _principal, audit) => {
-        const bytes = await readLimited(request);
+        const bytes = await readBodyLimited(request, MAX_IMAGE_BYTES);
         if (bytes === null) return "too_large" as const;
         if (detectImageType(bytes) === null) {
           throw new RuleViolationError(IMAGE_ERROR_MESSAGES.unsupported_type);

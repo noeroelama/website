@@ -76,7 +76,7 @@ const ALLOWED = {
 const SUBPATHS = {
   shop: { domain: ["shop", "shared"] },
   // messaging: confirmation e-mails sent by the website (event registration, newsletter opt-in).
-  // forms: public forms answered at /f/{token} (C2).
+  // forms: public forms answered at /f/{token} (C2); recruitment: applying (C3).
   web: {
     domain: [
       "content",
@@ -87,6 +87,7 @@ const SUBPATHS = {
       "members",
       "messaging",
       "forms",
+      "recruitment",
       "shared",
     ],
   },

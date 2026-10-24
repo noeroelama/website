@@ -12,6 +12,8 @@ export const SELF_SERVICE_PERMISSIONS = [
   "profile.write_own",
   "events.register",
   "registrations.read_own",
+  "applications.read_own",
+  "applications.write_own",
   "shop.orders.read_own",
 ] as const;
 export type SelfServicePermission = (typeof SELF_SERVICE_PERMISSIONS)[number];
@@ -39,6 +41,14 @@ export const ADMIN_PAGES = {
       publish: "Publish and close public forms",
       responses: "See responses",
       export: "Export responses",
+    },
+  },
+  recruitment: {
+    label: "Recruitment (Oprec)",
+    extras: {
+      review: "Review applications (revision, fail, pass to interview)",
+      offer: "Offer seats",
+      confirm: "Approve placements and ratify (Sekjen)",
     },
   },
   organizations: { label: "Organizations" },

@@ -50,6 +50,12 @@ transaction (`src/server/forms.ts`, wiring `src/server/forms-wiring.ts`, rendere
 `src/components/form-fields.tsx`, answers `src/lib/form-answers.ts`). Rules:
 `packages/domain/docs/forms.md`.
 
+**Recruitment**: `/recruitment` lists published recruitments (cached, tag `recruitment`);
+`/recruitment/[id]` shows the units and, for a signed-in member, the own application with ONE
+next action; `/recruitment/[id]/apply` (session + complete profile) takes the choices, the
+portfolio and the answers. Uploads: `POST /api/recruitment/[id]/portfolio` (PDF, 5 MB, private).
+Rules: `packages/domain/docs/recruitment.md`.
+
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one
 marker per chapter; selecting it shows the chapter card) and lists them below; About lists the
 same chapters with their count. Rules: `packages/domain/docs/organization.md`.
