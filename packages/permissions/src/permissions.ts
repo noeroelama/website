@@ -5,7 +5,7 @@
  * - Admin permissions come from ADMIN PAGES: every page has `<page>.read` and `<page>.edit`
  *   (edit includes read) and, where needed, named extras (e.g. `members.pii`). Adding a page is
  *   a reviewed code change; WHICH roles get which page permissions is data, edited in the admin
- *   Roles page (roles are Firestore documents).
+ *   Role Manager (roles are Firestore documents).
  */
 export const SELF_SERVICE_PERMISSIONS = [
   "profile.read_own",
@@ -19,7 +19,7 @@ export const SELF_SERVICE_PERMISSIONS = [
 export type SelfServicePermission = (typeof SELF_SERVICE_PERMISSIONS)[number];
 
 interface AdminPageDefinition {
-  /** Shown in the Roles page. */
+  /** Shown in Role Manager. */
   readonly label: string;
   /** Extra permissions beyond read/edit: key → label shown as a checkbox. */
   readonly extras?: Readonly<Record<string, string>>;
@@ -77,7 +77,6 @@ export const ADMIN_PAGES = {
       pii: "See personal data",
       export: "Export",
       approve: "Approve members",
-      verify: "Verify profiles, decide data changes, mark graduation",
     },
   },
   users: { label: "Users & role assignments" },
@@ -131,17 +130,42 @@ export function normalizePermissions(values: Iterable<string>): PagePermission[]
   return [...result];
 }
 
-/** A role: built-in (code) or custom (Firestore `roles/{id}`, edited in the admin Roles page). */
+/**
+ * Badge colours a role can have (Role Manager → Create Role). Display only: a colour never
+ * changes what a role may do. Stored roles read without a known colour get `DEFAULT_ROLE_COLOR`.
+ */
+export const ROLE_COLORS = [
+  "#D9534F",
+  "#2E9FC9",
+  "#123D5E",
+  "#D4B25A",
+  "#F5A623",
+  "#4A5361",
+  "#8B5CF6",
+  "#10B981",
+  "#EC4899",
+  "#6366F1",
+] as const;
+export type RoleColor = (typeof ROLE_COLORS)[number];
+export const DEFAULT_ROLE_COLOR: RoleColor = "#4A5361";
+
+export function isRoleColor(value: unknown): value is RoleColor {
+  return (ROLE_COLORS as readonly unknown[]).includes(value);
+}
+
+/** A role: built-in (code) or custom (Firestore `roles/{id}`, edited in the admin Role Manager). */
 export interface RoleDefinition {
   readonly id: string;
   readonly name: string;
   readonly permissions: readonly PagePermission[];
+  /** Badge colour (display only); roles read from Firestore always have one. */
+  readonly color?: RoleColor;
 }
 
 export const SUPERADMIN_ROLE_ID = "superadmin";
 
 /**
- * Built-in roles. They cannot be created, edited or deleted in the Roles page, and a stored role
+ * Built-in roles. They cannot be created, edited or deleted in the Role Manager, and a stored role
  * document with the same id is ignored.
  * - superadmin: every admin page (keep 2-3 people)
  * - member: an approved PPI member (self-service only, for now)
@@ -152,9 +176,10 @@ export const SYSTEM_ROLES = {
     id: SUPERADMIN_ROLE_ID,
     name: "Superadmin",
     permissions: PAGE_PERMISSIONS,
+    color: "#D9534F",
   },
-  member: { id: "member", name: "Member", permissions: [] },
-  user: { id: "user", name: "User", permissions: [] },
+  member: { id: "member", name: "Member", permissions: [], color: "#10B981" },
+  user: { id: "user", name: "User", permissions: [], color: DEFAULT_ROLE_COLOR },
 } as const satisfies Record<string, RoleDefinition>;
 
 export function isSystemRoleId(id: string): id is keyof typeof SYSTEM_ROLES {

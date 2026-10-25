@@ -38,13 +38,14 @@ test("every public page has the site header and footer", async ({ request }) => 
   const html = await (await request.get("/gallery")).text();
 
   const header = part(html, "header");
-  expect(header).toContain('src="/logo.svg"');
-  // Logo (home), then About Us, Events, Gallery, News, Map; the current page is marked.
-  expect(links(header)).toEqual(["/", "/about", "/events", "/gallery", "/news", "/map"]);
+  expect(header).toContain('src="/logo.webp"');
+  // Logo (home), then About Us, Events, Gallery, News, Map, and the Log in chip for signed-out
+  // visitors; the current page is marked.
+  expect(links(header)).toEqual(["/", "/about", "/events", "/gallery", "/news", "/map", "/login"]);
   expect(header).toContain('href="/gallery" aria-current="page"');
 
   const footer = part(html, "footer");
-  expect(footer).toContain('src="/logo.svg"');
+  expect(footer).toContain('src="/logo.webp"');
   for (const text of ["Jelajahi", "Komunitas Kami", "Alamat", "PPI Tiongkok", "Kirai 07"]) {
     expect(footer).toContain(text);
   }

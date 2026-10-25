@@ -5,7 +5,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "./icon";
 
 /**
- * Admin modal (client component — needs DOM effects). Closes on Escape or overlay click.
+ * Admin modal (client component — needs DOM effects). Closes on Escape (unless a control inside
+ * already handled it with preventDefault, e.g. an open dropdown) or overlay click.
  * Styling via `admin-modal*` classes in globals.css.
  */
 export interface ModalProps {
@@ -36,7 +37,8 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // A dropdown inside the popup that handles Escape itself calls preventDefault().
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     document.addEventListener("keydown", onKey);
     const previous = document.body.style.overflow;

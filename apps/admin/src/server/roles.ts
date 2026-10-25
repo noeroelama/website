@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import type { CustomRole } from "@website/db";
 import type { FirestoreRoleStore } from "@website/db/firestore";
 import { RuleViolationError } from "@website/domain/shared";
 import {
@@ -8,8 +9,8 @@ import {
   isSystemRoleId,
   normalizePermissions,
   PAGE_PERMISSIONS,
+  ROLE_COLORS,
   type Principal,
-  type RoleDefinition,
 } from "@website/permissions";
 import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
@@ -29,151 +30,12 @@ export function roleIdFromName(name: string): string {
     .slice(0, 60);
 }
 
-const read = (pages: string[]) => pages.map((p) => `${p}.read`);
-
-/**
- * Starting points offered on the Roles page ("Add suggested roles"). They become ordinary,
- * editable custom roles; scope (global or one chapter) is chosen when a role is assigned.
- */
-export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
-  {
-    id: "admin",
-    name: "Admin",
-    permissions: normalizePermissions(
-      PAGE_PERMISSIONS.filter((p) => !p.startsWith("roles.") && !p.startsWith("apikeys.")),
-    ),
-  },
-  {
-    id: "editor",
-    name: "Editor",
-    permissions: normalizePermissions([
-      "articles.edit",
-      "articles.publish",
-      "events.edit",
-      "gallery.edit",
-      "newsletter.edit",
-    ]),
-  },
-  {
-    id: "chapter_admin",
-    name: "Chapter admin",
-    permissions: normalizePermissions([
-      "organizations.edit",
-      "members.read",
-      "members.approve",
-      "events.edit",
-      "articles.edit",
-      "gallery.edit",
-    ]),
-  },
-  {
-    id: "chapter_editor",
-    name: "Chapter editor",
-    permissions: normalizePermissions(["articles.edit", "events.edit", "gallery.edit"]),
-  },
-  {
-    id: "viewer",
-    name: "Viewer",
-    permissions: normalizePermissions(
-      read([
-        "events",
-        "gallery",
-        "articles",
-        "newsletter",
-        "organizations",
-        "periods",
-        "structure",
-        "audit",
-      ]),
-    ),
-  },
-  {
-    id: "shop_manager",
-    name: "Shop manager",
-    permissions: normalizePermissions(["shop_products.edit", "shop_orders.edit"]),
-  },
-  // Given by appointments (settings/appointmentRoles, SUGGESTED_APPOINTMENT_ROLES), not by hand.
-  {
-    id: "officer",
-    name: "Officer (every board member)",
-    permissions: normalizePermissions(
-      read(["events", "gallery", "articles", "organizations", "periods", "structure"]),
-    ),
-  },
-  {
-    id: "director",
-    name: "Director (unit head)",
-    permissions: normalizePermissions([
-      "events.edit",
-      "articles.edit",
-      "gallery.edit",
-      "appointments.read",
-      "letters.edit",
-    ]),
-  },
-  {
-    id: "directorate_secretary",
-    name: "Directorate secretary",
-    permissions: normalizePermissions([
-      "events.edit",
-      "articles.edit",
-      "appointments.read",
-      "letters.edit",
-    ]),
-  },
-  {
-    id: "coordinator",
-    name: "Coordinator",
-    permissions: normalizePermissions([
-      "periods.edit",
-      "structure.edit",
-      "appointments.edit",
-      "organizations.edit",
-      "events.read",
-      "gallery.read",
-      "articles.read",
-      "users.read",
-      "audit.read",
-      "letters.sign_coordinator",
-      "letters.cancel",
-      "incoming.read",
-    ]),
-  },
-  {
-    id: "secretary_general",
-    name: "Secretary General",
-    permissions: normalizePermissions([
-      "periods.edit",
-      "structure.edit",
-      "appointments.edit",
-      "organizations.edit",
-      "events.read",
-      "gallery.read",
-      "articles.read",
-      "users.read",
-      "universities.edit",
-      "letters.edit",
-      "letters.review",
-      "letters.sign",
-      "letters.issue",
-      "letters.cancel",
-      "letter_types.edit",
-      "incoming.edit",
-      "incoming.dispose",
-    ]),
-  },
-  {
-    id: "treasurer",
-    name: "Treasurer",
-    permissions: normalizePermissions(read(["periods", "structure", "organizations"])),
-  },
-];
-
 const SaveInput = z
   .object({
     /** Absent when creating: the id is made from the name. */
     id: safeId.optional(),
     name: safeText(60).pipe(z.string().min(2, "Give the role a name (2–60 characters).")),
+    color: z.enum(ROLE_COLORS, "Choose a colour."),
     permissions: z.array(z.string().max(80)).max(PAGE_PERMISSIONS.length * 2),
     version: z.number().int().min(1).nullable(),
   })
@@ -183,10 +45,10 @@ const DeleteInput = z.object({ id: safeId, version: z.number().int().min(1) }).s
 const ESCALATION =
   "You can only create or change roles with permissions you hold yourself (globally).";
 
-/** Admin Roles page actions (roles are data, DEC-11). */
+/** Role Manager → Edit Role actions (roles are data, DEC-11). */
 export function createRoleActions(deps: RoleDeps) {
   const save = async (
-    role: RoleDefinition,
+    role: CustomRole,
     version: number | null,
     principal: Principal,
     audit: AuditBuilder,
@@ -227,9 +89,10 @@ export function createRoleActions(deps: RoleDeps) {
         throw new RuleViolationError("Use letters or numbers in the role name.");
       }
       if (isSystemRoleId(id)) throw new RuleViolationError("Built-in roles cannot be changed.");
-      const role: RoleDefinition = {
+      const role = {
         id,
         name: input.name,
+        color: input.color,
         permissions: normalizePermissions(input.permissions),
       };
       const saved = await save(role, input.version, principal, audit);
@@ -251,7 +114,7 @@ export function createRoleActions(deps: RoleDeps) {
           if (!canDeleteRole(principal, previous)) throw new RuleViolationError(ESCALATION);
           if (holders > 0) {
             throw new RuleViolationError(
-              `${holders} account(s) still hold this role. Remove it from them on the Users page first.`,
+              `${holders} account(s) still hold this role. Remove it from them in Role Manager first.`,
             );
           }
         },
@@ -271,23 +134,5 @@ export function createRoleActions(deps: RoleDeps) {
     },
   });
 
-  /** Creates the suggested roles that do not exist yet and that the editor may grant. */
-  const addSuggestedRoles = createGuardedAction({
-    permission: "roles.edit",
-    input: z.object({}).strict(),
-    recentSignIn: true,
-    handler: async (_input, principal, audit) => {
-      const added: string[] = [];
-      for (const role of SUGGESTED_ROLES) {
-        // One small transaction per role; skipped when it exists or would be an escalation.
-        if ((await deps.roles.get(role.id)) !== null) continue;
-        if (!canSaveRole(principal, role)) continue;
-        await save(role, null, principal, audit);
-        added.push(role.id);
-      }
-      return { added };
-    },
-  });
-
-  return { saveRole, deleteRole, addSuggestedRoles };
+  return { saveRole, deleteRole };
 }

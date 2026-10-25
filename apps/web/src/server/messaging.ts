@@ -8,7 +8,7 @@ import { getWebEnv } from "./env";
 
 /**
  * Confirmation e-mails sent by the website, through the same message log as admin (failed ones
- * are retried from the admin Messages page). Call `messenger().send` AFTER the transaction commits.
+ * are retried from the admin Email page). Call `messenger().send` AFTER the transaction commits.
  */
 export const messenger = lazyEnv(() => {
   const env = getWebEnv();

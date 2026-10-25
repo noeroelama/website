@@ -62,9 +62,10 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
 - **Letter types** (`letter_types.edit`, `/letters/types`): name, code (unique case-insensitively,
   trimmed), number pattern (checked, with a live example), digits of `{nomor}`, Coordinator desk,
   recipient, whether the verification page shows the content to anyone, in use, order.
-  Deactivated, never deleted. Suggested roles: Secretary General (all desks but the
-  Coordinator's, letter types), Coordinator (`sign_coordinator`, `cancel`), Director and
-  Directorate secretary (`letters.edit`, scoped to their unit by the appointment).
+  Deactivated, never deleted. Give the permissions in the Role Manager, as in PPIDK: the
+  Secretary-General's role every desk but the Coordinator's plus letter types and incoming
+  letters; the Coordinator's role `sign_coordinator` and `cancel`; directors and directorate
+  secretaries `letters.edit` (scoped to their unit by the appointment).
 - Not built yet: the upload path (`awaiting_file`, 4.7),
   PPIDK's format checker (warnings) and notifications to the desks.
 

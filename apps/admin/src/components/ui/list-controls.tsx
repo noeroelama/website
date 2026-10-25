@@ -394,8 +394,8 @@ export function ListEmpty({
 }
 
 /**
- * The list card: optional filter panel, the table at the full page height (the empty message
- * floats over blank rows), then the bulk bar while rows are selected, else the pagination.
+ * The list card: optional filter panel, the table (fills the screen height; the empty message
+ * sits in its middle), then the bulk bar while rows are selected, else the pagination.
  */
 export function ListCard<T extends { id: string }>({
   table,
@@ -441,7 +441,6 @@ export function ListCard<T extends { id: string }>({
           columns={columns}
           rows={table.pageRows}
           rowKey={(row) => row.id}
-          minRows={table.pageSize}
           emptyState={empty}
           {...(expandedRow ? { expandedRow } : {})}
         />

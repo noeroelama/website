@@ -73,7 +73,13 @@ same chapters with their count. Rules: `packages/domain/docs/organization.md`.
 - Rendering helper: `src/i18n/localized.tsx` (`<Localized render={(t, language) => …} />`).
 - Frame: `src/components/site-frame.tsx` (header, footer, legal page; address, community list and
   social profile URLs are constants at the top), `site-nav.tsx` (header links, current section).
-  Logo: `public/logo.svg` — a placeholder; replace the file with the official logo (same name).
+  Logo: `public/logo.webp` (shield and name in one image; the admin app has the same file).
+- Header account (`src/components/site-account.tsx`, right side of the header): a **Log in** chip,
+  or for a signed-in visitor the provider photo (Google; initials otherwise), the name (over 16
+  characters → first 13 and "...", `shortName` in `@website/ui`) and an arrow opening the same
+  menu as the admin account menu: Profile, Account, Log out. It reads the session at request
+  time behind `<Suspense>`, so the prerendered shell holds only the Log in chip and no personal
+  data. Texts: `account` in the dictionaries. Tests: `tests/unit/account-menu.test.ts`.
 - Pages: `src/app/{page,about,terms,privacy,news}/…`, styles `src/app/globals.css`.
 - Events: cached reads and registration wiring `src/server/events.ts`, rules
   `src/server/registrations.ts`, captcha `src/server/captcha.ts`, e-mails

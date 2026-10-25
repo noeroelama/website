@@ -5,7 +5,7 @@ import { RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction } from "./guarded-action";
 
-/** Admin Messages page: one more attempt for a failed message (`messages.edit`). */
+/** Admin Email page: one more attempt for a failed message (`messages.edit`). */
 export function createMessageActions(deps: { messenger: Pick<Messenger, "retry"> }) {
   const retry = createGuardedAction({
     permission: "messages.edit",

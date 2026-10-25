@@ -1,7 +1,11 @@
 import { cacheLife } from "next/cache";
+import { Suspense } from "react";
+import { initials } from "@website/ui";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { LEGAL_VERSION } from "@/i18n/dictionaries";
 import { getAppUrls } from "@/server/env";
+import { getSignedInUser } from "@/server/session";
+import { LoginChip, SiteAccount } from "./site-account";
 import { SiteNav } from "./site-nav";
 
 /** Organisation address and profiles, shown in the footer in every language. */
@@ -39,17 +43,23 @@ const SOCIAL = [
   },
 ] as const;
 
-/** The logo image links home. Placeholder file: replace apps/web/public/logo.svg. */
+/** The logo (shield and name in one image, apps/web/public/logo.webp) links home. */
 function Logo({ t }: { t: Dictionary }) {
   return (
     <a href="/" className="site-logo-link">
-      {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
-      <img className="site-logo-mark" src="/logo.svg" alt={t.siteName} width={180} height={56} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- same static file as the admin logo */}
+      <img
+        className="site-logo-mark"
+        src="/logo.webp"
+        alt={t.siteName}
+        width={3286}
+        height={1024}
+      />
     </a>
   );
 }
 
-/** Header of every public page (no personal data: it is in the prerendered shell). */
+/** Header of every public page. Personal data only in HeaderAccount (streamed, not prerendered). */
 export function SiteHeader({ t }: { t: Dictionary }) {
   const links = [
     ["/about", t.nav.about],
@@ -63,8 +73,26 @@ export function SiteHeader({ t }: { t: Dictionary }) {
       <div className="site-frame__inner site-header__inner">
         <Logo t={t} />
         <SiteNav label={t.nav.label} links={links} />
+        <Suspense fallback={<LoginChip t={t.account} />}>
+          <HeaderAccount t={t} />
+        </Suspense>
       </div>
     </header>
+  );
+}
+
+/** Right side of the header: request-time only (the session), so never in the prerendered shell. */
+async function HeaderAccount({ t }: { t: Dictionary }) {
+  const user = await getSignedInUser();
+  if (!user) return <LoginChip t={t.account} />;
+  const name = user.name ?? user.email ?? t.account.menu;
+  return (
+    <SiteAccount
+      name={name}
+      initials={initials(name)}
+      picture={user.picture ?? null}
+      t={t.account}
+    />
   );
 }
 

@@ -2,8 +2,12 @@ import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
 import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
-import type { UserListQuery } from "@website/db";
-import type { AuditListQuery, FirestoreFormStore, LetterListQuery } from "@website/db/firestore";
+import {
+  inviteId,
+  type AuditListQuery,
+  type FirestoreFormStore,
+  type LetterListQuery,
+} from "@website/db/firestore";
 import type { Letter } from "@website/domain/documents";
 import { orgUnitPath } from "@website/domain/organizations";
 import sharp from "sharp";
@@ -15,7 +19,7 @@ import { createApplicationActions } from "./applications";
 import { createAppointmentActions } from "./appointments";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createChapterActions } from "./chapters";
-import { createMessenger } from "@website/domain/messaging";
+import { createMessenger, type Message } from "@website/domain/messaging";
 import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { createDashboard } from "./dashboard";
@@ -28,7 +32,6 @@ import { createIncomingActions } from "./incoming";
 import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
-import { createMemberActions } from "./members";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
@@ -39,8 +42,38 @@ import { createRoleActions } from "./roles";
 import { createUniversityActions } from "./universities";
 import { adminStores, imageStorage } from "./stores";
 
-/** Users and Roles page actions with the real stores (server actions call these). */
-export const accountActions = lazyEnv(() => createAccountActions(adminStores()));
+/** Role Manager actions with the real stores (server actions call these). */
+export const accountActions = lazyEnv(() =>
+  createAccountActions({
+    ...adminStores(),
+    sendInvite: (invite, roleName) =>
+      messenger().send(
+        inviteMessage(invite.email, roleName, getAppUrls().WEB_URL ?? ""),
+        `invite:${inviteId(invite.email)}:${invite.version}`,
+      ),
+  }),
+);
+
+/** The e-mail of Role Manager → Add New People for an address without an account. */
+function inviteMessage(to: string, roleName: string, webUrl: string): Message {
+  const login = `${webUrl}/login`;
+  const body =
+    `Anda diundang ke admin PPI Dunia Kawasan Asia-Oseania sebagai ${roleName}. Masuk dengan ` +
+    `alamat e-mail ini (Google atau e-mail dan kata sandi). / You are invited to the PPI Dunia ` +
+    `Kawasan Asia-Oseania admin as ${roleName}. Sign in with this e-mail address (Google or ` +
+    `e-mail and password).`;
+  const staff =
+    "Peran pengurus butuh dua metode masuk: setelah masuk pertama kali, tambahkan passkey di Akun " +
+    "Anda lalu masuk lagi. / Staff roles need two sign-in methods: after the first sign-in, add " +
+    "a passkey under Your account and sign in again.";
+  return {
+    channel: "email",
+    to,
+    subject: "Undangan admin PPIDK Asia-Oseania / PPIDK Asia-Oseania admin invitation",
+    text: `${body}\n\n${login}\n\n${staff}`,
+    html: `<p>${body}</p><p><a href="${login}">Masuk / Sign in</a></p><p>${staff}</p>`,
+  };
+}
 export const roleActions = lazyEnv(() =>
   createRoleActions({ roles: adminStores().roles, now: () => new Date() }),
 );
@@ -228,11 +261,6 @@ export const appointmentActions = lazyEnv(() => {
   });
 });
 
-/** Members page: verification, data changes, graduation. */
-export const memberActions = lazyEnv(() =>
-  createMemberActions({ profiles: adminStores().memberProfiles, now: () => new Date() }),
-);
-
 /** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
 export const imageUploads = lazyEnv(() =>
   createImageUploads({
@@ -345,7 +373,9 @@ export const dashboard = lazyEnv(() =>
 
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
-  listUsers: (query: UserListQuery) => adminStores().accounts.list(query),
+  listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
+    adminStores().accounts.listRoleHolders(roleIds, chapterIds),
+  listInvites: () => adminStores().accounts.listInvites(),
   getUser: (uid: string) => adminStores().accounts.get(uid),
   getUsers: (uids: readonly string[]) => adminStores().accounts.getMany(uids),
   listRoles: () => adminStores().roles.list(),
@@ -387,11 +417,6 @@ export const adminReads = {
   listAppointments: (periodId: string) => adminStores().appointments.listForPeriod(periodId),
   getAppointmentRoleMap: () => adminStores().appointments.getRoleMap(),
   listPendingUniversities: () => adminStores().universities.listPending(),
-  getMemberProfile: (uid: string) => adminStores().memberProfiles.findByUserId(uid),
-  listToVerify: (chapterIds: "all" | string[]) =>
-    adminStores().memberProfiles.listToVerify(chapterIds),
-  listChangeRequests: (chapterIds: "all" | string[]) =>
-    adminStores().memberProfiles.listChangeRequests(chapterIds),
   listApprovedUniversities: (countryCode: string) =>
     adminStores().universities.listApproved(countryCode),
   listCampaigns: () => adminStores().campaigns.listForAdmin(),

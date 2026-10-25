@@ -8,7 +8,7 @@ import {
   type Principal,
   type Scope,
 } from "@website/permissions";
-import { ADMIN_NAVIGATION, initials, navigationFor } from "../../apps/admin/src/navigation";
+import { ADMIN_NAVIGATION, navigationFor } from "../../apps/admin/src/navigation";
 
 // Custom roles as created in the admin Roles page.
 const roles = new Map(
@@ -28,6 +28,7 @@ const roles = new Map(
         "newsletter.edit",
       ]),
     },
+    { id: "user_reader", name: "User reader", permissions: normalizePermissions(["users.read"]) },
     {
       id: "chapter_editor",
       name: "Chapter editor",
@@ -60,11 +61,9 @@ describe("admin side panel navigation", () => {
       "Incoming letters",
       "Organizations",
       "Universities",
-      "Members",
-      "Users",
-      "Roles",
+      "Role Manager",
       "Audit Log",
-      "Messages",
+      "Email",
     ]);
   });
 
@@ -77,6 +76,10 @@ describe("admin side panel navigation", () => {
       "Article",
       "Newsletter",
     ]);
+  });
+
+  it("opens Role Manager (people and roles in one page) with users.read", () => {
+    expect(labels(staff("user_reader"))).toEqual(["Dashboard", "Role Manager"]);
   });
 
   it("counts chapter-scoped roles (their pages filter data to the chapter)", () => {
@@ -120,15 +123,12 @@ describe("admin side panel navigation", () => {
   });
 });
 
-describe("avatar initials", () => {
-  it("uses the first and last name", () => {
-    expect(initials("Nevyllo Zamuel Kalangi")).toBe("NK");
-    expect(initials("  ari   wibowo ")).toBe("AW");
-  });
-
-  it("falls back to two letters of a single word, or '?' when empty", () => {
-    expect(initials("nevyllokalangi")).toBe("NE");
-    expect(initials("A")).toBe("A");
-    expect(initials("   ")).toBe("?");
+describe("side-panel logo", () => {
+  it("links to the public website (WEB_URL)", () => {
+    const admin = join(import.meta.dirname, "../../apps/admin/src");
+    const layout = readFileSync(join(admin, "app/(panel)/layout.tsx"), "utf8");
+    const sidebar = readFileSync(join(admin, "components/admin-sidebar.tsx"), "utf8");
+    expect(layout).toContain("webUrl={getAppUrls().WEB_URL}");
+    expect(sidebar).toMatch(/<a href=\{props\.webUrl\}[^>]*>\s*\{logo\}\s*<\/a>/);
   });
 });

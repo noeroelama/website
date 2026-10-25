@@ -595,12 +595,7 @@ function OrganizationsList({
 
         <Card className="admin-events-card admin-list-card admin-org-card">
           <CardBody flush>
-            <DataTable
-              columns={columns}
-              rows={periodPageRows}
-              rowKey={(r) => r.id}
-              minRows={pageSize}
-            />
+            <DataTable columns={columns} rows={periodPageRows} rowKey={(r) => r.id} />
             {paginationBar}
           </CardBody>
         </Card>
@@ -838,7 +833,7 @@ function OrganizationsList({
 
       <Card className="admin-events-card admin-list-card admin-org-card">
         <CardBody flush>
-          <DataTable columns={columns} rows={ppiPageRows} rowKey={(r) => r.id} minRows={pageSize} />
+          <DataTable columns={columns} rows={ppiPageRows} rowKey={(r) => r.id} />
 
           {selected.size > 0 ? (
             /* Bulk action bar (Figma: floats above the pagination while rows are selected). */

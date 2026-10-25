@@ -69,7 +69,7 @@ export function createFirestoreMessageLog(db: Firestore) {
 
   return {
     ...store,
-    /** Admin Messages page: failed messages, newest first. */
+    /** Admin Email page: failed messages, newest first. */
     async listFailed({ cursor, limit }: { cursor?: string | undefined; limit: number }) {
       let query = collection
         .where("status", "==", "failed")

@@ -120,7 +120,7 @@ describe("messenger: message log + channel, called after the record's transactio
   });
 });
 
-describe("Messages page: failed list and retry (messages.edit)", () => {
+describe("Email page: failed list and retry (messages.edit)", () => {
   const staff = (permissions: string[]): Principal => ({
     kind: "user",
     userId: "staff",

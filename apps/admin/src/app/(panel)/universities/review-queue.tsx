@@ -43,7 +43,7 @@ export function ReviewQueue({ rows, canEdit }: { rows: ProposalRow[]; canEdit: b
   };
 
   return (
-    <Card>
+    <Card className="admin-list-card">
       <CardBody flush>
         <DataTable
           rowKey={(row) => row.id}

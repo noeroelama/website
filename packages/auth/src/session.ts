@@ -17,6 +17,8 @@ export interface VerifiedIdentity {
   readonly email: string | null;
   /** Display name from the sign-in provider (Google sets it; email/password accounts may not). */
   readonly name?: string | null;
+  /** Profile photo URL from the sign-in provider (Google sets it), shown in the site header. */
+  readonly picture?: string | null;
   readonly emailVerified: boolean;
   readonly signInProvider: string | null;
   /** Seconds since epoch of the last real sign-in; used for re-auth on sensitive actions. */
@@ -62,7 +64,7 @@ export function hasTwoSignInMethods(methods: SignInMethods): boolean {
   return methods.mfaFactors > 0 || (methods.passkeys > 0 && methods.providers.length > 0);
 }
 
-/** Firebase Auth account operations used by the admin Users page and the web account page. */
+/** Firebase Auth account operations used by the admin Role Manager and the web account page. */
 export interface AccountAdmin {
   /** Provider ids and MFA factor count (passkeys are counted from our own store). */
   signInMethods(uid: string): Promise<Pick<SignInMethods, "providers" | "mfaFactors">>;

@@ -1,11 +1,17 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { createSessionRoutes, SESSION_COOKIE, type VerifiedIdentity } from "@website/auth";
+import {
+  createSessionRoutes,
+  hasTwoSignInMethods,
+  SESSION_COOKIE,
+  type VerifiedIdentity,
+} from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
 import { lazyEnv } from "@website/config/env";
 import { createFirestoreUserStore, getFirestoreForRole } from "@website/db/firestore";
 import { createLogger, logSecurityEvent } from "@website/observability";
 import { getWebEnv } from "./env";
+import { ownSignInMethods } from "./passkeys";
 
 export const identity = lazyEnv(() => {
   const env = getWebEnv();
@@ -39,9 +45,13 @@ export const sessionRoutes = lazyEnv(() =>
     maxAgeHours: getWebEnv().SESSION_MAX_AGE_HOURS,
     cookieDomain: getWebEnv().SESSION_COOKIE_DOMAIN,
     // Every sign-in method ends here: creates users/{uid} on the first one, then lastSignInAt.
+    // A pending invite (admin Role Manager) applies here; its staff roles only once the account
+    // has two sign-in methods (asked only for such an invite).
     onSignIn: async (signedIn) => {
-      const { roleIds } = await users().recordSignIn(signedIn, new Date());
-      // Staff sign-ins are security events (DEC-16); the Users page shows "last sign-in".
+      const { roleIds } = await users().recordSignIn(signedIn, new Date(), async () =>
+        hasTwoSignInMethods(await ownSignInMethods(signedIn.uid)),
+      );
+      // Staff sign-ins are security events (DEC-16); Role Manager shows "last sign-in".
       if (roleIds.some((id) => id !== "user" && id !== "member")) {
         logSecurityEvent(logger(), { type: "staff.login", actorId: signedIn.uid });
       }

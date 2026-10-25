@@ -1,11 +1,12 @@
-# Messaging (e-mail) and the Messages page
+# Messaging (e-mail) and the Email page
 
 ## What it does
 
 Every outgoing message goes through one port with an **idempotency key** and is written to a
 message log (outbox) first, so the same message is never sent twice — not on a double click,
 not on a retry. Today the channel is e-mail (Resend); WhatsApp is added as a second channel
-later. Staff see the e-mails that failed on the admin **Messages** page and can retry them.
+later. Staff see the e-mails that failed on the admin **Email** page (`/emails`, side panel) and can retry
+them. It replaced the separate Messages page and the mock Emails page of the account menu.
 
 ## Where it lives
 
@@ -15,9 +16,9 @@ later. Staff see the e-mails that failed on the admin **Messages** page and can 
   `messageLog/{sha256(key)}`).
 - E-mail channel: `packages/email/src/channel.ts` (`emailChannel`, shared by admin and web).
 - Admin: `src/server/messaging.ts` (retry action), `src/server/wiring.ts` (`messenger()`), page
-  `src/app/(panel)/messages/**` (`messages.read` / `messages.edit`).
+  `src/app/(panel)/emails/**` (`messages.read` / `messages.edit`).
 - Web: `apps/web/src/server/messaging.ts` (`messenger()` for confirmation e-mails, same log, so
-  failed ones show up on the admin Messages page).
+  failed ones show up on the admin Email page).
 - Tests: `tests/integration/messaging.test.ts`.
 
 ## How to use it
@@ -41,7 +42,7 @@ same key always means the same message. Web server code (newsletter, step 2.8) u
 - The key is claimed in a transaction (create-if-absent); a second call with the same key
   returns `duplicate` and sends nothing. The provider also gets the key (`Idempotency-Key`).
 - No address → `skipped`. Provider error or timeout → `failed` with the reason; staff retry
-  from the Messages page (only failed entries; the entry is set back to `queued` atomically).
+  from the Email page (only failed entries; the entry is set back to `queued` atomically).
 - Every environment works on the live data, so `MESSAGING_MODE=log` (default) only records.
   `live` sends in production; in any other environment it sends only to
   `MESSAGING_TEST_RECIPIENTS` and records everyone else as `blocked`.
@@ -52,4 +53,4 @@ same key always means the same message. Web server code (newsletter, step 2.8) u
 
 `MESSAGING_MODE` (`log` | `live`), `MESSAGING_TEST_RECIPIENTS` (comma-separated e-mails),
 `RESEND_API_KEY`, `EMAIL_FROM_TRANSACTIONAL` — see `docs/environment.md`. Without a Resend key
-or sender, live sends fail with `not_configured` (visible on the Messages page).
+or sender, live sends fail with `not_configured` (visible on the Email page).

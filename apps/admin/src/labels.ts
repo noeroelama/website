@@ -45,17 +45,6 @@ export const USER_STATUS_LABELS = {
   inactive: { id: "Nonaktif", en: "Inactive" },
 } as const satisfies Record<AccountStatus, Label>;
 
-export const SCOPE_LABELS = {
-  global: { id: "Semua cabang", en: "All chapters" },
-  chapter: { id: "Cabang", en: "Chapter" },
-  orgUnit: { id: "Unit", en: "Unit" },
-} as const satisfies Record<"global" | "chapter" | "orgUnit", Label>;
-
-export const ROLE_TYPE_LABELS = {
-  builtIn: { id: "Bawaan", en: "Built-in" },
-  custom: { id: "Kustom", en: "Custom" },
-} as const satisfies Record<"builtIn" | "custom", Label>;
-
 /** What happened (past tense): Audit Log badges and filter, dashboard "latest changes". */
 export const AUDIT_ACTION_LABELS = {
   CREATE: { id: "Dibuat", en: "Created" },
@@ -204,8 +193,6 @@ export const LABEL_MAPS: ReadonlyArray<{
   readonly labels: Readonly<Record<string, Label>>;
 }> = [
   { name: "user status", keys: ACCOUNT_STATUSES, labels: USER_STATUS_LABELS },
-  { name: "scope", keys: ["global", "chapter", "orgUnit"], labels: SCOPE_LABELS },
-  { name: "role type", keys: ["builtIn", "custom"], labels: ROLE_TYPE_LABELS },
   { name: "audit action", keys: AUDIT_ACTIONS, labels: AUDIT_ACTION_LABELS },
   { name: "revert rejection", keys: REVERT_REJECTIONS, labels: REVERT_REJECTION_LABELS },
   { name: "message status", keys: MESSAGE_STATUSES, labels: MESSAGE_STATUS_LABELS },

@@ -37,11 +37,11 @@ and link to it from the others.
 | Authorization                                                          | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |
 | Request security                                                       | [packages/security/docs/request-security.md](../packages/security/docs/request-security.md) |
 | Audit logging                                                          | [packages/audit/docs/audit-logging.md](../packages/audit/docs/audit-logging.md)             |
-| Messaging (message log, e-mail, Messages page)                         | [apps/admin/docs/messaging.md](../apps/admin/docs/messaging.md)                             |
+| Messaging (message log, e-mail, Email page)                            | [apps/admin/docs/messaging.md](../apps/admin/docs/messaging.md)                             |
 | Cron jobs (cPanel) and incoming webhooks                               | [apps/admin/docs/cron.md](../apps/admin/docs/cron.md)                                       |
 | Admin side panel                                                       | [apps/admin/docs/side-panel.md](../apps/admin/docs/side-panel.md)                           |
 | Admin page pattern (list, add/edit form, confirm, labels)              | [apps/admin/docs/admin-shell.md](../apps/admin/docs/admin-shell.md)                         |
-| Users and Roles pages (staff second sign-in method)                    | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
+| Role Manager: people, invites, roles (staff second sign-in method)     | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
 | Design tokens (colours, Poppins type scale, spacing)                   | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
 | Error pages (401, 403, 404, 500)                                       | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
 

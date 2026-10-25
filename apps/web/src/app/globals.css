@@ -41,6 +41,127 @@
   padding-block: var(--space-4);
 }
 
+/* Narrow screens: logo and account on the first row, links below. Wide: links and account
+   together on the right. */
+.site-header__inner > nav {
+  order: 1;
+  width: 100%;
+}
+
+.site-account,
+.site-header .site-account-chip {
+  margin-left: auto;
+}
+
+@media (min-width: 64rem) {
+  .site-header__inner > nav {
+    order: 0;
+    width: auto;
+    margin-left: auto;
+  }
+
+  .site-account,
+  .site-header .site-account-chip {
+    margin-left: 0;
+  }
+}
+
+.site-account {
+  position: relative;
+}
+
+.site-account-chip,
+.site-account-trigger {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-control);
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site-header .site-account-chip:hover,
+.site-account-trigger:hover {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  text-decoration: none;
+}
+
+.site-account-avatar {
+  display: grid;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-frame);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  object-fit: cover;
+}
+
+.site-account-arrow {
+  width: var(--space-4);
+  height: var(--space-4);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.site-account-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 10;
+  display: grid;
+  min-width: 10rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.site-account-menu a,
+.site-account-menu button {
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site-account-menu a:hover,
+.site-account-menu button:hover {
+  background: var(--color-hover);
+}
+
+.site-account-error {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 11;
+  width: max-content;
+  margin: 0;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+}
+
 .site-header__nav {
   display: flex;
   flex-wrap: wrap;

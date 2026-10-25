@@ -17,7 +17,7 @@ Every page has the same dark look: the same popup, table, fields, labels, text a
 | CSV download                        | `src/components/csv.ts`                                                    |
 | Status chip                         | `src/components/ui/badge.tsx` (`Badge`)                                    |
 | Field feedback (requirements)       | `src/components/ui/field-error.tsx` (`FieldError`)                         |
-| Dropdown (search over 5 options)    | `src/components/ui/select.tsx` (`Select`)                                  |
+| Dropdown (Newsletter status menu)   | `src/components/ui/select.tsx` (`Select`, search over 5 options)           |
 | Field and dropdown rules            | `src/components/fields-model.ts` (test: `tests/unit/admin-fields.test.ts`) |
 | Popup                               | `src/components/ui/modal.tsx` (`Modal`)                                    |
 | Dark look (all pages)               | `src/app/globals.css` "Dark admin pages"                                   |
@@ -28,7 +28,7 @@ Every page has the same dark look: the same popup, table, fields, labels, text a
 | Action error text (+ sign in again) | `src/components/action-error.tsx`, `src/components/action-message.ts`      |
 | Labels for stored keys (ID + EN)    | `src/labels.ts` (test: `tests/unit/admin-labels.test.ts`)                  |
 | Mutations                           | `src/server/guarded-action.ts` (`createGuardedAction`)                     |
-| Reference implementation            | Users and Roles pages (`src/app/(panel)/{users,roles}`)                    |
+| Reference implementation            | Role Manager (`src/app/(panel)/roles`)                                     |
 
 The presentational parts stay in admin's own UI kit (`src/components/ui`, no data access),
 next to the existing components, rather than in `packages/ui`: only admin uses them.
@@ -82,7 +82,9 @@ router.push("/things"); router.refresh();
   menus — the list is at the top of "Dark admin pages"; add a new cream surface there).
   Solid buttons (`primary`, `outline`) are cream, `danger` is red. Popups use `Modal` without a
   theme class: big title, fields, then **Back** (`outline`, `chevronLeft`) and the action at the
-  bottom right (`ConfirmDialog` does this for confirmations).
+  bottom right (`ConfirmDialog` does this for confirmations). Every popup is centred on the page;
+  `className="admin-modal--side"` only makes it a cream surface (Article Settings, Role Manager).
+  A test (`tests/unit/design-tokens.test.ts`) fails if a popup rule moves it off centre.
 - **Fields.** Put each control in `.admin-field` with a label and a `FieldError` last. Declare
   the rules on the control with HTML attributes — `required`, `type` (`email`, `url`, `number`),
   `minLength`, `min`/`max`, `pattern` + `title` (the text shown) — mirroring the domain schema.
@@ -93,9 +95,16 @@ router.push("/things"); router.refresh();
 - **Dropdowns.** Use `Select` instead of `<select>` (same props and `<option>` children). With
   more than 5 options it opens a list with a search box (case and accents ignored); the native
   select stays hidden in the page, so `name`, `onChange`, `required` and GET forms still work.
-- `DataTable` options: `minRows` keeps the table height fixed with blank rows, `emptyState`
-  replaces the empty message, `expandedRow` renders a detail row under a row (the caller owns
-  the open/closed state). `Pagination` offers 10 / 20 / 50 rows unless `pageSizeOptions` is given.
+  A custom dropdown panel (e.g. Role Manager's permission checkboxes) uses the same `useDropdown`
+  hook (fixed to the window above popups, closes on a click outside). An open dropdown that
+  handles Escape calls `preventDefault()`, so `Modal` stays open.
+- `DataTable` options: `emptyState` replaces the "no results" message (shown under the header,
+  centred in the table), `expandedRow` renders a detail row under a row (the caller owns the
+  open/closed state). `Pagination` offers 10 / 20 / 50 rows unless `pageSizeOptions` is given.
+- **Table height.** Put a table in `<Card className="admin-list-card">` (`ListCard` does this):
+  the card fills the rest of the screen height, and grows with the page when its rows need more
+  room. No fixed heights or blank rows; the CSS is "A page with a table fills the screen height"
+  in `globals.css` (test: `tests/unit/design-tokens.test.ts`, "admin tables").
 - **Dark list pages** (Event, Gallery, Article, Newsletter, Audit Log) share one set of parts —
   add a new list page with them instead of copying markup:
   - `useListTable(rows, sortValue, initialSort?)`: sort, page, page size and row selection. Define
@@ -118,14 +127,13 @@ router.push("/things"); router.refresh();
   confirmed subscribers — each only when the viewer can read that page (Firestore `count()`,
   `src/server/dashboard.ts`, `packages/db/src/firestore/dashboard.ts`) — and the 10 newest
   audit entries with `audit.read`. Tests: `tests/integration/dashboard.test.ts`.
-- **UI-only pages.** Account, Emails,
-  Profile and the Tools short-link list are design ports that run on `src/data/mock/*` in the
+- **UI-only pages.** The Tools short-link list is a design port that runs on `src/data/mock/*` in the
   browser: nothing is saved and nothing is audited. When a feature gets its backend, replace
   its mock import with a server read and its buttons with guarded actions (pattern above), then
   delete the mock file. Articles (`packages/domain/docs/content.md`), Events
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
   (`packages/domain/docs/newsletter.md`), Forms (`packages/domain/docs/forms.md`), Audit Log and
-  Users/Roles are the real, data-backed pages.
+  Role Manager are the real, data-backed pages.
 - **Letters** (`/letters`, `src/components/letters-page.tsx`, model `letters-model.ts`): tabs
   per desk (Drafts, To correct, To sign, To issue, Issued, Cancelled), the write/edit form and a
   detail view with only the buttons the viewer's desks allow (`letterActions`); **Letter types**

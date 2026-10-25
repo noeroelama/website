@@ -7,6 +7,6 @@ import { messageActions } from "@/server/wiring";
 // Thin wrapper: rules in src/server/messaging.ts (createGuardedAction, messages.edit).
 export async function retryMessageAction(input: unknown) {
   const result = await messageActions().retry(getPrincipal, getAuditContext)(input);
-  if (result.ok) revalidatePath("/messages");
+  if (result.ok) revalidatePath("/emails");
   return result;
 }

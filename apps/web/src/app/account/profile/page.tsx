@@ -58,9 +58,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
   return (
     <AppShell title={t.title}>
       <p>{t.intro}</p>
-      {profile && (
-        <p>{profile.verification.status === "verified" ? t.statusVerified : t.statusUnverified}</p>
-      )}
       {!user.emailVerified ? (
         <p role="alert">{t.verifyFirst}</p>
       ) : (

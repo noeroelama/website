@@ -16,8 +16,8 @@ Public website of PPIDK Asia-Oseania and the member self-service area.
 | `src/proxy.ts`                                    | Runs before every request: origin check, per-IP rate limit, private caching, sign-in redirect without a session cookie (`src/server/request-guard.ts`). |
 | `src/app/api/session/route.ts`                    | Sign-in/out: Google OAuth ID token → HttpOnly session cookie (`src/server/session.ts`).                                                                 |
 | `src/app/{page,about,terms,privacy}/`             | Home, About, Terms, Privacy in Indonesian/English ([docs/public-site.md](docs/public-site.md)). `articles,map,events,gallery`: content in later steps.  |
-| `src/i18n/`, `src/components/site-frame.tsx`      | Dictionaries (ID/EN), `<Localized>`, header/footer (`site-nav.tsx`: current section), logo `public/logo.svg`.                                           |
-| `src/app/{login,signup,forgot-password,account}/` | Sign-in pages: Google, email/password, passkeys, password reset, account (add passkey, sign out).                                                       |
+| `src/i18n/`, `src/components/site-frame.tsx`      | Dictionaries (ID/EN), `<Localized>`, header/footer (`site-nav.tsx`: current section), logo `public/logo.webp`.                                          |
+| `src/app/{login,signup,forgot-password,account}/` | Sign-in pages, member profile and account (also opened from the admin account menu).                                                                    |
 | `src/app/health/route.ts`                         | `GET /health` → `{"status":"ok"}` for uptime checks (no database call).                                                                                 |
 | `src/app/api/passkeys/[action]/route.ts`          | Passkey registration and sign-in endpoints (`src/server/passkeys.ts`).                                                                                  |
 | `src/lib/auth-client.ts`                          | Browser sign-in flows (Firebase Auth SDK + WebAuthn); ends in the session cookie.                                                                       |

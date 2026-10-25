@@ -34,11 +34,11 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "Incoming letters", href: "/incoming", permission: "incoming.read" },
   { label: "Organizations", href: "/organizations", permission: "organizations.read" },
   { label: "Universities", href: "/universities", permission: "universities.read" },
-  { label: "Members", href: "/members", permission: "members.verify" },
-  { label: "Users", href: "/users", permission: "users.read" },
-  { label: "Roles", href: "/roles", permission: "roles.read" },
+  // People and their roles (users.read); the roles themselves are under "Edit Role" (roles.read).
+  { label: "Role Manager", href: "/roles", permission: "users.read" },
   { label: "Audit Log", href: "/audit", permission: "audit.read" },
-  { label: "Messages", href: "/messages", permission: "messages.read" },
+  // E-mails sent by the system (failed ones can be retried). Profile and Account are on the web app.
+  { label: "Email", href: "/emails", permission: "messages.read" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {
@@ -46,15 +46,4 @@ export function navigationFor(principal: Principal): NavItem[] {
   return ADMIN_NAVIGATION.filter(
     (entry) => entry.permission === null || canInSomeScope(principal, entry.permission),
   ).map(({ label, href }) => ({ label, href }));
-}
-
-/** Avatar initials: first + last name ("Nevyllo Zamuel Kalangi" → "NK"). */
-export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const first = words[0];
-  if (first === undefined) return "?";
-  const last = words.length > 1 ? words[words.length - 1] : undefined;
-  return (
-    last === undefined ? first.slice(0, 2) : `${first[0] ?? ""}${last[0] ?? ""}`
-  ).toUpperCase();
 }

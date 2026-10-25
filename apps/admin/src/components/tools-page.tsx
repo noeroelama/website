@@ -53,13 +53,13 @@ function colorForQr(): { dark: string; light: string } | undefined {
 /* ---- Centre logo (memoised per app run) ---- */
 let logoPromise: Promise<HTMLImageElement | null> | null = null;
 
-/** Load the public brand icon once (drawn on the PNG download's plate). */
+/** Load the public brand logo once (drawn on the PNG download's plate). */
 function brandLogo(): Promise<HTMLImageElement | null> {
   logoPromise ??= new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = "/icon.png";
+    img.src = "/logo.webp";
   });
   return logoPromise;
 }
@@ -133,7 +133,17 @@ function QrPreview({
         const plate = qrLogoPlate(canvas.width);
         ctx.fillStyle = colors?.light || tokenValue("--color-white");
         ctx.fillRect(plate.x, plate.y, plate.size, plate.size);
-        ctx.drawImage(logo, plate.logo.x, plate.logo.y, plate.logo.size, plate.logo.size);
+        // The wide logo keeps its proportions inside the square plate (centred, "contain").
+        const scale = plate.logo.size / Math.max(logo.naturalWidth, logo.naturalHeight);
+        const w = logo.naturalWidth * scale;
+        const h = logo.naturalHeight * scale;
+        ctx.drawImage(
+          logo,
+          plate.logo.x + (plate.logo.size - w) / 2,
+          plate.logo.y + (plate.logo.size - h) / 2,
+          w,
+          h,
+        );
       }
       save(canvas.toDataURL("image/png"), "qr-code.png");
     } catch {
@@ -187,7 +197,7 @@ function QrPreview({
               {/* Brand mark from the admin public folder; content only — see admin-logo. */}
               {/* eslint-disable-next-line @next/next/no-img-element -- static packed asset */}
               <img
-                src="/icon.png"
+                src="/logo.webp"
                 alt="PPIDK Asiania logo"
                 className="admin-qr-preview__logo-img"
               />
