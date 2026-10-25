@@ -26,6 +26,15 @@ export interface GuardOptions {
    */
   readonly signedWebhookPaths?: readonly string[];
   readonly policy?: RateLimitPolicy;
+  /**
+   * Tighter limits for some requests, counted separately after the general one (e.g. public
+   * document verification: 20 per minute, so codes cannot be guessed in bulk).
+   */
+  readonly extraLimits?: readonly {
+    readonly name: string;
+    readonly policy: RateLimitPolicy;
+    readonly applies: (request: Request, path: string) => boolean;
+  }[];
   readonly now?: () => Date;
   /** Waits before continuing a throttled request (injectable for tests). */
   readonly sleep?: (ms: number) => Promise<unknown>;
@@ -99,18 +108,20 @@ export async function guardRequest(request: Request, options: GuardOptions): Pro
 
   const policy = options.policy ?? DEFAULT_RATE_LIMIT;
   const key = `ip_${createHmac("sha256", options.secret).update(clientIp(request.headers)).digest("hex")}`;
+  const now = options.now?.() ?? new Date();
   try {
-    const decision = await options.store.consume(key, policy, options.now?.() ?? new Date());
+    const decision = await options.store.consume(key, policy, now);
     headers["RateLimit-Limit"] = String(decision.limit);
     headers["RateLimit-Remaining"] = String(decision.remaining);
-    if (!decision.allowed) {
-      return {
-        blocked: jsonError("rate_limited", {
-          ...headers,
-          "Retry-After": String(decision.retryAfterSeconds),
-        }),
-        headers,
-      };
+    const refused = (retryAfterSeconds: number) => ({
+      blocked: jsonError("rate_limited", { ...headers, "Retry-After": String(retryAfterSeconds) }),
+      headers,
+    });
+    if (!decision.allowed) return refused(decision.retryAfterSeconds);
+    for (const extra of options.extraLimits ?? []) {
+      if (!extra.applies(request, path)) continue;
+      const tight = await options.store.consume(`${extra.name}_${key}`, extra.policy, now);
+      if (!tight.allowed) return refused(tight.retryAfterSeconds);
     }
     // Past the daily quota: still served, but slowed down.
     if (decision.throttled) await (options.sleep ?? delay)(policy.throttleDelayMs);

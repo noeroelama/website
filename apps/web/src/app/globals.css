@@ -317,3 +317,26 @@
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
 }
+
+/* Public verification (/verify/<code>): label / value pairs and the letter's content. */
+.site-details {
+  display: grid;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.site-details dd {
+  margin: 0;
+}
+
+.site-details__row {
+  display: contents;
+}
+
+.site-letter {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}

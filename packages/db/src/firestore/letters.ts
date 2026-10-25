@@ -582,3 +582,37 @@ export function createFirestoreLetterStore(
 }
 
 export type FirestoreLetterStore = ReturnType<typeof createFirestoreLetterStore>;
+
+/**
+ * Public verification (D7): `verificationCodes/{code}` → the issued or cancelled letter with its
+ * type, unit and period names. Drafts never have a code; anything else is "not found". Callers
+ * pass a normalized code (`normalizeVerificationCode`).
+ */
+export function createFirestoreVerificationReader(db: Firestore) {
+  return {
+    async find(code: string) {
+      const pointer = await db.collection("verificationCodes").doc(code).get();
+      if (!pointer.exists || pointer.get("kind") !== "letter") return null;
+      const snapshot = await db
+        .collection("letters")
+        .doc(pointer.get("letterId") as string)
+        .get();
+      if (!snapshot.exists) return null;
+      const letter = toLetter(snapshot.id, snapshot.data() as Record<string, unknown>);
+      if (letter.status !== "issued" && letter.status !== "cancelled") return null;
+      const [type, unit, period] = await Promise.all([
+        db.collection("letterTypes").doc(letter.typeId).get(),
+        db.collection("orgUnits").doc(letter.orgUnitId).get(),
+        db.collection("periods").doc(letter.periodId).get(),
+      ]);
+      return {
+        letter,
+        type: toLetterType(type.id, type.data() as Record<string, unknown>),
+        unitName: (unit.get("name") as string | undefined) ?? "PPIDK Asia-Oseania",
+        periodName: (period.get("name") as string | undefined) ?? null,
+      };
+    },
+  };
+}
+
+export type FirestoreVerificationReader = ReturnType<typeof createFirestoreVerificationReader>;

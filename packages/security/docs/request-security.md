@@ -55,6 +55,13 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 | `FIREBASE_*`                            | web, admin, shop | Counter store (staging/production only)                                                                      |
 | Firestore TTL on `rateLimits.expiresAt` | Firebase         | Deletes old counters automatically (`infrastructure/firebase/README.md`)                                     |
 
+## Tighter limits for some paths
+
+`GuardOptions.extraLimits` adds a second counter for matching requests (after the general
+100/minute one passes): the website counts public verification (`/verify…` and every request
+on `VERIFICATION_HOST`) at **20 per minute per IP** (`verify_` counter), so codes cannot be
+guessed in bulk (PPIDK `throttle:20,1`).
+
 ## Cron secret and webhook signatures
 
 - `bearerTokenMatches(header, secret)` — constant-time `Authorization: Bearer` check for

@@ -110,3 +110,15 @@ test("unknown public form links show the 404 page", async ({ request }) => {
     expect(html, path).toContain("Page not found");
   }
 });
+
+test("document verification: the code page needs no sign-in and is never indexed", async ({
+  request,
+}) => {
+  const response = await request.get("/verify");
+  expect(response.status()).toBe(200);
+  const html = await response.text();
+  expect(html).toContain("Verifikasi Dokumen");
+  expect(html).toContain('name="robots" content="noindex, nofollow"');
+  const bad = await (await request.get("/verify?code=not-a-code")).text();
+  expect(bad).toContain("8F3KM-QRTVW");
+});

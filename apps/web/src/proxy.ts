@@ -1,14 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { guardRequest, signInRedirect } from "@/server/request-guard";
+import { guardRequest, signInRedirect, verificationTarget } from "@/server/request-guard";
 
 /** Runs before every page, API route and server action (see docs: packages/security). */
 export async function proxy(request: NextRequest) {
   const { blocked, headers } = await guardRequest(request);
   if (blocked) return blocked;
   const signIn = signInRedirect(request);
+  // verif.ppiasiania.id/<CODE> (printed on letters) → /verify/<CODE>, same app.
+  const rewrite = verificationTarget(request, request.nextUrl.pathname);
   const response = signIn
     ? NextResponse.redirect(new URL(signIn, request.url))
-    : NextResponse.next();
+    : rewrite
+      ? NextResponse.rewrite(new URL(rewrite, request.url))
+      : NextResponse.next();
   for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
   return response;
 }

@@ -260,6 +260,48 @@ const id = {
     pactUploaded: "Pakta terunggah. Panitia akan memeriksanya.",
     pactSentBack: "Pakta dikembalikan panitia",
   },
+  verification: {
+    title: "Verifikasi Dokumen",
+    intro:
+      "Periksa keaslian surat terbitan PPIDK Asia-Oseania: ketik kode verifikasi yang tercetak di bawah kode QR lembarnya.",
+    codeLabel: "Kode verifikasi",
+    check: "Periksa",
+    badCode: "Kode terdiri dari dua kelompok lima karakter, mis. 8F3KM-QRTVW.",
+    checkedCode: "Kode yang diperiksa",
+    notFoundTitle: "Dokumen tidak ditemukan.",
+    notFound:
+      "Periksa kembali penulisan kodenya. Bila sudah benar, dokumen itu bukan terbitan kami; laporkan ke sekretariat.",
+    valid: "Surat ini asli dan terdaftar pada arsip PPIDK Asia-Oseania.",
+    cancelled: "Surat ini sudah dibatalkan dan tidak berlaku lagi sejak",
+    cancelReason: "Alasan pembatalan",
+    details: "Rincian surat",
+    number: "Nomor surat",
+    type: "Jenis",
+    subject: "Perihal",
+    recipient: "Penerima",
+    date: "Tanggal surat",
+    issuedBy: "Diterbitkan oleh",
+    period: "Periode kepengurusan",
+    signers: "Penandatangan",
+    signedAt: "Ditandatangani",
+    content: "Isi surat",
+    compare:
+      "Inilah isi yang tercatat pada arsip kami. Bandingkan dengan lembar yang kamu pegang; bila berbeda, lembar itu bukan yang kami terbitkan.",
+    changed:
+      "Isi surat ini tidak bisa kami tampilkan: catatan yang tersimpan tidak lagi cocok dengan yang dibekukan saat surat diterbitkan. Hubungi sekretariat sebelum memakai lembar ini.",
+    needsName:
+      "Surat jenis ini memuat data pribadi: isinya dibuka setelah kamu menuliskan nama penerima persis seperti tercetak di lembar surat. Petunjuk:",
+    nameLabel: "Nama penerima",
+    open: "Tampilkan isi surat",
+    wrongName: "Nama itu tidak cocok dengan yang tercatat pada surat ini.",
+    noContent: "Surat ini tidak mencantumkan penerima, dan isinya tidak dibuka di halaman ini.",
+    download: "Unduh PDF surat",
+    noDownloadCancelled:
+      "Surat yang sudah dibatalkan tidak bisa diunduh: arsipnya dibuat saat surat masih berlaku.",
+    archiveDamaged:
+      "Berkas arsip dokumen ini tidak bisa kami berikan: berkas yang tersimpan tidak cocok dengan sidik yang dicatat saat terbit. Hubungi sekretariat.",
+    failed: "Gagal memeriksa. Coba lagi sebentar lagi.",
+  },
   personality: {
     title: "Tes Kepribadian 16 Tipe",
     intro:
@@ -801,6 +843,48 @@ const en: Dictionary = {
     pactUpload: "Upload the signed pact (PDF, max 5 MB)",
     pactUploaded: "Pact uploaded. The committee will review it.",
     pactSentBack: "The committee sent your pact back",
+  },
+  verification: {
+    title: "Document Verification",
+    intro:
+      "Check that a letter was issued by PPIDK Asia-Oseania: type the verification code printed under the QR code on the letter.",
+    codeLabel: "Verification code",
+    check: "Check",
+    badCode: "A code is two groups of five characters, e.g. 8F3KM-QRTVW.",
+    checkedCode: "Code checked",
+    notFoundTitle: "Document not found.",
+    notFound:
+      "Check how the code is written. If it is right, the document was not issued by us; please report it to the secretariat.",
+    valid: "This letter is authentic and registered in the PPIDK Asia-Oseania archive.",
+    cancelled: "This letter was cancelled and is no longer valid since",
+    cancelReason: "Reason",
+    details: "Letter details",
+    number: "Letter number",
+    type: "Type",
+    subject: "Subject",
+    recipient: "Recipient",
+    date: "Letter date",
+    issuedBy: "Issued by",
+    period: "Board period",
+    signers: "Signed by",
+    signedAt: "Signed",
+    content: "Content",
+    compare:
+      "This is the content in our archive. Compare it with the letter you hold; if they differ, that letter is not the one we issued.",
+    changed:
+      "We cannot show this letter's content: the stored text no longer matches what was frozen when it was issued. Contact the secretariat before using this letter.",
+    needsName:
+      "This type of letter holds personal data: its content opens once you type the recipient's name exactly as printed on the letter. Hint:",
+    nameLabel: "Recipient's name",
+    open: "Show the content",
+    wrongName: "That name does not match the one on record for this letter.",
+    noContent: "This letter has no recipient, and its content is not shown on this page.",
+    download: "Download the letter (PDF)",
+    noDownloadCancelled:
+      "A cancelled letter cannot be downloaded: its archive was made while it was still valid.",
+    archiveDamaged:
+      "We cannot give out this document's archived file: the stored file no longer matches the fingerprint recorded at issue. Please contact the secretariat.",
+    failed: "Could not check. Try again in a moment.",
   },
   personality: {
     title: "16-type personality test",

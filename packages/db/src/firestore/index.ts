@@ -31,11 +31,13 @@ export {
   createFirestoreLetterSettingsStore,
   createFirestoreLetterStore,
   createFirestoreLetterTypeStore,
+  createFirestoreVerificationReader,
   letterSnapshot,
   letterTypeSnapshot,
   type FirestoreLetterSettingsStore,
   type FirestoreLetterStore,
   type FirestoreLetterTypeStore,
+  type FirestoreVerificationReader,
   type LetterAudit,
   type LetterListQuery,
 } from "./letters";

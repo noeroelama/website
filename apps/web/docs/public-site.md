@@ -58,6 +58,11 @@ portfolio and the answers. Uploads: `POST /api/recruitment/[id]/portfolio` (PDF,
 noindex; `src/server/personality.ts`).
 Rules: `packages/domain/docs/recruitment.md`.
 
+**Document verification**: `/verify` (type a code) and `/verify/[code]` (also the bare `/<CODE>`
+on `VERIFICATION_HOST`) show whether a letter is ours, its details and, by its type's rule, its
+content and archived PDF (`/verify/[code]/pdf`). No sign-in, noindex, 20 requests/minute per IP.
+Rules: `packages/domain/docs/documents.md` → Public verification.
+
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one
 marker per chapter; selecting it shows the chapter card) and lists them below; About lists the
 same chapters with their count. Rules: `packages/domain/docs/organization.md`.

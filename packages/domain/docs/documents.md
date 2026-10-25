@@ -65,7 +65,7 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
   Deactivated, never deleted. Suggested roles: Secretary General (all desks but the
   Coordinator's, letter types), Coordinator (`sign_coordinator`, `cancel`), Director and
   Directorate secretary (`letters.edit`, scoped to their unit by the appointment).
-- Not built yet: the public verification page (4.4), the upload path (`awaiting_file`, 4.7),
+- Not built yet: the upload path (`awaiting_file`, 4.7),
   PPIDK's format checker (warnings) and notifications to the desks.
 
 ## Letter PDF, letterhead, archive (D1, D9)
@@ -96,6 +96,31 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
 - Code: `apps/admin/src/server/letter-pdf.ts`, route `apps/admin/src/app/api/letters/[id]/pdf/route.ts`.
 - Configuration: `VERIFICATION_HOST` (or `WEB_URL`) and `FIREBASE_STORAGE_BUCKET` on admin.
 
+## Public verification (D7)
+
+Anyone holding a letter checks it without signing in (PPIDK `VerifikasiController`):
+
+- **Addresses**: `<WEB_URL>/verify` (type the code), `<WEB_URL>/verify/<CODE>` and, on
+  `VERIFICATION_HOST` (the extra domain of the web app, e.g. `verif.ppiasiania.id`), the printed
+  short form `/<CODE>` (and `/<CODE>/pdf`); any other path there shows the search page
+  (`apps/web/src/lib/verification-host.ts`, rewrite in `apps/web/src/proxy.ts`). Never indexed.
+  At most 20 requests per minute per IP on these paths.
+- **What it shows** (`letterVerification`, public DTO only — no ids): valid or cancelled (date,
+  reason), number, type, subject, the recipient masked (`A*** N***`, always three stars), letter
+  date, issuing unit, period, and the signers frozen at issue (desk, name, seat, time in WIB).
+  Drafts have no code; unknown, malformed and draft codes all answer "not found".
+- **Content**: shown when the type's "content public" is on; otherwise after typing the
+  recipient's name exactly as printed (case and spaces ignored), sent by a server action, never
+  in the URL. If the stored text no longer matches `contentDigest` the content is shown to
+  nobody. Letters without a digest (imported) are shown.
+- **Download**: the archived PDF, under the same rule (checked again in the route), never for
+  cancelled letters (the archive has no stamp), never when its sha256 does not match (the page
+  then says so).
+- Code: `packages/domain/src/documents/verification.ts`, reader
+  `createFirestoreVerificationReader`, `apps/web/src/server/verification.ts`, pages
+  `apps/web/src/app/verify/**`. Not built: PPIDK's camera scanner (the phone's camera app opens
+  the QR link directly).
+
 ## QR codes (D8)
 
 One set of rules (`src/documents/qr.ts`, from PPIDK `PembuatQr`) for the Tools page and the
@@ -110,4 +135,5 @@ the QR without a logo (the letterhead already shows the emblem).
 `tests/unit/documents.test.ts`, `tests/integration/numbering.test.ts`,
 `tests/security/field-encryption.test.ts`, `tests/unit/admin-tools.test.ts` (QR rules),
 `tests/unit/letters.test.ts`, `tests/unit/admin-letters.test.ts`, `tests/integration/letters.test.ts`,
-`tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`.
+`tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`, `tests/unit/verification.test.ts`,
+`tests/integration/verification.test.ts`.
