@@ -219,6 +219,8 @@ file (they live in the cPanel app screens and the password manager).
       `packages/domain/docs/recruitment.md` → Import from PPIDK).
 - [ ] Before the first letter is issued: add `verif.ppiasiania.id` as an extra domain of the web
       app (cPanel → Domains + AutoSSL, DNS record), set `VERIFICATION_HOST` to it on web AND admin.
+- [ ] Personal signatures: generate `FIELD_ENCRYPTION_KEY` once (`docs/environment.md`), set the
+      SAME value on web AND admin, keep a copy offline (losing it loses every stored signature).
 - [ ] Universities imported once the PPI chapters are active
       (`infrastructure/scripts/import-ror-universities.mjs`, dry run first; see
       `packages/domain/docs/members.md` → Universities). Run again when chapters are added.

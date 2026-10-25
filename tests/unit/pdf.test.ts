@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFName, PDFRawStream, type PDFPageDrawImageOptions } from "pdf-lib";
 import { htmlToBlocks, qrPng, renderLetterPdf, type LetterPdfInput } from "@website/pdf";
 import { embedTimes, plain, printable, wrapRuns } from "../../packages/pdf/src/flow";
 import { decodeEntities } from "../../packages/pdf/src/html";
+import { drawTurned } from "../../packages/pdf/src/letter";
 
 const JPEG = Buffer.from(
   "/9j/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAACAAQDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABv/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJAAnHX/2Q==",
@@ -228,13 +229,13 @@ describe("letter PDF", () => {
           label: "Koordinator PPIDK Asia-Oseania",
           name: "Budi",
           signedOn: "2 November 2026",
-          signature: { image: png, widthMm: 40 },
+          signature: { image: png, widthMm: 40, rotation: -12 },
         },
         {
           label: "Sekretaris Jenderal PPIDK Asia-Oseania",
           name: "Rina",
           signedOn: "2 November 2026",
-          signature: { image: jpeg, widthMm: 35 },
+          signature: { image: jpeg, widthMm: 35, rotation: 0 },
         },
       ],
       cancelledReason: "Tanggal salah",
@@ -249,6 +250,62 @@ describe("letter PDF", () => {
       cancelledReason: "",
     });
     expect(await pages(noReason)).toBe(1);
+  });
+
+  it("turns a signature about its centre, inside its column, and skips a broken file", async () => {
+    const doc = await PDFDocument.create();
+    const image = await doc.embedPng(await qrPng("sig", 120));
+    const draws: PDFPageDrawImageOptions[] = [];
+    const spy: Parameters<typeof drawTurned>[0] = {
+      drawImage: (_image, options) => {
+        draws.push(options ?? {});
+      },
+    };
+    // Upright: top-left corner at (x, top), the requested width.
+    expect(
+      drawTurned(spy, image, { x: 10, top: 500, width: 100, max: 200, rotation: 0 }),
+    ).toBeCloseTo(100);
+    expect(draws[0]).toMatchObject({ x: 10, y: 400, width: 100, height: 100 });
+    // A quarter turn of a square keeps the same box; 45° fits the diagonal into the column.
+    const turned = drawTurned(spy, image, {
+      x: 0,
+      top: 100,
+      width: 100,
+      max: 100,
+      rotation: 45,
+    });
+    expect(turned).toBeCloseTo(100);
+    expect(draws[1]?.width).toBeCloseTo(100 / Math.SQRT2);
+
+    const images = async (bytes: Uint8Array) => {
+      const loaded = await PDFDocument.load(bytes);
+      return loaded.context
+        .enumerateIndirectObjects()
+        .filter(
+          ([, object]) =>
+            object instanceof PDFRawStream &&
+            object.dict.get(PDFName.of("Subtype")) === PDFName.of("Image"),
+        ).length;
+    };
+    const desk = (signature: NonNullable<LetterPdfInput["desks"][number]["signature"]>) =>
+      renderLetterPdf({
+        ...base,
+        desks: [
+          { label: "Sekretaris Jenderal", name: "Rina", signedOn: "2 November 2026", signature },
+        ],
+      });
+    const good = {
+      image: { bytes: await qrPng("sig", 120), type: "png" as const },
+      widthMm: 40,
+      rotation: 90,
+    };
+    const broken = {
+      image: { bytes: new Uint8Array([1, 2, 3]), type: "png" as const },
+      widthMm: 40,
+      rotation: 0,
+    };
+    const withImage = await images(await desk(good));
+    expect(await images(await desk(broken))).toBe(withImage - 1);
   });
 
   it("QR codes follow the shared rules", async () => {

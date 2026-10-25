@@ -2,6 +2,7 @@ import "server-only";
 import {
   baseEnv,
   captchaEnv,
+  fieldEncryptionEnv,
   firebaseAdminEnv,
   lazyEnv,
   loadEnv,
@@ -23,6 +24,7 @@ const webEnvSchema = baseEnv
   .extend(messagingEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(newsletterEnv.partial().shape)
+  .extend(fieldEncryptionEnv.shape)
   .extend(publicUrlsEnv.pick({ WEB_URL: true }).shape);
 
 export const getWebEnv = lazyEnv(() => loadEnv(webEnvSchema, process.env));

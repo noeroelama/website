@@ -1,5 +1,5 @@
 import "server-only";
-import type { FirestoreLetterStore } from "@website/db/firestore";
+import type { FirestoreLetterStore, FirestoreSignatureStore } from "@website/db/firestore";
 import {
   deskLabel,
   desksOf,
@@ -13,7 +13,7 @@ import {
 } from "@website/domain/documents";
 import { renderLetterPdf, type LetterDesk, type LetterheadArt, type PdfImage } from "@website/pdf";
 import { canAccessAdmin, can, type Principal } from "@website/permissions";
-import { jsonError, sha256Hex } from "@website/security";
+import { decryptField, jsonError, sha256Hex } from "@website/security";
 
 export interface LetterPdfDeps {
   readonly storage: {
@@ -30,7 +30,12 @@ export interface LetterPdfDeps {
   /** VERIFICATION_HOST (e.g. verif.ppiasiania.id) and WEB_URL. */
   readonly verification: { readonly host: string | null; readonly webUrl: string | null };
   readonly uuid: () => string;
+  /** Personal signatures (4.6): their records and FIELD_ENCRYPTION_KEY (null = none printed). */
+  readonly signatures: Pick<FirestoreSignatureStore, "get">;
+  readonly signatureKey: () => string | null;
 }
+
+type PrintedSignature = LetterDesk["signature"];
 
 /** What the renderer needs besides the letter. */
 export interface LetterContext {
@@ -47,7 +52,11 @@ export class ArchiveDamagedError extends Error {
 }
 
 /** The desks as printed: Coordinator left, Secretary-General (or the unit) right. */
-export function letterDesks(letter: Letter, context: LetterContext): LetterDesk[] {
+export function letterDesks(
+  letter: Letter,
+  context: LetterContext,
+  signatures: ReadonlyMap<string, PrintedSignature> = new Map(),
+): LetterDesk[] {
   const order = desksOf(context.type).includes("coordinator")
     ? (["coordinator", "secretary"] as const)
     : (["secretary"] as const);
@@ -60,7 +69,7 @@ export function letterDesks(letter: Letter, context: LetterContext): LetterDesk[
       label,
       name: frozen?.name ?? (signature ? (context.names.get(signature.uid) ?? null) : null),
       signedOn: signature ? formatLetterDate(signature.at) : null,
-      signature: null,
+      signature: signature ? (signatures.get(signature.uid) ?? null) : null,
     };
   });
 }
@@ -73,6 +82,34 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     // A lost image falls back to the text letterhead: a letter is never blocked by its art.
     return bytes ? { bytes: await deps.toPng(bytes), type: "png" } : null;
   };
+
+  /** The signer's image, decrypted; null when there is none or it cannot be read. */
+  async function signatureOf(uid: string): Promise<PrintedSignature> {
+    const key = deps.signatureKey();
+    const stored = key ? await deps.signatures.get(uid) : null;
+    const file = stored ? await deps.storage.read(stored.path) : null;
+    if (!key || !stored || !file) return null;
+    try {
+      const bytes = decryptField(new TextDecoder().decode(file), key);
+      return {
+        image: { bytes, type: stored.type },
+        widthMm: stored.widthMm,
+        rotation: stored.rotation,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Signatures of the desks already signed (issued letters freeze them in the archive). */
+  async function signaturesOf(letter: Letter) {
+    const uids = [letter.coordinator?.uid, letter.secretary?.uid].filter(
+      (uid): uid is string => uid !== undefined,
+    );
+    return new Map(
+      await Promise.all(uids.map(async (uid) => [uid, await signatureOf(uid)] as const)),
+    );
+  }
 
   async function art(letterhead: Letterhead, period: string | null): Promise<LetterheadArt> {
     const [header, footer, watermark, emblem] = await Promise.all([
@@ -114,7 +151,7 @@ export function createLetterPdf(deps: LetterPdfDeps) {
       typeName: context.type.name,
       recipient: letter.recipient,
       bodyHtml: letter.body,
-      desks: letterDesks(letter, context),
+      desks: letterDesks(letter, context, await signaturesOf(letter)),
       verification: verification && { ...verification, code: letter.verificationCode as string },
       cancelledReason: letter.status === "cancelled" ? (letter.cancelReason ?? "") : null,
     });

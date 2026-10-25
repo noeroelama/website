@@ -1,13 +1,17 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
 import {
   createFirestoreMemberProfileStore,
+  createFirestoreSignatureStore,
   createFirestoreUniversityStore,
 } from "@website/db/firestore";
 import { isProfileComplete } from "@website/domain/members";
-import { webDb } from "./db";
+import { webDb, webStorage } from "./db";
+import { getWebEnv } from "./env";
 import { createOwnProfile, type ProfileOwner } from "./profile";
+import { createOwnSignature } from "./signature";
 import { createUniversityPicker, type UniversityChoice } from "./universities";
 
 /** `memberProfiles/{uid}` and `universities/{id}` with the website's Firestore client. */
@@ -20,6 +24,17 @@ export const ownProfile = lazyEnv(() =>
     profiles: memberProfiles(),
     universities: universities(),
     now: () => new Date(),
+  }),
+);
+
+/** /account/signature: the signed-in person's own signature (D4), stored encrypted. */
+export const ownSignature = lazyEnv(() =>
+  createOwnSignature({
+    store: createFirestoreSignatureStore(webDb()),
+    storage: webStorage(),
+    key: () => getWebEnv().FIELD_ENCRYPTION_KEY ?? null,
+    now: () => new Date(),
+    uuid: randomUUID,
   }),
 );
 

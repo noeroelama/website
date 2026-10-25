@@ -130,6 +130,19 @@ export const documentsEnv = z.object({
     .optional(),
 });
 
+/**
+ * AES-256-GCM key for data only its owner may see (personal signatures): 32 random bytes,
+ * base64. The SAME value on web (encrypts) and admin (decrypts for letters). Losing it makes
+ * every stored signature unreadable; empty = signatures are off.
+ */
+export const fieldEncryptionEnv = z.object({
+  FIELD_ENCRYPTION_KEY: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9+/]{43}=$/, "32 random bytes, base64 (44 characters)")
+    .optional(),
+});
+
 export const calendarEnv = z.object({
   CALENDAR_FEED_SIGNING_SECRET: nonEmpty.min(32),
 });

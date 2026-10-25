@@ -148,6 +148,8 @@ export const letterPdf = lazyEnv(() => {
     toPng: async (bytes) => new Uint8Array(await sharp(bytes).png().toBuffer()),
     verification: { host: env.VERIFICATION_HOST ?? null, webUrl: env.WEB_URL ?? null },
     uuid: randomUUID,
+    signatures: adminStores().signatures,
+    signatureKey: () => env.FIELD_ENCRYPTION_KEY ?? null,
   });
 });
 

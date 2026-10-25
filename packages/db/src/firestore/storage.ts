@@ -16,6 +16,8 @@ export function createFirebaseImageStorage(app: App, bucketName: string) {
     signedReadUrl(path: string, minutes?: number): Promise<string>;
     /** The bytes of a stored file (letter archives, letterhead art), null when missing. */
     read(path: string): Promise<Uint8Array | null>;
+    /** Deletes a file (replaced signatures); a missing file is not an error. */
+    remove(path: string): Promise<void>;
   } = {
     async save(path, bytes, { visibility, contentType = "image/webp" }) {
       const token = visibility === "public" ? randomUUID() : null;
@@ -39,6 +41,9 @@ export function createFirebaseImageStorage(app: App, bucketName: string) {
       if (!exists) return null;
       const [bytes] = await file.download();
       return new Uint8Array(bytes);
+    },
+    async remove(path) {
+      await bucket.file(path).delete({ ignoreNotFound: true });
     },
     async signedReadUrl(path, minutes = 15) {
       const [url] = await bucket

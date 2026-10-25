@@ -1,0 +1,18 @@
+"use server";
+
+import { ownSignature } from "@/server/profile-wiring";
+import { getSignedInUser } from "@/server/session";
+
+// Thin wrappers: the rules are in src/server/signature.ts; the owner comes from the session.
+const owner = async () => {
+  const user = await getSignedInUser();
+  return user && { uid: user.uid };
+};
+
+export async function configureSignatureAction(input: unknown) {
+  return ownSignature().configure(await owner(), input);
+}
+
+export async function removeSignatureAction() {
+  return ownSignature().remove(await owner());
+}

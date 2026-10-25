@@ -27,6 +27,7 @@ export {
 } from "./audit";
 export { getDocumentsByIds } from "./batch";
 export { nextNumbers } from "./counters";
+export { createFirestoreSignatureStore, type FirestoreSignatureStore } from "./signatures";
 export {
   createFirestoreIncomingStore,
   incomingSnapshot,

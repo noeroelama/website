@@ -36,6 +36,7 @@ export default async function AccountPage() {
   const language = languageFrom(jar.get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language].events;
   const p = DICTIONARIES[language].profile;
+  const s = DICTIONARIES[language].signature;
   return (
     <AppShell title="Your account">
       <p>Signed in as {user.email ?? "your account"}.</p>
@@ -43,6 +44,9 @@ export default async function AccountPage() {
       <p>
         <a href="/account/profile">{p.linkLabel}</a>
         {isProfileComplete(profile) ? null : ` — ${p.incomplete}`}
+      </p>
+      <p>
+        <a href="/account/signature">{s.linkLabel}</a>
       </p>
       <h2>Sign-in methods</h2>
       <ul>

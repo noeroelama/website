@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, type PDFImage, type PDFPage } from "pdf-lib";
+import { degrees, PDFDocument, rgb, type PDFImage, type PDFPage } from "pdf-lib";
 import { htmlToBlocks } from "./html";
 import { A4, embedTimes, Flow, INK, MM, MUTED, plain } from "./flow";
 import { qrPng } from "./qr";
@@ -33,8 +33,15 @@ export interface LetterDesk {
   readonly name: string | null;
   /** "2 November 2026" once signed; null = waiting. */
   readonly signedOn: string | null;
-  /** The signer's own signature image (step 4.6), printed only once signed. */
-  readonly signature: { readonly image: PdfImage; readonly widthMm: number } | null;
+  /**
+   * The signer's own signature image (step 4.6), printed only once signed: width on paper and
+   * degrees clockwise. An image that cannot be read prints the electronic-signature box instead.
+   */
+  readonly signature: {
+    readonly image: PdfImage;
+    readonly widthMm: number;
+    readonly rotation: number;
+  } | null;
 }
 
 export interface LetterPdfInput {
@@ -68,6 +75,40 @@ const embedImage = (doc: PDFDocument, image: PdfImage): Promise<PDFImage> =>
 
 const embed = (doc: PDFDocument, image: PdfImage | null) =>
   image ? embedImage(doc, image) : Promise.resolve(null);
+
+/** A broken signature file never blocks a letter. */
+const tryEmbed = (doc: PDFDocument, image: PdfImage): Promise<PDFImage | null> =>
+  embedImage(doc, image).catch(() => null);
+
+/**
+ * Draws `image` `width` wide, turned `rotation` degrees clockwise about its centre, with the
+ * turned picture's top-left corner at (x, top) and never wider than `max`. Returns its height.
+ */
+export function drawTurned(
+  page: Pick<PDFPage, "drawImage">,
+  image: PDFImage,
+  at: { x: number; top: number; width: number; max: number; rotation: number },
+): number {
+  const a = (-at.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(a));
+  const sin = Math.abs(Math.sin(a));
+  const ratio = image.height / image.width;
+  const w = Math.min(at.width, at.max / (cos + ratio * sin));
+  const h = w * ratio;
+  const boxW = w * cos + h * sin;
+  const boxH = w * sin + h * cos;
+  // pdf-lib turns about the bottom-left corner: move it so the centre stays in the box's centre.
+  const cx = at.x + boxW / 2;
+  const cy = at.top - boxH / 2;
+  page.drawImage(image, {
+    x: cx - (w / 2) * Math.cos(a) + (h / 2) * Math.sin(a),
+    y: cy - (w / 2) * Math.sin(a) - (h / 2) * Math.cos(a),
+    width: w,
+    height: h,
+    rotate: degrees(-at.rotation),
+  });
+  return boxH;
+}
 
 /** Height on paper of a full-width (210 mm) image. */
 const fullWidthHeight = (image: PDFImage | null) =>
@@ -251,11 +292,16 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
     const x = columns[i] as number;
     flow.text(plain(desk.label), { x, width: column });
     flow.gap(5);
-    if (desk.signedOn && desk.signature) {
-      const image = await embedImage(doc, desk.signature.image);
-      const w = desk.signature.widthMm * MM;
-      const h = (w * image.height) / image.width;
-      flow.page.drawImage(image, { x, y: flow.y - h, width: w, height: h });
+    const image =
+      desk.signedOn && desk.signature ? await tryEmbed(doc, desk.signature.image) : null;
+    if (desk.signedOn && desk.signature && image) {
+      const h = drawTurned(flow.page, image, {
+        x,
+        top: flow.y,
+        width: desk.signature.widthMm * MM,
+        max: column,
+        rotation: desk.signature.rotation,
+      });
       flow.gap(h + 3);
       flow.text(plain(desk.signedOn), {
         x,

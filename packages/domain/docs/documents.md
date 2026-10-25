@@ -97,6 +97,28 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
 - Code: `apps/admin/src/server/letter-pdf.ts`, route `apps/admin/src/app/api/letters/[id]/pdf/route.ts`.
 - Configuration: `VERIFICATION_HOST` (or `WEB_URL`) and `FIREBASE_STORAGE_BUCKET` on admin.
 
+## Personal signatures (D4)
+
+From PPIDK `TandaTanganPengguna`: one image per person, printed on the letters they signed.
+
+- **Own only**: `/account/signature` on the website (any signed-in person; the uid always comes
+  from the session — nobody, not even a superadmin, sees or replaces another person's
+  signature). PNG (best with a transparent background) or JPEG, ≤ 2 MB, magic bytes checked.
+  Printed width 10-80 mm (default 40) and rotation -180..180 degrees clockwise (to straighten a
+  skewed scan) can be changed without a new upload.
+- **Encrypted**: the file is stored with `encryptField` (AES-256-GCM, `FIELD_ENCRYPTION_KEY`, the
+  same key on web and admin) at `members/signatures/<uid>_<random>.enc`; `userSignatures/{uid}`
+  records the path, type, width and rotation. A new upload is stored first, then the old file
+  is removed. No key = signatures are off (upload refused, nothing printed).
+- **On letters** (`apps/admin/src/server/letter-pdf.ts`): only on a desk that person has already
+  signed, at the set width (never wider than the column), turned about its centre. The issued
+  letter's archive freezes it: a later change never alters an issued letter. A missing record,
+  a lost or undecryptable file, or an image pdf-lib cannot read prints the electronic-signature
+  box instead — a signature never blocks a letter.
+- Code: `src/documents/signatures.ts`, `packages/db/src/firestore/signatures.ts`,
+  `apps/web/src/server/signature.ts`, `apps/web/src/app/account/signature/**`,
+  `apps/web/src/app/api/account/signature/route.ts`.
+
 ## Public verification (D7)
 
 Anyone holding a letter checks it without signing in (PPIDK `VerifikasiController`):
@@ -161,4 +183,5 @@ the QR without a logo (the letterhead already shows the emblem).
 `tests/unit/letters.test.ts`, `tests/unit/admin-letters.test.ts`, `tests/integration/letters.test.ts`,
 `tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`, `tests/unit/verification.test.ts`,
 `tests/integration/verification.test.ts`, `tests/unit/incoming.test.ts`,
-`tests/unit/admin-incoming.test.ts`, `tests/integration/incoming.test.ts`.
+`tests/unit/admin-incoming.test.ts`, `tests/integration/incoming.test.ts`,
+`tests/integration/signatures.test.ts`.

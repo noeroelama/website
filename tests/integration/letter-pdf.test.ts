@@ -1,12 +1,15 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { PDFDocument, PDFName, PDFRawStream } from "pdf-lib";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_LETTERHEAD,
   type Letter,
   type LetterArchive,
   type LetterType,
+  type UserSignature,
 } from "@website/domain/documents";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
+import { encryptField } from "@website/security";
 import { qrPng } from "@website/pdf";
 import {
   ArchiveDamagedError,
@@ -83,6 +86,9 @@ const context: LetterContext = {
 
 let files: Map<string, Uint8Array>;
 let recorded: LetterArchive | null;
+let signatures: Map<string, UserSignature>;
+let signatureKey: string | null;
+const KEY = randomBytes(32).toString("base64");
 let uuids = 0;
 const deps = (
   verification: { host: string | null; webUrl: string | null } = {
@@ -106,12 +112,26 @@ const deps = (
   toPng: (bytes: Uint8Array) => Promise.resolve(bytes),
   verification,
   uuid: () => `abcd${String((uuids += 1)).padStart(4, "0")}-0000`,
+  signatures: { get: (uid: string) => Promise.resolve(signatures.get(uid) ?? null) },
+  signatureKey: () => signatureKey,
 });
 
 beforeEach(() => {
   files = new Map();
   recorded = null;
+  signatures = new Map();
+  signatureKey = KEY;
 });
+
+/** Embedded images in a PDF (letterhead art, QR, signatures). */
+const imageCount = async (bytes: Uint8Array) =>
+  (await PDFDocument.load(bytes)).context
+    .enumerateIndirectObjects()
+    .filter(
+      ([, object]) =>
+        object instanceof PDFRawStream &&
+        object.dict.get(PDFName.of("Subtype")) === PDFName.of("Image"),
+    ).length;
 
 describe("letter desks as printed", () => {
   it("issued letters print the names frozen at issue; others the current names", () => {
@@ -143,6 +163,46 @@ describe("letter desks as printed", () => {
     expect(letterDesks({ ...corrected, secretary: { uid: "unknown", at } }, single)).toEqual([
       { label: "Sekretariat Jenderal", name: null, signedOn: "2 November 2026", signature: null },
     ]);
+  });
+});
+
+describe("personal signatures on letters (4.6)", () => {
+  const store = async (uid: string, path: string, rotation = 0) => {
+    files.set(path, new TextEncoder().encode(encryptField(await qrPng(uid, 120), KEY)));
+    signatures.set(uid, { uid, path, type: "png", widthMm: 40, rotation, updatedAt: at });
+  };
+
+  it("letterDesks prints a signature only on a signed desk", () => {
+    const image = {
+      image: { bytes: new Uint8Array(), type: "png" as const },
+      widthMm: 30,
+      rotation: 5,
+    };
+    const pending = { ...letter, coordinator: null, signers: [] };
+    const desks = letterDesks(
+      pending,
+      context,
+      new Map([
+        ["sekjen", image],
+        ["koor", image],
+      ]),
+    );
+    expect(desks.map((d) => d.signature)).toEqual([null, image]);
+  });
+
+  it("decrypts the signers' images; a missing key, record or broken file prints none", async () => {
+    const pdf = createLetterPdf(deps());
+    const without = await imageCount(await pdf.render(letter, context, null));
+    await store("sekjen", "members/signatures/sekjen_1.enc", 12);
+    await store("koor", "members/signatures/koor_1.enc");
+    expect(await imageCount(await pdf.render(letter, context, null))).toBe(without + 2);
+    files.set("members/signatures/koor_1.enc", new TextEncoder().encode("v1:broken"));
+    expect(await imageCount(await pdf.render(letter, context, null))).toBe(without + 1);
+    files.delete("members/signatures/sekjen_1.enc");
+    expect(await imageCount(await pdf.render(letter, context, null))).toBe(without);
+    await store("sekjen", "members/signatures/sekjen_2.enc");
+    signatureKey = null;
+    expect(await imageCount(await pdf.render(letter, context, null))).toBe(without);
   });
 });
 

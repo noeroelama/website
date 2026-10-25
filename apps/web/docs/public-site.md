@@ -63,6 +63,11 @@ on `VERIFICATION_HOST`) show whether a letter is ours, its details and, by its t
 content and archived PDF (`/verify/[code]/pdf`). No sign-in, noindex, 20 requests/minute per IP.
 Rules: `packages/domain/docs/documents.md` → Public verification.
 
+**Signature**: `/account/signature` (linked from `/account`) holds the signed-in person's own
+signature for letters: upload (`POST /api/account/signature`, PNG/JPEG ≤ 2 MB, stored encrypted),
+preview (`GET`, owner only), printed width and rotation, removal (`src/server/signature.ts`).
+Rules: `packages/domain/docs/documents.md` → Personal signatures.
+
 **Map and member councils**: `/map` shows the active chapters on the Asia–Oceania dot map (one
 marker per chapter; selecting it shows the chapter card) and lists them below; About lists the
 same chapters with their count. Rules: `packages/domain/docs/organization.md`.

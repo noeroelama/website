@@ -75,10 +75,13 @@ export interface ImageStorage {
   save(
     path: string,
     bytes: Uint8Array,
-    /** contentType defaults to image/webp; PDFs (recruitment portfolios) are always private. */
+    /**
+     * contentType defaults to image/webp; PDFs (portfolios, letters) and encrypted files
+     * (signatures, application/octet-stream) are always private.
+     */
     options: {
       visibility: ImagePreset["visibility"];
-      contentType?: "image/webp" | "application/pdf";
+      contentType?: "image/webp" | "application/pdf" | "application/octet-stream";
     },
   ): Promise<{ url: string | null }>;
 }
