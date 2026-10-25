@@ -43,3 +43,9 @@ export async function saveLetterTypeAction(input: unknown) {
 export async function saveLetterheadAction(input: unknown) {
   return done(await letterActions().saveLetterhead(getPrincipal, getAuditContext)(input));
 }
+export async function placeLetterStampsAction(input: unknown) {
+  return done(await letterActions().place(getPrincipal, getAuditContext)(input));
+}
+export async function issueLetterFileAction(input: unknown) {
+  return done(await letterActions().issueFile(getPrincipal, getAuditContext)(input));
+}

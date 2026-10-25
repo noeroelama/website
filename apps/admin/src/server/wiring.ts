@@ -206,7 +206,10 @@ export const letterActions = lazyEnv(() =>
         });
       }
     },
+    storage: imageStorage(),
+    files: letterPdf(),
     now: () => new Date(),
+    uuid: randomUUID,
   }),
 );
 

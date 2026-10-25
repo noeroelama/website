@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   cancelLetterAction,
   issueLetterAction,
+  issueLetterFileAction,
   passLetterAction,
   removeLetterAction,
   returnLetterAction,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/rich-text-box";
 import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
+import { LetterUploadPanel } from "./letter-upload-panel";
 import {
   LETTER_TABS,
   letterActions,
@@ -68,6 +70,8 @@ interface TypeOption {
 }
 
 interface Draft {
+  /** New letters only: typed here or the author's own PDF (D3). */
+  source: "editor" | "upload";
   typeId: string;
   orgUnitId: string;
   subject: string;
@@ -101,6 +105,7 @@ const ACTION_LABELS: Record<Exclude<LetterActionKey, "edit" | "delete">, string>
   signSecretary: "Sign (Secretary-General)",
   signCoordinator: "Sign (Coordinator)",
   issue: "Issue and number",
+  issueFile: "Issue the stamped PDF",
   cancel: "Cancel letter",
 };
 
@@ -120,7 +125,9 @@ function LettersList(props: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState<"return" | "cancel" | "issue" | "delete" | null>(null);
+  const [asking, setAsking] = useState<
+    "return" | "cancel" | "issue" | "issueFile" | "delete" | null
+  >(null);
   const [note, setNote] = useState("");
 
   const filtered = useMemo(() => {
@@ -153,6 +160,7 @@ function LettersList(props: Props) {
     setCurrent(letter ?? null);
     setFieldErrors({});
     setDraft({
+      source: letter?.source === "upload" ? "upload" : "editor",
       typeId: letter?.typeId ?? types[0]?.id ?? "",
       orgUnitId: letter?.orgUnitId ?? units[0]?.id ?? "",
       subject: letter?.subject ?? "",
@@ -174,7 +182,7 @@ function LettersList(props: Props) {
     if (!draft) return;
     setBusy(true);
     const result = await saveLetterAction({
-      ...(current ? { id: current.id } : {}),
+      ...(current ? { id: current.id } : { source: draft.source }),
       version: current?.version ?? null,
       typeId: draft.typeId,
       orgUnitId: draft.orgUnitId,
@@ -231,6 +239,7 @@ function LettersList(props: Props) {
       case "return":
       case "cancel":
       case "issue":
+      case "issueFile":
       case "delete":
         return setAsking(key);
     }
@@ -324,8 +333,8 @@ function LettersList(props: Props) {
               {current ? "Letters > Edit" : "Letters > Write"}
             </h1>
             <p className="admin-page-header__desc">
-              The number is given only when the letter is issued, after the secretariat&apos;s
-              correction and the signing desks.
+              The number is given only after the secretariat&apos;s correction and the signing
+              desks: when the letter is issued, or (own PDF) when the number is taken.
             </p>
           </div>
         </div>
@@ -334,6 +343,29 @@ function LettersList(props: Props) {
             <p className="admin-card__subtitle">Returned with: {current.reviewNote}</p>
           ) : null}
           <div className="admin-form-grid">
+            {current ? null : (
+              <div className="admin-field admin-form-grid__full">
+                <label className="admin-field__label" htmlFor="letter-source">
+                  Document
+                </label>
+                <Select
+                  id="letter-source"
+                  className="admin-select"
+                  value={draft.source}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      source: e.target.value === "upload" ? "upload" : "editor",
+                    })
+                  }
+                >
+                  <option value="editor">Write the letter here</option>
+                  <option value="upload">
+                    Own PDF (SOP, decree with annexes: upload after numbering)
+                  </option>
+                </Select>
+              </div>
+            )}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="letter-type">
                 Letter type *
@@ -443,19 +475,21 @@ function LettersList(props: Props) {
               />
               {errorFor("attachmentNote")}
             </div>
-            <div className="admin-field admin-form-grid__full">
-              <span className="admin-field__label">Body *</span>
-              <RichTextStack
-                blocks={draft.bodies}
-                onChange={(bodies) => setDraft({ ...draft, bodies })}
-                uploadImage={() => {
-                  toast.show("Images are not printed on letters: use the upload path for those.");
-                  return Promise.resolve(null);
-                }}
-                label="Letter body"
-              />
-              {errorFor("body")}
-            </div>
+            {draft.source === "upload" ? null : (
+              <div className="admin-field admin-form-grid__full">
+                <span className="admin-field__label">Body *</span>
+                <RichTextStack
+                  blocks={draft.bodies}
+                  onChange={(bodies) => setDraft({ ...draft, bodies })}
+                  uploadImage={() => {
+                    toast.show("Images are not printed on letters: use the upload path for those.");
+                    return Promise.resolve(null);
+                  }}
+                  label="Letter body"
+                />
+                {errorFor("body")}
+              </div>
+            )}
           </div>
           <div className="admin-form-actions admin-form-grid__full">
             <Button variant="outline" size="sm" icon="chevronLeft" onClick={() => setView("list")}>
@@ -548,24 +582,41 @@ function LettersList(props: Props) {
               </>
             ) : null}
           </dl>
-          <div
-            className="admin-letter-body"
-            // The body was sanitized (allowlist) when it was saved.
-            dangerouslySetInnerHTML={{ __html: current.body }}
-          />
+          {current.source === "upload" ? null : (
+            <div
+              className="admin-letter-body"
+              // The body was sanitized (allowlist) when it was saved.
+              dangerouslySetInnerHTML={{ __html: current.body }}
+            />
+          )}
+          {current.source === "upload" && current.status === "awaiting_file" ? (
+            <LetterUploadPanel
+              letter={current}
+              onDone={(message) => {
+                toast.show(message);
+                router.refresh();
+                setView("list");
+              }}
+              onError={(message) => toast.show(message)}
+            />
+          ) : null}
           <div className="admin-form-actions admin-form-grid__full">
             <Button variant="outline" size="sm" icon="chevronLeft" onClick={() => setView("list")}>
               Back
             </Button>
             <div className="admin-form-actions__right">
-              <Button
-                variant="outline"
-                size="sm"
-                icon="download"
-                onClick={() => window.open(`/api/letters/${current.id}/pdf`, "_blank", "noopener")}
-              >
-                {current.status === "issued" ? "PDF (archive)" : "Preview PDF"}
-              </Button>
+              {current.source === "upload" && !current.upload ? null : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="download"
+                  onClick={() =>
+                    window.open(`/api/letters/${current.id}/pdf`, "_blank", "noopener")
+                  }
+                >
+                  {current.status === "issued" ? "PDF (archive)" : "Preview PDF"}
+                </Button>
+              )}
               {actions.map((key) =>
                 key === "edit" ? (
                   <Button
@@ -595,7 +646,9 @@ function LettersList(props: Props) {
                     disabled={busy}
                     onClick={() => runAction(key)}
                   >
-                    {ACTION_LABELS[key]}
+                    {key === "issue" && current.source === "upload"
+                      ? "Take number"
+                      : ACTION_LABELS[key]}
                   </Button>
                 ),
               )}
@@ -637,15 +690,32 @@ function LettersList(props: Props) {
         </Modal>
         <ConfirmDialog
           open={asking === "issue"}
-          title="Issue this letter?"
-          confirmLabel="Issue"
+          title={current.source === "upload" ? "Take the number?" : "Issue this letter?"}
+          confirmLabel={current.source === "upload" ? "Take number" : "Issue"}
           tone="primary"
           pending={busy}
-          onConfirm={() => void act(issueLetterAction, "Letter issued")}
+          onConfirm={() =>
+            void act(
+              issueLetterAction,
+              current.source === "upload" ? "Number taken: upload the final PDF" : "Letter issued",
+            )
+          }
           onCancel={() => setAsking(null)}
         >
           It gets the next number and a verification code. A number is never taken back: a wrong
           letter can only be cancelled.
+        </ConfirmDialog>
+        <ConfirmDialog
+          open={asking === "issueFile"}
+          title="Issue the stamped PDF?"
+          confirmLabel="Issue"
+          tone="primary"
+          pending={busy}
+          onConfirm={() => void act(issueLetterFileAction, "Letter issued")}
+          onCancel={() => setAsking(null)}
+        >
+          The PDF as the preview shows it (with the signatures and the QR) is kept byte for byte as
+          the letter&apos;s archive. Check the preview first.
         </ConfirmDialog>
         <ConfirmDialog
           open={asking === "delete"}

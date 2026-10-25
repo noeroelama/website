@@ -76,6 +76,8 @@ const letter: Letter = {
   ],
   letterhead: DEFAULT_LETTERHEAD,
   archive: null,
+  upload: null,
+  placement: null,
 };
 const context: LetterContext = {
   type,
@@ -119,6 +121,7 @@ const deps = (
 beforeEach(() => {
   files = new Map();
   recorded = null;
+  uuids = 0;
   signatures = new Map();
   signatureKey = KEY;
 });
@@ -203,6 +206,63 @@ describe("personal signatures on letters (4.6)", () => {
     await store("sekjen", "members/signatures/sekjen_2.enc");
     signatureKey = null;
     expect(await imageCount(await pdf.render(letter, context, null))).toBe(without);
+  });
+});
+
+describe("upload path stamping (D3)", () => {
+  it("stamps the signed desks' signatures and the QR where placed; refuses a changed file", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const original = await doc.save();
+    files.set("letters/p1/l1_upload_a.pdf", original);
+    const upload = {
+      path: "letters/p1/l1_upload_a.pdf",
+      sha256: sha(original),
+      size: original.length,
+      numberChecked: false,
+      uploadedBy: "author",
+      uploadedAt: at,
+    };
+    files.set(
+      "members/signatures/sekjen_1.enc",
+      new TextEncoder().encode(encryptField(await qrPng("s", 80), KEY)),
+    );
+    signatures.set("sekjen", {
+      uid: "sekjen",
+      path: "members/signatures/sekjen_1.enc",
+      type: "png",
+      widthMm: 40,
+      rotation: 0,
+      updatedAt: at,
+    });
+    const waiting: Letter = {
+      ...letter,
+      source: "upload",
+      status: "awaiting_file",
+      upload,
+      archive: null,
+    };
+    const pdf = createLetterPdf(deps());
+    // No positions: the author's file byte for byte.
+    expect(await pdf.stampUpload(waiting)).toEqual(original);
+    const stamped = await pdf.stampUpload({
+      ...waiting,
+      placement: {
+        qr: { page: 1, xMm: 170, yMm: 250, sizeMm: 22 },
+        secretary: { page: 1, xMm: 130, yMm: 230 },
+        // Placed, but the Coordinator has no signature on file: nothing is printed there.
+        coordinator: { page: 1, xMm: 30, yMm: 230 },
+      },
+    });
+    expect(await imageCount(stamped)).toBe(2);
+    files.set(upload.path, new Uint8Array([1]));
+    await expect(pdf.stampUpload(waiting)).rejects.toThrow("missing or changed");
+    await expect(pdf.stampUpload({ ...waiting, upload: null })).rejects.toThrow(
+      "missing or changed",
+    );
+    const saved = await pdf.saveFile(waiting, stamped);
+    expect(files.get(saved.path)).toBe(stamped);
+    expect(saved).toEqual({ path: saved.path, sha256: sha(stamped), size: stamped.length });
   });
 });
 
@@ -305,6 +365,7 @@ describe("GET /api/letters/<id>/pdf", () => {
           : Promise.resolve(new Uint8Array([37, 80, 68, 70, 45])),
       ),
       archive: vi.fn(() => Promise.resolve(new Uint8Array([37, 80, 68, 70, 45, 49]))),
+      stampUpload: vi.fn(() => Promise.resolve(new Uint8Array([37, 80, 68, 70, 45, 50]))),
     };
     const handler = createLetterFileRoute({
       getLetter: () => Promise.resolve(stored),
@@ -333,6 +394,20 @@ describe("GET /api/letters/<id>/pdf", () => {
     expect(
       (await empty.handler("l1", staff(["letters.read"]))).headers.get("content-disposition"),
     ).toBe('inline; filename="letter.pdf"');
+    // Upload path: the stamped preview once the file is in; nothing to show before.
+    const file = {
+      path: "p",
+      sha256: "s",
+      size: 1,
+      numberChecked: true,
+      uploadedBy: "a",
+      uploadedAt: at,
+    };
+    const waiting = route({ ...letter, status: "awaiting_file", source: "upload", upload: file });
+    expect((await waiting.handler("l1", staff(["letters.read"]))).status).toBe(200);
+    expect(waiting.pdf.stampUpload).toHaveBeenCalled();
+    const before = route({ ...letter, status: "awaiting_file", source: "upload" });
+    expect((await before.handler("l1", staff(["letters.read"]))).status).toBe(404);
   });
 
   it("refuses strangers, hides letters out of scope, and never leaks errors", async () => {

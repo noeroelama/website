@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  attachUpload,
   cancelLetter,
+  checkUploadedNumber,
+  issueUpload,
+  letterUploadPath,
+  placeStamps,
+  UploadPlacementSchema,
   deskLabel,
   desksOf,
   isEditable,
@@ -60,6 +66,8 @@ const letter = (extra: Partial<Letter> = {}): Letter => ({
   signers: [],
   letterhead: null,
   archive: null,
+  upload: null,
+  placement: null,
   ...extra,
 });
 
@@ -208,5 +216,60 @@ describe("content digest and verification codes", () => {
     for (const bad of ["8F3KMQRTVW", "8F3K1-QRTVW", "layanan", "8F3KM-QRTVWX"]) {
       expect(normalizeVerificationCode(bad), bad).toBeNull();
     }
+  });
+});
+
+describe("upload path (D3)", () => {
+  const NUMBER = "001/SOP/PPIDK-ASIANIA/2026";
+  const file = {
+    path: "letters/p1/l1_upload_x.pdf",
+    sha256: "a".repeat(64),
+    size: 10,
+    numberChecked: true,
+    uploadedBy: "author",
+    uploadedAt: now,
+  };
+  const waiting = letter({ source: "upload", status: "awaiting_file", numberFormatted: NUMBER });
+
+  it("the number must be in a PDF with text (spaces and case ignored); a scan is not checked", () => {
+    const text = (n: string) => `Standar Operasional Prosedur Sekretariat. Nomor: ${n}`;
+    expect(checkUploadedNumber(text("001 / sop / PPIDK-ASIANIA /\n2026"), NUMBER)).toBe(true);
+    expect(() => checkUploadedNumber(text("002/SOP/PPIDK-ASIANIA/2026"), NUMBER)).toThrow(
+      `Number ${NUMBER} is not in the file.`,
+    );
+    expect(checkUploadedNumber("  scanner v2  page 1 ", NUMBER)).toBe(false);
+  });
+
+  it("files and stamp positions only while waiting for the file; issue needs the stamped file", () => {
+    expect(letterUploadPath(waiting, "abcd-ef01-9")).toBe("letters/p1/l1_upload_abcdef01.pdf");
+    expect(() => attachUpload(letter({ status: "approved" }), file)).toThrow(
+      "This letter is not waiting for its file.",
+    );
+    const placement = UploadPlacementSchema.parse({
+      qr: { page: 1, xMm: 170, yMm: 250, sizeMm: 22 },
+      secretary: null,
+      coordinator: null,
+    });
+    expect(placeStamps(waiting, placement).placement).toEqual(placement);
+    expect(() => placeStamps(letter({ status: "issued" }), placement)).toThrow("not waiting");
+    expect(
+      UploadPlacementSchema.safeParse({ ...placement, qr: { page: 0, xMm: 1, yMm: 1, sizeMm: 20 } })
+        .success,
+    ).toBe(false);
+
+    const archive = { path: "letters/p1/l1_b.pdf", sha256: "b".repeat(64), size: 12 };
+    expect(() => issueUpload(waiting, archive, file.sha256, now)).toThrow(
+      "Upload the final PDF first.",
+    );
+    const uploaded = attachUpload(waiting, file);
+    expect(() => issueUpload(uploaded, archive, "c".repeat(64), now)).toThrow(
+      "The file changed meanwhile. Issue it again.",
+    );
+    expect(issueUpload(uploaded, archive, file.sha256, now)).toMatchObject({
+      status: "issued",
+      issuedAt: now,
+      archive,
+    });
+    expect(missingFields(letter({ source: "upload", body: "" }), type())).toEqual([]);
   });
 });

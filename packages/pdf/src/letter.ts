@@ -77,7 +77,7 @@ const embed = (doc: PDFDocument, image: PdfImage | null) =>
   image ? embedImage(doc, image) : Promise.resolve(null);
 
 /** A broken signature file never blocks a letter. */
-const tryEmbed = (doc: PDFDocument, image: PdfImage): Promise<PDFImage | null> =>
+export const tryEmbed = (doc: PDFDocument, image: PdfImage): Promise<PDFImage | null> =>
   embedImage(doc, image).catch(() => null);
 
 /**

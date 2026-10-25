@@ -7,6 +7,9 @@ import {
 } from "@website/db/firestore";
 import { DEFAULT_LETTERHEAD, letterCanonical, type Letter } from "@website/domain/documents";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
+import { PDFDocument, StandardFonts } from "pdf-lib";
+import { pdfText } from "@website/pdf";
+import { createLetterPdf } from "../../apps/admin/src/server/letter-pdf";
 import { createLetterActions } from "../../apps/admin/src/server/letters";
 import { fakeFirestore } from "../support/fake-firestore";
 
@@ -40,8 +43,32 @@ const director = staff("dir", ["letters.edit"], { type: "orgUnit", orgUnitId: "m
 
 let fake: ReturnType<typeof fakeFirestore>;
 let afterIssue: Letter[] = [];
+let files: Map<string, Uint8Array>;
+let uuids = 0;
 const db = () => fake.db as unknown as Db;
 const letters = () => createFirestoreLetterStore(db());
+const storage = {
+  read: (path: string) => Promise.resolve(files.get(path) ?? null),
+  save: (path: string, bytes: Uint8Array) => {
+    files.set(path, bytes);
+    return Promise.resolve();
+  },
+  remove: (path: string) => {
+    files.delete(path);
+    return Promise.resolve();
+  },
+};
+const uuid = () => `${String((uuids += 1)).padStart(8, "0")}-0000-4000-8000-000000000000`;
+const letterPdf = () =>
+  createLetterPdf({
+    storage,
+    letters: letters(),
+    toPng: (bytes) => Promise.resolve(bytes),
+    verification: { host: "verif.ppiasiania.id", webUrl: null },
+    uuid,
+    signatures: { get: () => Promise.resolve(null) },
+    signatureKey: () => null,
+  });
 const actions = () =>
   createLetterActions({
     letters: letters(),
@@ -55,7 +82,10 @@ const actions = () =>
       const unit = fake.docs.get(`orgUnits/${id}`) as { path: string[] } | undefined;
       return Promise.resolve(unit ? [...unit.path, id] : null);
     },
+    storage,
+    files: letterPdf(),
     now: () => new Date(clock.getTime() + clockShift * 60_000),
+    uuid,
   });
 
 const draft = {
@@ -72,6 +102,7 @@ const draft = {
 beforeEach(() => {
   fake = fakeFirestore();
   afterIssue = [];
+  files = new Map();
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
   fake.docs.set("periods/p1", { name: "2026/2027" });
   fake.docs.set("orgUnits/sekjen", {
@@ -120,9 +151,17 @@ async function createType(extra: Record<string, unknown> = {}) {
   return result.data.id;
 }
 
-async function approvedLetter(typeExtra: Record<string, unknown> = {}) {
+async function approvedLetter(
+  typeExtra: Record<string, unknown> = {},
+  source: "editor" | "upload" = "editor",
+) {
   const typeId = await createType(typeExtra);
-  const created = await actions().save(...as(secretariat))({ ...draft, typeId, version: null });
+  const created = await actions().save(...as(secretariat))({
+    ...draft,
+    ...(source === "upload" ? { body: "", source } : {}),
+    typeId,
+    version: null,
+  });
   if (!created.ok) throw new Error(JSON.stringify(created));
   const { id } = created.data;
   let version = created.data.version;
@@ -452,7 +491,7 @@ describe("letters workflow", () => {
     fake.docs.set(`letters/${id}`, {
       ...fake.docs.get(`letters/${id}`),
       status: "approved",
-      source: "upload",
+      source: "certificate",
     });
     expect(await actions().issue(...as(secretariat))({ id, version: v })).toMatchObject({
       error: "refused",
@@ -550,5 +589,167 @@ describe("letters workflow", () => {
     const archive = { path: `letters/p1/${id}_aaaa.pdf`, sha256: "a".repeat(64), size: 10 };
     expect(await letters().setArchive(id, archive)).toEqual(archive);
     expect(await letters().setArchive(id, { ...archive, path: "other" })).toEqual(archive);
+  });
+});
+
+describe("upload path (D3)", () => {
+  const pdfWith = async (text: string) => {
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    doc.addPage().drawText(text, { x: 40, y: 760, size: 10, font });
+    return doc.save();
+  };
+  const NUMBER = "001/SU/SEKJEN/PPIDK-ASIANIA/XI/2026";
+  const SOP = `Standar Operasional Prosedur Sekretariat Jenderal. Nomor: ${NUMBER.replaceAll("/", " / ")}`;
+  const send = (id: string, version: number, body: Uint8Array, principal = secretariat) =>
+    actions().uploadFile(...as(principal))(
+      id,
+      new Request(`https://admin.test/api/letters/${id}/file?version=${version}`, {
+        method: "POST",
+        body,
+      }),
+    );
+  const numbered = async () => {
+    const { id, version } = await approvedLetter({}, "upload");
+    const taken = await actions().issue(...as(secretariat))({ id, version });
+    if (!taken.ok) throw new Error(JSON.stringify(taken));
+    return { id, version: taken.data.version };
+  };
+
+  it("an upload letter needs no body; Take number reserves number and code, not the issue", async () => {
+    const { id, version } = await numbered();
+    const letter = (await letters().get(id)) as Letter;
+    expect(letter).toMatchObject({
+      source: "upload",
+      status: "awaiting_file",
+      numberFormatted: NUMBER,
+      issuedAt: null,
+      letterhead: null,
+      upload: null,
+      placement: null,
+    });
+    expect(letter.verificationCode).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
+    expect(afterIssue).toEqual([]);
+    // Nothing to preview or issue before the file is in.
+    expect(await actions().issueFile(...as(secretariat))({ id, version })).toMatchObject({
+      error: "refused",
+    });
+    // Cancel is allowed while waiting for the file (the number is never reused).
+    expect(
+      await actions().cancel(...as(secretariat))({ id, version, reason: "Wrong type" }),
+    ).toMatchObject({ ok: true, data: { status: "cancelled" } });
+  });
+
+  it("checks the number in a PDF with text, accepts a scan as not checked, refuses bad files", async () => {
+    const { id, version } = await numbered();
+    const refusal = async (body: Uint8Array) => {
+      const response = await send(id, version, body);
+      return [response.status, ((await response.json()) as { message?: string }).message];
+    };
+    expect(await refusal(await pdfWith(`${SOP.replace("001", "002")}`))).toEqual([
+      400,
+      `Number ${NUMBER} is not in the file. Type it into the document and export the PDF again.`,
+    ]);
+    expect(await refusal(new TextEncoder().encode("hello"))).toEqual([
+      400,
+      "Export the document as a PDF first.",
+    ]);
+    expect(await refusal(new TextEncoder().encode("%PDF-1.7 broken"))).toEqual([
+      400,
+      "This PDF cannot be read: export it again without a password, then upload it.",
+    ]);
+    expect(await refusal(new Uint8Array(10 * 1024 * 1024 + 1))).toEqual([
+      400,
+      "The PDF may be at most 10 MB.",
+    ]);
+    expect((await send(id, version, await pdfWith(SOP), director)).status).toBe(403);
+    const signedOut = await actions().uploadFile(() => Promise.resolve(null), context)(
+      id,
+      new Request(`https://admin.test/api/letters/${id}/file?version=${version}`, {
+        method: "POST",
+        body: await pdfWith(SOP),
+      }),
+    );
+    expect(signedOut.status).toBe(401);
+    expect(files.size).toBe(0);
+
+    const scan = await send(id, version, await pdfWith(""));
+    expect([scan.status, await scan.json()]).toEqual([
+      201,
+      { version: version + 1, numberChecked: false },
+    ]);
+    const text = await send(id, version + 1, await pdfWith(SOP));
+    expect(await text.json()).toEqual({ version: version + 2, numberChecked: true });
+    // The replaced file is removed; the letter records the new one.
+    expect([...files.keys()]).toEqual([`letters/p1/${id}_upload_00000002.pdf`]);
+    expect((await letters().get(id))?.upload).toMatchObject({
+      numberChecked: true,
+      uploadedBy: "sekre",
+      uploadedAt: clock,
+    });
+    expect((await send(id, version, await pdfWith(SOP))).status).toBe(409);
+    const audit = [...fake.docs.values()].filter(
+      (e) => (e as { action?: string }).action === "UPLOAD",
+    ) as { after: { upload: unknown } }[];
+    expect(audit.map((e) => e.after.upload)).toEqual([
+      { sha256: expect.any(String) as string, numberChecked: false },
+      { sha256: expect.any(String) as string, numberChecked: true },
+    ]);
+    const editor = await approvedLetter({ code: "SU9" });
+    expect((await send(editor.id, editor.version, await pdfWith(SOP))).status).toBe(400);
+  });
+
+  it("issues the stamped PDF byte for byte as previewed; the positions are checked", async () => {
+    const { id, version } = await numbered();
+    await send(id, version, await pdfWith(SOP));
+    const placement = {
+      qr: { page: 1, xMm: 170, yMm: 250, sizeMm: 22 },
+      secretary: { page: 1, xMm: 130, yMm: 230 },
+      coordinator: null,
+    };
+    expect(
+      await actions().place(...as(secretariat))({
+        id,
+        version: version + 1,
+        placement: { ...placement, qr: { ...placement.qr, sizeMm: 90 } },
+      }),
+    ).toMatchObject({ error: "invalid_input" });
+    expect(
+      await actions().place(...as(secretariat))({ id, version: version + 1, placement }),
+    ).toMatchObject({ ok: true });
+    const ready = (await letters().get(id)) as Letter;
+    const preview = await letterPdf().stampUpload(ready);
+    expect(await pdfText(preview)).toContain(ready.verificationCode as string);
+
+    expect(await actions().issueFile(...as(sekjen))({ id, version: ready.version })).toMatchObject({
+      error: "forbidden",
+    });
+    expect(
+      await actions().issueFile(...as(secretariat))({ id, version: ready.version + 5 }),
+    ).toMatchObject({ error: "refused" });
+    const issued = await actions().issueFile(...as(secretariat))({ id, version: ready.version });
+    expect(issued).toMatchObject({ ok: true, data: { status: "issued" } });
+    const letter = (await letters().get(id)) as Letter;
+    expect(letter).toMatchObject({ status: "issued", issuedAt: clock });
+    const kept = files.get(letter.archive?.path ?? "") as Uint8Array;
+    expect(createHash("sha256").update(kept).digest("hex")).toBe(letter.archive?.sha256);
+    expect(await pdfText(kept)).toContain(letter.verificationCode as string);
+    // Placing or uploading after issue is refused.
+    expect(
+      await actions().place(...as(secretariat))({ id, version: letter.version, placement }),
+    ).toMatchObject({ error: "refused" });
+  });
+
+  it("a file replaced after stamping is never issued unseen; a changed file is refused", async () => {
+    const { id, version } = await numbered();
+    await send(id, version, await pdfWith(SOP));
+    const ready = (await letters().get(id)) as Letter;
+    files.set(ready.upload?.path ?? "", await pdfWith("swapped"));
+    await expect(letterPdf().stampUpload(ready)).rejects.toThrow("missing or changed");
+    expect(
+      await actions().issueFile(...as(secretariat))({ id, version: ready.version }),
+    ).toMatchObject({
+      ok: false,
+    });
   });
 });

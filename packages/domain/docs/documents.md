@@ -66,8 +66,7 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
   Secretary-General's role every desk but the Coordinator's plus letter types and incoming
   letters; the Coordinator's role `sign_coordinator` and `cancel`; directors and directorate
   secretaries `letters.edit` (scoped to their unit by the appointment).
-- Not built yet: the upload path (`awaiting_file`, 4.7),
-  PPIDK's format checker (warnings) and notifications to the desks.
+- Not built yet: PPIDK's format checker (warnings) and notifications to the desks.
 
 ## Letter PDF, letterhead, archive (D1, D9)
 
@@ -96,6 +95,40 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
   rendered now with the stamp. The Letters detail view has the button.
 - Code: `apps/admin/src/server/letter-pdf.ts`, route `apps/admin/src/app/api/letters/[id]/pdf/route.ts`.
 - Configuration: `VERIFICATION_HOST` (or `WEB_URL`) and `FIREBASE_STORAGE_BUCKET` on admin.
+
+## Upload path (D3)
+
+For documents typed elsewhere (SOP, decrees with annexes, tables), from PPIDK `UnggahDokumen`:
+
+```text
+draft (Document: own PDF) ─→ review ─→ corrected ─→ desks ─→ approved
+  ─→ "Take number" ─→ awaiting_file ─→ upload PDF, place stamps, preview ─→ issued
+```
+
+- **Write**: choose "Own PDF" when creating (fixed afterwards); no body. The same correction and
+  desks as typed letters.
+- **Take number** (`letters.issue`, the issue button of an upload letter): the same transaction
+  as issue (number, verification code, signers, digest) but the letter becomes `awaiting_file`
+  with no issue date. It may be cancelled from there (the number is never reused).
+- **Upload** (`letters.edit` in the letter's unit): `POST /api/letters/<id>/file?version=` with
+  the PDF (≤ 10 MB, `%PDF-` checked, opened with pdf-lib: locked or damaged files are refused
+  with a clear message). The number check: a PDF with a text layer (≥ 40 characters) must
+  contain the number (spaces and case ignored); a PDF without one (a scan) is accepted as "not
+  checked", recorded on the letter (`upload.numberChecked`) and in the audit entry. Stored at
+  `letters/<periodId>/<id>_upload_<random>.pdf` with its sha256; a new upload replaces (and
+  removes) the previous one.
+- **Placement** (`letters.edit`): page and mm from the top-left corner for the QR (with its size;
+  the code and address are printed under it) and for each desk's signature (at the signer's own
+  width and rotation, only once that desk signed). Nothing placed = the file is kept as is.
+- **Preview** (`GET /api/letters/<id>/pdf`) and **Issue the stamped PDF** (`letters.issue`) use
+  the SAME function (`stampUpload` in `apps/admin/src/server/letter-pdf.ts`): the stamped bytes
+  are stored as the archive (sha256, size), the letter becomes `issued` with its issue date. A
+  stored upload whose checksum no longer matches is refused; a file replaced between stamping
+  and the issue write is refused (issue again).
+- Code: `src/documents/letters.ts` (`checkUploadedNumber`, `attachUpload`, `placeStamps`,
+  `issueUpload`), `apps/admin/src/server/letters.ts` (`upload`, `place`, `issueFile`),
+  `packages/pdf/src/stamp.ts`, `apps/admin/src/components/letter-upload-panel.tsx`,
+  route `apps/admin/src/app/api/letters/[id]/file/route.ts`.
 
 ## Personal signatures (D4)
 
@@ -184,4 +217,4 @@ the QR without a logo (the letterhead already shows the emblem).
 `tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`, `tests/unit/verification.test.ts`,
 `tests/integration/verification.test.ts`, `tests/unit/incoming.test.ts`,
 `tests/unit/admin-incoming.test.ts`, `tests/integration/incoming.test.ts`,
-`tests/integration/signatures.test.ts`.
+`tests/integration/signatures.test.ts`, `tests/unit/pdf-stamp.test.ts`.

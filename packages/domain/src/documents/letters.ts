@@ -122,7 +122,38 @@ export interface Letter extends LetterInput, EntityMeta {
   readonly letterhead: Letterhead | null;
   /** The issued PDF in private Storage, kept byte for byte (null until rendered). */
   readonly archive: LetterArchive | null;
+  /** Upload path (D3): the author's final PDF while `awaiting_file` (null otherwise). */
+  readonly upload: UploadedLetterFile | null;
+  /** Upload path: where the signatures and the QR are stamped on that PDF. */
+  readonly placement: UploadPlacement | null;
 }
+
+export interface UploadedLetterFile extends LetterArchive {
+  /** false = the PDF has no text layer (a scan): the number could not be checked. */
+  readonly numberChecked: boolean;
+  readonly uploadedBy: string;
+  readonly uploadedAt: Date;
+}
+
+/** Upload path (D3): the final PDF may be at most 10 MB. */
+export const MAX_LETTER_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+const page = z.number().int().min(1).max(500);
+const mm = z.number().min(0).max(420);
+const Spot = z.object({ page, xMm: mm, yMm: mm }).strict();
+
+/**
+ * Upload path: where things are stamped, in mm from the page's top-left corner (as PPIDK's
+ * `penempatan_ttd`). Each signature uses its owner's width; the QR carries the code under it.
+ */
+export const UploadPlacementSchema = z
+  .object({
+    qr: Spot.extend({ sizeMm: z.number().min(15).max(40) }).nullable(),
+    secretary: Spot.nullable(),
+    coordinator: Spot.nullable(),
+  })
+  .strict();
+export type UploadPlacement = z.infer<typeof UploadPlacementSchema>;
 
 export interface LetterArchive {
   readonly path: string;
@@ -133,6 +164,10 @@ export interface LetterArchive {
 /** Private Storage path of a letter's archived PDF (a fresh name per render: never overwritten). */
 export const letterArchivePath = (letter: Pick<Letter, "id" | "periodId">, uuid: string) =>
   `letters/${letter.periodId}/${letter.id}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
+
+/** Private Storage path of an uploaded final PDF (a fresh name per upload). */
+export const letterUploadPath = (letter: Pick<Letter, "id" | "periodId">, uuid: string) =>
+  `letters/${letter.periodId}/${letter.id}_upload_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 
 const refuse = (message: string): never => {
   throw new RuleViolationError(message);
@@ -224,6 +259,57 @@ export function cancelLetter(letter: Letter, reason: string, now: Date): Letter 
   assertStatus(letter, ["issued", "awaiting_file"], "Only numbered letters can be cancelled.");
   if (!reason.trim()) refuse("Give the reason: it is shown on the public verification page.");
   return { ...letter, status: "cancelled", cancelledAt: now, cancelReason: reason.trim() };
+}
+
+/** Fewer characters than this = no text layer (scanners add a little junk text). */
+const TEXT_LAYER_MIN = 40;
+const squash = (text: string) => text.replace(/\s+/gu, "").toUpperCase();
+
+/**
+ * Upload path (PPIDK `UnggahDokumen::periksaNomor`): the author TYPED the number into the
+ * document, the one place a number can be wrong. A PDF with text must contain it (spaces
+ * ignored: extractors split "001 / SOP / ..."); a PDF without text (a scan) is accepted as not
+ * checked. Returns whether it was checked.
+ */
+export function checkUploadedNumber(text: string, number: string): boolean {
+  if (text.trim().length < TEXT_LAYER_MIN) return false;
+  if (!squash(text).includes(squash(number))) {
+    refuse(
+      `Number ${number} is not in the file. Type it into the document and export the PDF again.`,
+    );
+  }
+  return true;
+}
+
+function assertAwaitingFile(letter: Letter) {
+  assertStatus(letter, ["awaiting_file"], "This letter is not waiting for its file.");
+}
+
+/** A new final PDF replaces the previous one (until it is issued). */
+export function attachUpload(letter: Letter, file: UploadedLetterFile): Letter {
+  assertAwaitingFile(letter);
+  return { ...letter, upload: file };
+}
+
+export function placeStamps(letter: Letter, placement: UploadPlacement): Letter {
+  assertAwaitingFile(letter);
+  return { ...letter, placement };
+}
+
+/**
+ * awaiting_file → issued with the stamped PDF as its archive. `stampedFrom` is the sha256 of the
+ * upload that was stamped: a newer upload in between refuses (stamp it again).
+ */
+export function issueUpload(
+  letter: Letter,
+  archive: LetterArchive,
+  stampedFrom: string,
+  now: Date,
+): Letter {
+  assertAwaitingFile(letter);
+  if (!letter.upload) refuse("Upload the final PDF first.");
+  if (letter.upload?.sha256 !== stampedFrom) refuse("The file changed meanwhile. Issue it again.");
+  return { ...letter, status: "issued", issuedAt: now, archive };
 }
 
 /** The desk names printed on the letter (and frozen in `signers`). */

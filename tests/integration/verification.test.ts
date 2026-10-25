@@ -47,6 +47,8 @@ const stored = {
   ],
   letterhead: null,
   archive: { path: "letters/p1/l1_x.pdf", sha256: sha(pdf), size: pdf.length },
+  upload: null,
+  placement: null,
   version: 9,
   createdAt: at,
   updatedAt: at,

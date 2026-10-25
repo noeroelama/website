@@ -6,13 +6,21 @@ import {
   formatLetterDate,
   letterArchivePath,
   verificationUrl,
+  type LetterArchive,
   type Letter,
   type Letterhead,
   type LetterheadImage,
   type LetterType,
 } from "@website/domain/documents";
-import { renderLetterPdf, type LetterDesk, type LetterheadArt, type PdfImage } from "@website/pdf";
+import {
+  renderLetterPdf,
+  stampPdf,
+  type LetterDesk,
+  type LetterheadArt,
+  type PdfImage,
+} from "@website/pdf";
 import { canAccessAdmin, can, type Principal } from "@website/permissions";
+import { RuleViolationError } from "@website/domain/shared";
 import { decryptField, jsonError, sha256Hex } from "@website/security";
 
 export interface LetterPdfDeps {
@@ -132,15 +140,19 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     };
   }
 
-  /** Renders the letter now: drafts without number and QR, cancelled letters with the stamp. */
-  async function render(letter: Letter, context: LetterContext, period: string | null) {
-    const numbered = letter.verificationCode !== null;
-    const verification = numbered
-      ? verificationUrl(letter.verificationCode, deps.verification)
-      : null;
-    if (numbered && !verification) {
+  /** The QR address of a numbered letter (null for drafts). */
+  function verificationOf(letter: Letter) {
+    if (letter.verificationCode === null) return null;
+    const verification = verificationUrl(letter.verificationCode, deps.verification);
+    if (!verification) {
       throw new Error("Set VERIFICATION_HOST or WEB_URL: issued letters print their QR.");
     }
+    return { ...verification, code: letter.verificationCode };
+  }
+
+  /** Renders the letter now: drafts without number and QR, cancelled letters with the stamp. */
+  async function render(letter: Letter, context: LetterContext, period: string | null) {
+    const verification = verificationOf(letter);
     return renderLetterPdf({
       letterhead: await art(letter.letterhead ?? context.letterhead, period),
       place: letter.place,
@@ -152,7 +164,7 @@ export function createLetterPdf(deps: LetterPdfDeps) {
       recipient: letter.recipient,
       bodyHtml: letter.body,
       desks: letterDesks(letter, context, await signaturesOf(letter)),
-      verification: verification && { ...verification, code: letter.verificationCode as string },
+      verification,
       cancelledReason: letter.status === "cancelled" ? (letter.cancelReason ?? "") : null,
     });
   }
@@ -185,7 +197,38 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     return stored.path === path ? bytes : archive({ ...letter, archive: stored }, context, period);
   }
 
-  return { render, archive };
+  /**
+   * Upload path (D3): the author's PDF (sha256 checked) with the signatures of the signed desks
+   * and the QR stamped where `placement` says. ONE function for the preview and the archive.
+   */
+  async function stampUpload(letter: Letter): Promise<Uint8Array> {
+    const upload = letter.upload;
+    const bytes = upload ? await deps.storage.read(upload.path) : null;
+    if (!upload || !bytes || sha256Hex(bytes) !== upload.sha256) {
+      // Never stamped (nor issued) unseen: the preview and the issue both refuse.
+      throw new RuleViolationError("The uploaded PDF is missing or changed: upload it again.");
+    }
+    const placement = letter.placement;
+    const signed = await signaturesOf(letter);
+    const signatures = (["secretary", "coordinator"] as const).flatMap((desk) => {
+      const spot = placement?.[desk];
+      const image = signed.get(letter[desk]?.uid ?? "");
+      return spot && image ? [{ spot, ...image }] : [];
+    });
+    const qr = placement?.qr ?? null;
+    // A numbered letter always has its verification address (or verificationOf throws).
+    const verification = verificationOf(letter) as NonNullable<ReturnType<typeof verificationOf>>;
+    return stampPdf(bytes, { signatures, qr: qr && { spot: qr, ...qr, ...verification } });
+  }
+
+  /** Stores a finished PDF privately under a fresh name (never overwriting one). */
+  async function saveFile(letter: Letter, bytes: Uint8Array): Promise<LetterArchive> {
+    const path = letterArchivePath(letter, deps.uuid());
+    await deps.storage.save(path, bytes, { visibility: "private", contentType: "application/pdf" });
+    return { path, sha256: sha256Hex(bytes), size: bytes.length };
+  }
+
+  return { render, archive, stampUpload, saveFile };
 }
 
 export type LetterPdf = ReturnType<typeof createLetterPdf>;
@@ -203,9 +246,13 @@ export function createLetterFileRoute(deps: {
   readonly load: (
     letter: Letter,
   ) => Promise<{ context: LetterContext; period: string | null } | null>;
-  readonly pdf: Pick<LetterPdf, "render" | "archive">;
+  readonly pdf: Pick<LetterPdf, "render" | "archive" | "stampUpload">;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
 }) {
+  // Upload path before issue: the stamped preview once a file is in (nothing to show before).
+  const previewUpload = (letter: Letter) =>
+    letter.upload ? deps.pdf.stampUpload(letter) : Promise.resolve(null);
+
   return async (id: string, principal: Principal | null): Promise<Response> => {
     if (principal === null || !principal.active) return jsonError("unauthenticated");
     if (!canAccessAdmin(principal)) return jsonError("forbidden");
@@ -223,7 +270,10 @@ export function createLetterFileRoute(deps: {
       const bytes =
         letter.status === "issued"
           ? await deps.pdf.archive(letter, loaded.context, loaded.period)
-          : await deps.pdf.render(letter, loaded.context, loaded.period);
+          : letter.source === "upload"
+            ? await previewUpload(letter)
+            : await deps.pdf.render(letter, loaded.context, loaded.period);
+      if (!bytes) return notFound();
       const name = (letter.numberFormatted ?? letter.subject).replace(/[^A-Za-z0-9._-]+/g, "-");
       return new Response(new Uint8Array(bytes), {
         headers: {

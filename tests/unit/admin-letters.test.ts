@@ -42,6 +42,8 @@ const letter: Letter = {
   signers: [],
   letterhead: null,
   archive: null,
+  upload: null,
+  placement: null,
 };
 const type = {
   name: "Surat Keputusan",
@@ -149,6 +151,13 @@ describe("Letters page model", () => {
     expect(
       letterActions(item({ status: "awaiting_file" }), { ...none, cancel: true }, "s"),
     ).toEqual(["cancel"]);
+    const file = { size: 1, numberChecked: false, uploadedAt: at.toISOString() };
+    expect(letterActions(item({ status: "awaiting_file" }), { ...none, issue: true }, "s")).toEqual(
+      [],
+    );
+    expect(
+      letterActions(item({ status: "awaiting_file", upload: file }), { ...none, issue: true }, "s"),
+    ).toEqual(["issueFile"]);
     expect(
       letterActions(
         item({ status: "cancelled" }),
@@ -156,5 +165,36 @@ describe("Letters page model", () => {
         "s",
       ),
     ).toEqual([]);
+  });
+});
+
+describe("upload letters in the list", () => {
+  it("carry their source, file and stamp positions (dates as text)", () => {
+    const uploaded = toLetterItem(
+      {
+        ...letter,
+        source: "upload",
+        status: "awaiting_file",
+        upload: {
+          path: "p",
+          sha256: "s",
+          size: 9,
+          numberChecked: true,
+          uploadedBy: "author",
+          uploadedAt: at,
+        },
+        placement: { qr: null, secretary: { page: 1, xMm: 1, yMm: 2 }, coordinator: null },
+      },
+      type,
+      "Sekretariat",
+      names,
+      true,
+    );
+    expect(uploaded).toMatchObject({
+      source: "upload",
+      upload: { size: 9, numberChecked: true, uploadedAt: at.toISOString() },
+      placement: { secretary: { page: 1, xMm: 1, yMm: 2 } },
+    });
+    expect(item().upload).toBeNull();
   });
 });

@@ -19,6 +19,8 @@ import {
   type LetterType,
   type LetterTypeInput,
   type SignerSnapshot,
+  type UploadedLetterFile,
+  type UploadPlacement,
 } from "@website/domain/documents";
 import { orgUnitPath, type OrgUnit } from "@website/domain/organizations";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
@@ -148,6 +150,12 @@ const desk = (value: unknown): DeskSignature | null => {
   return data ? { uid: data.uid, at: toDate(data.at) as Date } : null;
 };
 
+const uploaded = (value: unknown): UploadedLetterFile | null => {
+  if (!value) return null;
+  const file = value as UploadedLetterFile & { uploadedAt: unknown };
+  return { ...file, uploadedAt: toDate(file.uploadedAt) as Date };
+};
+
 function toLetter(id: string, data: Record<string, unknown>): Letter {
   return {
     id,
@@ -181,6 +189,8 @@ function toLetter(id: string, data: Record<string, unknown>): Letter {
     })),
     letterhead: data["letterhead"] as Letterhead | null,
     archive: data["archive"] as LetterArchive | null,
+    upload: uploaded(data["upload"]),
+    placement: (data["placement"] as UploadPlacement | null | undefined) ?? null,
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -206,6 +216,9 @@ export function letterSnapshot(l: LetterFields): Snapshot {
     numberFormatted: l.numberFormatted,
     verificationCode: l.verificationCode,
     cancelReason: l.cancelReason,
+    // Upload path: which file, and whether its number was checked (a scan cannot be).
+    upload: l.upload && { sha256: l.upload.sha256, numberChecked: l.upload.numberChecked },
+    placement: l.placement,
   };
 }
 
@@ -238,6 +251,8 @@ const stored = (l: LetterFields) => ({
   signers: l.signers,
   letterhead: l.letterhead,
   archive: l.archive,
+  upload: l.upload,
+  placement: l.placement,
 });
 
 export type LetterAudit = (
@@ -328,12 +343,13 @@ export function createFirestoreLetterStore(
       };
     },
 
-    /** New draft in the active period. */
+    /** New draft in the active period: typed here (editor) or the author's own PDF (upload). */
     create(
       input: LetterInput,
       createdBy: string,
       auditFor: LetterAudit,
       now: Date,
+      source: "editor" | "upload" = "editor",
     ): Promise<Letter> {
       return store.write(
         null,
@@ -352,7 +368,7 @@ export function createFirestoreLetterStore(
             periodId,
             orgUnitPath: orgUnitPath(unit),
             status: "draft",
-            source: "editor",
+            source,
             createdBy,
             reviewedBy: null,
             reviewNote: null,
@@ -368,6 +384,8 @@ export function createFirestoreLetterStore(
             signers: [],
             letterhead: null,
             archive: null,
+            upload: null,
+            placement: null,
             deletedAt: null,
           };
         },
@@ -442,8 +460,9 @@ export function createFirestoreLetterStore(
     },
 
     /**
-     * approved → issued: number, verification code, frozen signers and digest, all in ONE
-     * transaction (a failure leaves no number used and no audit entry).
+     * approved → issued (editor) or awaiting_file (upload, "Take number": the author then types
+     * the number into the document): number, verification code, frozen signers and digest, all
+     * in ONE transaction (a failure leaves no number used and no audit entry).
      */
     issue(
       id: string,
@@ -466,9 +485,10 @@ export function createFirestoreLetterStore(
             "The signing desks must approve the letter before it is issued.",
           );
         }
-        if (letter.source !== "editor") {
-          throw new RuleViolationError("Uploaded documents are numbered with “Take number”.");
+        if (letter.source === "certificate") {
+          throw new RuleViolationError("Certificate batches are issued from their batch.");
         }
+        const upload = letter.source === "upload";
         const type = await readType(tx, letter.typeId);
         const unit = await readUnit(tx, letter.orgUnitId, letter.periodId);
         const period = await tx.get(db.collection("periods").doc(letter.periodId));
@@ -496,7 +516,7 @@ export function createFirestoreLetterStore(
         const numbered: Letter = {
           ...letter,
           letterDate,
-          status: "issued",
+          status: upload ? "awaiting_file" : "issued",
           number: first,
           numberFormatted: formatNumber(type.numberFormat, {
             seq: first,
@@ -507,9 +527,10 @@ export function createFirestoreLetterStore(
             date: letterDate,
           }),
           verificationCode: code,
-          issuedAt: now,
+          // The upload path is issued once its final PDF is in (`issueUpload`).
+          issuedAt: upload ? null : now,
           signers,
-          letterhead,
+          letterhead: upload ? null : letterhead,
           version: letter.version + 1,
           updatedAt: now,
         };

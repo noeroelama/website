@@ -3,7 +3,9 @@ import {
   isEditable,
   type Letter,
   type LetterStatus,
+  type LetterSource,
   type LetterType,
+  type UploadPlacement,
 } from "@website/domain/documents";
 import { LETTER_STATUS_LABELS, label } from "../labels";
 
@@ -68,6 +70,10 @@ export interface LetterItem {
   issuedAt: string | null;
   cancelReason: string | null;
   createdAt: string;
+  /** editor = typed here; upload = the author's own PDF after "Take number" (D3). */
+  source: LetterSource;
+  upload: { size: number; numberChecked: boolean; uploadedAt: string } | null;
+  placement: UploadPlacement | null;
   /** letters.edit covers this letter's unit. */
   canEdit: boolean;
 }
@@ -115,6 +121,13 @@ export function toLetterItem(
     issuedAt: letter.issuedAt?.toISOString() ?? null,
     cancelReason: letter.cancelReason,
     createdAt: letter.createdAt.toISOString(),
+    source: letter.source,
+    upload: letter.upload && {
+      size: letter.upload.size,
+      numberChecked: letter.upload.numberChecked,
+      uploadedAt: letter.upload.uploadedAt.toISOString(),
+    },
+    placement: letter.placement,
     canEdit,
   };
 }
@@ -128,6 +141,7 @@ export type LetterActionKey =
   | "signSecretary"
   | "signCoordinator"
   | "issue"
+  | "issueFile"
   | "cancel";
 
 /**
@@ -161,7 +175,9 @@ export function letterActions(
       actions.push("signCoordinator");
     }
   }
+  // Upload path: "issue" takes the number; the stamped file is issued once it is uploaded.
   if (can.issue && status === "approved") actions.push("issue");
+  if (can.issue && status === "awaiting_file" && item.upload) actions.push("issueFile");
   if (can.cancel && (status === "issued" || status === "awaiting_file")) actions.push("cancel");
   return actions;
 }

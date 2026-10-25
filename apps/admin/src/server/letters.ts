@@ -8,7 +8,14 @@ import type {
   LetterAudit,
 } from "@website/db/firestore";
 import {
+  attachUpload,
   cancelLetter,
+  checkUploadedNumber,
+  issueUpload,
+  letterUploadPath,
+  MAX_LETTER_UPLOAD_BYTES,
+  placeStamps,
+  UploadPlacementSchema,
   LetterheadSchema,
   LetterInputSchema,
   LetterTypeInputSchema,
@@ -20,11 +27,14 @@ import {
   type Letter,
   type LetterType,
 } from "@website/domain/documents";
-import { RuleViolationError } from "@website/domain/shared";
-import { can, type Permission, type ResourceContext } from "@website/permissions";
+import { isPdf, RuleViolationError } from "@website/domain/shared";
+import { openPdf, pdfText, type UnreadablePdfError } from "@website/pdf";
+import { can, type Permission, type Principal, type ResourceContext } from "@website/permissions";
+import { jsonError, readBodyLimited, sha256Hex } from "@website/security";
 import { sanitizeRichText } from "@website/security/html";
 import { safeId, safeText } from "@website/security/validation";
-import { createGuardedAction, type AuditBuilder } from "./guarded-action";
+import { createGuardedAction, type AuditBuilder, type AuditContext } from "./guarded-action";
+import type { LetterPdf } from "./letter-pdf";
 
 export interface LetterDeps {
   readonly letters: Pick<
@@ -38,12 +48,30 @@ export interface LetterDeps {
   readonly afterIssue: (letter: Letter) => Promise<void>;
   /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
+  /** Upload path (D3): private files, and the stamping shared with the preview. */
+  readonly storage: {
+    save(
+      path: string,
+      bytes: Uint8Array,
+      options: { visibility: "private"; contentType: "application/pdf" },
+    ): Promise<unknown>;
+    remove(path: string): Promise<void>;
+  };
+  readonly files: Pick<LetterPdf, "stampUpload" | "saveFile">;
   readonly now: () => Date;
+  readonly uuid: () => string;
 }
 
 const Ref = z.object({ id: safeId, version: z.number().int().min(1) }).strict();
 const SaveLetter = LetterInputSchema.and(
-  z.object({ id: safeId.optional(), version: z.number().int().min(1).nullable() }).strict(),
+  z
+    .object({
+      id: safeId.optional(),
+      version: z.number().int().min(1).nullable(),
+      /** New letters only: typed here, or the author's own final PDF (D3). Fixed afterwards. */
+      source: z.enum(["editor", "upload"]).optional(),
+    })
+    .strict(),
 );
 const SaveType = LetterTypeInputSchema.and(
   z.object({ id: safeId.optional(), version: z.number().int().min(1).nullable() }).strict(),
@@ -92,7 +120,7 @@ export function createLetterActions(deps: LetterDeps) {
     input: SaveLetter,
     // New letter: the chosen unit; existing letter: where it is now (the new unit is checked below).
     resource: (input) => (input.id ? scopeOf({ id: input.id }) : unitScope(input.orgUnitId)),
-    handler: async ({ id, version, ...input }, principal, audit) => {
+    handler: async ({ id, version, source, ...input }, principal, audit) => {
       const now = deps.now();
       if (id) {
         if (!can(principal, "letters.edit", await unitScope(input.orgUnitId))) {
@@ -112,6 +140,7 @@ export function createLetterActions(deps: LetterDeps) {
         principal.userId,
         letterAudit(audit, "CREATE"),
         now,
+        source,
       );
       return { id: saved.id, version: saved.version };
     },
@@ -173,8 +202,10 @@ export function createLetterActions(deps: LetterDeps) {
         letterAudit(audit, "PUBLISH"),
         deps.now(),
       );
-      await deps.afterIssue(issued);
+      // The upload path is only numbered here ("Take number"); its file comes later.
+      if (issued.status === "issued") await deps.afterIssue(issued);
       return {
+        status: issued.status,
         version: issued.version,
         numberFormatted: issued.numberFormatted,
         verificationCode: issued.verificationCode,
@@ -232,6 +263,101 @@ export function createLetterActions(deps: LetterDeps) {
     }),
   });
 
+  /** POST /api/letters/<id>/file?version=<n>: the final PDF of an upload letter (≤ 10 MB). */
+  const upload = createGuardedAction({
+    permission: "letters.edit",
+    input: Ref.extend({ request: z.instanceof(Request) }).strict(),
+    resource: scopeOf,
+    handler: async ({ id, version, request }, principal, audit) => {
+      const bytes = await readBodyLimited(request, MAX_LETTER_UPLOAD_BYTES);
+      if (bytes === null) throw new RuleViolationError("The PDF may be at most 10 MB.");
+      if (!isPdf(bytes)) throw new RuleViolationError("Export the document as a PDF first.");
+      const letter = await deps.letters.get(id);
+      if (letter?.status !== "awaiting_file") {
+        throw new RuleViolationError("This letter is not waiting for its file.");
+      }
+      // openPdf throws only UnreadablePdfError (locked, damaged, no pages).
+      await openPdf(bytes).catch((error: UnreadablePdfError) => {
+        throw new RuleViolationError(error.message);
+      });
+      const numberChecked = checkUploadedNumber(
+        await pdfText(bytes),
+        letter.numberFormatted as string,
+      );
+      const now = deps.now();
+      const path = letterUploadPath(letter, deps.uuid());
+      await deps.storage.save(path, bytes, {
+        visibility: "private",
+        contentType: "application/pdf",
+      });
+      const file = {
+        path,
+        sha256: sha256Hex(bytes),
+        size: bytes.length,
+        numberChecked,
+        uploadedBy: principal.userId,
+        uploadedAt: now,
+      };
+      const saved = await deps.letters.transition(
+        id,
+        version,
+        (current) => attachUpload(current, file),
+        letterAudit(audit, "UPLOAD"),
+        now,
+      );
+      if (letter.upload) await deps.storage.remove(letter.upload.path);
+      return { version: saved.version, numberChecked };
+    },
+  });
+
+  /** awaiting_file → issued: the stamped PDF (as previewed) becomes the archive. */
+  const issueFile = createGuardedAction({
+    permission: "letters.issue",
+    input: Ref,
+    resource: scopeOf,
+    handler: async ({ id, version }, _principal, audit) => {
+      const letter = await deps.letters.get(id);
+      if (!letter?.upload || letter.version !== version) {
+        throw new RuleViolationError("Upload the final PDF first (or reload the page).");
+      }
+      const stampedFrom = letter.upload.sha256;
+      // Refuses an upload whose stored bytes no longer match their checksum.
+      const archive = await deps.files.saveFile(letter, await deps.files.stampUpload(letter));
+      const now = deps.now();
+      const saved = await deps.letters.transition(
+        id,
+        version,
+        (current) => issueUpload(current, archive, stampedFrom, now),
+        letterAudit(audit, "PUBLISH"),
+        now,
+      );
+      return { version: saved.version, status: saved.status };
+    },
+  });
+
+  /** Route form of `upload`: version from the query, body = the PDF. */
+  const uploadFile =
+    (getPrincipal: () => Promise<Principal | null>, getAuditContext: () => Promise<AuditContext>) =>
+    async (id: string, request: Request): Promise<Response> => {
+      const version = Number(new URL(request.url).searchParams.get("version"));
+      const result = await upload(getPrincipal, getAuditContext)({ id, version, request });
+      const noStore = { "Cache-Control": "no-store" };
+      if (result.ok) return Response.json(result.data, { status: 201, headers: noStore });
+      if (result.error === "refused" || result.error === "invalid_input") {
+        return Response.json(
+          { error: "invalid_input", message: result.issues?.[0] },
+          { status: 400, headers: noStore },
+        );
+      }
+      return jsonError(
+        result.error === "unauthenticated"
+          ? "unauthenticated"
+          : result.error === "conflict"
+            ? "conflict"
+            : "forbidden",
+      );
+    };
+
   const Note = Ref.extend({ note: safeText(1000, { multiline: true, allowEmpty: true }) }).strict();
   const Reason = Ref.extend({ reason: safeText(300, { allowEmpty: true }) }).strict();
 
@@ -253,5 +379,15 @@ export function createLetterActions(deps: LetterDeps) {
     ),
     saveType,
     saveLetterhead,
+    upload,
+    uploadFile,
+    place: step(
+      "letters.edit",
+      Ref.extend({ placement: UploadPlacementSchema }).strict(),
+      "UPDATE",
+      (letter, _type, input) =>
+        placeStamps(letter, input["placement"] as z.infer<typeof UploadPlacementSchema>),
+    ),
+    issueFile,
   };
 }

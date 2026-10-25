@@ -7,3 +7,11 @@ export {
   type LetterPdfInput,
   type PdfImage,
 } from "./letter";
+export {
+  openPdf,
+  pdfText,
+  stampPdf,
+  UnreadablePdfError,
+  type PageSpot,
+  type StampInput,
+} from "./stamp";
