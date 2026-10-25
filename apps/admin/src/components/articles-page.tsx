@@ -63,7 +63,7 @@ import { matchesDate, type DateFilter } from "./list-model";
    category, date, URL, summary, tags). Matches the Figma "ARTICLE
    ADMIN" screens with the shared dark admin look (globals.css "Dark
    admin pages"), laid out like the Event page; the Settings panel is
-   the shared popup docked right as a cream surface (`.admin-modal--side`).
+   the shared centred popup as a cream surface (`.admin-modal--side`).
    The list uses the shared list parts (ui/list-controls.tsx) and the
    content the shared rich-text boxes (ui/rich-text-box.tsx).
    No hex values outside globals.css.
@@ -562,7 +562,7 @@ function ArticleList({
     table.setPage(1);
   };
 
-  /* Settings panel — the shared popup, docked on the right as a cream surface. */
+  /* Settings panel — the shared centred popup as a cream surface. */
   const settingsPanel = (
     <Modal
       open={settingsIntent !== null}

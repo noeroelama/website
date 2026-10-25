@@ -1,77 +1,37 @@
-import { can, isSystemRoleId } from "@website/permissions";
+import { can, DEFAULT_ROLE_COLOR, scopedChapterIds } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
-import { label, ROLE_TYPE_LABELS } from "@/labels";
+import { RoleManagerPeople } from "@/components/role-manager-page";
+import { DEFAULT_ROLE_ID, inviteRow, personRow } from "@/components/role-manager-model";
 import { requireAdminViewer, signInAgainUrl } from "@/server/context";
 import { adminReads } from "@/server/wiring";
-import { SuggestedRolesButton } from "./role-forms";
 
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-export default async function RolesPage() {
-  const viewer = await requireAdminViewer("/roles", "roles.read");
+/** Role Manager: everyone who holds a role (plus pending invites), by role. */
+export default async function RoleManagerPage() {
+  const viewer = await requireAdminViewer("/roles", "users.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
+  // Chapter-scoped staff see only their chapters' accounts (filtered in the query, A2).
+  const chapters = scopedChapterIds(viewer.principal, "users.read");
+  if (chapters !== "all" && chapters.length === 0) return <AccessMessage reason="no-access" />;
+
   const roles = await adminReads.listRoles();
-  const holders = await adminReads.countHolders(roles.map((r) => r.id));
-  const canEdit = can(viewer.principal, "roles.edit");
-  const rows = roles.map((role) => ({
-    id: role.id,
-    name: role.name,
-    permissions: role.permissions.length,
-    holders: holders.get(role.id) ?? 0,
-    builtIn: isSystemRoleId(role.id),
-  }));
+  const roleIds = roles.map((r) => r.id).filter((id) => id !== DEFAULT_ROLE_ID);
+  const [holders, invites] = await Promise.all([
+    adminReads.listRoleHolders(roleIds, chapters === "all" ? undefined : chapters),
+    // Invites belong to no chapter yet: only staff with users.read everywhere see them.
+    chapters === "all" ? adminReads.listInvites() : [],
+  ]);
 
   return (
-    <>
-      <div className="admin-page-header admin-events-header">
-        <div>
-          <h1 className="admin-page-header__title">Roles</h1>
-          <p className="admin-page-header__desc">
-            A role is a set of page permissions (read, edit and extras). Give roles to people on the
-            Users page. Built-in roles cannot be changed.
-          </p>
-        </div>
-        {canEdit ? (
-          <div className="admin-page-header__actions">
-            <SuggestedRolesButton reauthUrl={signInAgainUrl("/roles")} />
-            <Button href="/roles/new" variant="outline" size="sm" icon="plus">
-              Add New Role
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      <Card>
-        <CardBody flush>
-          <DataTable
-            rowKey={(row) => row.id}
-            rows={rows}
-            columns={[
-              {
-                key: "name",
-                header: "Role",
-                render: (row) => <a href={`/roles/${row.id}`}>{row.name}</a>,
-              },
-              { key: "permissions", header: "Permissions", align: "right" },
-              { key: "holders", header: "Holders", align: "right" },
-              {
-                key: "type",
-                header: "Type",
-                render: (row) =>
-                  row.builtIn ? (
-                    <Badge tone="primary">{label(ROLE_TYPE_LABELS, "builtIn")}</Badge>
-                  ) : (
-                    <Badge>{label(ROLE_TYPE_LABELS, "custom")}</Badge>
-                  ),
-              },
-            ]}
-          />
-        </CardBody>
-      </Card>
-    </>
+    <RoleManagerPeople
+      rows={[...holders.map(personRow), ...invites.map(inviteRow)]}
+      roles={roles.map((r) => ({ id: r.id, name: r.name, color: r.color ?? DEFAULT_ROLE_COLOR }))}
+      selfId={viewer.principal.userId}
+      canEdit={can(viewer.principal, "users.edit")}
+      canEditRoles={can(viewer.principal, "roles.read")}
+      reauthUrl={signInAgainUrl("/roles")}
+    />
   );
 }

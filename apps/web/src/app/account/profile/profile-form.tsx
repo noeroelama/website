@@ -176,7 +176,7 @@ export function ProfileForm(props: {
       if (result.ok) {
         setVersion(result.version);
         setFields({});
-        setMessage({ text: result.pendingReview ? t.savedForReview : t.saved, tone: "info" });
+        setMessage({ text: t.saved, tone: "info" });
         router.refresh();
         if (props.next) {
           if (props.next.startsWith("/")) router.push(props.next);
@@ -191,7 +191,6 @@ export function ProfileForm(props: {
         conflict: t.conflict,
         signin: t.signin,
         verify: t.verifyFirst,
-        pending: t.reviewPending,
       }[result.error];
       setMessage({ text, tone: "error" });
     } catch {

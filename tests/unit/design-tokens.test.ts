@@ -70,3 +70,77 @@ describe("design tokens (one global stylesheet shared by every app)", () => {
     }
   });
 });
+
+/** The admin stylesheet as { selector, body } rules (comments removed). */
+const adminRules = [
+  ...readFileSync(join(ROOT, "apps/admin/src/app/globals.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .matchAll(/([^{}]+)\{([^{}]*)\}/g),
+].map(([, selector, body]) => ({ selector: (selector ?? "").trim(), body: body ?? "" }));
+
+describe("admin popups", () => {
+  const rules = adminRules;
+
+  it("every popup sits in the middle of the page", () => {
+    const overlay = rules.find((rule) => rule.selector === ".admin-modal-overlay");
+    expect(overlay?.body).toMatch(/place-items:\s*center/);
+    // No popup variant may move itself away from the centre the overlay gives it.
+    for (const rule of rules.filter((r) => /\.admin-modal\b(?!-overlay)/.test(r.selector))) {
+      expect(rule.body, rule.selector).not.toMatch(
+        /(justify|align)-self\s*:|margin(-left|-right|-inline(-start|-end)?)?\s*:[^;]*auto/,
+      );
+    }
+  });
+});
+
+describe("admin tables", () => {
+  const ruleFor = (selector: string) =>
+    adminRules.filter((rule) => rule.selector.split(/,\s*/).includes(selector));
+
+  it("a table card fills the rest of the screen and grows with its rows", () => {
+    // The content area and every wrapper down to the table card are columns…
+    for (const selector of [
+      ".admin-dark-page:has(.admin-list-card)",
+      ".admin-dark-page :has(.admin-list-card)",
+    ]) {
+      const body = ruleFor(selector)
+        .map((rule) => rule.body)
+        .join("");
+      expect(body, selector).toMatch(/display:\s*flex/);
+      expect(body, selector).toMatch(/flex-direction:\s*column/);
+    }
+    // …that take the free height but never shrink below their rows (long tables scroll the page).
+    for (const selector of [
+      ".admin-dark-page :has(.admin-list-card)",
+      ".admin-dark-page .admin-list-card",
+      ".admin-dark-page .admin-list-card .admin-table-wrap",
+    ]) {
+      expect(
+        ruleFor(selector)
+          .map((rule) => rule.body)
+          .join(""),
+        selector,
+      ).toMatch(/flex:\s*1 0 auto/);
+    }
+    // The height comes from the page itself, not from a guessed offset or blank filler rows.
+    for (const rule of adminRules.filter((r) => r.selector.includes(".admin-list-card"))) {
+      expect(rule.body, rule.selector).not.toMatch(/100dvh|100vh/);
+    }
+    expect(adminRules.some((rule) => rule.selector.includes("admin-table__placeholder"))).toBe(
+      false,
+    );
+  });
+
+  it("the no-results message sits in the middle of the table, under its header", () => {
+    const body = ruleFor(".admin-table__empty")
+      .map((rule) => rule.body)
+      .join("");
+    expect(body).toMatch(/flex:\s*1/);
+    expect(body).toMatch(/place-items:\s*center/);
+    expect(
+      ruleFor(".admin-table-wrap--empty")
+        .map((rule) => rule.body)
+        .join(""),
+    ).toMatch(/display:\s*flex/);
+  });
+});

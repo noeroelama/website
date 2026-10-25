@@ -86,7 +86,7 @@ export function deliveryDecision(input: {
  * Sends a message at most once per key. Call it AFTER the transaction that caused the message
  * has committed: the log entry is claimed first (a duplicate key returns "duplicate" and sends
  * nothing), then the channel is called and the outcome recorded. Failed entries are retried
- * from the admin Messages page (`retry`).
+ * from the admin Email page (`retry`).
  */
 export function createMessenger(deps: {
   log: MessageLogStore;

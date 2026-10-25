@@ -17,7 +17,7 @@
   Adding a page or an extra is a reviewed code change (the page is code anyway).
 
 - **Roles** are data. Custom roles live in Firestore (`roles/{id}`: name + page permissions) and
-  are created and edited in the admin **Roles** page. `normalizePermissions()` cleans every
+  are created and edited in the admin **Role Manager → Edit Role** (with a badge colour). `normalizePermissions()` cleans every
   saved list (unknown entries dropped, edit/extras add read).
 - **Built-in roles** (`SYSTEM_ROLES`, code only, never editable): `superadmin` (every page),
   `member` (approved member), `user` (every account). A stored role with one of these ids is
@@ -33,7 +33,7 @@
     that period is active (`settings/activePeriod.periodId`, read with the user record in one
     `getAll`). `null` = independent of periods (e.g. superadmin).
   - **Revocation**: an assignment with `revokedAt` grants nothing; it stays for the history.
-    `source` is `manual` (Users page) or `appointment` (set by the server from a board
+    `source` is `manual` (Role Manager) or `appointment` (set by the server from a board
     appointment, never from the client).
   - Unknown scope types, bad ids and unreadable dates are dropped when the record is read.
 - **Appointments → roles** (B7, `apps/admin/src/server/appointments.ts`,
@@ -41,13 +41,13 @@
   active period writes the appointment and its roles in ONE transaction. The roles come from the
   settings document `settings/appointmentRoles` (data, edited on the Structure page with
   `roles.edit`; only existing custom roles, never built-in ones; "suggested" =
-  `SUGGESTED_APPOINTMENT_ROLES` + the suggested roles of the Roles page):
+  `SUGGESTED_APPOINTMENT_ROLES`; create those roles in Role Manager → Edit Role first):
   every officer → officer role (global); head of a core unit (coordinator, secretary general,
   treasurer and deputies) → that seat's role (global); head / secretary of any other unit → the
   unit-head / unit-secretary role scoped to that unit (`derivedAssignments`). They carry
   `periodId`, `source: "appointment"` and `appointmentId`. Ending the appointment sets `revokedAt`
   on exactly those (a manual role stays) and ends the person's sessions; a role from an
-  appointment cannot be removed on the Users page. Appointing needs `appointments.edit` and every
+  appointment cannot be removed in Role Manager. Appointing needs `appointments.edit` and every
   permission of each derived role (`canAppointInto`), never on your own account, a second
   sign-in method on the person's account for staff roles, and a recent sign-in. Both the
   appointment and the account change are audited (not revertible).
@@ -63,9 +63,9 @@ canAccessAdmin(principal); // any admin-page permission
 canInSomeScope(principal, "audit.read"); // what to SHOW (navigation), never an action check
 scopedChapterIds(principal, "users.read"); // "all" | chapter ids: filter list queries by it
 requirePermission(principal, "articles.publish");
-canSaveRole(principal, draft, previous); // Roles page
-canAssignRole(principal, role); // Users page
-accountChangeRefusal({ actor, targetUserId, role, superadminsAfter }); // Users page: why not
+canSaveRole(principal, draft, previous); // Role Manager → Edit Role
+canAssignRole(principal, role); // Role Manager (also invites)
+accountChangeRefusal({ actor, targetUserId, role, superadminsAfter }); // Role Manager: why not
 ```
 
 ## Rules

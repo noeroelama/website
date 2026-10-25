@@ -13,39 +13,16 @@ import { filterOptions, needsSearch, optionsFrom } from "@/components/fields-mod
 import { Icon } from "./icon";
 
 /**
- * Admin dropdown: use it like `<select>` (same props, `<option>` children). With more than 5
- * options it opens a list with a search box; the native `<select>` stays in the page (hidden), so
- * `name`, `value`/`defaultValue`, `onChange`, `required` and GET forms keep working.
+ * Open state and position of a dropdown panel. The panel is fixed to the window under its button
+ * (or above it when there is more room there), so a popup's scroll area does not cut it off; it
+ * follows scrolling and resizing, and a click outside `box` closes it. Give the panel `position`
+ * as its style (with `.admin-combo__panel`).
  */
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return needsSearch(optionsFrom(props.children)) ? (
-    <SearchSelect {...props} />
-  ) : (
-    <select {...props} />
-  );
-}
-
-function SearchSelect({
-  id,
-  className,
-  disabled,
-  "aria-label": ariaLabel,
-  ...rest
-}: SelectHTMLAttributes<HTMLSelectElement>) {
-  const options = optionsFrom(rest.children);
-  const native = useRef<HTMLSelectElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+export function useDropdown<T extends HTMLElement>() {
+  const trigger = useRef<T>(null);
   const box = useRef<HTMLDivElement>(null);
-  const listId = useId();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
-  // The list is fixed to the window, so a popup's scroll area does not cut it off.
   const [position, setPosition] = useState<CSSProperties>({});
-  // Uncontrolled selects (defaultValue, GET forms): the shown option follows the native select.
-  const [picked, setPicked] = useState(String(rest.defaultValue ?? options[0]?.value ?? ""));
-  const current = rest.value === undefined ? picked : String(rest.value);
-  const shown = filterOptions(options, query);
 
   /** Under the button, or above it when there is more room there. */
   const place = () => {
@@ -75,6 +52,45 @@ function SearchSelect({
     };
   }, [open]);
 
+  return {
+    trigger,
+    box,
+    open,
+    position,
+    show: () => {
+      place();
+      setOpen(true);
+    },
+    hide: () => setOpen(false),
+  };
+}
+
+/**
+ * Admin dropdown: use it like `<select>` (same props, `<option>` children). It opens the same
+ * cream menu as the Newsletter status filter (`.admin-row-menu__panel`), with a search box when
+ * there are more than 5 options. The native `<select>` stays in the page (hidden), so `name`,
+ * `value`/`defaultValue`, `onChange`, `required` and GET forms keep working.
+ */
+export function Select({
+  id,
+  className,
+  disabled,
+  "aria-label": ariaLabel,
+  ...rest
+}: SelectHTMLAttributes<HTMLSelectElement>) {
+  const options = optionsFrom(rest.children);
+  const native = useRef<HTMLSelectElement>(null);
+  const { trigger, box, open, position, show: showPanel, hide } = useDropdown<HTMLButtonElement>();
+  const listId = useId();
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+  // Uncontrolled selects (defaultValue, GET forms): the shown option follows the native select.
+  const [picked, setPicked] = useState(String(rest.defaultValue ?? options[0]?.value ?? ""));
+  const current = rest.value === undefined ? picked : String(rest.value);
+  const searchable = needsSearch(options);
+  const shown = filterOptions(options, query);
+  const activeId = open && shown[active] ? `${listId}-${active}` : undefined;
+
   const show = () => {
     setQuery("");
     setActive(
@@ -83,13 +99,12 @@ function SearchSelect({
         0,
       ),
     );
-    place();
-    setOpen(true);
+    showPanel();
   };
 
   const choose = (value: string) => {
     const select = native.current;
-    setOpen(false);
+    hide();
     trigger.current?.focus();
     if (!select || select.value === value) return;
     // Set the value the way the browser does, so React's onChange and form submits see it.
@@ -98,7 +113,8 @@ function SearchSelect({
     setPicked(value);
   };
 
-  const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
+  // Keys while the menu is open (focus on the search box, or on the button without one).
+  const onOpenKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const step = event.key === "ArrowDown" ? 1 : -1;
@@ -109,15 +125,15 @@ function SearchSelect({
       if (option && !option.disabled) choose(option.value);
     } else if (event.key === "Escape") {
       event.preventDefault();
-      setOpen(false);
+      hide();
       trigger.current?.focus();
     } else if (event.key === "Tab") {
-      setOpen(false);
+      hide();
     }
   };
 
   return (
-    <div className="admin-combo" ref={box}>
+    <div className="admin-combo" ref={box} onKeyDown={open ? onOpenKey : undefined}>
       <select
         {...rest}
         ref={native}
@@ -135,9 +151,11 @@ function SearchSelect({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => (open ? setOpen(false) : show())}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={searchable ? undefined : activeId}
+        onClick={() => (open ? hide() : show())}
         onKeyDown={(event) => {
-          if (event.key === "ArrowDown") {
+          if (!open && event.key === "ArrowDown") {
             event.preventDefault();
             show();
           }
@@ -150,21 +168,22 @@ function SearchSelect({
       </button>
       {open ? (
         <div className="admin-row-menu__panel admin-combo__panel" style={position}>
-          <input
-            className="admin-input admin-combo__search"
-            type="search"
-            placeholder="Search…"
-            aria-label="Search the options"
-            aria-controls={listId}
-            aria-activedescendant={shown[active] ? `${listId}-${active}` : undefined}
-            autoFocus
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setActive(0);
-            }}
-            onKeyDown={onSearchKey}
-          />
+          {searchable ? (
+            <input
+              className="admin-input admin-combo__search"
+              type="search"
+              placeholder="Search…"
+              aria-label="Search the options"
+              aria-controls={listId}
+              aria-activedescendant={activeId}
+              autoFocus
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActive(0);
+              }}
+            />
+          ) : null}
           <ul id={listId} role="listbox" className="admin-combo__list" aria-label={ariaLabel}>
             {shown.map((option, i) => (
               <li
@@ -184,8 +203,7 @@ function SearchSelect({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => !option.disabled && choose(option.value)}
               >
-                <span>{option.label}</span>
-                {option.value === current ? <Icon name="check" size={14} /> : null}
+                {option.label}
               </li>
             ))}
             {shown.length === 0 ? <li className="admin-combo__empty">No matches</li> : null}

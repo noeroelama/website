@@ -409,7 +409,6 @@ export function AuditPage({
                 </option>
               ))}
             </Select>
-            <Icon name="chevronDown" size={14} />
           </label>
           <label className="admin-audit-pick">
             <span>User</span>
@@ -421,7 +420,6 @@ export function AuditPage({
                 </option>
               ))}
             </Select>
-            <Icon name="chevronDown" size={14} />
           </label>
           <label className="admin-audit-pick">
             <span>Action</span>
@@ -436,7 +434,6 @@ export function AuditPage({
                 </option>
               ))}
             </Select>
-            <Icon name="chevronDown" size={14} />
           </label>
           <SearchBox
             placeholder="Search by title..."

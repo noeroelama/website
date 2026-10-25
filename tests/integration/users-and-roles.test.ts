@@ -7,9 +7,14 @@ import {
 } from "@website/db/firestore";
 import { createMemoryPasskeyStore } from "@website/db/memory";
 import { createLogger } from "@website/observability";
-import { canAccessAdmin, PAGE_PERMISSIONS, type Principal } from "@website/permissions";
+import {
+  canAccessAdmin,
+  DEFAULT_ROLE_COLOR,
+  ROLE_COLORS,
+  type Principal,
+} from "@website/permissions";
 import { createAccountActions } from "../../apps/admin/src/server/accounts";
-import { createRoleActions, SUGGESTED_ROLES } from "../../apps/admin/src/server/roles";
+import { createRoleActions } from "../../apps/admin/src/server/roles";
 import { fakeFirestore } from "../support/fake-firestore";
 
 type Db = Parameters<typeof createFirestoreAccountStore>[0];
@@ -28,12 +33,14 @@ let methods: Record<string, { providers: string[]; mfaFactors: number }>;
 let revokeSessions: ReturnType<typeof vi.fn<(uid: string) => Promise<void>>>;
 let setDisabled: ReturnType<typeof vi.fn<(uid: string, disabled: boolean) => Promise<void>>>;
 let logLines: string[];
+let invitesSent: { email: string; roleName: string }[];
 let deps: {
   accounts: ReturnType<typeof createFirestoreAccountStore>;
   roles: ReturnType<typeof createFirestoreRoleStore>;
   passkeys: ReturnType<typeof createMemoryPasskeyStore>;
   authAdmin: AccountAdmin;
   logger: ReturnType<typeof createLogger>;
+  sendInvite: (invite: { email: string }, roleName: string) => Promise<unknown>;
 };
 
 beforeEach(() => {
@@ -66,12 +73,17 @@ beforeEach(() => {
     revokeSessions,
   };
   logLines = [];
+  invitesSent = [];
   deps = {
     accounts: createFirestoreAccountStore(db),
     roles: createFirestoreRoleStore(db),
     passkeys: createMemoryPasskeyStore(),
     authAdmin,
     logger: createLogger({ service: "admin", write: (line) => logLines.push(line) }),
+    sendInvite: (invite, roleName) => {
+      invitesSent.push({ email: invite.email, roleName });
+      return Promise.resolve("logged");
+    },
   };
 });
 
@@ -86,7 +98,7 @@ const freshContext = () =>
 const as = (uid: string) => [() => principalOf(uid), freshContext] as const;
 const giveEditor = { uid: "ana", version: 1, roleId: "editor", scope: global };
 
-describe("Users page: give and remove roles", () => {
+describe("Role Manager: give and remove roles", () => {
   it("a superadmin gives a staff role: written with its audit entry, sessions revoked, security event logged", async () => {
     const result = await createAccountActions(deps).assignRole(...as("boss"))(giveEditor);
     expect(result).toEqual({ ok: true, data: { version: 2 } });
@@ -348,14 +360,31 @@ describe("Users page: give and remove roles", () => {
     });
   });
 
-  it("lists accounts by role and status, page by page", async () => {
+  it("lists the accounts holding one of the given roles (Role Manager), once each", async () => {
     const store = deps.accounts;
-    const first = await store.list({ limit: 2 });
-    expect(first.items.map((u) => u.uid)).toEqual(["ana", "boss"]);
-    const second = await store.list({ limit: 2, cursor: first.nextCursor ?? undefined });
-    expect(second).toMatchObject({ items: [{ uid: "manager" }], nextCursor: null });
-    expect((await store.list({ limit: 10, roleId: "superadmin" })).items).toHaveLength(1);
-    expect((await store.list({ limit: 10, status: "inactive" })).items).toHaveLength(0);
+    fake.docs.set("users/both", { uid: "both", ...user(["editor", "user_manager"]) });
+    fake.docs.set("users/ended", {
+      uid: "ended",
+      ...user(["user"]),
+      roleAssignments: [
+        { roleId: "user", scope: global },
+        { roleId: "editor", scope: global, revokedAt: new Date("2026-01-01T00:00:00Z") },
+      ],
+      roleIds: ["user", "editor"],
+    });
+    const ids = async (roleIds: string[], chapterIds?: string[]) =>
+      (await store.listRoleHolders(roleIds, chapterIds)).map((u) => u.uid).sort();
+    // Ana holds only the default role; an ended (revoked) assignment does not count.
+    expect(await ids(["superadmin", "editor", "user_manager"])).toEqual([
+      "boss",
+      "both",
+      "manager",
+    ]);
+    expect(await ids(["editor"])).toEqual(["both"]);
+    expect(await ids([])).toEqual([]);
+    // More than 30 roles are queried in chunks of 30.
+    const many = [...Array.from({ length: 30 }, (_, i) => `r${i}`), "superadmin"];
+    expect(await ids(many)).toEqual(["boss"]);
     expect(await store.countActiveSuperadmins()).toBe(1);
     expect(await store.get("nobody")).toBeNull();
     expect(await store.get("bad/id")).toBeNull();
@@ -369,21 +398,24 @@ describe("Users page: give and remove roles", () => {
       email: "kim@example.org",
       chapterId: "kr",
     });
-    const store = deps.accounts;
-    expect((await store.list({ limit: 10, chapterIds: ["jp"] })).items.map((u) => u.uid)).toEqual([
-      "ana",
-    ]);
-    expect(
-      (await store.list({ limit: 10, chapterIds: ["jp", "kr"], roleId: "user" })).items.map(
-        (u) => u.uid,
-      ),
-    ).toEqual(["ana", "kim"]);
-    expect(await store.list({ limit: 10, chapterIds: [] })).toEqual({
-      items: [],
-      nextCursor: null,
+    fake.docs.set("users/sam", {
+      uid: "sam",
+      ...user(["editor"]),
+      email: "sam@example.org",
+      chapterId: "jp",
     });
+    const store = deps.accounts;
+    const holders = async (chapterIds: string[]) =>
+      (await store.listRoleHolders(["editor", "user"], chapterIds)).map((u) => u.uid).sort();
+    expect(await holders(["jp"])).toEqual(["ana", "sam"]);
+    expect(await holders(["jp", "kr"])).toEqual(["ana", "kim", "sam"]);
+    expect(await store.listRoleHolders(["superadmin"], ["jp"])).toEqual([]);
+    expect(await holders([])).toEqual([]);
     await expect(
-      store.list({ limit: 10, chapterIds: Array.from({ length: 31 }, (_, i) => `c${i}`) }),
+      store.listRoleHolders(
+        ["editor"],
+        Array.from({ length: 31 }, (_, i) => `c${i}`),
+      ),
     ).rejects.toThrow(/30 chapters/);
     expect(await store.get("ana")).toMatchObject({ chapterId: "jp" });
     expect(await store.get("boss")).toMatchObject({ chapterId: null });
@@ -410,15 +442,288 @@ describe("Users page: give and remove roles", () => {
   });
 });
 
-describe("Roles page: custom roles are data", () => {
+describe("Role Manager → Add New People: give a role, or invite by e-mail", () => {
+  const at = new Date("2026-10-24T03:00:00Z");
+  const inviteDoc = () =>
+    [...fake.docs.entries()].filter(([path]) => path.startsWith("invites/")).map(([, d]) => d);
+  const auditOf = (resourceType: string) =>
+    [...fake.docs.entries()]
+      .filter(([path, d]) => path.startsWith("auditLogs/") && d["resourceType"] === resourceType)
+      .map(([, d]) => d);
+
+  it("gives the role to the account found by e-mail (any case) or by its exact name", async () => {
+    fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), name: "Ana Putri" });
+    const add = createAccountActions(deps).addPerson(...as("boss"));
+    expect(await add({ person: " Ana Putri ", roleId: "editor" })).toEqual({
+      ok: true,
+      data: { invited: false },
+    });
+    expect(await add({ person: "ANA@example.org", roleId: "user_manager" })).toEqual({
+      ok: true,
+      data: { invited: false },
+    });
+    expect(fake.docs.get("users/ana")).toMatchObject({
+      roleIds: ["user", "editor", "user_manager"],
+      version: 3,
+    });
+    expect(revokeSessions).toHaveBeenCalledWith("ana");
+    expect(invitesSent).toEqual([]);
+
+    // The same rules as giving a role on the account itself.
+    expect(await add({ person: "ana@example.org", roleId: "editor" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("already has")],
+    });
+    expect(
+      await createAccountActions(deps).addPerson(...as("manager"))({
+        person: "boss@example.org",
+        roleId: "editor",
+      }),
+    ).toMatchObject({ error: "refused" });
+  });
+
+  it("suggests accounts while typing: e-mail or name prefix, any letter case, at most 8", async () => {
+    fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), name: "Ana Putri" });
+    fake.docs.set("users/anto", { uid: "anto", ...user(["user"]), email: "x@y.org", name: "Anto" });
+    for (let i = 0; i < 10; i++) {
+      fake.docs.set(`users/z${i}`, { uid: `z${i}`, ...user(["user"]), email: `zed${i}@y.org` });
+    }
+    const find = createAccountActions(deps).findPeople(...as("boss"));
+    expect(await find({ query: "ANA" })).toEqual({
+      ok: true,
+      data: [{ uid: "ana", name: "Ana Putri", email: "ana@example.org" }],
+    });
+    // "ana putri" finds "Ana Putri" (the name is also tried with capital initials).
+    expect(await find({ query: "ana putri" })).toMatchObject({ data: [{ uid: "ana" }] });
+    expect(await find({ query: "An" })).toMatchObject({
+      data: [{ uid: "ana" }, { uid: "anto" }],
+    });
+    const zed = await find({ query: "zed" });
+    expect(zed.ok && zed.data).toHaveLength(8);
+    expect(await find({ query: "nobody" })).toEqual({ ok: true, data: [] });
+    expect(await find({ query: "a" })).toMatchObject({ ok: false, error: "invalid_input" });
+    // Only staff who may add people get suggestions.
+    fake.docs.set("roles/reader", {
+      name: "Reader",
+      permissions: ["users.read"],
+      version: 1,
+      deletedAt: null,
+    });
+    fake.docs.set("users/reader", { uid: "reader", ...user(["reader"]) });
+    expect(await createAccountActions(deps).findPeople(...as("reader"))({ query: "ana" })).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+  });
+
+  it("refuses a name that matches no account or several, and input that is not a person", async () => {
+    fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), name: "Ana" });
+    fake.docs.set("users/ana2", { uid: "ana2", ...user(["user"]), name: "Ana" });
+    const add = createAccountActions(deps).addPerson(...as("boss"));
+    expect(await add({ person: "Nobody Here", roleId: "editor" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("Invite the person by e-mail")],
+    });
+    expect(await add({ person: "Ana", roleId: "editor" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("Several accounts")],
+    });
+    for (const person of ["", "not-an-email@", "a".repeat(121)]) {
+      expect(await add({ person, roleId: "editor" })).toMatchObject({ error: "invalid_input" });
+    }
+    expect(await add({ person: "x@example.org", roleId: "ghost" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("does not exist")],
+    });
+  });
+
+  it("invites an e-mail without an account: stored once per role, audited and e-mailed", async () => {
+    const add = createAccountActions(deps).addPerson(...as("boss"));
+    expect(await add({ person: "New.Person@Example.org", roleId: "editor" })).toEqual({
+      ok: true,
+      data: { invited: true },
+    });
+    expect(inviteDoc()).toEqual([
+      expect.objectContaining({
+        email: "new.person@example.org",
+        roleIds: ["editor"],
+        status: "pending",
+        invitedBy: "boss",
+        version: 1,
+      }),
+    ]);
+    expect(invitesSent).toEqual([{ email: "new.person@example.org", roleName: "Editor" }]);
+    expect(await add({ person: "new.person@example.org", roleId: "editor" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("already invited")],
+    });
+    expect(await add({ person: "new.person@example.org", roleId: "member" })).toMatchObject({
+      ok: true,
+    });
+    expect(inviteDoc()[0]).toMatchObject({ roleIds: ["editor", "member"], version: 2 });
+    expect(auditOf("invite").map((d) => [d["action"], d["module"], d["revertible"]])).toEqual([
+      ["CREATE", "users", false],
+      ["UPDATE", "users", false],
+    ]);
+    expect(await deps.accounts.listInvites()).toEqual([
+      expect.objectContaining({ email: "new.person@example.org", roleIds: ["editor", "member"] }),
+    ]);
+
+    // Escalation: nobody invites into a role they could not give.
+    const asManager = createAccountActions(deps).addPerson(...as("manager"));
+    for (const roleId of ["editor", "superadmin"]) {
+      expect(await asManager({ person: "x@example.org", roleId })).toMatchObject({
+        error: "refused",
+        issues: [expect.stringContaining("permissions you hold")],
+      });
+    }
+  });
+
+  it("cancels a pending invite (kept as history, audited)", async () => {
+    const actions = createAccountActions(deps);
+    await actions.addPerson(...as("boss"))({ person: "new@example.org", roleId: "editor" });
+    expect(await actions.cancelInvite(...as("boss"))({ email: "NEW@example.org" })).toEqual({
+      ok: true,
+      data: { email: "new@example.org" },
+    });
+    expect(inviteDoc()[0]).toMatchObject({ status: "cancelled", roleIds: [] });
+    expect(await deps.accounts.listInvites()).toEqual([]);
+    expect(auditOf("invite").at(-1)).toMatchObject({ action: "DELETE" });
+    expect(await actions.cancelInvite(...as("boss"))({ email: "new@example.org" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("no pending invite")],
+    });
+    expect(
+      await actions.cancelInvite(...as("boss"))({ email: "nobody@example.org" }),
+    ).toMatchObject({ error: "refused" });
+    // A cancelled invite can be sent again.
+    expect(
+      await actions.addPerson(...as("boss"))({ person: "new@example.org", roleId: "editor" }),
+    ).toMatchObject({ ok: true, data: { invited: true } });
+    expect(inviteDoc()[0]).toMatchObject({ status: "pending", roleIds: ["editor"] });
+  });
+
+  it("applies an invite at sign-in with a verified e-mail; staff roles wait for two sign-in methods", async () => {
+    await createAccountActions(deps).addPerson(...as("boss"))({
+      person: "neo@example.org",
+      roleId: "editor",
+    });
+    await createAccountActions(deps).addPerson(...as("boss"))({
+      person: "neo@example.org",
+      roleId: "member",
+    });
+    const users = createFirestoreUserStore(fake.db as unknown as Db);
+    const neo = { uid: "neo", email: "Neo@example.org", name: "Neo" };
+    const two = vi.fn(() => Promise.resolve(false));
+
+    // Unverified e-mail: anyone could have typed it, so nothing is applied.
+    expect(await users.recordSignIn({ ...neo, emailVerified: false }, at, two)).toEqual({
+      roleIds: ["user"],
+    });
+    expect(two).not.toHaveBeenCalled();
+    // Verified, one sign-in method: the role without admin pages applies, the staff role waits.
+    expect(await users.recordSignIn({ ...neo, emailVerified: true }, at, two)).toEqual({
+      roleIds: ["user", "member"],
+    });
+    expect(inviteDoc()[0]).toMatchObject({ status: "pending", roleIds: ["editor"] });
+    // After adding a passkey, the next sign-in applies the rest.
+    two.mockResolvedValue(true);
+    expect(await users.recordSignIn({ ...neo, emailVerified: true }, at, two)).toEqual({
+      roleIds: ["user", "member", "editor"],
+    });
+    expect(inviteDoc()[0]).toMatchObject({ status: "accepted", roleIds: [] });
+    expect(fake.docs.get("users/neo")?.["roleAssignments"]).toContainEqual(
+      expect.objectContaining({ roleId: "editor", scope: global, source: "manual" }),
+    );
+    const bySystem = auditOf("user").filter(
+      (d) => (d["actor"] as { type: string }).type === "system",
+    );
+    expect(bySystem).toHaveLength(2);
+    // No invite: the methods are never looked up.
+    two.mockClear();
+    await users.recordSignIn({ ...neo, emailVerified: true }, at, two);
+    await users.recordSignIn({ uid: "x", email: null, emailVerified: true }, at, two);
+    await users.recordSignIn({ uid: "y", email: "y@example.org", emailVerified: true }, at);
+    expect(two).not.toHaveBeenCalled();
+  });
+
+  it("applies on the first sign-in; drops invited roles that were deleted or are already held", async () => {
+    const add = createAccountActions(deps).addPerson(...as("boss"));
+    await add({ person: "kai@example.org", roleId: "member" });
+    await add({ person: "kai@example.org", roleId: "editor" });
+    const users = createFirestoreUserStore(fake.db as unknown as Db);
+    // Without a way to check the sign-in methods, the staff role waits.
+    expect(
+      await users.recordSignIn({ uid: "kai", email: "kai@example.org", emailVerified: true }, at),
+    ).toEqual({ roleIds: ["user", "member"] });
+    expect(fake.docs.get("users/kai")).toMatchObject({ version: 1, roleIds: ["user", "member"] });
+    expect(
+      [...fake.docs.values()].find((d) => d["email"] === "kai@example.org" && "invitedBy" in d),
+    ).toMatchObject({ status: "pending", roleIds: ["editor"] });
+
+    await add({ person: "zoe@example.org", roleId: "editor" });
+    fake.docs.set("users/zoe", {
+      uid: "zoe",
+      ...user(["user", "editor"]),
+      email: "zoe@example.org",
+    });
+    const id = [...fake.docs.entries()].find(
+      ([path, d]) => path.startsWith("invites/") && d["email"] === "zoe@example.org",
+    )![0];
+    fake.docs.set(id, { ...fake.docs.get(id), roleIds: ["editor", "gone"] });
+    expect(
+      await users.recordSignIn(
+        { uid: "zoe", email: "zoe@example.org", emailVerified: true },
+        at,
+        () => Promise.resolve(true),
+      ),
+    ).toEqual({ roleIds: ["user", "editor"] });
+    expect(fake.docs.get(id)).toMatchObject({ status: "accepted", roleIds: [] });
+  });
+
+  it("shows sign-in methods and dates on the person's popup, only inside the viewer's scope", async () => {
+    const details = createAccountActions(deps).personDetails;
+    expect(await details(...as("boss"))({ uid: "ana" })).toEqual({
+      ok: true,
+      data: { providers: ["google.com"], mfaFactors: 1, passkeys: 0 },
+    });
+    fake.docs.set("roles/jp_reader", {
+      name: "JP reader",
+      permissions: ["users.read"],
+      version: 1,
+      deletedAt: null,
+    });
+    fake.docs.set("users/jp", {
+      uid: "jp",
+      ...user([]),
+      roleAssignments: [{ roleId: "jp_reader", scope: { type: "chapter", chapterId: "jp" } }],
+      roleIds: ["jp_reader"],
+    });
+    fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), chapterId: "jp" });
+    expect(await details(...as("jp"))({ uid: "ana" })).toMatchObject({ ok: true });
+    expect(await details(...as("jp"))({ uid: "boss" })).toEqual({ ok: false, error: "forbidden" });
+    expect(await details(...as("boss"))({ uid: "ghost" })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("does not exist")],
+    });
+  });
+});
+
+describe("Role Manager → Edit Role: custom roles are data", () => {
   const actions = () => createRoleActions({ roles: deps.roles, now: () => new Date() });
 
   it("creates a role from its name (audited) and refuses a duplicate name", async () => {
     const save = actions().saveRole(...as("boss"));
-    const input = { name: "Chapter Reporter", permissions: ["articles.edit"], version: null };
+    const input = {
+      name: "Chapter Reporter",
+      color: "#10B981",
+      permissions: ["articles.edit"],
+      version: null,
+    };
     expect(await save(input)).toEqual({ ok: true, data: { id: "chapter_reporter", version: 1 } });
     expect(fake.docs.get("roles/chapter_reporter")).toMatchObject({
       name: "Chapter Reporter",
+      color: "#10B981",
       permissions: ["articles.edit", "articles.read"],
     });
     expect(
@@ -443,7 +748,12 @@ describe("Roles page: custom roles are data", () => {
     fake.docs.set("users/rita", { uid: "rita", ...user(["role_editor"]) });
     const asRita = actions().saveRole(...as("rita"));
     expect(
-      await asRita({ name: "Publisher", permissions: ["articles.publish"], version: null }),
+      await asRita({
+        name: "Publisher",
+        color: "#10B981",
+        permissions: ["articles.publish"],
+        version: null,
+      }),
     ).toMatchObject({
       error: "refused",
       issues: [expect.stringContaining("permissions you hold")],
@@ -452,6 +762,7 @@ describe("Roles page: custom roles are data", () => {
       await actions().saveRole(...as("boss"))({
         id: "member",
         name: "Member",
+        color: "#10B981",
         permissions: [],
         version: 1,
       }),
@@ -478,7 +789,12 @@ describe("Roles page: custom roles are data", () => {
 
   it("refuses names without letters, built-in deletes and stale versions", async () => {
     expect(
-      await actions().saveRole(...as("boss"))({ name: "!!", permissions: [], version: null }),
+      await actions().saveRole(...as("boss"))({
+        name: "!!",
+        color: "#10B981",
+        permissions: [],
+        version: null,
+      }),
     ).toMatchObject({ error: "refused", issues: [expect.stringContaining("letters")] });
     expect(
       await actions().deleteRole(...as("boss"))({ id: "superadmin", version: 1 }),
@@ -487,6 +803,7 @@ describe("Roles page: custom roles are data", () => {
       await actions().saveRole(...as("boss"))({
         id: "editor",
         name: "Editor",
+        color: "#10B981",
         permissions: [],
         version: 9,
       }),
@@ -499,6 +816,7 @@ describe("Roles page: custom roles are data", () => {
       await actions().saveRole(...as("boss"))({
         id: "editor",
         name: "Editor (updated)",
+        color: "#6366F1",
         permissions: ["articles.read"],
         version: 1,
       }),
@@ -511,7 +829,7 @@ describe("Roles page: custom roles are data", () => {
     );
   });
 
-  it("someone with roles.edit cannot delete or seed roles holding more than they have", async () => {
+  it("someone with roles.edit cannot delete roles holding more than they have", async () => {
     fake.docs.set("roles/role_editor", {
       name: "Role editor",
       permissions: ["roles.read", "roles.edit"],
@@ -533,21 +851,28 @@ describe("Roles page: custom roles are data", () => {
       ok: false,
       error: "conflict",
     });
-    expect(await actions().addSuggestedRoles(...as("rita"))({})).toEqual({
-      ok: true,
-      data: { added: [] },
-    });
   });
 
-  it("adds only the suggested roles that are missing", async () => {
-    const result = await actions().addSuggestedRoles(...as("boss"))({});
-    expect(result).toEqual({
-      ok: true,
-      data: { added: SUGGESTED_ROLES.map((r) => r.id).filter((id) => id !== "editor") },
-    });
-    expect(fake.docs.get("roles/admin")?.["permissions"]).toEqual(
-      expect.arrayContaining([...PAGE_PERMISSIONS].filter((p) => p.startsWith("users."))),
+  it("gives every role a colour from the palette; built-in and older roles get one too", async () => {
+    const save = actions().saveRole(...as("boss"));
+    for (const color of ["#123456", "red", undefined]) {
+      expect(await save({ name: "Painted", color, permissions: [], version: null })).toMatchObject({
+        ok: false,
+        error: "invalid_input",
+      });
+    }
+    expect(
+      await save({ name: "Painted", color: ROLE_COLORS[2], permissions: [], version: null }),
+    ).toMatchObject({ ok: true });
+    const audit = [...fake.docs.values()].find(
+      (d) => d["module"] === "roles" && d["title"] === "Painted",
     );
-    expect((await actions().addSuggestedRoles(...as("boss"))({})).ok && true).toBe(true);
+    expect(audit?.["after"]).toMatchObject({ color: ROLE_COLORS[2] });
+    expect(await deps.roles.get("painted")).toMatchObject({ color: ROLE_COLORS[2] });
+    // Saved before colours existed, or a colour that is not in the palette (any more).
+    expect(await deps.roles.get("editor")).toMatchObject({ color: DEFAULT_ROLE_COLOR });
+    fake.docs.set("roles/odd", { name: "Odd", permissions: [], color: "#000000", version: 1 });
+    expect(await deps.roles.get("odd")).toMatchObject({ color: DEFAULT_ROLE_COLOR });
+    for (const role of await deps.roles.list()) expect(ROLE_COLORS).toContain(role.color);
   });
 });

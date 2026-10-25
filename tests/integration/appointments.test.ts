@@ -281,6 +281,7 @@ describe("appointments → roles (B7)", () => {
       accounts: createFirestoreAccountStore(fake.db as unknown as Db),
       roles: createFirestoreRoleStore(fake.db as unknown as Db),
       passkeys: createMemoryPasskeyStore(),
+      sendInvite: () => Promise.resolve("logged"),
       authAdmin: {
         signInMethods: () => Promise.resolve({ providers: ["google.com"], mfaFactors: 1 }),
         setDisabled: () => Promise.resolve(),
@@ -340,6 +341,7 @@ describe("appointments → roles (B7)", () => {
       accounts,
       roles: createFirestoreRoleStore(fake.db as unknown as Db),
       passkeys: createMemoryPasskeyStore(),
+      sendInvite: () => Promise.resolve("logged"),
       authAdmin: {
         signInMethods: () => Promise.resolve({ providers: [], mfaFactors: 0 }),
         setDisabled: () => Promise.resolve(),

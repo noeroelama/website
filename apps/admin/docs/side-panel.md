@@ -3,7 +3,7 @@
 ## What it does
 
 The navigation column on every staff page: logo and organisation name, the MENU list, and the
-signed-in staff member with an account menu (Profile, Account, Emails, Log out). On screens
+signed-in staff member with an account menu (Profile, Account, Log out). On screens
 narrower than 1024 px it becomes a drawer opened from a top bar, closed by the backdrop, Escape,
 or following a link.
 
@@ -16,8 +16,9 @@ or following a link.
 - Page gate: `requireAdminViewer` in `apps/admin/src/server/context.ts`, messages in
   `apps/admin/src/components/access-message.tsx`
 - Menu entries and permissions: `apps/admin/src/navigation.ts`
-- Logo: `apps/admin/public/icon.png` (placeholder until the PPIDK logo is supplied — replace the file,
-  keep the name)
+- Logo: `apps/admin/public/logo.webp` (shield and organisation name in one image, full width of
+  the panel; the same file as `apps/web/public/logo.webp`), linking to the public website
+  (`WEB_URL`; not a link when it is unset); also the optional QR-code centre logo in Tools
 - Tests: `tests/unit/admin-navigation.test.ts`
 
 ## How to use it
@@ -51,8 +52,10 @@ export default async function Page() {
   are refused (`packages/domain/docs/members.md`). A unit test checks that every menu entry has a
   page calling `requireAdminViewer` with the same href and permission.
 - The name comes from the sign-in provider (Google); otherwise the email is shown.
-- Profile, Account and Emails link to `/profile`, `/account` and `/emails`; those pages are built in
-  later steps. Log out calls `DELETE /api/session`.
+- Profile and Account open the public website (`WEB_URL/account/profile`, `WEB_URL/account`;
+  same session cookie), so there is one profile and one account page. The web header has the
+  same menu (`apps/web/docs/public-site.md`). Log out calls `DELETE /api/session`.
+- E-mail lives in the MENU as **Email** (`/emails`, `messages.read`): see [messaging.md](messaging.md).
 - Accessibility: skip link, `aria-current` on the active page, 44 px targets, visible focus,
   keyboard menu (arrows, Escape), reduced-motion respected.
 

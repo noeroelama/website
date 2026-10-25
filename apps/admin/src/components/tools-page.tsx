@@ -52,20 +52,20 @@ function dataUrlForLogo(): Promise<string> {
     img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
+        // Natural size: the SVG fits the wide logo into the square chip (xMidYMid meet).
         const canvas = document.createElement("canvas");
-        const side = Math.min(img.naturalWidth, img.naturalHeight) || 256;
-        canvas.width = side;
-        canvas.height = side;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
         const ctx = canvas.getContext("2d");
         if (!ctx) return resolve("");
-        ctx.drawImage(img, 0, 0, side, side);
+        ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       } catch {
         resolve("");
       }
     };
     img.onerror = () => resolve("");
-    img.src = "/icon.png";
+    img.src = "/logo.webp";
   });
   return logoUrlPromise;
 }
@@ -191,7 +191,7 @@ function QrPreview({
               {/* Brand mark from the admin public folder; content only — see admin-logo. */}
               {/* eslint-disable-next-line @next/next/no-img-element -- static packed asset */}
               <img
-                src="/icon.png"
+                src="/logo.webp"
                 alt="PPIDK Asiania logo"
                 className="admin-qr-preview__logo-img"
               />

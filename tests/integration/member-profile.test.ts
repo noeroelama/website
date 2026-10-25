@@ -60,7 +60,6 @@ describe("member profile on the website (B3)", () => {
     expect(await own().save(siti, { version: null, profile: input })).toEqual({
       ok: true,
       version: 1,
-      pendingReview: false,
     });
     const saved = await own().load(siti);
     expect(saved).toMatchObject({
@@ -81,7 +80,7 @@ describe("member profile on the website (B3)", () => {
       now: () => new Date("2026-11-01"),
     });
     expect(await later.save(siti, { version: 1, profile: { ...input, ppiCountry: "KR" } })).toEqual(
-      { ok: true, version: 2, pendingReview: false },
+      { ok: true, version: 2 },
     );
     expect(await store.findByUserId("siti")).toMatchObject({
       ppiCountry: "KR",
@@ -91,7 +90,7 @@ describe("member profile on the website (B3)", () => {
     expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: "ch-kr" });
     // A country without an active chapter clears it.
     expect(await later.save(siti, { version: 2, profile: { ...input, ppiCountry: "AU" } })).toEqual(
-      { ok: true, version: 3, pendingReview: false },
+      { ok: true, version: 3 },
     );
     expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: null });
   });

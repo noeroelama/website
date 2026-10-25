@@ -1,8 +1,9 @@
 import { Suspense, type ReactNode } from "react";
-import { AppShell, StatusBadge } from "@website/ui";
+import { AppShell, initials, StatusBadge } from "@website/ui";
 import { AdminSidebar } from "@/components/admin-sidebar";
-import { initials, navigationFor } from "@/navigation";
+import { navigationFor } from "@/navigation";
 import { getAdminViewer } from "@/server/context";
+import { getAppUrls } from "@/server/env";
 
 /**
  * Frame for every staff page. Partial Prerendering: the page segment ({children}) is ALWAYS
@@ -29,6 +30,7 @@ async function Panel({ children }: { children: ReactNode }) {
     <AdminSidebar
       items={navigationFor(viewer.principal)}
       user={{ name, email: viewer.email, initials: initials(name) }}
+      webUrl={getAppUrls().WEB_URL}
     >
       {children}
     </AdminSidebar>

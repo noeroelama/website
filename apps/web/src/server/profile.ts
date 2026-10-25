@@ -7,7 +7,6 @@ import {
   memberProfileInputSchema,
   ownProfile,
   PRIVACY_POLICY_VERSION,
-  splitOwnEdit,
   type MemberProfile,
   type MemberProfileRepository,
 } from "@website/domain/members";
@@ -28,11 +27,10 @@ export interface ProfileOwner {
 }
 
 export type ProfileSaveResult =
-  /** pendingReview: changes of verified data wait for a verifier (the rest applied). */
-  | { ok: true; version: number; pendingReview: boolean }
+  | { ok: true; version: number }
   | {
       ok: false;
-      error: "signin" | "verify" | "invalid" | "consent" | "conflict" | "pending";
+      error: "signin" | "verify" | "invalid" | "consent" | "conflict";
       /** invalid: first message per field (top-level name, e.g. "addressIndonesia"). */
       fields?: Record<string, string>;
     };
@@ -85,21 +83,16 @@ export function createOwnProfile(deps: ProfileDeps) {
       }
       try {
         const current = await deps.profiles.findByUserId(owner.uid);
-        // Verified data (name, birth date, chapter, campus …) changes only after review (§63).
-        const { profile, request } = splitOwnEdit(
+        const profile = ownProfile(
+          { ...parsed.data, university: campus?.name ?? parsed.data.university },
+          { userId: owner.uid, email: owner.email },
           current,
-          ownProfile(
-            { ...parsed.data, university: campus?.name ?? parsed.data.university },
-            { userId: owner.uid, email: owner.email },
-            current,
-            now,
-          ),
+          now,
         );
-        const saved = await deps.profiles.save(profile, envelope.data.version, request);
-        return { ok: true, version: saved.version, pendingReview: request !== null };
+        const saved = await deps.profiles.save(profile, envelope.data.version);
+        return { ok: true, version: saved.version };
       } catch (error) {
         if (error instanceof ConcurrencyConflictError) return { ok: false, error: "conflict" };
-        if (error instanceof RuleViolationError) return { ok: false, error: "pending" };
         throw error;
       }
     },
@@ -126,7 +119,7 @@ export function createOwnProfile(deps: ProfileDeps) {
           { on: graduatedOn, markedBy: graduatedOn ? owner.uid : null },
           (current) => {
             if (graduatedOn) checkGraduationDate(graduatedOn, current, now);
-            else if (!canCancelGraduation(current, owner.uid, false)) {
+            else if (!canCancelGraduation(current, owner.uid)) {
               throw new RuleViolationError(
                 "This graduation was marked by an officer; ask the secretariat to cancel it.",
               );

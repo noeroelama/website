@@ -104,7 +104,7 @@ const json = <T>(value: string | null | undefined, fallback: T): T => {
  * the same e-mail, or `ppidk-<id>` created by the script); `roleMap` is
  * `settings/appointmentRoles`, so active appointments of the active period get their roles.
  * Manual PPIDK role assignments are not imported (roles are data here; they are listed in
- * `skipped` so the owner can grant them again on the Users page).
+ * `skipped` so the owner can grant them again in Role Manager).
  */
 export function mapPpidk(
   tables: PpidkTables,
@@ -308,9 +308,6 @@ export function mapPpidk(
       privacyPolicyVersion: `ppidk-import (current ${PRIVACY_POLICY_VERSION})`,
       consentedAt: now,
       chapterId: chapter,
-      verificationStatus: verified.has(owner) ? "verified" : "unverified",
-      verifiedBy: uid(p["verified_by_user_id"]),
-      verifiedAt: p["verified_at"] ? new Date(`${p["verified_at"]}Z`) : null,
       graduatedOn: day(p["graduated_on"]),
       graduationMarkedBy: uid(p["graduation_marked_by_user_id"]),
       ...meta,
@@ -366,7 +363,7 @@ export function mapPpidk(
     skipped.push({
       table: "role_assignments",
       id: r["id"] ?? "",
-      reason: `manual role ${r["role_id"] ?? ""} (${r["scope_type"] ?? "global"}) of user ${r["user_id"] ?? ""}: grant again on the Users page`,
+      reason: `manual role ${r["role_id"] ?? ""} (${r["scope_type"] ?? "global"}) of user ${r["user_id"] ?? ""}: grant again in Role Manager`,
     });
   }
 

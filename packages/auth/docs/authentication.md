@@ -56,7 +56,7 @@ sign in: POST /api/passkeys/login-options → browser signs → POST /api/passke
    **There is no way to self-register into the admin area.**
 4. **Bootstrap** — the first superadmin: the person signs in on web once, then the owner runs
    `node --env-file=apps/admin/.env.local infrastructure/scripts/grant-superadmin.mjs --email <address>`
-   (dry run), then again with `--apply`. Later superadmins are granted on the admin Users page.
+   (dry run), then again with `--apply`. Later superadmins are granted in the admin Role Manager.
 5. Too many wrong passwords: Firebase Auth throttles the account itself (`auth/too-many-requests`,
    shown as "Too many attempts…"); `/api/session` also has the per-IP limit. There is no custom
    failed-login counter (the server never sees failed Firebase password attempts).

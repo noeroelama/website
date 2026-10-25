@@ -284,7 +284,7 @@ describe("PPIDK people import (block J)", () => {
       {
         table: "role_assignments",
         id: "2",
-        reason: "manual role 9 (chapter) of user 2: grant again on the Users page",
+        reason: "manual role 9 (chapter) of user 2: grant again in Role Manager",
       },
     ]);
     expect(plan.counts).toMatchObject({ users: 2, memberProfiles: 1, appointments: 4, periods: 2 });
@@ -336,9 +336,9 @@ describe("PPIDK people import (block J)", () => {
       majors: ["Teknik Sipil"],
       addressIndonesia: { city: "Kota Bandung", province: "Jawa Barat" },
       chapterId: "ppidk-chapter-7",
-      verificationStatus: "verified",
-      verifiedBy: "ppidk-2",
     });
+    // No verification here: a verified PPIDK profile only gives the member role (below).
+    expect(doc("memberProfiles/firebase-ana")).not.toHaveProperty("verificationStatus");
     expect(doc("memberProfiles/firebase-ana")?.["privacyPolicyVersion"]).not.toBe("2026-10-18");
     expect(doc("appointments/ppidk-appointment-501")).toMatchObject({
       seat: "secretary",

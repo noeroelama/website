@@ -45,34 +45,26 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 - Tests: `tests/integration/member-profile.test.ts`, `tests/security/app-guards.test.ts`,
   `tests/integration/web-registration.test.ts`.
 
-## Verification, data changes and graduation (B4, B5)
+## Data changes and graduation (B5)
 
-- Rules: `packages/domain/src/members/verification.ts`; Firestore
-  `packages/db/src/firestore/member-profiles.ts` (`memberProfiles/{uid}` fields
-  `verificationStatus`, `verifiedBy`, `verifiedAt`, `graduatedOn`, `graduationMarkedBy`,
-  `chapterId`; requests in `profileChangeRequests/{uid}`); admin
-  `apps/admin/src/server/members.ts` and the **Members** page (`members.verify`); web
-  `apps/web/src/server/profile.ts` (`/account/profile`).
-- Guarded fields (PPIDK §63): full name, gender, date of birth, PPI country, campus. Not
-  verified yet: the member changes them at once, and each change is audited (actor `member`,
-  restricted values redacted). A verifier — `members.verify` for the member's chapter, never
-  their own data — verifies the profile. After that a change of guarded fields becomes a request
-  (one pending per profile, the verified values stay until approved; other fields apply at
-  once). Approve applies it (and moves the member's chapter when the country changed); reject
-  keeps the verified values. Every decision is audited (module `members`, not revertible).
-- Chapter isolation (§73): the queues are filtered by the viewer's chapters in the query, and
-  every action checks `members.verify` against the member's chapter read on the server
-  (`createGuardedAction` `resource` may load it). Birth date and gender show only with
-  `members.pii` for that chapter.
+- Rules: `packages/domain/src/members/verification.ts` (guarded fields, graduation); Firestore
+  `packages/db/src/firestore/member-profiles.ts` (`memberProfiles/{uid}` fields `graduatedOn`,
+  `graduationMarkedBy`, `chapterId`); web `apps/web/src/server/profile.ts` (`/account/profile`).
+- There is no profile verification (removed 2026-10-24 together with the admin Members page).
+  Every change the member saves applies at once. Changes of the guarded fields (PPIDK §63: full
+  name, gender, date of birth, PPI country, campus) are audited (actor `member`, module
+  `members`, restricted values redacted, not revertible). A new PPI country moves the member's
+  chapter (`chapterId` on the profile and on `users/{uid}`) in the same transaction.
+- Old documents may still have `verificationStatus`, `verifiedBy`, `verifiedAt`; they are ignored
+  when read and dropped on the next save. `profileChangeRequests` is no longer read or written.
 - Graduation (§67): only the date is stored; `studyStatus` computes student / graduating
-  (date ahead) / alumni. The member marks or corrects it at once; cancelling is allowed to a
-  verifier (with a reason) or to the member for a mark they set themselves. The date is refused
+  (date ahead) / alumni. The member marks or corrects it at once and may cancel only a mark they
+  set themselves (a mark imported from PPIDK and set by an officer stays). The date is refused
   before the year of entry or more than 10 years ahead. Graduation never ends an appointment:
   graduated officers of the active period appear on the admin dashboard for `appointments.edit`.
 - Not built yet: the student card (KTM) upload on the website (the private `ktm` image preset
-  exists; the web upload route comes with the documents phase), and marking another member's
-  graduation from the admin screen (the guarded action `setGraduation` exists).
-- Tests: `tests/integration/profile-verification.test.ts`.
+  exists; the web upload route comes with the documents phase).
+- Tests: `tests/integration/profile-graduation.test.ts`.
 
 ## Import from PPIDK (block J)
 
@@ -86,11 +78,11 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
   with Google or reset the password, and register passkeys again.
 - Profiles are imported as answers but count as incomplete (the consent is not the current
   policy, and PPIDK did not ask e.g. the emergency contact): each member completes and agrees on
-  the first visit (the profile gate). Verified PPIDK profiles stay verified and get the `member`
-  role.
+  the first visit (the profile gate). Profiles verified in PPIDK give the account the `member` role
+  (verification itself is not imported).
 - Active appointments of the active period get their roles from `settings/appointmentRoles`
   (set it before importing). Manual PPIDK role assignments are NOT imported (roles are data
-  here): the report lists them for the Users page. Chapters staff already added are reused by
+  here): the report lists them for Role Manager. Chapters staff already added are reused by
   country; the import refuses to run when periods were already created here.
 
 ## Universities (A3)
@@ -124,7 +116,7 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 - **The member**: reads/edits their own profile (`profile.read_own` / `profile.write_own`).
 - **Staff with `members.read`**: basic fields only (`toBasicView`).
 - **Staff with `members.pii`**: all fields — `chapter_admin` only for their chapter.
-- **Exports**: `members.export` (only roles given it in the Roles page), logged as a security event.
+- **Exports**: `members.export` (only roles given it in Role Manager), logged as a security event.
 - **Never**: the third-party gateway (lint-enforced), public pages, audit snapshots (restricted
   values are replaced with `[changed]`/`[unchanged]`; such changes are not revertible from the log).
 

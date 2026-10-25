@@ -42,6 +42,8 @@ function isActive(pathname: string, href: string) {
 export function AdminSidebar(props: {
   items: readonly NavItem[];
   user: SidebarUser;
+  /** Public website (WEB_URL): the logo links there. Unset (e.g. CI) → the logo is not a link. */
+  webUrl: string | undefined;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -55,6 +57,18 @@ export function AdminSidebar(props: {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const drawerVisible = isDesktop || drawerOpen;
+  // unoptimized: the Next dev image optimizer returns 500 for this webp; the plain <img> path is
+  // proven to work (see tools-page QR logo). The logo image already contains the organisation name.
+  const logo = (
+    <Image
+      src="/logo.webp"
+      alt={ORGANISATION}
+      width={3286}
+      height={1024}
+      className="admin-logo"
+      unoptimized
+    />
+  );
 
   useEffect(() => {
     if (isDesktop || !drawerOpen) return;
@@ -113,11 +127,13 @@ export function AdminSidebar(props: {
         inert={!drawerVisible}
       >
         <div className="admin-brand">
-          {/* unoptimized: the Next dev image optimizer returns 500 for webp of
-              this path (public/icon.png is the icon file-convention name); the
-              plain <img> path is proven to work (see tools-page QR logo). */}
-          <Image src="/icon.png" alt="" width={40} height={40} className="admin-logo" unoptimized />
-          <span className="admin-brand-name">{ORGANISATION}</span>
+          {props.webUrl ? (
+            <a href={props.webUrl} className="admin-brand-link">
+              {logo}
+            </a>
+          ) : (
+            logo
+          )}
         </div>
 
         <nav className="admin-nav" aria-labelledby={`${drawerId}-menu`}>
@@ -144,7 +160,11 @@ export function AdminSidebar(props: {
         </nav>
 
         <div className="admin-footer">
-          <UserMenu user={props.user} onNavigate={() => setDrawerOpen(false)} />
+          <UserMenu
+            user={props.user}
+            webUrl={props.webUrl}
+            onNavigate={() => setDrawerOpen(false)}
+          />
         </div>
       </aside>
 
@@ -155,7 +175,12 @@ export function AdminSidebar(props: {
   );
 }
 
-function UserMenu(props: { user: SidebarUser; onNavigate: () => void }) {
+/** Account menu. Profile and Account are pages of the public website (same session). */
+function UserMenu(props: {
+  user: SidebarUser;
+  webUrl: string | undefined;
+  onNavigate: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
   const router = useRouter();
@@ -206,6 +231,7 @@ function UserMenu(props: { user: SidebarUser; onNavigate: () => void }) {
     setOpen(false);
     props.onNavigate();
   };
+  const webPath = (path: string) => `${props.webUrl?.replace(/\/$/, "") ?? ""}${path}`;
 
   return (
     <div ref={rootRef} className="admin-user-menu">
@@ -218,16 +244,22 @@ function UserMenu(props: { user: SidebarUser; onNavigate: () => void }) {
           className="admin-popup"
           onKeyDown={onMenuKeyDown}
         >
-          <Link role="menuitem" href="/profile" className="admin-popup-item" onClick={close}>
+          <a
+            role="menuitem"
+            href={webPath("/account/profile")}
+            className="admin-popup-item"
+            onClick={close}
+          >
             <UserIcon /> Profile
-          </Link>
-          <Link role="menuitem" href="/account" className="admin-popup-item" onClick={close}>
+          </a>
+          <a
+            role="menuitem"
+            href={webPath("/account")}
+            className="admin-popup-item"
+            onClick={close}
+          >
             <GearIcon /> Account
-          </Link>
-          <Link role="menuitem" href="/emails" className="admin-popup-item" onClick={close}>
-            <MailIcon /> Emails
-          </Link>
-          <div role="separator" className="admin-popup-separator" />
+          </a>
           <button
             role="menuitem"
             type="button"
@@ -306,15 +338,6 @@ function GearIcon() {
     <Svg>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-    </Svg>
-  );
-}
-
-function MailIcon() {
-  return (
-    <Svg>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="m3 7 9 6 9-6" />
     </Svg>
   );
 }

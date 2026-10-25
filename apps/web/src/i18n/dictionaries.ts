@@ -35,6 +35,15 @@ const id = {
     map: "Peta",
     about: "Tentang Kami",
   },
+  /** Account part of the header: Log in chip, or the signed-in user's menu. */
+  account: {
+    login: "Masuk",
+    menu: "Akun",
+    profile: "Profil",
+    account: "Akun",
+    logout: "Keluar",
+    signOutFailed: "Gagal keluar. Silakan coba lagi.",
+  },
   footer: {
     tagline: "Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania",
     explore: "Jelajahi",
@@ -235,12 +244,6 @@ const id = {
     save: "Simpan profil",
     saving: "Menyimpan…",
     saved: "Profil tersimpan.",
-    savedForReview:
-      "Tersimpan. Perubahan data terverifikasi (nama, tanggal lahir, jenis kelamin, PPI negara, kampus) menunggu persetujuan pengurus.",
-    reviewPending:
-      "Perubahan data terverifikasimu masih menunggu persetujuan. Kolom lain bisa diubah; coba lagi setelah diputuskan.",
-    statusVerified: "Data dirimu sudah diverifikasi.",
-    statusUnverified: "Data dirimu belum diverifikasi pengurus.",
     graduation: "Kelulusan",
     graduationStudent: "Status: mahasiswa aktif.",
     graduationGraduating: "Status: akan lulus pada",
@@ -368,6 +371,14 @@ const en: Dictionary = {
     gallery: "Gallery",
     map: "Map",
     about: "About Us",
+  },
+  account: {
+    login: "Log in",
+    menu: "Account",
+    profile: "Profile",
+    account: "Account",
+    logout: "Log out",
+    signOutFailed: "Could not sign out. Please try again.",
   },
   footer: {
     tagline: "Overseas Indonesian Students' Association Alliance for Asia-Oceania Region",
@@ -570,12 +581,6 @@ const en: Dictionary = {
     save: "Save profile",
     saving: "Saving…",
     saved: "Profile saved.",
-    savedForReview:
-      "Saved. Changes of verified data (name, birth date, gender, PPI country, campus) wait for an officer's approval.",
-    reviewPending:
-      "A change of your verified data is still waiting for approval. Other fields can change; try again once it is decided.",
-    statusVerified: "Your data is verified.",
-    statusUnverified: "Your data is not verified by an officer yet.",
     graduation: "Graduation",
     graduationStudent: "Status: student.",
     graduationGraduating: "Status: graduating on",

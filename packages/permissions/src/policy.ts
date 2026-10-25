@@ -184,7 +184,7 @@ function holdsGlobally(principal: Principal | null, permissions: readonly PagePe
 }
 
 /**
- * Creating or editing a custom role (Roles page). Anti-escalation: `roles.edit`, and the editor
+ * Creating or editing a custom role (Role Manager → Edit Role). Anti-escalation: `roles.edit`, and the editor
  * must hold globally every permission the role gets AND (when editing) every permission it had.
  * Built-in roles can never be saved.
  */
@@ -231,7 +231,7 @@ export function canAppointInto(principal: Principal | null, role: RoleDefinition
 export type AccountChangeRefusal = "self" | "forbidden" | "last_superadmin";
 
 /**
- * Users page rules for adding/removing a role or changing an account's status:
+ * Role Manager rules for adding/removing a role or changing an account's status:
  * nobody changes their own account; `users.edit` + `canAssignRole` for the role concerned
  * (you cannot add or remove what you could not grant; superadmin only by a superadmin);
  * the organisation never ends up without an active global superadmin.

@@ -3,8 +3,8 @@ import type { MemberProfile } from "./profile";
 
 /**
  * Guarded fields (PPIDK DECISIONS §63): what is printed on letters and certificates or decides
- * membership. Before verification the member changes them freely (audited, redacted); once
- * verified, a change is a request a verifier approves. Other fields always apply at once.
+ * membership. The member changes them at once (there is no verification step); every change of
+ * these fields is audited with restricted values redacted. Other fields are not audited.
  */
 export const GUARDED_PROFILE_FIELDS = [
   "fullName",
@@ -31,29 +31,6 @@ export function guardedChanges(before: MemberProfile | null, after: MemberProfil
     }
   }
   return changes;
-}
-
-/**
- * A member's own save. Not verified yet: everything applies. Verified: free fields apply, the
- * guarded fields keep their verified values and their changes become `request` (null = none).
- */
-export function splitOwnEdit(
-  current: MemberProfile | null,
-  next: MemberProfile,
-): { profile: MemberProfile; request: GuardedChanges | null } {
-  const changes = guardedChanges(current, next);
-  if (current?.verification.status !== "verified") return { profile: next, request: null };
-  const kept = Object.fromEntries(GUARDED_PROFILE_FIELDS.map((f) => [f, current[f]]));
-  return {
-    profile: { ...next, ...kept },
-    request: Object.keys(changes).length > 0 ? changes : null,
-  };
-}
-
-/** Applies an approved request (`to` values) to the profile. */
-export function applyChanges(profile: MemberProfile, changes: GuardedChanges): MemberProfile {
-  const values = Object.fromEntries(Object.entries(changes).map(([field, c]) => [field, c.to]));
-  return { ...profile, ...values };
 }
 
 /* ---- Graduation (B5, PPIDK §67) ---- */
@@ -85,13 +62,12 @@ export function checkGraduationDate(
 }
 
 /**
- * Cancelling gives rights back, so it is not symmetric with marking (§67): a verifier may, and
- * the member only when they marked it themselves (same as never having marked it).
+ * Cancelling gives rights back, so it is not symmetric with marking (§67): the member may cancel
+ * only a mark they set themselves (same as never having marked it), not one an officer set.
  */
 export function canCancelGraduation(
   profile: Pick<MemberProfile, "userId" | "graduation">,
   actorId: string,
-  isVerifier: boolean,
 ): boolean {
-  return isVerifier || (actorId === profile.userId && profile.graduation.markedBy === actorId);
+  return actorId === profile.userId && profile.graduation.markedBy === actorId;
 }

@@ -1,4 +1,6 @@
 import {
+  DEFAULT_ROLE_COLOR,
+  isRoleColor,
   isSystemRoleId,
   normalizePermissions,
   resolveAssignments,
@@ -6,6 +8,7 @@ import {
   type AccountStatus,
   type Principal,
   type RoleAssignment,
+  type RoleColor,
   type RoleDefinition,
   type Scope,
 } from "@website/permissions";
@@ -23,12 +26,33 @@ export interface SignInIdentity {
   readonly uid: string;
   readonly email: string | null;
   readonly name?: string | null | undefined;
+  /** Only a verified e-mail can accept an invite. */
+  readonly emailVerified?: boolean | undefined;
 }
 
 /** web: records its own sign-ins (creates `users/{uid}` on the first one). */
 export interface SignInRecorder {
-  /** Returns the account's role ids (e.g. to log staff sign-ins as security events). */
-  recordSignIn(identity: SignInIdentity, now: Date): Promise<{ roleIds: string[] }>;
+  /**
+   * Returns the account's role ids (e.g. to log staff sign-ins as security events). Applies a
+   * pending invite of the (verified) e-mail; `twoSignInMethods` is asked only when an invited
+   * role opens admin pages (B2: staff roles need two sign-in methods).
+   */
+  recordSignIn(
+    identity: SignInIdentity,
+    now: Date,
+    twoSignInMethods?: () => Promise<boolean>,
+  ): Promise<{ roleIds: string[] }>;
+}
+
+/** Role Manager → Add New People for an e-mail without an account (`invites/{sha256(email)}`). */
+export interface Invite {
+  readonly email: string;
+  /** Roles still to give (global scope); emptied when accepted or cancelled. */
+  readonly roleIds: readonly string[];
+  readonly status: "pending" | "accepted" | "cancelled";
+  readonly invitedBy: string;
+  readonly createdAt: Date | null;
+  readonly version: number;
 }
 
 /** admin: maps a verified uid to the account's status and resolved role assignments. */
@@ -43,7 +67,7 @@ export interface RoleReader {
   getMany(ids: readonly string[]): Promise<Map<string, RoleDefinition>>;
 }
 
-/** One account as the admin Users page sees it (no personal data beyond e-mail and name). */
+/** One account as the admin Role Manager sees it (no personal data beyond e-mail and name). */
 export interface UserSummary {
   readonly uid: string;
   readonly email: string | null;
@@ -57,23 +81,13 @@ export interface UserSummary {
   readonly version: number;
 }
 
-export interface UserListQuery {
-  readonly roleId?: string | undefined;
-  readonly status?: UserStatus | undefined;
-  /** Only accounts of these chapters (chapter-scoped staff, at most 30); absent = every account. */
-  readonly chapterIds?: readonly string[] | undefined;
-  /** `nextCursor` of the previous page. */
-  readonly cursor?: string | undefined;
-  readonly limit: number;
-}
-
-export interface Page<T> {
-  readonly items: T[];
-  readonly nextCursor: string | null;
+/** A custom role as read from `roles/{id}`: it always has a colour. */
+export interface CustomRole extends RoleDefinition {
+  readonly color: RoleColor;
 }
 
 /** A custom role as stored (built-in roles are never stored). */
-export interface StoredRole extends RoleDefinition {
+export interface StoredRole extends CustomRole {
   readonly version: number;
 }
 
@@ -134,11 +148,16 @@ export function parseAssignments(value: unknown): RoleAssignment[] {
 }
 
 /** A stored custom role, or null when it is deleted, malformed or uses a built-in id. */
-export function parseCustomRole(id: string, data: unknown): RoleDefinition | null {
+export function parseCustomRole(id: string, data: unknown): CustomRole | null {
   if (isSystemRoleId(id) || !isRecord(data) || data["deletedAt"]) return null;
-  const { name, permissions } = data;
+  const { name, permissions, color } = data;
   if (typeof name !== "string" || !Array.isArray(permissions)) return null;
-  return { id, name, permissions: normalizePermissions(permissions.map(String)) };
+  return {
+    id,
+    name,
+    permissions: normalizePermissions(permissions.map(String)),
+    color: isRoleColor(color) ? color : DEFAULT_ROLE_COLOR,
+  };
 }
 
 export const systemRole = (id: string): RoleDefinition | null =>
