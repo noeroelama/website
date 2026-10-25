@@ -44,6 +44,8 @@ const letter: Letter = {
   archive: null,
   upload: null,
   placement: null,
+  activityCode: null,
+  sheetNumberTemplate: null,
 };
 const type = {
   name: "Surat Keputusan",

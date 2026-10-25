@@ -31,6 +31,7 @@ import { createImageUploads } from "./images";
 import { createIncomingActions } from "./incoming";
 import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
+import { createCertificateActions, createCertificateFileRoute } from "./certificates";
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
@@ -178,6 +179,26 @@ export async function letterContext(
 export const letterFile = lazyEnv(() =>
   createLetterFileRoute({
     getLetter: (id) => adminStores().letters.get(id),
+    load: letterContext,
+    pdf: letterPdf(),
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+  }),
+);
+
+/** Certificate batches (D5): participants (pasted lists, removals). */
+export const certificateActions = lazyEnv(() =>
+  createCertificateActions({
+    certificates: adminStores().certificates,
+    getLetter: (id) => adminStores().letters.get(id),
+    now: () => new Date(),
+  }),
+);
+
+/** GET /api/letters/<id>/certificates/<sheetId> (one sheet, rendered on demand). */
+export const certificateFile = lazyEnv(() =>
+  createCertificateFileRoute({
+    getLetter: (id) => adminStores().letters.get(id),
+    getSheet: (id) => adminStores().certificates.get(id),
     load: letterContext,
     pdf: letterPdf(),
     logError: (message, fields) => adminStores().logger.error(message, fields),
@@ -394,6 +415,7 @@ export const adminReads = {
   listForms: () => adminStores().forms.listForAdmin(),
   listLetters: (query: LetterListQuery) => adminStores().letters.list(query),
   getLetter: (id: string) => adminStores().letters.get(id),
+  listCertificates: (batchId: string) => adminStores().certificates.list(batchId),
   listLetterTypes: () => adminStores().letterTypes.list(),
   getLetterSettings: () => adminStores().letterSettings.get(),
   listIncoming: (periodId: string) => adminStores().incoming.list(periodId, 300),

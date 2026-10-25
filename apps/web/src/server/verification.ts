@@ -1,9 +1,11 @@
 import "server-only";
 import type { FirestoreVerificationReader } from "@website/db/firestore";
 import {
+  certificateVerification,
   letterCanonical,
   letterVerification,
   normalizeVerificationCode,
+  type CertificateVerification,
   type LetterArchive,
   type LetterVerification,
 } from "@website/domain/documents";
@@ -29,6 +31,17 @@ export function createVerification(deps: VerificationDeps) {
     const found = await deps.reader.find(code);
     if (!found) return null;
     const { letter, type } = found;
+    if (found.certificate) {
+      // A certificate sheet (D5): no content gate and no file here (the pickup page has them).
+      const view = certificateVerification({
+        code,
+        batch: letter,
+        certificate: found.certificate,
+        unitName: found.unitName,
+        periodName: found.periodName,
+      });
+      return { view, archive: null };
+    }
     const digestMatches =
       letter.contentDigest === null
         ? null
@@ -57,7 +70,8 @@ export function createVerification(deps: VerificationDeps) {
   const view = async (
     rawCode: string,
     typedName: string | null,
-  ): Promise<LetterVerification | null> => (await check(rawCode, typedName))?.view ?? null;
+  ): Promise<LetterVerification | CertificateVerification | null> =>
+    (await check(rawCode, typedName))?.view ?? null;
 
   /**
    * The archived PDF, under the SAME rule as the content on the page (checked again here: the
@@ -66,7 +80,9 @@ export function createVerification(deps: VerificationDeps) {
    */
   async function download(rawCode: string, typedName: string | null): Promise<Response> {
     const checked = await check(rawCode, typedName);
-    if (!checked?.view.canDownload) return new Response("Not found", { status: 404 });
+    if (checked?.view.kind !== "letter" || !checked.view.canDownload) {
+      return new Response("Not found", { status: 404 });
+    }
     // canDownload implies an archive.
     const { view: result } = checked;
     const archive = checked.archive as LetterArchive;

@@ -50,6 +50,81 @@ export default async function VerifyCodePage({
     );
   }
 
+  const signers = view.signers.length > 0 && (
+    <>
+      <h2>{t.signers}</h2>
+      <dl className="site-details">
+        {view.signers.map((s) => (
+          <div key={s.desk} className="site-details__row">
+            <dt>{s.desk}</dt>
+            <dd>
+              {s.name}
+              {s.position && <span className="site-muted"> · {s.position}</span>}
+              <br />
+              <small>
+                {t.signedAt} {moment(s.signedAt)}
+              </small>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+
+  if (view.kind === "certificate") {
+    return (
+      <main className="ui-shell">
+        <h1 className="ui-shell-title">{t.title}</h1>
+        <p>
+          {t.checkedCode}: <code>{view.code}</code>
+        </p>
+        <p className="site-notice">
+          {view.cancelled ? (
+            <>
+              <strong>{t.certificateCancelled}</strong> {view.cancelledAt && day(view.cancelledAt)}.
+              {view.cancelReason && ` ${t.cancelReason}: ${view.cancelReason}.`}
+            </>
+          ) : (
+            <strong>{t.certificateValid}</strong>
+          )}
+        </p>
+        <h2>{t.certificateDetails}</h2>
+        <dl className="site-details">
+          <dt>{t.certificateNumber}</dt>
+          <dd>
+            <code>{view.number}</code>
+          </dd>
+          <dt>{t.holder}</dt>
+          <dd>{view.holderName}</dd>
+          {view.note && (
+            <>
+              <dt>{t.note}</dt>
+              <dd>{view.note}</dd>
+            </>
+          )}
+          <dt>{t.activity}</dt>
+          <dd>{view.activity}</dd>
+          {view.letterDate && (
+            <>
+              <dt>{t.date}</dt>
+              <dd>{day(view.letterDate)}</dd>
+            </>
+          )}
+          <dt>{t.issuedBy}</dt>
+          <dd>{view.unitName}</dd>
+          {view.periodName && (
+            <>
+              <dt>{t.period}</dt>
+              <dd>{view.periodName}</dd>
+            </>
+          )}
+        </dl>
+        <p>{t.certificateCompare}</p>
+        {signers}
+      </main>
+    );
+  }
+
   return (
     <main className="ui-shell">
       <h1 className="ui-shell-title">{t.title}</h1>
@@ -98,26 +173,7 @@ export default async function VerifyCodePage({
           </>
         )}
       </dl>
-      {view.signers.length > 0 && (
-        <>
-          <h2>{t.signers}</h2>
-          <dl className="site-details">
-            {view.signers.map((s) => (
-              <div key={s.desk} className="site-details__row">
-                <dt>{s.desk}</dt>
-                <dd>
-                  {s.name}
-                  {s.position && <span className="site-muted"> · {s.position}</span>}
-                  <br />
-                  <small>
-                    {t.signedAt} {moment(s.signedAt)}
-                  </small>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </>
-      )}
+      {signers}
       <LetterContent
         code={view.code}
         content={view.content}

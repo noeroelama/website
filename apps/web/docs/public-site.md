@@ -59,8 +59,8 @@ noindex; `src/server/personality.ts`).
 Rules: `packages/domain/docs/recruitment.md`.
 
 **Document verification**: `/verify` (type a code) and `/verify/[code]` (also the bare `/<CODE>`
-on `VERIFICATION_HOST`) show whether a letter is ours, its details and, by its type's rule, its
-content and archived PDF (`/verify/[code]/pdf`). No sign-in, noindex, 20 requests/minute per IP.
+on `VERIFICATION_HOST`) show whether a letter or a certificate sheet is ours, its details and,
+for letters by their type's rule, the content and archived PDF (`/verify/[code]/pdf`). No sign-in, noindex, 20 requests/minute per IP.
 Rules: `packages/domain/docs/documents.md` → Public verification.
 
 **Signature**: `/account/signature` (linked from `/account`) holds the signed-in person's own

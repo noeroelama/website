@@ -70,8 +70,9 @@ interface TypeOption {
 }
 
 interface Draft {
-  /** New letters only: typed here or the author's own PDF (D3). */
-  source: "editor" | "upload";
+  /** New letters only: typed here, the author's own PDF (D3) or a certificate batch (D5). */
+  source: "editor" | "upload" | "certificate";
+  activityCode: string;
   typeId: string;
   orgUnitId: string;
   subject: string;
@@ -160,7 +161,8 @@ function LettersList(props: Props) {
     setCurrent(letter ?? null);
     setFieldErrors({});
     setDraft({
-      source: letter?.source === "upload" ? "upload" : "editor",
+      source: letter?.source ?? "editor",
+      activityCode: letter?.activityCode ?? "",
       typeId: letter?.typeId ?? types[0]?.id ?? "",
       orgUnitId: letter?.orgUnitId ?? units[0]?.id ?? "",
       subject: letter?.subject ?? "",
@@ -192,6 +194,7 @@ function LettersList(props: Props) {
       place: draft.place,
       attachmentNote: draft.attachmentNote,
       letterDate: draft.letterDate || null,
+      activityCode: draft.activityCode.trim() || null,
     });
     setBusy(false);
     if (!result.ok) {
@@ -353,13 +356,13 @@ function LettersList(props: Props) {
                   className="admin-select"
                   value={draft.source}
                   onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      source: e.target.value === "upload" ? "upload" : "editor",
-                    })
+                    setDraft({ ...draft, source: e.target.value as Draft["source"] })
                   }
                 >
                   <option value="editor">Write the letter here</option>
+                  <option value="certificate">
+                    Certificate batch (one number, a sheet per participant)
+                  </option>
                   <option value="upload">
                     Own PDF (SOP, decree with annexes: upload after numbering)
                   </option>
@@ -475,9 +478,27 @@ function LettersList(props: Props) {
               />
               {errorFor("attachmentNote")}
             </div>
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="letter-activity">
+                Activity code{draft.source === "certificate" ? " *" : ""}
+              </label>
+              <input
+                id="letter-activity"
+                className="admin-input"
+                maxLength={24}
+                placeholder="LKMM"
+                value={draft.activityCode}
+                onChange={(e) => setDraft({ ...draft, activityCode: e.target.value })}
+              />
+              {errorFor("activityCode", "Goes into the number when the type uses {kode_kegiatan}.")}
+            </div>
             {draft.source === "upload" ? null : (
               <div className="admin-field admin-form-grid__full">
-                <span className="admin-field__label">Body *</span>
+                <span className="admin-field__label">
+                  {draft.source === "certificate"
+                    ? "Citation under the name (empty: “atas partisipasinya dalam kegiatan …”)"
+                    : "Body *"}
+                </span>
                 <RichTextStack
                   blocks={draft.bodies}
                   onChange={(bodies) => setDraft({ ...draft, bodies })}
@@ -605,7 +626,18 @@ function LettersList(props: Props) {
               Back
             </Button>
             <div className="admin-form-actions__right">
-              {current.source === "upload" && !current.upload ? null : (
+              {current.source === "certificate" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="users"
+                  onClick={() => router.push(`/letters/${current.id}/participants`)}
+                >
+                  Participants
+                </Button>
+              ) : null}
+              {(current.source === "upload" && !current.upload) ||
+              current.source === "certificate" ? null : (
                 <Button
                   variant="outline"
                   size="sm"

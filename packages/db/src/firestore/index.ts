@@ -48,6 +48,11 @@ export {
   type LetterAudit,
   type LetterListQuery,
 } from "./letters";
+export {
+  createFirestoreCertificateStore,
+  type CertificateAudit,
+  type FirestoreCertificateStore,
+} from "./certificates";
 export { createFirestorePasskeyStore } from "./passkeys";
 export { createFirebaseImageStorage } from "./storage";
 export { createFirestoreWebhookEventStore } from "./webhooks";

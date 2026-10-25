@@ -8,6 +8,7 @@ module), so it runs on the DomaiNesia host. Server-side only (apps call it from 
 ## Responsibilities
 
 - `renderLetterPdf(input)` — an A4 letter laid out like PPIDK's letter template.
+- `renderCertificatePdf(input)` — one A4 landscape certificate sheet (PPIDK's template).
 - `htmlToBlocks(html)` — the sanitized letter body as printable blocks.
 - `qrPng(text, size)` — a QR PNG with the shared rules of `@website/domain/documents` (qr.ts).
 - `stampPdf(bytes, input)` — signatures and the QR stamped on an uploaded PDF (upload path);
@@ -16,13 +17,14 @@ module), so it runs on the DomaiNesia host. Server-side only (apps call it from 
 
 ## Structure
 
-| File            | Purpose                                                                     |
-| --------------- | --------------------------------------------------------------------------- |
-| `src/html.ts`   | Sanitized rich text → paragraphs, headings, list items, rules (styled runs) |
-| `src/flow.ts`   | Text layout: WinAnsi-safe text, word wrap, justification, page breaks       |
-| `src/letter.ts` | The letter: letterhead (images or text), meta, body, desks, QR, stamp       |
-| `src/qr.ts`     | QR PNG                                                                      |
-| `src/stamp.ts`  | Upload path: open, read the text of, and stamp the author's own PDF         |
+| File                 | Purpose                                                                     |
+| -------------------- | --------------------------------------------------------------------------- |
+| `src/html.ts`        | Sanitized rich text → paragraphs, headings, list items, rules (styled runs) |
+| `src/flow.ts`        | Text layout: WinAnsi-safe text, word wrap, justification, page breaks       |
+| `src/letter.ts`      | The letter: letterhead (images or text), meta, body, desks, QR, stamp       |
+| `src/qr.ts`          | QR PNG                                                                      |
+| `src/certificate.ts` | A certificate sheet: frame, emblem, holder, citation, desks, QR             |
+| `src/stamp.ts`       | Upload path: open, read the text of, and stamp the author's own PDF         |
 
 ## Rules
 

@@ -68,6 +68,8 @@ const letter = (extra: Partial<Letter> = {}): Letter => ({
   archive: null,
   upload: null,
   placement: null,
+  activityCode: null,
+  sheetNumberTemplate: null,
   ...extra,
 });
 

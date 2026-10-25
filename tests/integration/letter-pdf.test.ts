@@ -78,6 +78,8 @@ const letter: Letter = {
   archive: null,
   upload: null,
   placement: null,
+  activityCode: null,
+  sheetNumberTemplate: null,
 };
 const context: LetterContext = {
   type,
@@ -406,6 +408,8 @@ describe("GET /api/letters/<id>/pdf", () => {
     const waiting = route({ ...letter, status: "awaiting_file", source: "upload", upload: file });
     expect((await waiting.handler("l1", staff(["letters.read"]))).status).toBe(200);
     expect(waiting.pdf.stampUpload).toHaveBeenCalled();
+    const batchLetter = route({ ...letter, source: "certificate" });
+    expect((await batchLetter.handler("l1", staff(["letters.read"]))).status).toBe(404);
     const before = route({ ...letter, status: "awaiting_file", source: "upload" });
     expect((await before.handler("l1", staff(["letters.read"]))).status).toBe(404);
   });

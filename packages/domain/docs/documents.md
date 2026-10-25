@@ -130,6 +130,37 @@ draft (Document: own PDF) ─→ review ─→ corrected ─→ desks ─→ app
   `packages/pdf/src/stamp.ts`, `apps/admin/src/components/letter-upload-panel.tsx`,
   route `apps/admin/src/app/api/letters/[id]/file/route.ts`.
 
+## Certificates (D5)
+
+Many sheets from one template, from PPIDK `SertifikatService` (the opposite of the upload path):
+
+- **Batch** = a letter created as "Certificate batch" (`source: "certificate"`), with an
+  activity code (`{kode_kegiatan}`, required when the type's pattern uses it; stored upper
+  case) and an optional citation (the body as plain lines; empty = "atas partisipasinya dalam
+  kegiatan <subject>"). The same correction and desks; the batch needs at least one participant
+  before it is issued, and gets ONE agenda number (the type's counter).
+- **Participants** (`/letters/<id>/participants`, `letters.edit` in the batch's unit, only while
+  the batch is a draft or under review): pasted from a spreadsheet, one per line, a note after
+  the first TAB, `;` or `|` (never a comma: names carry degrees), spaces tidied, duplicates KEPT
+  (two people may share a name), at most 1000 lines per paste, optional title case (degrees and
+  particles kept). Each sheet gets its sequence (`certificateCounters/{batchId}`) and its own
+  verification code when added, CERTIFICATE_CHUNK (200) per transaction. Removing one deletes its
+  sheet and code; the others keep their numbers (audit: module `letters`).
+- **Numbers**: at issue the batch freezes `sheetNumberTemplate` (`001.{sheet:3}/SERT/LKMM/...`);
+  sheet 37 is `001.037/SERT/LKMM/...`. A later pattern change never renumbers printed sheets.
+- **Sheets** are rendered on demand (`GET /api/letters/<id>/certificates/<sheetId>`,
+  `letters.read` in scope; `renderCertificatePdf`): A4 landscape, double frame, emblem and names
+  from the letterhead frozen at issue (no letterhead band), "SERTIFIKAT", number, holder, note,
+  citation, place and date, the desks (each signer's own signature once signed), the sheet's QR
+  and code. Before issue: no number and no QR. Never stored as files.
+- **Cancel** the batch (as any letter): every sheet then verifies as cancelled.
+- **Verification**: a sheet's code shows "certificate", the number, the holder's name in full
+  (it is printed on the sheet), the note, the activity, the date, the unit, the signers; no
+  file here (the pickup page, 4.9, gives the sheets).
+- Code: `src/documents/certificates.ts`, `packages/db/src/firestore/certificates.ts`,
+  `apps/admin/src/server/certificates.ts`, `packages/pdf/src/certificate.ts`,
+  `apps/admin/src/app/(panel)/letters/[id]/participants/page.tsx`.
+
 ## Personal signatures (D4)
 
 From PPIDK `TandaTanganPengguna`: one image per person, printed on the letters they signed.
@@ -161,6 +192,7 @@ Anyone holding a letter checks it without signing in (PPIDK `VerifikasiControlle
   short form `/<CODE>` (and `/<CODE>/pdf`); any other path there shows the search page
   (`apps/web/src/lib/verification-host.ts`, rewrite in `apps/web/src/proxy.ts`). Never indexed.
   At most 20 requests per minute per IP on these paths.
+- **Certificate sheets** (`certificateVerification`): see Certificates (D5).
 - **What it shows** (`letterVerification`, public DTO only — no ids): valid or cancelled (date,
   reason), number, type, subject, the recipient masked (`A*** N***`, always three stars), letter
   date, issuing unit, period, and the signers frozen at issue (desk, name, seat, time in WIB).
@@ -217,4 +249,6 @@ the QR without a logo (the letterhead already shows the emblem).
 `tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`, `tests/unit/verification.test.ts`,
 `tests/integration/verification.test.ts`, `tests/unit/incoming.test.ts`,
 `tests/unit/admin-incoming.test.ts`, `tests/integration/incoming.test.ts`,
-`tests/integration/signatures.test.ts`, `tests/unit/pdf-stamp.test.ts`.
+`tests/integration/signatures.test.ts`, `tests/unit/pdf-stamp.test.ts`,
+`tests/unit/certificates.test.ts`, `tests/unit/certificate-pdf.test.ts`,
+`tests/integration/certificates.test.ts`.

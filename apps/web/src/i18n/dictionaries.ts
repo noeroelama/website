@@ -334,6 +334,15 @@ const id = {
     archiveDamaged:
       "Berkas arsip dokumen ini tidak bisa kami berikan: berkas yang tersimpan tidak cocok dengan sidik yang dicatat saat terbit. Hubungi sekretariat.",
     failed: "Gagal memeriksa. Coba lagi sebentar lagi.",
+    certificateValid: "Sertifikat ini asli dan terdaftar pada arsip PPIDK Asia-Oseania.",
+    certificateCancelled: "Sertifikat ini sudah dibatalkan dan tidak berlaku lagi sejak",
+    certificateDetails: "Rincian sertifikat",
+    certificateNumber: "Nomor sertifikat",
+    holder: "Diberikan kepada",
+    note: "Keterangan",
+    activity: "Kegiatan",
+    certificateCompare:
+      "Bandingkan nama dan nomor ini dengan lembar yang kamu pegang; bila berbeda, lembar itu bukan yang kami terbitkan.",
   },
   personality: {
     title: "Tes Kepribadian 16 Tipe",
@@ -944,6 +953,15 @@ const en: Dictionary = {
     archiveDamaged:
       "We cannot give out this document's archived file: the stored file no longer matches the fingerprint recorded at issue. Please contact the secretariat.",
     failed: "Could not check. Try again in a moment.",
+    certificateValid: "This certificate is genuine and on record at PPIDK Asia-Oseania.",
+    certificateCancelled: "This certificate was cancelled and is no longer valid since",
+    certificateDetails: "Certificate details",
+    certificateNumber: "Certificate number",
+    holder: "Awarded to",
+    note: "Note",
+    activity: "Activity",
+    certificateCompare:
+      "Compare this name and number with the sheet you hold; if they differ, the sheet is not one we issued.",
   },
   personality: {
     title: "16-type personality test",

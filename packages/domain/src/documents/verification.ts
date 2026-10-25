@@ -1,3 +1,4 @@
+import { sheetNumber, type Certificate } from "./certificates";
 import type { Letter } from "./letters";
 
 /**
@@ -55,6 +56,15 @@ export interface LetterVerification {
   readonly canDownload: boolean;
 }
 
+const publicSigners = (letter: Letter): PublicSigner[] =>
+  letter.signers.map((s) => ({
+    desk: s.desk,
+    name: s.name,
+    position: s.position,
+    period: s.period,
+    signedAt: s.at,
+  }));
+
 /** What may be shown for an issued or cancelled letter. */
 export function letterVerification(input: {
   readonly code: string;
@@ -90,18 +100,57 @@ export function letterVerification(input: {
     letterDate: letter.letterDate,
     unitName: input.unitName,
     periodName: input.periodName,
-    signers: letter.signers.map((s) => ({
-      desk: s.desk,
-      name: s.name,
-      position: s.position,
-      period: s.period,
-      signedAt: s.at,
-    })),
+    signers: publicSigners(letter),
     cancelledAt: letter.cancelledAt,
     cancelReason: letter.cancelReason,
     content,
     wrongName: input.typedName !== null && input.typedName.trim() !== "" && !open,
     bodyHtml: content === "shown" ? letter.body : null,
     canDownload: content === "shown" && letter.status !== "cancelled" && letter.archive !== null,
+  };
+}
+
+export interface CertificateVerification {
+  readonly kind: "certificate";
+  readonly code: string;
+  /** The whole batch was cancelled: every sheet of it says so. */
+  readonly cancelled: boolean;
+  /** The sheet's number (`007.037/SERT/...`). */
+  readonly number: string;
+  /** Printed on the sheet in full: the holder checks it against the paper. */
+  readonly holderName: string;
+  readonly note: string | null;
+  readonly activity: string;
+  readonly letterDate: string | null;
+  readonly unitName: string;
+  readonly periodName: string | null;
+  readonly signers: readonly PublicSigner[];
+  readonly cancelledAt: Date | null;
+  readonly cancelReason: string | null;
+}
+
+/** What may be shown for a sheet of an issued or cancelled certificate batch (D5). */
+export function certificateVerification(input: {
+  readonly code: string;
+  readonly batch: Letter;
+  readonly certificate: Certificate;
+  readonly unitName: string;
+  readonly periodName: string | null;
+}): CertificateVerification {
+  const { batch, certificate } = input;
+  return {
+    kind: "certificate",
+    code: input.code,
+    cancelled: batch.status === "cancelled",
+    number: sheetNumber(batch.sheetNumberTemplate, certificate.seq) ?? "",
+    holderName: certificate.name,
+    note: certificate.note,
+    activity: batch.subject,
+    letterDate: batch.letterDate,
+    unitName: input.unitName,
+    periodName: input.periodName,
+    signers: publicSigners(batch),
+    cancelledAt: batch.cancelledAt,
+    cancelReason: batch.cancelReason,
   };
 }

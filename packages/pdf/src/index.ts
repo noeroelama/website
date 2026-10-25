@@ -15,3 +15,4 @@ export {
   type PageSpot,
   type StampInput,
 } from "./stamp";
+export { renderCertificatePdf, type CertificatePdfInput } from "./certificate";

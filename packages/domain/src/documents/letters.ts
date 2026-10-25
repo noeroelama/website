@@ -78,6 +78,14 @@ export const LetterInputSchema = z
     place: safeText(80, { allowEmpty: true }).default(""),
     attachmentNote: safeText(120, { allowEmpty: true }).default(""),
     letterDate: plainDate.nullable(),
+    /** {kode_kegiatan} of the number (certificate batches: "LKMM"); null when not used. */
+    activityCode: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{1,24}$/, "Use 1-24 letters, digits or '-'.")
+      .nullable()
+      .default(null),
   })
   .strict();
 export type LetterInput = z.infer<typeof LetterInputSchema>;
@@ -126,6 +134,8 @@ export interface Letter extends LetterInput, EntityMeta {
   readonly upload: UploadedLetterFile | null;
   /** Upload path: where the signatures and the QR are stamped on that PDF. */
   readonly placement: UploadPlacement | null;
+  /** Certificate batches: the sheets' number, frozen at issue (`sheetNumber`). */
+  readonly sheetNumberTemplate: string | null;
 }
 
 export interface UploadedLetterFile extends LetterArchive {
@@ -193,6 +203,7 @@ export function missingFields(letter: Letter, type: LetterType): string[] {
     letter.source === "editor" && !letter.body.trim() && "Body",
     !letter.letterDate && "Letter date",
     type.requiresRecipient && !letter.recipient.trim() && "Recipient",
+    type.numberFormat.includes("{kode_kegiatan}") && !letter.activityCode && "Activity code",
   ].filter((field): field is string => typeof field === "string");
 }
 

@@ -56,6 +56,7 @@ export interface LetterItem {
   place: string;
   attachmentNote: string;
   letterDate: string | null;
+  activityCode: string | null;
   status: LetterStatus;
   statusLabel: string;
   requiresCoordinator: boolean;
@@ -107,6 +108,7 @@ export function toLetterItem(
     place: letter.place,
     attachmentNote: letter.attachmentNote,
     letterDate: letter.letterDate,
+    activityCode: letter.activityCode,
     status: letter.status,
     statusLabel: label(LETTER_STATUS_LABELS, letter.status),
     requiresCoordinator: type?.requiresCoordinator ?? false,

@@ -68,8 +68,8 @@ const SaveLetter = LetterInputSchema.and(
     .object({
       id: safeId.optional(),
       version: z.number().int().min(1).nullable(),
-      /** New letters only: typed here, or the author's own final PDF (D3). Fixed afterwards. */
-      source: z.enum(["editor", "upload"]).optional(),
+      /** New letters only: typed here, the author's own PDF (D3) or a certificate batch (D5). */
+      source: z.enum(["editor", "upload", "certificate"]).optional(),
     })
     .strict(),
 );
@@ -203,7 +203,8 @@ export function createLetterActions(deps: LetterDeps) {
         deps.now(),
       );
       // The upload path is only numbered here ("Take number"); its file comes later.
-      if (issued.status === "issued") await deps.afterIssue(issued);
+      // Certificate batches have no letter PDF: their sheets are rendered on demand.
+      if (issued.status === "issued" && issued.source === "editor") await deps.afterIssue(issued);
       return {
         status: issued.status,
         version: issued.version,

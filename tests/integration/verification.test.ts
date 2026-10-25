@@ -49,6 +49,8 @@ const stored = {
   archive: { path: "letters/p1/l1_x.pdf", sha256: sha(pdf), size: pdf.length },
   upload: null,
   placement: null,
+  activityCode: null,
+  sheetNumberTemplate: null,
   version: 9,
   createdAt: at,
   updatedAt: at,
@@ -104,14 +106,18 @@ describe("public verification of letters (D7)", () => {
       bodyHtml: "<p>Isi surat</p>",
       canDownload: true,
     });
-    expect((await verification().view("8F3KM-QRTVW", "x".repeat(500)))?.wrongName).toBe(true);
+    expect(await verification().view("8F3KM-QRTVW", "x".repeat(500))).toMatchObject({
+      wrongName: true,
+    });
   });
 
   it("refuses unknown, malformed and draft codes alike", async () => {
     expect(await verification().view("ZZZZZ-ZZZZZ", null)).toBeNull();
     expect(await verification().view("layanan", null)).toBeNull();
-    fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "certificate", sheetId: "x" });
+    fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "certificate", letterId: "l1" });
     expect(await verification().view("AAAAA-AAAAA", null)).toBeNull();
+    fake.docs.set("verificationCodes/CCCCC-CCCCC", { kind: "minutes", letterId: "l1" });
+    expect(await verification().view("CCCCC-CCCCC", null)).toBeNull();
     fake.docs.set("verificationCodes/BBBBB-BBBBB", { kind: "letter", letterId: "gone" });
     expect(await verification().view("BBBBB-BBBBB", null)).toBeNull();
     fake.docs.set("letters/l1", { ...stored, status: "approved" });
@@ -183,5 +189,75 @@ describe("verification host (printed short addresses)", () => {
     expect(isVerificationPath("/verify")).toBe(true);
     expect(isVerificationPath("/verify/8F3KM-QRTVW/pdf")).toBe(true);
     expect(isVerificationPath("/verifyx")).toBe(false);
+  });
+});
+
+describe("public verification of certificate sheets (D5)", () => {
+  beforeEach(() => {
+    fake.docs.set("letters/l1", {
+      ...stored,
+      source: "certificate",
+      subject: "LKMM 2026",
+      sheetNumberTemplate: "007.{sheet:3}/SERT/LKMM/SEKJEN/XI/2026",
+    });
+    fake.docs.set("certificates/l1_0037", {
+      batchId: "l1",
+      periodId: "p1",
+      seq: 37,
+      name: "Arif Nurwahid, S.Kom.",
+      note: "Narasumber",
+      verificationCode: "DDDDD-DDDDD",
+      createdAt: at,
+    });
+    fake.docs.set("verificationCodes/DDDDD-DDDDD", {
+      kind: "certificate",
+      letterId: "l1",
+      certificateId: "l1_0037",
+      periodId: "p1",
+    });
+  });
+
+  it("shows the holder, the sheet number and the signers; never a file here", async () => {
+    const view = await verification().view("ddddd-ddddd", null);
+    expect(view).toEqual({
+      kind: "certificate",
+      code: "DDDDD-DDDDD",
+      cancelled: false,
+      number: "007.037/SERT/LKMM/SEKJEN/XI/2026",
+      holderName: "Arif Nurwahid, S.Kom.",
+      note: "Narasumber",
+      activity: "LKMM 2026",
+      letterDate: stored.letterDate,
+      unitName: "Sekretariat Jenderal",
+      periodName: "2026/2027",
+      signers: expect.any(Array) as unknown[],
+      cancelledAt: null,
+      cancelReason: null,
+    });
+    expect(JSON.stringify(view)).not.toContain("l1");
+    expect((await verification().download("DDDDD-DDDDD", null)).status).toBe(404);
+  });
+
+  it("a cancelled batch cancels every sheet; drafts and removed sheets are not found", async () => {
+    fake.docs.set("letters/l1", {
+      ...fake.docs.get("letters/l1"),
+      status: "cancelled",
+      cancelledAt: at,
+      cancelReason: "Wrong activity",
+    });
+    expect(await verification().view("DDDDD-DDDDD", null)).toMatchObject({
+      cancelled: true,
+      cancelReason: "Wrong activity",
+    });
+    fake.docs.set("letters/l1", { ...fake.docs.get("letters/l1"), sheetNumberTemplate: null });
+    expect(await verification().view("DDDDD-DDDDD", null)).toMatchObject({ number: "" });
+    fake.docs.delete("certificates/l1_0037");
+    expect(await verification().view("DDDDD-DDDDD", null)).toBeNull();
+    fake.docs.set("verificationCodes/EEEEE-EEEEE", {
+      kind: "certificate",
+      letterId: "l1",
+      certificateId: 5,
+    });
+    expect(await verification().view("EEEEE-EEEEE", null)).toBeNull();
   });
 });

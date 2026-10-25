@@ -9,11 +9,14 @@ import {
   letterCanonical,
   makeVerificationCode,
   normalizeLetterInput,
+  sheetNumberTemplate,
+  type Certificate,
   type Desk,
   type DeskSignature,
   type Letter,
   type LetterArchive,
   type LetterInput,
+  type LetterSource,
   type Letterhead,
   type LetterStatus,
   type LetterType,
@@ -156,7 +159,20 @@ const uploaded = (value: unknown): UploadedLetterFile | null => {
   return { ...file, uploadedAt: toDate(file.uploadedAt) as Date };
 };
 
-function toLetter(id: string, data: Record<string, unknown>): Letter {
+/** A `certificates/{id}` document (a sheet of a batch, D5). */
+export const toCertificate = (id: string, data: Record<string, unknown>): Certificate => ({
+  id,
+  batchId: data["batchId"] as string,
+  periodId: data["periodId"] as string,
+  seq: data["seq"] as number,
+  name: data["name"] as string,
+  note: data["note"] as string | null,
+  verificationCode: data["verificationCode"] as string,
+  createdAt: toDate(data["createdAt"]) as Date,
+});
+
+/** A `letters/{id}` document as a Letter (also read by the certificate store). */
+export function toLetter(id: string, data: Record<string, unknown>): Letter {
   return {
     id,
     periodId: data["periodId"] as string,
@@ -191,6 +207,8 @@ function toLetter(id: string, data: Record<string, unknown>): Letter {
     archive: data["archive"] as LetterArchive | null,
     upload: uploaded(data["upload"]),
     placement: (data["placement"] as UploadPlacement | null | undefined) ?? null,
+    activityCode: (data["activityCode"] as string | null | undefined) ?? null,
+    sheetNumberTemplate: (data["sheetNumberTemplate"] as string | null | undefined) ?? null,
     version: data["version"] as number,
     createdAt: toDate(data["createdAt"]) as Date,
     updatedAt: toDate(data["updatedAt"]) as Date,
@@ -209,6 +227,7 @@ export function letterSnapshot(l: LetterFields): Snapshot {
     place: l.place,
     attachmentNote: l.attachmentNote,
     letterDate: l.letterDate,
+    activityCode: l.activityCode,
     status: l.status,
     reviewNote: l.reviewNote,
     secretary: l.secretary?.uid ?? null,
@@ -253,6 +272,8 @@ const stored = (l: LetterFields) => ({
   archive: l.archive,
   upload: l.upload,
   placement: l.placement,
+  activityCode: l.activityCode,
+  sheetNumberTemplate: l.sheetNumberTemplate,
 });
 
 export type LetterAudit = (
@@ -349,7 +370,7 @@ export function createFirestoreLetterStore(
       createdBy: string,
       auditFor: LetterAudit,
       now: Date,
-      source: "editor" | "upload" = "editor",
+      source: LetterSource = "editor",
     ): Promise<Letter> {
       return store.write(
         null,
@@ -386,6 +407,7 @@ export function createFirestoreLetterStore(
             archive: null,
             upload: null,
             placement: null,
+            sheetNumberTemplate: null,
             deletedAt: null,
           };
         },
@@ -485,10 +507,14 @@ export function createFirestoreLetterStore(
             "The signing desks must approve the letter before it is issued.",
           );
         }
-        if (letter.source === "certificate") {
-          throw new RuleViolationError("Certificate batches are issued from their batch.");
-        }
         const upload = letter.source === "upload";
+        const batch = letter.source === "certificate";
+        if (
+          batch &&
+          !(await tx.get(db.collection("certificateCounters").doc(ref.id))).get("last")
+        ) {
+          throw new RuleViolationError("Add the participants first.");
+        }
         const type = await readType(tx, letter.typeId);
         const unit = await readUnit(tx, letter.orgUnitId, letter.periodId);
         const period = await tx.get(db.collection("periods").doc(letter.periodId));
@@ -513,19 +539,21 @@ export function createFirestoreLetterStore(
         );
         // Submitting required the date (missingFields).
         const letterDate = letter.letterDate as string;
+        const values = {
+          seq: first,
+          padding: type.numberPadding,
+          typeCode: type.code,
+          unitCode: unit.code,
+          activityCode: letter.activityCode,
+          date: letterDate,
+        };
         const numbered: Letter = {
           ...letter,
           letterDate,
           status: upload ? "awaiting_file" : "issued",
           number: first,
-          numberFormatted: formatNumber(type.numberFormat, {
-            seq: first,
-            padding: type.numberPadding,
-            typeCode: type.code,
-            unitCode: unit.code,
-            activityCode: null,
-            date: letterDate,
-          }),
+          numberFormatted: formatNumber(type.numberFormat, values),
+          sheetNumberTemplate: batch ? sheetNumberTemplate(type.numberFormat, values) : null,
           verificationCode: code,
           // The upload path is issued once its final PDF is in (`issueUpload`).
           issuedAt: upload ? null : now,
@@ -606,19 +634,23 @@ export type FirestoreLetterStore = ReturnType<typeof createFirestoreLetterStore>
 
 /**
  * Public verification (D7): `verificationCodes/{code}` → the issued or cancelled letter with its
- * type, unit and period names. Drafts never have a code; anything else is "not found". Callers
- * pass a normalized code (`normalizeVerificationCode`).
+ * type, unit and period names, and for a certificate code its sheet (the letter is then the
+ * batch). Drafts never verify; anything else is "not found". Callers pass a normalized code
+ * (`normalizeVerificationCode`).
  */
 export function createFirestoreVerificationReader(db: Firestore) {
+  const read = async (collection: string, id: unknown) =>
+    typeof id === "string" ? db.collection(collection).doc(id).get() : null;
   return {
     async find(code: string) {
       const pointer = await db.collection("verificationCodes").doc(code).get();
-      if (!pointer.exists || pointer.get("kind") !== "letter") return null;
-      const snapshot = await db
-        .collection("letters")
-        .doc(pointer.get("letterId") as string)
-        .get();
-      if (!snapshot.exists) return null;
+      const kind = pointer.get("kind") as string | undefined;
+      if (kind !== "letter" && kind !== "certificate") return null;
+      const [snapshot, sheet] = await Promise.all([
+        read("letters", pointer.get("letterId")),
+        kind === "certificate" ? read("certificates", pointer.get("certificateId")) : null,
+      ]);
+      if (!snapshot?.exists || (kind === "certificate" && !sheet?.exists)) return null;
       const letter = toLetter(snapshot.id, snapshot.data() as Record<string, unknown>);
       if (letter.status !== "issued" && letter.status !== "cancelled") return null;
       const [type, unit, period] = await Promise.all([
@@ -628,6 +660,9 @@ export function createFirestoreVerificationReader(db: Firestore) {
       ]);
       return {
         letter,
+        certificate: sheet?.exists
+          ? toCertificate(sheet.id, sheet.data() as Record<string, unknown>)
+          : null,
         type: toLetterType(type.id, type.data() as Record<string, unknown>),
         unitName: (unit.get("name") as string | undefined) ?? "PPIDK Asia-Oseania",
         periodName: (period.get("name") as string | undefined) ?? null,

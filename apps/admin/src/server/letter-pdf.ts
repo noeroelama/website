@@ -1,11 +1,14 @@
 import "server-only";
 import type { FirestoreLetterStore, FirestoreSignatureStore } from "@website/db/firestore";
 import {
+  certificateCitation,
   deskLabel,
   desksOf,
   formatLetterDate,
   letterArchivePath,
+  sheetNumber,
   verificationUrl,
+  type Certificate,
   type LetterArchive,
   type Letter,
   type Letterhead,
@@ -13,6 +16,7 @@ import {
   type LetterType,
 } from "@website/domain/documents";
 import {
+  renderCertificatePdf,
   renderLetterPdf,
   stampPdf,
   type LetterDesk,
@@ -140,19 +144,19 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     };
   }
 
-  /** The QR address of a numbered letter (null for drafts). */
-  function verificationOf(letter: Letter) {
-    if (letter.verificationCode === null) return null;
-    const verification = verificationUrl(letter.verificationCode, deps.verification);
+  /** The QR address of a code (null = not numbered yet: drafts print no QR). */
+  function verificationOf(code: string | null) {
+    if (code === null) return null;
+    const verification = verificationUrl(code, deps.verification);
     if (!verification) {
       throw new Error("Set VERIFICATION_HOST or WEB_URL: issued letters print their QR.");
     }
-    return { ...verification, code: letter.verificationCode };
+    return { ...verification, code };
   }
 
   /** Renders the letter now: drafts without number and QR, cancelled letters with the stamp. */
   async function render(letter: Letter, context: LetterContext, period: string | null) {
-    const verification = verificationOf(letter);
+    const verification = verificationOf(letter.verificationCode);
     return renderLetterPdf({
       letterhead: await art(letter.letterhead ?? context.letterhead, period),
       place: letter.place,
@@ -217,7 +221,9 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     });
     const qr = placement?.qr ?? null;
     // A numbered letter always has its verification address (or verificationOf throws).
-    const verification = verificationOf(letter) as NonNullable<ReturnType<typeof verificationOf>>;
+    const verification = verificationOf(letter.verificationCode) as NonNullable<
+      ReturnType<typeof verificationOf>
+    >;
     return stampPdf(bytes, { signatures, qr: qr && { spot: qr, ...qr, ...verification } });
   }
 
@@ -228,7 +234,31 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     return { path, sha256: sha256Hex(bytes), size: bytes.length };
   }
 
-  return { render, archive, stampUpload, saveFile };
+  /**
+   * One sheet of a certificate batch (D5), rendered on demand from the batch (its letterhead and
+   * signers frozen at issue). Before issue: no number and no QR; a cancelled batch is stamped.
+   */
+  async function renderCertificate(batch: Letter, sheet: Certificate, context: LetterContext) {
+    const letterhead = batch.letterhead ?? context.letterhead;
+    const verification = verificationOf(batch.verificationCode && sheet.verificationCode);
+    return renderCertificatePdf({
+      parentName: letterhead.parentName,
+      mainName: letterhead.mainName,
+      emblem: await image(letterhead.emblem),
+      number: sheetNumber(batch.sheetNumberTemplate, sheet.seq),
+      holderName: sheet.name,
+      note: sheet.note,
+      citation: certificateCitation(batch.body, batch.subject),
+      placeAndDate: batch.letterDate
+        ? [batch.place, formatLetterDate(batch.letterDate)].filter(Boolean).join(", ")
+        : null,
+      desks: letterDesks(batch, context, await signaturesOf(batch)),
+      verification,
+      cancelled: batch.status === "cancelled",
+    });
+  }
+
+  return { render, archive, stampUpload, saveFile, renderCertificate };
 }
 
 export type LetterPdf = ReturnType<typeof createLetterPdf>;
@@ -264,7 +294,8 @@ export function createLetterFileRoute(deps: {
     ) {
       return notFound();
     }
-    const loaded = await deps.load(letter);
+    const loaded = letter.source === "certificate" ? null : await deps.load(letter);
+    // A certificate batch has no letter PDF: each sheet has its own route.
     if (!loaded) return notFound();
     try {
       const bytes =
