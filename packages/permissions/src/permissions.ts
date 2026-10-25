@@ -62,6 +62,10 @@ export const ADMIN_PAGES = {
     },
   },
   letter_types: { label: "Letter types (number patterns)" },
+  incoming: {
+    label: "Incoming letters",
+    extras: { dispose: "Dispose letters and complete dispositions" },
+  },
   organizations: { label: "Organizations" },
   periods: { label: "Board periods" },
   structure: { label: "Organisation structure" },

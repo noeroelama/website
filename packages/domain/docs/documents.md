@@ -121,6 +121,29 @@ Anyone holding a letter checks it without signing in (PPIDK `VerifikasiControlle
   `apps/web/src/app/verify/**`. Not built: PPIDK's camera scanner (the phone's camera app opens
   the QR link directly).
 
+## Incoming letters and dispositions (D6)
+
+`src/documents/incoming.ts` (rules, from PPIDK `AgendaService`), `packages/db/src/firestore/incoming.ts`,
+`apps/admin/src/server/incoming.ts`, admin page `/incoming` (Admin page "Incoming letters":
+read, edit, extra `dispose`).
+
+- **Record** (`incoming.edit`): sender, sender's number, subject, letter date, received date,
+  summary. The agenda number (`042/AG/VIII/2026`: sequence of the active period, Roman month and
+  year of the received date) is given in the recording transaction (`incomingCounters/{periodId}`):
+  the letter is in hand, so no number is ever left unused. Fields stay editable until archived;
+  the agenda number never changes.
+- **Scan**: one private PDF (≤ 10 MB, `%PDF-` checked), `POST /api/incoming/<id>/scan?version=`,
+  stored at `letters/incoming/<periodId>/<id>_<random>.pdf` with its sha256; opened inline with
+  `GET /api/incoming/<id>/scan` (`incoming.read`), never when the checksum no longer matches.
+- **Dispose** (`incoming.dispose`): to a unit of the letter's period OR an officer (active
+  appointments), with an instruction and an optional due date. Forwarding a disposition creates a
+  child and marks the parent "in progress" (it stays responsible). A disposition is marked done
+  (optional response) only when every disposition forwarded from it is done; when all are done the
+  letter is "done" and can be archived (`incoming.edit`), after which nothing changes.
+- Every step is one versioned write with an audit entry (module `incoming`, not revertible).
+- Not built yet: notifications to the recipients (7.1) and image scans (PPIDK also took JPG/PNG;
+  scan to PDF).
+
 ## QR codes (D8)
 
 One set of rules (`src/documents/qr.ts`, from PPIDK `PembuatQr`) for the Tools page and the
@@ -136,4 +159,5 @@ the QR without a logo (the letterhead already shows the emblem).
 `tests/security/field-encryption.test.ts`, `tests/unit/admin-tools.test.ts` (QR rules),
 `tests/unit/letters.test.ts`, `tests/unit/admin-letters.test.ts`, `tests/integration/letters.test.ts`,
 `tests/unit/pdf.test.ts`, `tests/integration/letter-pdf.test.ts`, `tests/unit/verification.test.ts`,
-`tests/integration/verification.test.ts`.
+`tests/integration/verification.test.ts`, `tests/unit/incoming.test.ts`,
+`tests/unit/admin-incoming.test.ts`, `tests/integration/incoming.test.ts`.

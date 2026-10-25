@@ -4857,3 +4857,12 @@ form.admin-toolbar::before {
   color: var(--color-text);
   font-size: var(--text-sm);
 }
+
+/* Incoming letters: the disposition chain, indented per forwarding. */
+.admin-dispositions {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}

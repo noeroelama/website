@@ -24,6 +24,7 @@ import { createFormActions } from "./forms";
 import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
 import { createImageUploads } from "./images";
+import { createIncomingActions } from "./incoming";
 import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
@@ -87,6 +88,21 @@ export const formActions = lazyEnv(() =>
     token: () => randomBytes(16).toString("base64url"),
     logExport: (actorId, details) =>
       logSecurityEvent(adminStores().logger, { type: "data.export", actorId, details }),
+  }),
+);
+
+/** Incoming letters page (D6): agenda book, scans, dispositions. */
+export const incomingActions = lazyEnv(() =>
+  createIncomingActions({
+    letters: adminStores().incoming,
+    unitPeriod: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit && !unit.deletedAt ? unit.periodId : null;
+    },
+    userExists: async (uid) => (await adminStores().accounts.get(uid)) !== null,
+    storage: imageStorage(),
+    now: () => new Date(),
+    uuid: randomUUID,
   }),
 );
 
@@ -345,6 +361,7 @@ export const adminReads = {
   getLetter: (id: string) => adminStores().letters.get(id),
   listLetterTypes: () => adminStores().letterTypes.list(),
   getLetterSettings: () => adminStores().letterSettings.get(),
+  listIncoming: (periodId: string) => adminStores().incoming.list(periodId, 300),
   listRecruitments: () => adminStores().recruitments.listForAdmin(),
   getRecruitment: (id: string) => adminStores().recruitments.get(id),
   listApplications: (recruitmentId: string) =>

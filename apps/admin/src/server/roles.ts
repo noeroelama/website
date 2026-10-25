@@ -136,6 +136,7 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
       "audit.read",
       "letters.sign_coordinator",
       "letters.cancel",
+      "incoming.read",
     ]),
   },
   {
@@ -157,6 +158,8 @@ export const SUGGESTED_ROLES: readonly RoleDefinition[] = [
       "letters.issue",
       "letters.cancel",
       "letter_types.edit",
+      "incoming.edit",
+      "incoming.dispose",
     ]),
   },
   {

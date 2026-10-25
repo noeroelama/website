@@ -31,6 +31,7 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "Forms", href: "/forms", permission: "forms.read" },
   { label: "Recruitment", href: "/recruitment", permission: "recruitment.read" },
   { label: "Letters", href: "/letters", permission: "letters.read" },
+  { label: "Incoming letters", href: "/incoming", permission: "incoming.read" },
   { label: "Organizations", href: "/organizations", permission: "organizations.read" },
   { label: "Universities", href: "/universities", permission: "universities.read" },
   { label: "Members", href: "/members", permission: "members.verify" },

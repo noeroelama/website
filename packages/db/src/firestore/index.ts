@@ -28,6 +28,12 @@ export {
 export { getDocumentsByIds } from "./batch";
 export { nextNumbers } from "./counters";
 export {
+  createFirestoreIncomingStore,
+  incomingSnapshot,
+  type FirestoreIncomingStore,
+  type IncomingAudit,
+} from "./incoming";
+export {
   createFirestoreLetterSettingsStore,
   createFirestoreLetterStore,
   createFirestoreLetterTypeStore,
