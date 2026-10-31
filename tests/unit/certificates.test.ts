@@ -15,13 +15,25 @@ describe("certificate participants (D5)", () => {
         "  Arif  Nurwahid, S.Kom.\tNarasumber \r\nRina;Juara 1\n\n | ignored\nBudi|Panitia|extra\nRina;Juara 1\nSiti",
       ),
     ).toEqual([
-      { name: "Arif Nurwahid, S.Kom.", note: "Narasumber" },
-      { name: "Rina", note: "Juara 1" },
-      { name: "Budi", note: "Panitia|extra" },
-      { name: "Rina", note: "Juara 1" },
-      { name: "Siti", note: null },
+      { name: "Arif Nurwahid, S.Kom.", note: "Narasumber", email: null },
+      { name: "Rina", note: "Juara 1", email: null },
+      { name: "Budi", note: "Panitia|extra", email: null },
+      { name: "Rina", note: "Juara 1", email: null },
+      { name: "Siti", note: null, email: null },
     ]);
     expect(parseParticipants(" \n\t\n")).toEqual([]);
+  });
+
+  it("an e-mail column (any place after the name) is the pickup e-mail, never the note", () => {
+    expect(
+      parseParticipants(
+        "Arif\tNarasumber\t Arif@Example.ORG \nRina;rina@example.org;Juara 1\nSiti|siti@example.org",
+      ),
+    ).toEqual([
+      { name: "Arif", note: "Narasumber", email: "arif@example.org" },
+      { name: "Rina", note: "Juara 1", email: "rina@example.org" },
+      { name: "Siti", note: null, email: "siti@example.org" },
+    ]);
   });
 
   it("refuses names or notes that are too long or contain HTML, naming the line", () => {

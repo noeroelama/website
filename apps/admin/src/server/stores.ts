@@ -10,6 +10,7 @@ import {
   createFirestoreAuditStore,
   createFirestoreAuditWriter,
   createFirestoreCertificateStore,
+  createFirestoreVerificationReader,
   createFirestoreCampaignStore,
   createFirestoreChapterStore,
   createFirestoreContentStore,
@@ -83,6 +84,8 @@ export const adminStores = lazyEnv(() => {
     incoming: createFirestoreIncomingStore(db),
     signatures: createFirestoreSignatureStore(db),
     certificates: createFirestoreCertificateStore(db),
+    /** Verification codes → sheet + batch (certificate pickup downloads, D5-P). */
+    verification: createFirestoreVerificationReader(db),
     galleries: createFirestoreGalleryStore(db),
     chapters: createFirestoreChapterStore(db),
     periods: createFirestorePeriodStore(db),

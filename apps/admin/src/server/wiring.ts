@@ -8,7 +8,7 @@ import {
   type FirestoreFormStore,
   type LetterListQuery,
 } from "@website/db/firestore";
-import type { Letter } from "@website/domain/documents";
+import { CERTIFICATE_EMAIL_PURPOSE, type Letter } from "@website/domain/documents";
 import { orgUnitPath } from "@website/domain/organizations";
 import sharp from "sharp";
 import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newsletter";
@@ -31,7 +31,11 @@ import { createImageUploads } from "./images";
 import { createIncomingActions } from "./incoming";
 import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
-import { createCertificateActions, createCertificateFileRoute } from "./certificates";
+import {
+  createCertificateActions,
+  createCertificateFileRoute,
+  createCertificatePickupRoute,
+} from "./certificates";
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
@@ -190,6 +194,12 @@ export const certificateActions = lazyEnv(() =>
   createCertificateActions({
     certificates: adminStores().certificates,
     getLetter: (id) => adminStores().letters.get(id),
+    // Only a pasted e-mail column needs it (the same secret as apps/web, for the pickup page).
+    hashEmail: (email) => {
+      const secret = getAdminEnv().SUBSCRIBER_HASH_SECRET;
+      if (!secret) throw new Error("SUBSCRIBER_HASH_SECRET is required for e-mail columns.");
+      return keyedHash(CERTIFICATE_EMAIL_PURPOSE, email, secret);
+    },
     now: () => new Date(),
   }),
 );
@@ -201,6 +211,18 @@ export const certificateFile = lazyEnv(() =>
     getSheet: (id) => adminStores().certificates.get(id),
     load: letterContext,
     pdf: letterPdf(),
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+  }),
+);
+
+/** GET /certificates/pickup?t=… (D5-P): the link signed by the website's pickup page. */
+export const certificatePickupFile = lazyEnv(() =>
+  createCertificatePickupRoute({
+    find: (code) => adminStores().verification.find(code),
+    load: letterContext,
+    pdf: letterPdf(),
+    secret: () => getAdminEnv().LINK_SIGNING_SECRET ?? null,
+    now: () => new Date(),
     logError: (message, fields) => adminStores().logger.error(message, fields),
   }),
 );

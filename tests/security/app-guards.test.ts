@@ -107,6 +107,7 @@ describe("sign-in redirect before the page renders (proxy)", () => {
     expect(signInRedirect(new Request("https://admin.example/api/session"))).toBeNull();
     // Uptime checks have no session: the health route is never sent to sign-in.
     expect(signInRedirect(new Request("https://admin.example/health"))).toBeNull();
+    expect(signInRedirect(new Request("https://admin.example/certificates/pickup?t=x"))).toBeNull();
     // Cron calls and provider webhooks carry their own secret/signature, never a session.
     expect(signInRedirect(new Request("https://admin.example/cron/noop"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/webhooks/zoom"))).toBeNull();

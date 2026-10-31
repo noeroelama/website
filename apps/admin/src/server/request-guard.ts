@@ -68,8 +68,11 @@ export function guardRequest(request: Request): Promise<GuardResult> {
  */
 export function signInRedirect(request: Request): string | null {
   const { pathname, search } = new URL(request.url);
-  // Machine endpoints authenticate themselves (cron secret, provider signature), never a session.
-  const machine = ["/api/", "/cron/", "/webhooks/"].some((prefix) => pathname.startsWith(prefix));
+  // Machine endpoints authenticate themselves (cron secret, provider signature, signed pickup
+  // link), never a session.
+  const machine = ["/api/", "/cron/", "/webhooks/", "/certificates/"].some((prefix) =>
+    pathname.startsWith(prefix),
+  );
   if (machine || pathname === "/health") return null;
   if (readCookie(request, SESSION_COOKIE)) return null;
   const { WEB_URL, ADMIN_URL } = getEnv();

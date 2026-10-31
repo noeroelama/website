@@ -12,7 +12,8 @@ import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 
 /* ==================================================================
    Certificate batch (D5) — participants pasted from a spreadsheet
-   (one per line; a note after TAB ; or |, never a comma). Each gets
+   (one per line; a note and an e-mail after TAB ; or |, never a
+   comma; the e-mail is stored only as a keyed hash). Each gets
    a sheet number and its own verification code; the sheets are
    rendered on demand. Removing one never renumbers the others.
    ================================================================== */
@@ -25,6 +26,8 @@ interface Sheet {
   /** Once the batch is issued. */
   number: string | null;
   code: string | null;
+  /** An e-mail was pasted: the holder can download the sheet on the website (/certificates). */
+  hasEmail: boolean;
 }
 
 interface Props {
@@ -78,6 +81,9 @@ export function ParticipantsPage({ batch, sheets, canEdit }: Props) {
         <div>
           <div className="admin-table__title">{s.name}</div>
           {s.note ? <div className="admin-table__sub">{s.note}</div> : null}
+          <div className="admin-table__sub">
+            {s.hasEmail ? "Pickup by e-mail" : "No e-mail (no self pickup)"}
+          </div>
         </div>
       ),
     },
@@ -145,7 +151,8 @@ export function ParticipantsPage({ batch, sheets, canEdit }: Props) {
         <div className="admin-dark-form">
           <label className="admin-field">
             <span className="admin-field__label">
-              Paste participants: one per line; a note (Narasumber, Juara 1) after a TAB, ; or |
+              Paste participants: one per line; a note (Narasumber, Juara 1) and the e-mail used at
+              registration (for pickup on the website) after a TAB, ; or |
             </span>
             <textarea
               className="admin-input admin-textarea"

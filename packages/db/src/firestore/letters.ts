@@ -30,6 +30,7 @@ import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/sh
 import { sha256Hex } from "@website/security";
 import { safeId } from "@website/security/validation";
 import { createFirestoreAuditWriter } from "./audit";
+import { getDocumentsByIds } from "./batch";
 import { nextNumbers } from "./counters";
 import { createSluggedStore, toDate } from "./slugged";
 
@@ -168,6 +169,7 @@ export const toCertificate = (id: string, data: Record<string, unknown>): Certif
   name: data["name"] as string,
   note: data["note"] as string | null,
   verificationCode: data["verificationCode"] as string,
+  emailHash: (data["emailHash"] as string | undefined) ?? null,
   createdAt: toDate(data["createdAt"]) as Date,
 });
 
@@ -668,7 +670,33 @@ export function createFirestoreVerificationReader(db: Firestore) {
         periodName: (period.get("name") as string | undefined) ?? null,
       };
     },
+
+    /**
+     * Pickup page (D5-P): the sheets whose `emailHash` equals `emailHash` exactly, with their
+     * batch, for issued batches only (drafts and cancelled batches give nothing).
+     */
+    async certificatesByEmailHash(emailHash: string) {
+      const snapshot = await db
+        .collection("certificates")
+        .where("emailHash", "==", emailHash)
+        .limit(PICKUP_LIMIT)
+        .get();
+      const sheets = snapshot.docs.map((d) => toCertificate(d.id, d.data()));
+      const batches = await getDocumentsByIds<Record<string, unknown>>(
+        db,
+        "letters",
+        sheets.map((s) => s.batchId),
+      );
+      return sheets.flatMap((certificate) => {
+        const data = batches.get(certificate.batchId);
+        const letter = data ? toLetter(certificate.batchId, data) : null;
+        return letter?.status === "issued" && !letter.deletedAt ? [{ letter, certificate }] : [];
+      });
+    },
   };
 }
+
+/** At most this many sheets per e-mail on the pickup page. */
+const PICKUP_LIMIT = 100;
 
 export type FirestoreVerificationReader = ReturnType<typeof createFirestoreVerificationReader>;

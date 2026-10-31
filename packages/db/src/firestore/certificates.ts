@@ -8,7 +8,6 @@ import {
   makeVerificationCode,
   type Certificate,
   type Letter,
-  type Participant,
 } from "@website/domain/documents";
 import { RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
@@ -79,10 +78,13 @@ export function createFirestoreCertificateStore(
       return snapshot.exists ? toCertificate(id, snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /** Adds the participants in order, CERTIFICATE_CHUNK per transaction. Returns how many. */
+    /**
+     * Adds the participants in order, CERTIFICATE_CHUNK per transaction. Returns how many. An
+     * e-mail arrives already hashed (`emailHash`): the address itself is never stored.
+     */
     async add(
       batchId: string,
-      participants: readonly Participant[],
+      participants: readonly Pick<Certificate, "name" | "note" | "emailHash">[],
       auditFor: CertificateAudit,
       now: Date,
     ): Promise<number> {
@@ -112,6 +114,7 @@ export function createFirestoreCertificateStore(
               name: person.name,
               note: person.note,
               verificationCode: code,
+              emailHash: person.emailHash,
               createdAt: now,
             });
             tx.create(codes.doc(code), {

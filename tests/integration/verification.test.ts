@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createFirestoreVerificationReader } from "@website/db/firestore";
 import { letterCanonical, type Letter } from "@website/domain/documents";
 import { isVerificationPath, verificationRewrite } from "../../apps/web/src/lib/verification-host";
-import { createVerification } from "../../apps/web/src/server/verification";
+import {
+  createCertificatePickup,
+  createVerification,
+} from "../../apps/web/src/server/verification";
 import { fakeFirestore } from "../support/fake-firestore";
 
 type Db = Parameters<typeof createFirestoreVerificationReader>[0];
@@ -189,6 +192,7 @@ describe("verification host (printed short addresses)", () => {
     expect(isVerificationPath("/verify")).toBe(true);
     expect(isVerificationPath("/verify/8F3KM-QRTVW/pdf")).toBe(true);
     expect(isVerificationPath("/verifyx")).toBe(false);
+    expect(isVerificationPath("/certificates")).toBe(true);
   });
 });
 
@@ -259,5 +263,101 @@ describe("public verification of certificate sheets (D5)", () => {
       certificateId: 5,
     });
     expect(await verification().view("EEEEE-EEEEE", null)).toBeNull();
+  });
+});
+
+describe("certificate pickup (D5-P)", () => {
+  const sheet = (batchId: string, seq: number, emailHash: string | null) => {
+    const code = `${batchId.toUpperCase()}AAA-AAAA${seq}`;
+    fake.docs.set(`certificates/${batchId}_000${seq}`, {
+      batchId,
+      periodId: "p1",
+      seq,
+      name: "Arif Nurwahid",
+      note: null,
+      verificationCode: code,
+      emailHash,
+      createdAt: at,
+    });
+  };
+  const batch = (id: string, fields: Record<string, unknown> = {}) =>
+    fake.docs.set(`letters/${id}`, {
+      ...stored,
+      source: "certificate",
+      subject: `Activity ${id}`,
+      sheetNumberTemplate: "007.{sheet:3}/SERT/LKMM/SEKJEN/XI/2026",
+      ...fields,
+    });
+  const captchas: string[] = [];
+  const pickup = () =>
+    createCertificatePickup({
+      reader: createFirestoreVerificationReader(fake.db as unknown as Db),
+      captcha: (token) => {
+        captchas.push(token);
+        return Promise.resolve(token === "ok");
+      },
+      hashEmail: (email) => `h:${email}`,
+      link: (code) => `https://admin.example.org/certificates/pickup?code=${code}`,
+    });
+
+  beforeEach(() => {
+    batch("b1");
+    batch("b2", { status: "cancelled", cancelledAt: at });
+    batch("b3", { status: "review", numberFormatted: null, sheetNumberTemplate: null });
+    sheet("b1", 1, "h:arif@example.org");
+    sheet("b1", 2, "h:other@example.org");
+    sheet("b1", 3, null);
+    sheet("b2", 1, "h:arif@example.org");
+    sheet("b3", 1, "h:arif@example.org");
+  });
+
+  it("an exact e-mail gives only that person's sheets of issued batches, as download links", async () => {
+    const result = await pickup().lookup({ email: "  Arif@Example.org ", captcha: "ok" });
+    expect(result).toEqual({
+      ok: true,
+      sheets: [
+        {
+          number: "007.001/SERT/LKMM/SEKJEN/XI/2026",
+          holderName: "Arif Nurwahid",
+          note: null,
+          activity: "Activity b1",
+          letterDate: "2026-11-02",
+          href: "https://admin.example.org/certificates/pickup?code=B1AAA-AAAA1",
+        },
+      ],
+    });
+    expect(JSON.stringify(result)).not.toMatch(/"b1|h:/u);
+  });
+
+  it("skips sheets whose batch is gone or deleted; an unnumbered batch prints no number", async () => {
+    sheet("b9", 1, "h:rina@example.org");
+    batch("b4", { deletedAt: at });
+    sheet("b4", 1, "h:rina@example.org");
+    batch("b5", { sheetNumberTemplate: null });
+    sheet("b5", 1, "h:rina@example.org");
+    const result = await pickup().lookup({ email: "rina@example.org", captcha: "ok" });
+    expect(result).toMatchObject({ ok: true, sheets: [{ activity: "Activity b5", number: "" }] });
+  });
+
+  it("no partial matches, no lists: a near address finds nothing", async () => {
+    expect(await pickup().lookup({ email: "arif@example.or", captcha: "ok" })).toEqual({
+      ok: true,
+      sheets: [],
+    });
+  });
+
+  it("refuses a failed captcha before reading anything, and a malformed e-mail", async () => {
+    expect(await pickup().lookup({ email: "arif@example.org", captcha: "bot" })).toEqual({
+      ok: false,
+      error: "captcha",
+    });
+    expect(await pickup().lookup({ email: "not-an-email", captcha: "ok" })).toEqual({
+      ok: false,
+      error: "email",
+    });
+    expect(await pickup().lookup({ email: 5, captcha: "ok" })).toEqual({
+      ok: false,
+      error: "email",
+    });
   });
 });

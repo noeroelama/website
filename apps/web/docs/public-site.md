@@ -63,6 +63,12 @@ on `VERIFICATION_HOST`) show whether a letter or a certificate sheet is ours, it
 for letters by their type's rule, the content and archived PDF (`/verify/[code]/pdf`). No sign-in, noindex, 20 requests/minute per IP.
 Rules: `packages/domain/docs/documents.md` → Public verification.
 
+**Certificate pickup**: `/certificates` — the e-mail given at registration finds that person's
+sheets of issued certificate batches (exact match on a keyed hash, reCAPTCHA, the same 20/minute
+limit) and gives 15-minute signed download links to the admin app, where sheets are rendered.
+Needs SUBSCRIBER_HASH_SECRET, LINK_SIGNING_SECRET (both as in admin) and ADMIN_URL.
+Rules: `packages/domain/docs/documents.md` → Certificates (D5) → Pickup.
+
 **Signature**: `/account/signature` (linked from `/account`) holds the signed-in person's own
 signature for letters: upload (`POST /api/account/signature`, PNG/JPEG ≤ 2 MB, stored encrypted),
 preview (`GET`, owner only), printed width and rotation, removal (`src/server/signature.ts`).

@@ -18,13 +18,23 @@ export interface Certificate {
   /** "Narasumber", "Juara 1"; null for most participants. */
   readonly note: string | null;
   readonly verificationCode: string;
+  /** keyedHash(CERTIFICATE_EMAIL_PURPOSE, e-mail) for the pickup page (D5-P); null = none. */
+  readonly emailHash: string | null;
   readonly createdAt: Date;
 }
 
 export interface Participant {
   readonly name: string;
   readonly note: string | null;
+  /** Lower case; turned into `emailHash` before it is stored (never stored itself). */
+  readonly email: string | null;
 }
+
+/** keyedHash purpose of `emailHash` (the same on admin and web, SUBSCRIBER_HASH_SECRET). */
+export const CERTIFICATE_EMAIL_PURPOSE = "certificate-email";
+/** signLink purpose of the 15-minute pickup download link (LINK_SIGNING_SECRET). */
+export const CERTIFICATE_PICKUP_PURPOSE = "certificate-pickup";
+export const CERTIFICATE_PICKUP_LINK_MS = 15 * 60_000;
 
 /** At most this many sheets are written in one transaction (Firestore allows 500 writes). */
 export const CERTIFICATE_CHUNK = 200;
@@ -37,10 +47,13 @@ export const certificateId = (batchId: string, seq: number) =>
 const tidy = (text: string) => text.replace(/\s+/gu, " ").trim();
 const Name = safeText(160);
 const Note = safeText(160, { allowEmpty: true });
+const SEPARATOR = /[\t;|]/u;
+const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/u;
 
 /**
  * A pasted list (from Excel or Google Sheets): one person per line, an optional note after the
  * first TAB, `;` or `|`. Never a comma: Indonesian names carry degrees ("Arif, S.Kom.").
+ * A column that is an e-mail address (anywhere after the name) is the pickup e-mail, not the note.
  * Duplicates are KEPT: two people may share a name, and a wrong extra line is easy to delete,
  * while a silently dropped person never gets a certificate.
  */
@@ -49,18 +62,27 @@ export function parseParticipants(text: string): Participant[] {
   if (lines.length > MAX_PARTICIPANT_LINES) {
     throw new RuleViolationError(`Paste at most ${MAX_PARTICIPANT_LINES} lines at once.`);
   }
-  return lines.flatMap((line, i) => {
+  return lines.flatMap((raw, i) => {
+    const cells = raw.split(SEPARATOR);
+    const emailCell = cells.slice(1).find((cell) => EMAIL.test(cell.trim()) && cell.length <= 254);
+    const line = emailCell === undefined ? raw : cells.filter((c) => c !== emailCell).join("\t");
     const [first = "", ...rest] = line.split(/[\t;|]+/u);
     const name = tidy(first);
     if (!name) return [];
-    const note = tidy(line.slice(line.search(/[\t;|]/u) + 1).replace(/^[\t;|]+/u, ""));
+    const note = tidy(line.slice(line.search(SEPARATOR) + 1).replace(/^[\t;|]+/u, ""));
     const parsed = { name: Name.safeParse(name), note: Note.safeParse(rest.length ? note : "") };
     if (!parsed.name.success || !parsed.note.success) {
       throw new RuleViolationError(
         `Line ${i + 1}: names and notes are text of at most 160 characters.`,
       );
     }
-    return [{ name: parsed.name.data, note: parsed.note.data || null }];
+    return [
+      {
+        name: parsed.name.data,
+        note: parsed.note.data || null,
+        email: emailCell?.trim().toLowerCase() ?? null,
+      },
+    ];
   });
 }
 
