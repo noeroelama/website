@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createFirestoreCertificateStore,
-  createFirestoreLetterStore,
-  createFirestoreVerificationReader,
+  createSqlCertificateStore,
+  createSqlLetterStore,
+  createSqlVerificationReader,
   type LetterAudit,
-} from "@website/db/firestore";
+} from "@website/db/sql";
 import {
   DEFAULT_LETTERHEAD,
   passReview,
@@ -22,9 +22,9 @@ import {
   createCertificatePickupRoute,
 } from "../../apps/admin/src/server/certificates";
 import { createLetterPdf, type LetterContext } from "../../apps/admin/src/server/letter-pdf";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreLetterStore>[0];
+type Db = Parameters<typeof createSqlLetterStore>[0];
 const clock = new Date("2026-11-02T03:00:00Z");
 const staff = (permissions: string[], scope: Scope = { type: "global" }): Principal => ({
   kind: "user",
@@ -59,10 +59,10 @@ const audited: LetterAudit = (_b, _a, _c, next) =>
 
 const certAudit = (batchLetter: Letter) => audited(null, null, null, batchLetter);
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 const db = () => fake.db as unknown as Db;
-const letters = () => createFirestoreLetterStore(db());
-const sheets = () => createFirestoreCertificateStore(db());
+const letters = () => createSqlLetterStore(db());
+const sheets = () => createSqlCertificateStore(db());
 const actions = () =>
   createCertificateActions({
     certificates: sheets(),
@@ -133,7 +133,7 @@ const walk = async (letter: Letter) => {
 };
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
   fake.docs.set("periods/p1", { name: "2026/2027" });
   fake.docs.set("letterTypes/sert", type);
@@ -271,13 +271,13 @@ describe("certificate batches (D5)", () => {
 
   it("a taken code is drawn again; five taken draws stop", async () => {
     const { id } = await batch();
-    const unlucky = createFirestoreCertificateStore(db(), () => 0);
+    const unlucky = createSqlCertificateStore(db(), () => 0);
     fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "letter", letterId: "older" });
     await expect(
       unlucky.add(id, [{ name: "A", note: null, emailHash: null }], certAudit, clock),
     ).rejects.toThrow("No free verification code.");
     let draw = 0;
-    const second = createFirestoreCertificateStore(db(), () => (draw++ < 10 ? 0 : 1));
+    const second = createSqlCertificateStore(db(), () => (draw++ < 10 ? 0 : 1));
     await second.add(id, [{ name: "B", note: null, emailHash: null }], certAudit, clock);
     expect((await sheets().list(id))[0]?.verificationCode).toBe("BBBBB-BBBBB");
   });
@@ -386,7 +386,7 @@ describe("certificate pickup download (D5-P)", () => {
   });
   const pickupRoute = (now = clock, secret: string | null = SECRET) =>
     createCertificatePickupRoute({
-      find: (code) => createFirestoreVerificationReader(db()).find(code),
+      find: (code) => createSqlVerificationReader(db()).find(code),
       load: () => Promise.resolve({ context: ctx() }),
       pdf: { renderCertificate: () => Promise.resolve(new Uint8Array([37, 80])) },
       secret: () => secret,

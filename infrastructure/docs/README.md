@@ -11,11 +11,11 @@ automatically by this repository. Start with:
 ## Provisioning checklist (one-time)
 
 - [ ] One Firebase project `ppidk-website-prod` (Blaze plan) for every environment, owned by ≥2 people with MFA
-- [ ] Separate service accounts per app role: `web-ro`, `admin-rw`, `shop-rw`, `gateway-rw` (least privilege)
+- [ ] Separate Firebase service accounts per app (Authentication only: `web`, `admin`, `shop`), least privilege
 - [ ] One JSON key per service account, stored only in that app's cPanel **Setup Node.js App** screen and the password manager; rotate when anyone leaves
-- [ ] Deploy deny-all `firestore.rules` and `storage.rules`
-- [ ] Firestore PITR + scheduled backups + delete protection (production)
-- [ ] Separate backup project with a retention-locked bucket
+- [ ] Deploy deny-all `firestore.rules` and `storage.rules` (no data lives there any more; keep them locked)
+- [ ] cPanel MySQL: one database, one MySQL user per app (`../../docs/deployment.md` → One-time setup)
+- [ ] Files folder `FILE_STORAGE_DIR` outside the app folders; nightly dump + files backup and a weekly off-server copy (`../../docs/disaster-recovery.md`)
 - [ ] DomaiNesia cPanel: four Node.js apps, domains + AutoSSL, env vars per app, Cron Jobs (`../../docs/deployment.md`)
 - [ ] Resend: verified sending subdomains, SPF/DKIM/DMARC
 - [ ] Budget alerts on GCP

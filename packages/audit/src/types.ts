@@ -64,7 +64,7 @@ export interface AuditEvent {
 /**
  * Append-only writer, bound to ONE database transaction (the one that changes the record), so the
  * change and its audit entries commit or fail together. Obtained after the transaction's reads
- * and before its writes (Firestore: reads first); `append` only queues writes.
+ * and before its writes (the store: reads first); `append` only queues writes.
  */
 export interface AuditAppender {
   append(event: AuditEvent): void;

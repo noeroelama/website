@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PasskeyCredential, PasskeyStore } from "@website/auth";
-import { createFirestorePasskeyStore } from "@website/db/firestore";
+import { createSqlPasskeyStore } from "@website/db/sql";
 import { createMemoryPasskeyStore } from "@website/db/memory";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Firestore = Parameters<typeof createFirestorePasskeyStore>[0];
+type Firestore = Parameters<typeof createSqlPasskeyStore>[0];
 const now = new Date("2026-10-07T10:00:00Z");
 const credential = (over: Partial<PasskeyCredential> = {}): PasskeyCredential => ({
   id: "cred-A_1",
@@ -20,7 +20,7 @@ const credential = (over: Partial<PasskeyCredential> = {}): PasskeyCredential =>
 // The same contract must hold for the development store and the Firestore store.
 describe.each([
   ["memory", () => createMemoryPasskeyStore()],
-  ["firestore", () => createFirestorePasskeyStore(fakeFirestore().db as unknown as Firestore)],
+  ["firestore", () => createSqlPasskeyStore(fakeDb().db as unknown as Firestore)],
 ] as Array<[string, () => PasskeyStore]>)("%s passkey store", (_name, create) => {
   it("stores credentials and finds them by id and by user", async () => {
     const store = create();

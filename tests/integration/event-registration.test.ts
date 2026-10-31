@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AuditEvent } from "@website/audit";
 import {
-  createFirestoreEventReader,
-  createFirestoreEventStore,
-  createFirestoreRegistrationStore,
-} from "@website/db/firestore";
+  createSqlEventReader,
+  createSqlEventStore,
+  createSqlRegistrationStore,
+} from "@website/db/sql";
 import type { EventEntity } from "@website/domain/events";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreEventStore>[0];
+type Db = Parameters<typeof createSqlEventStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 let auditSeq = 0;
 /** Minimal audit entry: these tests are about reading and registering, not auditing. */
@@ -31,9 +31,9 @@ const auditStub = (): AuditEvent => ({
   hash: null,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let events: ReturnType<typeof createFirestoreEventStore>;
-let registrations: ReturnType<typeof createFirestoreRegistrationStore>;
+let fake: ReturnType<typeof fakeDb>;
+let events: ReturnType<typeof createSqlEventStore>;
+let registrations: ReturnType<typeof createSqlRegistrationStore>;
 
 const base: Omit<EventEntity, "id" | "version" | "createdAt" | "updatedAt"> = {
   slug: "simposium",
@@ -60,9 +60,9 @@ const create = (fields: Partial<typeof base>) =>
   events.write(null, null, () => ({ ...base, ...fields }), auditStub, now);
 
 beforeEach(() => {
-  fake = fakeFirestore();
-  events = createFirestoreEventStore(fake.db as unknown as Db);
-  registrations = createFirestoreRegistrationStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  events = createSqlEventStore(fake.db as unknown as Db);
+  registrations = createSqlRegistrationStore(fake.db as unknown as Db);
 });
 
 describe("public event reader (web)", () => {
@@ -72,7 +72,7 @@ describe("public event reader (web)", () => {
     await create({ slug: "draft", published: false });
     const gone = await create({ slug: "gone" });
     await events.write(gone.id, 1, (c) => ({ ...c!, deletedAt: now }), auditStub, now);
-    const reader = createFirestoreEventReader(fake.db as unknown as Db);
+    const reader = createSqlEventReader(fake.db as unknown as Db);
     expect((await reader.listPublished()).map((e) => e.slug)).toEqual(["new", "old"]);
     expect(await reader.findPublishedBySlug("draft")).toBeNull();
     expect(await reader.findPublishedBySlug("gone")).toBeNull();

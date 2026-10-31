@@ -31,7 +31,7 @@ and link to it from the others.
 | Forms (versioned questions, Forms page)                                | [packages/domain/docs/forms.md](../packages/domain/docs/forms.md)                           |
 | Recruitment (Oprec set-up, applying, seats)                            | [packages/domain/docs/recruitment.md](../packages/domain/docs/recruitment.md)               |
 | Documents (letter numbers, desks, verification, certificates)          | [packages/domain/docs/documents.md](../packages/domain/docs/documents.md)                   |
-| Image uploads (5 MB, WebP, thumbnail, Firebase Storage)                | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
+| Image uploads (5 MB, WebP, thumbnail, cPanel disk)                     | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
 | Database                                                               | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
 | Authentication (Google, email/password, passkeys, reset)               | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |
 | Authorization                                                          | [packages/permissions/docs/authorization.md](../packages/permissions/docs/authorization.md) |

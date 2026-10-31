@@ -1,37 +1,31 @@
 import "server-only";
 import { lazyEnv } from "@website/config/env";
-import { appForRole, createFirebaseImageStorage, getFirestoreForRole } from "@website/db/firestore";
+import { createDiskFileStorage, getDatabaseForRole } from "@website/db/sql";
 import { getWebEnv } from "./env";
 
-/** The website's Firestore client (role web_ro, pooled). */
+/** The website's database (MySQL, role web_ro, pooled). */
 export const webDb = lazyEnv(() => {
   const env = getWebEnv();
-  return getFirestoreForRole({
-    appEnv: env.APP_ENV,
+  return getDatabaseForRole({
     role: "web_ro",
-    projectId: env.FIREBASE_PROJECT_ID,
-    clientEmail: env.FIREBASE_CLIENT_EMAIL,
-    privateKey: env.FIREBASE_PRIVATE_KEY,
+    url: env.DATABASE_URL,
+    connectionLimit: env.DATABASE_CONNECTION_LIMIT,
   });
 });
 
 /**
- * Private Storage of the website (FIREBASE_STORAGE_BUCKET): recruitment portfolios and pacts
- * (written), archived letters (read for public verification). No public URLs.
+ * Files of the website on the cPanel disk (FILE_STORAGE_DIR): recruitment portfolios and pacts,
+ * signatures (written), archived letters (read for public verification), and the `/files` and
+ * `/private-files` routes.
  */
 export const webStorage = lazyEnv(() => {
   const env = getWebEnv();
-  if (!env.FIREBASE_STORAGE_BUCKET) {
-    throw new Error("FIREBASE_STORAGE_BUCKET is required for files on the website.");
+  if (!env.FILE_STORAGE_DIR) {
+    throw new Error("FILE_STORAGE_DIR is required for files on the website.");
   }
-  return createFirebaseImageStorage(
-    appForRole({
-      appEnv: env.APP_ENV,
-      role: "web_ro",
-      projectId: env.FIREBASE_PROJECT_ID,
-      clientEmail: env.FIREBASE_CLIENT_EMAIL,
-      privateKey: env.FIREBASE_PRIVATE_KEY,
-    }),
-    env.FIREBASE_STORAGE_BUCKET,
-  );
+  return createDiskFileStorage({
+    root: env.FILE_STORAGE_DIR,
+    baseUrl: env.WEB_URL ?? "",
+    secret: env.LINK_SIGNING_SECRET,
+  });
 });

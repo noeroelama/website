@@ -3,10 +3,10 @@ import { z } from "zod";
 import { hasTwoSignInMethods, type AccountAdmin, type PasskeyStore } from "@website/auth";
 import type {
   AppointmentAudit,
-  FirestoreAccountStore,
-  FirestoreAppointmentStore,
-  FirestoreRoleStore,
-} from "@website/db/firestore";
+  SqlAccountStore,
+  SqlAppointmentStore,
+  SqlRoleStore,
+} from "@website/db/sql";
 import {
   AppointmentInputSchema,
   AppointmentRoleMapSchema,
@@ -22,12 +22,12 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface AppointmentDeps {
   readonly appointments: Pick<
-    FirestoreAppointmentStore,
+    SqlAppointmentStore,
     "getRoleMap" | "saveRoleMap" | "appoint" | "end"
   >;
-  readonly accounts: Pick<FirestoreAccountStore, "findByEmail">;
+  readonly accounts: Pick<SqlAccountStore, "findByEmail">;
   readonly units: { get(id: string): Promise<OrgUnit | null> };
-  readonly roles: Pick<FirestoreRoleStore, "getMany">;
+  readonly roles: Pick<SqlRoleStore, "getMany">;
   readonly passkeys: Pick<PasskeyStore, "listByUser">;
   readonly authAdmin: AccountAdmin;
   readonly logger: Logger;

@@ -4,7 +4,7 @@ import { RuleViolationError, type EntityMeta } from "../shared";
 
 /**
  * Member profile — the personal data collected from every member/registrant.
- * Stored in Firestore at `memberProfiles/{uid}` (separate from `users/{uid}` so that
+ * Stored in the database at `memberProfiles/{uid}` (separate from `users/{uid}` so that
  * role checks and listings never load personal data).
  *
  * Personal data under Indonesia's UU PDP (Law 27/2022): collect only these fields,
@@ -266,7 +266,7 @@ export function profileAuditSnapshots(
   return { before: b, after: a, revertible: !restrictedChanged && before !== null };
 }
 
-/** Firestore-backed in @website/db. */
+/** MySQL-backed in @website/db. */
 export interface MemberProfileRepository {
   findByUserId(userId: string): Promise<MemberProfile | null>;
   /** Must fail with ConcurrencyConflictError when expectedVersion is stale. */

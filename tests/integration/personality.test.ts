@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestorePersonalityStore } from "@website/db/firestore";
+import { createSqlPersonalityStore } from "@website/db/sql";
 import { PERSONALITY_ITEMS } from "@website/domain/recruitment";
 import { signLink } from "@website/security";
 import { createPersonalityTest } from "../../apps/web/src/server/personality";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestorePersonalityStore>[0];
+type Db = Parameters<typeof createSqlPersonalityStore>[0];
 const secret = "s".repeat(40);
 let clock = new Date("2026-11-10T00:00:00Z");
-let fake: ReturnType<typeof fakeFirestore>;
-const store = () => createFirestorePersonalityStore(fake.db as unknown as Db);
+let fake: ReturnType<typeof fakeDb>;
+const store = () => createSqlPersonalityStore(fake.db as unknown as Db);
 const test = () => createPersonalityTest({ results: store(), secret, now: () => clock });
 const answers = PERSONALITY_ITEMS.map((item) => item.key * 2);
 
 beforeEach(() => {
   clock = new Date("2026-11-10T00:00:00Z");
-  fake = fakeFirestore();
+  fake = fakeDb();
 });
 
 describe("personality test page (signed 7-day link, one result)", () => {
@@ -63,7 +63,7 @@ describe("personality test page (signed 7-day link, one result)", () => {
   });
 
   it("does not hide unexpected storage errors", async () => {
-    fake = fakeFirestore({ failWith: new Error("unavailable") });
+    fake = fakeDb({ failWith: new Error("unavailable") });
     await expect(test().submit({ token: test().linkFor("ari"), answers })).rejects.toThrow(
       "unavailable",
     );

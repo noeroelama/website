@@ -12,7 +12,7 @@ new tab. An event page whose registration has closed links its album.
 
 - Rules and form schema: `packages/domain/src/gallery/index.ts` (`Album`, `AlbumInputSchema`,
   `ALBUM_MAX_IMAGES`, `canHaveAlbum`, `toPublicAlbum`)
-- Firestore: `packages/db/src/firestore/gallery.ts` (`galleries/{id}`, slug index
+- Database: `packages/db/src/sql/gallery.ts` (`galleries/{id}`, slug index
   `gallerySlugs/{slug}`, built on `slugged.ts`)
 - Admin: `apps/admin/src/server/gallery.ts`, page `apps/admin/src/app/(panel)/gallery/`
   (`src/components/gallery-page.tsx`, rows in `gallery-model.ts`)
@@ -40,5 +40,4 @@ new tab. An event page whose registration has closed links its album.
 
 ## Configuration
 
-Uploads need `FIREBASE_STORAGE_BUCKET`. Firestore indexes `galleries (published, updatedAt desc)`
-and `galleries (eventId, published)`.
+Uploads need `FILE_STORAGE_DIR`.

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreIncomingStore } from "@website/db/firestore";
+import { createSqlIncomingStore } from "@website/db/sql";
 import type { IncomingLetter } from "@website/domain/documents";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createIncomingActions } from "../../apps/admin/src/server/incoming";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreIncomingStore>[0];
+type Db = Parameters<typeof createSqlIncomingStore>[0];
 const clock = new Date("2026-11-03T02:00:00Z");
 const staff = (permissions: string[], active = true): Principal => ({
   kind: "user",
@@ -25,10 +25,10 @@ const context = () =>
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 const pdf = new TextEncoder().encode("%PDF-1.7 scan");
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let files: Map<string, Uint8Array>;
 let uuid = 0;
-const store = () => createFirestoreIncomingStore(fake.db as unknown as Db);
+const store = () => createSqlIncomingStore(fake.db as unknown as Db);
 const actions = () =>
   createIncomingActions({
     letters: store(),
@@ -48,7 +48,7 @@ const actions = () =>
 const received = { sender: "KBRI Tokyo", subject: "Undangan diskusi", receivedDate: "2026-11-03" };
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   files = new Map();
   uuid = 0;
   fake.docs.set("settings/activePeriod", { periodId: "p1" });

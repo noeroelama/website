@@ -124,8 +124,8 @@ router.push("/things"); router.refresh();
   (add, delete, drag to reorder, format toolbar, links, inline images through `uploadImage`;
   `readOnly` for sent campaigns). Save the HTML with `joinBlocks(blocks)`.
 - **Dashboard** (`/`, every staff member): counters for events, albums, news articles and
-  confirmed subscribers — each only when the viewer can read that page (Firestore `count()`,
-  `src/server/dashboard.ts`, `packages/db/src/firestore/dashboard.ts`) — and the 10 newest
+  confirmed subscribers — each only when the viewer can read that page (`COUNT` queries,
+  `src/server/dashboard.ts`, `packages/db/src/sql/dashboard.ts`) — and the 10 newest
   audit entries with `audit.read`. Tests: `tests/integration/dashboard.test.ts`.
 - **UI-only pages.** The Tools short-link list is a design port that runs on `src/data/mock/*` in the
   browser: nothing is saved and nothing is audited. When a feature gets its backend, replace

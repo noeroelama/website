@@ -32,7 +32,7 @@ export function safeText(max: number, options: { multiline?: boolean; allowEmpty
 }
 
 /**
- * Identifier safe to use as a Firestore document id: letters, digits, `_` and `-` only,
+ * Identifier safe to use as a document id: letters, digits, `_` and `-` only,
  * so it can never address another collection (`a/b`, `..`) or a reserved id (`__x__`).
  */
 export const safeId = z

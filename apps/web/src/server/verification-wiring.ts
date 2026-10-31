@@ -1,6 +1,6 @@
 import "server-only";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreVerificationReader } from "@website/db/firestore";
+import { createSqlVerificationReader } from "@website/db/sql";
 import {
   CERTIFICATE_EMAIL_PURPOSE,
   CERTIFICATE_PICKUP_LINK_MS,
@@ -15,7 +15,7 @@ import { createCertificatePickup, createVerification } from "./verification";
 /** /verify/<code> (D7): letters by verification code, archived PDFs from private Storage. */
 export const verification = lazyEnv(() =>
   createVerification({
-    reader: createFirestoreVerificationReader(webDb()),
+    reader: createSqlVerificationReader(webDb()),
     readFile: (path) => webStorage().read(path),
   }),
 );
@@ -35,7 +35,7 @@ export const certificatePickup = lazyEnv(() => {
     ? createRecaptchaVerifier({ secret: env.RECAPTCHA_SECRET_KEY, fetchImpl: fetch })
     : null;
   return createCertificatePickup({
-    reader: createFirestoreVerificationReader(webDb()),
+    reader: createSqlVerificationReader(webDb()),
     captcha: (token) =>
       passesCaptcha(
         verifier,

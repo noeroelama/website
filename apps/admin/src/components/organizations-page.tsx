@@ -166,13 +166,13 @@ type PpiSortKey = "name" | "country" | "memberCount";
 const statusChip = (text: string) => <span className="admin-status-badge">{text}</span>;
 
 interface OrganizationsProps {
-  /** PPI chapters from Firestore. */
+  /** PPI chapters from the database. */
   chapters: ChapterItem[];
   /** organizations.edit: add, edit, activate/deactivate and delete chapters. */
   canEdit: boolean;
   /** Chapters whose contact details this chapter admin may edit (organizations.edit there). */
   contactEditIds: string[];
-  /** Board periods from Firestore; null without periods.read (the Period tab is hidden). */
+  /** Board periods from the database; null without periods.read (the Period tab is hidden). */
   periods: PeriodItem[] | null;
   /** periods.edit: add, edit, activate and delete periods. */
   canEditPeriods: boolean;

@@ -2,11 +2,11 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type {
-  FirestoreCampaignStore,
-  FirestoreSubscriberReader,
-  FirestoreSubscriberStore,
+  SqlCampaignStore,
+  SqlSubscriberReader,
+  SqlSubscriberStore,
   SubscriberRow,
-} from "@website/db/firestore";
+} from "@website/db/sql";
 import type { Message, MessageStatus } from "@website/domain/messaging";
 import {
   CampaignInputSchema,
@@ -28,9 +28,9 @@ import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface NewsletterDeps {
-  readonly campaigns: Pick<FirestoreCampaignStore, "write" | "get" | "listActive" | "progress">;
-  readonly subscribers: Pick<FirestoreSubscriberReader, "listForAdmin" | "confirmedAfter"> &
-    Pick<FirestoreSubscriberStore, "staffAdd" | "remove">;
+  readonly campaigns: Pick<SqlCampaignStore, "write" | "get" | "listActive" | "progress">;
+  readonly subscribers: Pick<SqlSubscriberReader, "listForAdmin" | "confirmedAfter"> &
+    Pick<SqlSubscriberStore, "staffAdd" | "remove">;
   /** Messenger send (idempotent per key: a re-run never mails anyone twice). */
   readonly send: (message: Message, key: string) => Promise<MessageStatus | "duplicate">;
   /** Signed unsubscribe link for one subscriber (web /newsletter/unsubscribe). */

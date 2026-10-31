@@ -22,6 +22,7 @@ import {
   auditCsv,
   daysLeft,
   matchesTab,
+  shortUtc,
   wordDiff,
   type AuditRange,
   type AuditRow,
@@ -122,9 +123,9 @@ function ChangePanel({ row, onCopy }: { row: AuditRow; onCopy: (text: string) =>
         <div className="admin-audit-diff__row admin-audit-diff__head" role="row">
           <span role="columnheader">Field</span>
           <span role="columnheader">
-            Before{row.previousAt ? ` · ${formatInZone(row.previousAt, "UTC")}` : ""}
+            Before{row.previousAt ? ` · ${shortUtc(row.previousAt, row.occurredAt)}` : ""}
           </span>
-          <span role="columnheader">After · {formatInZone(row.occurredAt, "UTC")}</span>
+          <span role="columnheader">After · {shortUtc(row.occurredAt)}</span>
         </div>
         {row.changes.length === 0 ? (
           <div className="admin-audit-diff__row" role="row">

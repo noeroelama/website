@@ -3,11 +3,11 @@
  * Bootstrap: gives the built-in `superadmin` role (global) to an existing account, found by e-mail.
  * Run once, locally, with the admin service account. Dry run unless --apply is given.
  *
- *   node --env-file=apps/admin/.env.local infrastructure/scripts/grant-superadmin.mjs --email you@example.org
- *   node --env-file=apps/admin/.env.local infrastructure/scripts/grant-superadmin.mjs --email you@example.org --apply
+ *   node --experimental-strip-types --import ./infrastructure/scripts/ts-register.mjs \
+ *     --env-file=apps/admin/.env.local infrastructure/scripts/grant-superadmin.mjs --email you@example.org [--apply]
  *
  * The person must have signed in on web once (that creates users/{uid}). Later superadmins are
- * granted on the admin Users page. Needs FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
+ * granted on the admin Users page. Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
  */
 import { createRequire } from "node:module";
 import { parseArgs } from "node:util";
@@ -19,19 +19,21 @@ if (!values.email) {
   console.error("Usage: grant-superadmin.mjs --email <address> [--apply]");
   process.exit(2);
 }
-const missing = ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"].filter(
-  (name) => !process.env[name],
-);
+const missing = [
+  "DATABASE_URL",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+].filter((name) => !process.env[name]);
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
   process.exit(2);
 }
 
-// firebase-admin is a dependency of @website/db; resolve it from there.
-const require = createRequire(new URL("../../packages/db/package.json", import.meta.url));
+// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
+const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
-const { getFirestore } = require("firebase-admin/firestore");
 
 const app = initializeApp({
   projectId: process.env.FIREBASE_PROJECT_ID,
@@ -42,7 +44,9 @@ const app = initializeApp({
   }),
 });
 const account = await getAuth(app).getUserByEmail(values.email);
-const db = getFirestore(app);
+// Loaded after the checks above (needs the ts-register hook from the usage line).
+const { getDatabase } = await import("../../packages/db/src/sql/store.ts");
+const db = getDatabase({ url: process.env.DATABASE_URL });
 const ref = db.collection("users").doc(account.uid);
 
 const result = await db.runTransaction(async (tx) => {
@@ -68,4 +72,5 @@ const messages = {
 };
 console.log(`${values.email} (${account.uid}): ${messages[result]}`);
 if (result === "granted") console.log("Record this change in the team's change log.");
+await db.close();
 process.exit(result === "no-record" ? 1 : 0);

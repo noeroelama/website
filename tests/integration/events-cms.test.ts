@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreEventStore, eventSnapshot } from "@website/db/firestore";
+import { createSqlEventStore, eventSnapshot } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { REVERTIBLE_COLLECTIONS } from "../../apps/admin/src/server/audit-log";
 import { createEventActions } from "../../apps/admin/src/server/events";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreEventStore>[0];
+type Db = Parameters<typeof createSqlEventStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -55,8 +55,8 @@ const event = {
   ],
 };
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestoreEventStore>;
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlEventStore>;
 const actions = () =>
   createEventActions({
     events: store,
@@ -67,8 +67,8 @@ const auditEntries = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);
 
 beforeEach(() => {
-  fake = fakeFirestore();
-  store = createFirestoreEventStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlEventStore(fake.db as unknown as Db);
 });
 
 describe("Events CMS: save, publish, delete", () => {

@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applicationSnapshot,
-  createFirestoreFormStore,
-  createFirestoreRecruitmentStore,
-  createFirestoreRecruitmentWebStore,
-} from "@website/db/firestore";
+  createSqlFormStore,
+  createSqlRecruitmentStore,
+  createSqlRecruitmentWebStore,
+} from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createFormActions } from "../../apps/admin/src/server/forms";
 import { createRecruitmentActions } from "../../apps/admin/src/server/recruitment";
 import { createApplying } from "../../apps/web/src/server/recruitment";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreFormStore>[0];
+type Db = Parameters<typeof createSqlFormStore>[0];
 let clock = new Date("2026-11-10T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -30,15 +30,15 @@ const context = () =>
   Promise.resolve({ actorEmail: "oprec@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let saved: Array<{ path: string; bytes: Uint8Array; options: unknown }>;
 const db = () => fake.db as unknown as Db;
 const recruitmentActions = () =>
   createRecruitmentActions({
-    recruitments: createFirestoreRecruitmentStore(db()),
+    recruitments: createSqlRecruitmentStore(db()),
     now: () => clock,
   });
-const web = () => createFirestoreRecruitmentWebStore(db());
+const web = () => createSqlRecruitmentWebStore(db());
 const applying = () =>
   createApplying({
     store: web(),
@@ -95,14 +95,14 @@ const auditEntries = () =>
 beforeEach(async () => {
   clock = new Date("2026-11-10T05:00:00Z");
   saved = [];
-  fake = fakeFirestore();
+  fake = fakeDb();
   fake.docs.set("periods/p2026", { name: "2026/2027", status: "active", deletedAt: null });
   fake.docs.set("periods/p2025", { name: "2025/2026", status: "archived", deletedAt: null });
   fake.docs.set("orgUnits/media", { periodId: "p2026", name: "Direktorat Media", deletedAt: null });
   fake.docs.set("orgUnits/finance", { periodId: "p2026", name: "Keuangan", deletedAt: null });
   fake.docs.set("orgUnits/old", { periodId: "p2025", name: "Old unit", deletedAt: null });
   const form = await createFormActions({
-    forms: createFirestoreFormStore(db()),
+    forms: createSqlFormStore(db()),
     now: () => clock,
     uuid: () => "11111111-0000-4000-8000-000000000000",
     token: () => "unused-token-0000000000000",
@@ -154,7 +154,7 @@ describe("recruitment set-up (recruitment.edit)", () => {
         version: null,
       }),
     ).toEqual({ ok: false, error: "forbidden" });
-    const r = await createFirestoreRecruitmentStore(db()).get(recruitmentId);
+    const r = await createSqlRecruitmentStore(db()).get(recruitmentId);
     expect(r).toMatchObject({
       formId,
       formVersion: 1,
@@ -169,7 +169,7 @@ describe("recruitment set-up (recruitment.edit)", () => {
       filled: 0,
     });
     expect(r).not.toBeNull();
-    const seats = await createFirestoreRecruitmentStore(db()).seats([recruitmentId]);
+    const seats = await createSqlRecruitmentStore(db()).seats([recruitmentId]);
     expect([...(seats.get(recruitmentId) ?? new Map()).entries()]).toEqual([
       ["media", { quota: 2, filled: 0 }],
       ["finance", { quota: 1, filled: 0 }],
@@ -437,7 +437,7 @@ describe("applying (C3 steps 1-2)", () => {
 
 describe("edge cases kept safe", () => {
   it("set-up: missing, stale, deleted, moved between periods; list and delete (revertible)", async () => {
-    const store = createFirestoreRecruitmentStore(db());
+    const store = createSqlRecruitmentStore(db());
     const save = (patch: Record<string, unknown>) =>
       recruitmentActions().save(...as(committee))({ ...setup, formId, ...patch });
     expect(await save({ id: "missing", version: 1 })).toMatchObject({ error: "refused" });

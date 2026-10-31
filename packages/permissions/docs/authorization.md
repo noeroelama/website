@@ -16,7 +16,7 @@
 
   Adding a page or an extra is a reviewed code change (the page is code anyway).
 
-- **Roles** are data. Custom roles live in Firestore (`roles/{id}`: name + page permissions) and
+- **Roles** are data. Custom roles live in MySQL (`roles/{id}`: name + page permissions) and
   are created and edited in the admin **Role Manager → Edit Role** (with a badge colour). `normalizePermissions()` cleans every
   saved list (unknown entries dropped, edit/extras add read).
 - **Built-in roles** (`SYSTEM_ROLES`, code only, never editable): `superadmin` (every page),
@@ -37,7 +37,7 @@
     appointment, never from the client).
   - Unknown scope types, bad ids and unreadable dates are dropped when the record is read.
 - **Appointments → roles** (B7, `apps/admin/src/server/appointments.ts`,
-  `packages/db/src/firestore/appointments.ts`): appointing someone to a seat of a unit of the
+  `packages/db/src/sql/appointments.ts`): appointing someone to a seat of a unit of the
   active period writes the appointment and its roles in ONE transaction. The roles come from the
   settings document `settings/appointmentRoles` (data, edited on the Structure page with
   `roles.edit`; only existing custom roles, never built-in ones; "suggested" =

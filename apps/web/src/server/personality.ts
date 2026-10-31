@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestorePersonalityStore, PersonalityResult } from "@website/db/firestore";
+import type { SqlPersonalityStore, PersonalityResult } from "@website/db/sql";
 import {
   PERSONALITY_LINK_DAYS,
   PersonalityAnswersSchema,
@@ -17,7 +17,7 @@ import { signLink, verifyLink } from "@website/security";
  * sign-in; scoring happens here, and a result is stored once and never overwritten.
  */
 export interface PersonalityDeps {
-  readonly results: Pick<FirestorePersonalityStore, "get" | "saveOnce">;
+  readonly results: Pick<SqlPersonalityStore, "get" | "saveOnce">;
   readonly secret: string;
   readonly now: () => Date;
 }

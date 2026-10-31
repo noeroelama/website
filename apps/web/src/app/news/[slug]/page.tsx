@@ -12,7 +12,7 @@ import { publicNews, publicNewsBySlug } from "@/server/news";
 
 // Unknown, draft, future or deleted slug → the 404 page. With Cache Components the response has
 // already started streaming, so the status stays 200 and Next adds `noindex` (a soft 404; a real
-// 404 status would need a Firestore read in proxy.ts for every request).
+// 404 status would need a database read in proxy.ts for every request).
 export const instant = false;
 
 const find = async (slug: string) => (isValidSlug(slug) ? publicNewsBySlug(slug) : null);

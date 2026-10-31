@@ -23,6 +23,17 @@ jobs:
     name: Install · format · lint · typecheck · test · build · secrets
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The same MySQL major version as the cPanel host: tests/integration/sql-store.test.ts.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only
+          MYSQL_DATABASE: ppidk_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only"
+          --health-interval=5s --health-timeout=5s --health-retries=30
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4 # reads "packageManager" from package.json
@@ -41,6 +52,8 @@ jobs:
       - run: pnpm lint # includes architecture boundary check
       - run: pnpm typecheck
       - run: pnpm test
+        env:
+          TEST_DATABASE_URL: mysql://root:ci-only@127.0.0.1:3306/ppidk_test
       - run: pnpm build
       - run: pnpm check:secrets
       - name: E2E smoke (production builds, no secrets)

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { hasTwoSignInMethods, type AccountAdmin, type PasskeyStore } from "@website/auth";
 import type { AuditEvent } from "@website/audit";
 import type { AuditChange, Invite, UserSummary } from "@website/db";
-import type { FirestoreAccountStore, FirestoreRoleStore } from "@website/db/firestore";
+import type { SqlAccountStore, SqlRoleStore } from "@website/db/sql";
 import { RuleViolationError } from "@website/domain/shared";
 import { logSecurityEvent, type Logger } from "@website/observability";
 import {
@@ -20,10 +20,10 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface AccountDeps {
   readonly accounts: Pick<
-    FirestoreAccountStore,
+    SqlAccountStore,
     "change" | "get" | "findByEmail" | "findByName" | "searchByPrefix" | "invite" | "cancelInvite"
   >;
-  readonly roles: Pick<FirestoreRoleStore, "get">;
+  readonly roles: Pick<SqlRoleStore, "get">;
   readonly passkeys: Pick<PasskeyStore, "listByUser">;
   readonly authAdmin: AccountAdmin;
   readonly logger: Logger;

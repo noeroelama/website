@@ -3,6 +3,8 @@ import {
   baseEnv,
   captchaEnv,
   fieldEncryptionEnv,
+  databaseEnv,
+  filesEnv,
   firebaseAdminEnv,
   lazyEnv,
   loadEnv,
@@ -19,6 +21,8 @@ import {
  */
 const webEnvSchema = baseEnv
   .extend(firebaseAdminEnv.shape)
+  .extend(databaseEnv.shape)
+  .extend(filesEnv.shape)
   .extend(sessionEnv.shape)
   .extend(captchaEnv.partial().shape)
   .extend(messagingEnv.shape)

@@ -120,7 +120,7 @@ completeness test fail until both exist.
   Google's OAuth review see); the cookie's language streams in at request time. Nothing personal
   is read in these components.
 - `/` never redirects and always contains the purpose statement and the Google data notice.
-- Content from Firestore (news, events) is shown in the language it was written in.
+- Content from the database (news, events) is shown in the language it was written in.
 - `LEGAL_VERSION` is the "last updated" date of Terms and Privacy: change it with the text.
 - `<html lang>` stays `id` (the root layout is static).
 - The social icons link to the networks' home pages until the organisation's profile URLs are put in
@@ -141,5 +141,4 @@ completeness test fail until both exist.
 
 `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `RECAPTCHA_MIN_SCORE` (captcha);
 `MESSAGING_MODE`, `MESSAGING_TEST_RECIPIENTS`, `RESEND_API_KEY`, `EMAIL_FROM_TRANSACTIONAL`
-(confirmation e-mails, same meaning as in admin). Firestore index `events (published, startsAt
-desc)`.
+(confirmation e-mails, same meaning as in admin).

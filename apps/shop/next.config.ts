@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
     "@website/permissions",
     "@website/ui",
   ],
-  serverExternalPackages: ["firebase-admin"],
+  serverExternalPackages: ["firebase-admin", "mysql2"],
   ...standalone,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

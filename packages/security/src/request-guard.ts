@@ -133,7 +133,7 @@ export async function guardRequest(request: Request, options: GuardOptions): Pro
 
 /**
  * Builds the guard for an app. Development/test use an in-memory store and a random secret;
- * staging/production require RATE_LIMIT_SECRET and use the shared (Firestore) store, created once.
+ * staging/production require RATE_LIMIT_SECRET and use the shared (MySQL) store, created once.
  */
 export function createRequestGuard(
   config: Omit<GuardOptions, "store" | "secret"> & {

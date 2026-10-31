@@ -1,14 +1,14 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreEventStore, FirestoreGalleryStore } from "@website/db/firestore";
+import type { SqlEventStore, SqlGalleryStore } from "@website/db/sql";
 import { AlbumInputSchema, canHaveAlbum, type Album } from "@website/domain/gallery";
 import { RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface GalleryDeps {
-  readonly albums: Pick<FirestoreGalleryStore, "write">;
-  readonly events: Pick<FirestoreEventStore, "get">;
+  readonly albums: Pick<SqlGalleryStore, "write">;
+  readonly events: Pick<SqlEventStore, "get">;
   readonly now: () => Date;
 }
 

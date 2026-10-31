@@ -3,11 +3,12 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import {
+  deleteExpired,
   inviteId,
   type AuditListQuery,
-  type FirestoreFormStore,
+  type SqlFormStore,
   type LetterListQuery,
-} from "@website/db/firestore";
+} from "@website/db/sql";
 import { CERTIFICATE_EMAIL_PURPOSE, type Letter } from "@website/domain/documents";
 import { orgUnitPath } from "@website/domain/organizations";
 import sharp from "sharp";
@@ -45,7 +46,7 @@ import { createPeriodActions } from "./periods";
 import { createRecruitmentActions } from "./recruitment";
 import { createRoleActions } from "./roles";
 import { createUniversityActions } from "./universities";
-import { adminStores, imageStorage } from "./stores";
+import { adminDb, adminStores, imageStorage } from "./stores";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -334,7 +335,11 @@ export const auditLogActions = lazyEnv(() =>
 export const cronRoute = lazyEnv(() =>
   createCronRoute({
     secret: getAdminEnv().CRON_SECRET,
-    jobs: { ...CRON_JOBS, "newsletter-send": () => newsletterActions().runBatch() },
+    jobs: {
+      ...CRON_JOBS,
+      "newsletter-send": () => newsletterActions().runBatch(),
+      expire: () => deleteExpired(adminDb(), new Date()),
+    },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
         ? adminStores().logger.error(String(message), fields)
@@ -455,7 +460,7 @@ export const adminReads = {
   getForm: (id: string) => adminStores().forms.get(id),
   listFormVersions: (id: string) => adminStores().forms.listVersions(id),
   listFormResponses: (id: string, limit: number) => adminStores().forms.listResponses(id, limit),
-  currentFormVersions: (forms: Parameters<FirestoreFormStore["currentVersions"]>[0]) =>
+  currentFormVersions: (forms: Parameters<SqlFormStore["currentVersions"]>[0]) =>
     adminStores().forms.currentVersions(forms),
   listAlbums: () => adminStores().galleries.listForAdmin(),
   listChapters: () => adminStores().chapters.listForAdmin(),

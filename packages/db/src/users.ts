@@ -215,7 +215,7 @@ export const isActiveSuperadmin = (user: UserSummary): boolean =>
     (a) => a.roleId === "superadmin" && a.scope.type === "global" && !a.revokedAt && !a.periodId,
   );
 
-/** Assignments as stored in Firestore: every field present (null when unset). */
+/** Assignments as stored in the database: every field present (null when unset). */
 export const plainAssignments = (assignments: readonly RoleAssignment[]) =>
   assignments.map((a) => ({
     roleId: a.roleId,

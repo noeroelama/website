@@ -1,22 +1,22 @@
 import { randomBytes } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreSignatureStore } from "@website/db/firestore";
+import { createSqlSignatureStore } from "@website/db/sql";
 import { signaturePath, SignatureSettingsSchema } from "@website/domain/documents";
 import { qrPng } from "@website/pdf";
 import { decryptField } from "@website/security";
 import { createOwnSignature } from "../../apps/web/src/server/signature";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreSignatureStore>[0];
+type Db = Parameters<typeof createSqlSignatureStore>[0];
 const KEY = randomBytes(32).toString("base64");
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
 const ari = { uid: "ari" };
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let files: Map<string, Uint8Array>;
 let key: string | null;
 let uuid = 0;
-const store = () => createFirestoreSignatureStore(fake.db as unknown as Db);
+const store = () => createSqlSignatureStore(fake.db as unknown as Db);
 const own = () =>
   createOwnSignature({
     store: store(),
@@ -42,7 +42,7 @@ const upload = (owner: { uid: string } | null, bytes: Uint8Array, query = "") =>
   );
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   files = new Map();
   key = KEY;
   uuid = 0;

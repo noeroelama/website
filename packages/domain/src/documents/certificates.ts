@@ -36,7 +36,7 @@ export const CERTIFICATE_EMAIL_PURPOSE = "certificate-email";
 export const CERTIFICATE_PICKUP_PURPOSE = "certificate-pickup";
 export const CERTIFICATE_PICKUP_LINK_MS = 15 * 60_000;
 
-/** At most this many sheets are written in one transaction (Firestore allows 500 writes). */
+/** At most this many sheets are written in one transaction (keeps one transaction small). */
 export const CERTIFICATE_CHUNK = 200;
 /** At most this many lines in one paste. */
 export const MAX_PARTICIPANT_LINES = 1000;

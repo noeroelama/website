@@ -4,6 +4,8 @@ import {
   cronEnv,
   documentsEnv,
   fieldEncryptionEnv,
+  databaseEnv,
+  filesEnv,
   firebaseAdminEnv,
   messagingEnv,
   newsletterEnv,
@@ -17,6 +19,8 @@ import {
 
 const adminEnvSchema = baseEnv
   .extend(firebaseAdminEnv.shape)
+  .extend(databaseEnv.shape)
+  .extend(filesEnv.shape)
   .extend(sessionEnv.shape)
   .extend(cronEnv.shape)
   .extend(messagingEnv.shape)

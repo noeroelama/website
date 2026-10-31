@@ -1,6 +1,6 @@
 /**
  * PPIDK → platform import of forms and recruitment (block J, step 5.8): pure mapping from the
- * MariaDB tables (exported as TSV) to Firestore documents, run after the people import
+ * MariaDB tables (exported as TSV) to database documents, run after the people import
  * (step 3.9: periods, org units and accounts exist). The local script
  * infrastructure/scripts/import-ppidk-recruitment.mjs reads the files, resolves Firebase uids
  * the same way as the people import, writes what this returns and copies the private PDFs.

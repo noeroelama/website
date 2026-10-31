@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { SubmitOutcome } from "@website/db/firestore";
+import type { SubmitOutcome } from "@website/db/sql";
 import {
   toPublicForm,
   type Form,

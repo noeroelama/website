@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { createFirestoreWebhookEventStore } from "@website/db/firestore";
+import { createSqlWebhookEventStore } from "@website/db/sql";
 import {
   bearerTokenMatches,
   createMemoryRateLimitStore,
@@ -8,7 +8,7 @@ import {
   verifyHmacSignature,
 } from "@website/security";
 import { createCronRoute, CRON_JOBS } from "../../apps/admin/src/server/cron";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
 const SECRET = "c".repeat(40);
 const hmac = (body: string, secret = "wh-secret") =>
@@ -85,9 +85,9 @@ describe("verifyHmacSignature (provider signature + timestamp)", () => {
 
 describe("webhook event de-duplication (webhookEvents/{provider}_{eventId})", () => {
   it("records an event once; a replay returns false", async () => {
-    const fake = fakeFirestore();
-    const store = createFirestoreWebhookEventStore(
-      fake.db as unknown as Parameters<typeof createFirestoreWebhookEventStore>[0],
+    const fake = fakeDb();
+    const store = createSqlWebhookEventStore(
+      fake.db as unknown as Parameters<typeof createSqlWebhookEventStore>[0],
     );
     const at = new Date("2026-10-16T00:00:00Z");
     expect(await store.record("zoom", "evt-1", at)).toBe(true);

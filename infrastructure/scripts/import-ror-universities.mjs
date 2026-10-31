@@ -13,12 +13,12 @@
  *
  * Safe to run again: rows are keyed by ROR id + country; an existing row gets the ROR fields and
  * stays approved, a new row is created. Proposed (manual) campuses are never touched.
- * Needs FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
+ * Needs DATABASE_URL.
  */
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { parseArgs } from "node:util";
 import { universityRowsFromRor } from "../../packages/domain/src/members/universities.ts";
+import { getDatabase } from "../../packages/db/src/sql/store.ts";
 
 const { values } = parseArgs({
   options: { file: { type: "string" }, apply: { type: "boolean", default: false } },
@@ -27,29 +27,13 @@ if (!values.file) {
   console.error("Usage: import-ror-universities.mjs --file <ror-dump.json> [--apply]");
   process.exit(2);
 }
-const missing = ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"].filter(
-  (name) => !process.env[name],
-);
+const missing = ["DATABASE_URL"].filter((name) => !process.env[name]);
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
   process.exit(2);
 }
 
-// firebase-admin is a dependency of @website/db; resolve it from there.
-const require = createRequire(new URL("../../packages/db/package.json", import.meta.url));
-const { cert, initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
-
-const db = getFirestore(
-  initializeApp({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    }),
-  }),
-);
+const db = getDatabase({ url: process.env.DATABASE_URL });
 
 const chapters = await db.collection("chapters").where("active", "==", true).get();
 const countries = new Set(chapters.docs.map((doc) => doc.get("countryCode")));
@@ -103,3 +87,4 @@ for (let i = 0; i < rows.length; i += 400) {
   await batch.commit();
 }
 console.log(`Done: ${created} new, ${rows.length - created} updated.`);
+await db.close();

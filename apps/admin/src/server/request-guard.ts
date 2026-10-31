@@ -2,13 +2,13 @@
 import { readCookie, SESSION_COOKIE, signInUrl } from "@website/auth";
 import {
   baseEnv,
-  firebaseAdminEnv,
+  databaseEnv,
   lazyEnv,
   loadEnv,
   publicUrlsEnv,
   rateLimitEnv,
 } from "@website/config/env";
-import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
+import { createSqlRateLimitStore, getDatabaseForRole } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 
@@ -38,16 +38,14 @@ const getGuard = lazyEnv(() => {
     privatePrefixes: ["/"],
     // Each provider step adds its path here (e.g. "/webhooks/zoom"); see docs/architecture.md DEC-5.
     signedWebhookPaths: ADMIN_WEBHOOK_PATHS,
-    // Staging/production: counters shared by all server instances (Firestore, pooled client).
+    // Staging/production: counters shared by all server instances (MySQL, pooled).
     sharedStore: () => {
-      const fb = loadEnv(baseEnv.extend(firebaseAdminEnv.shape), process.env);
-      return createFirestoreRateLimitStore(
-        getFirestoreForRole({
-          appEnv: fb.APP_ENV,
+      const db = loadEnv(baseEnv.extend(databaseEnv.shape), process.env);
+      return createSqlRateLimitStore(
+        getDatabaseForRole({
           role: "admin_rw",
-          projectId: fb.FIREBASE_PROJECT_ID,
-          clientEmail: fb.FIREBASE_CLIENT_EMAIL,
-          privateKey: fb.FIREBASE_PRIVATE_KEY,
+          url: db.DATABASE_URL,
+          connectionLimit: db.DATABASE_CONNECTION_LIMIT,
         }),
       );
     },

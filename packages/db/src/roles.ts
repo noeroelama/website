@@ -9,8 +9,8 @@ import type { RoleReader, SignInRecorder, UserDirectory } from "./users";
  * Each deployable gets ONE role and only the repositories that role may use.
  * The type system stops `web` from ever obtaining a writer.
  *
- * All data lives in Firestore. Roles map to separate service accounts (see packages/db/docs/database.md);
- * because Firestore IAM is project-wide, the per-role repository surface below is what
+ * All data lives in MySQL. Roles map to separate MySQL users (see packages/db/docs/database.md);
+ * the per-role repository surface below is what
  * actually limits each app.
  */
 export type DatabaseRole = "web_ro" | "admin_rw" | "shop_rw" | "gateway_rw";
@@ -39,7 +39,7 @@ export interface GatewayRepositories {
   readonly apiKeys: ApiKeyStore;
 }
 
-/** Shop repositories (products, categories, carts, orders) — Firestore, added with the shop phase. */
+/** Shop repositories (products, categories, carts, orders) — MySQL, added with the shop phase. */
 export type ShopRepositories = Readonly<Record<never, never>>;
 
 export interface RepositoriesByRole {

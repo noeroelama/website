@@ -37,7 +37,7 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
   profile" (member-only). Bumping `PRIVACY_POLICY_VERSION` asks everyone to agree again.
 - Saving also writes `users/{uid}.chapterId` (the active chapter whose `countryCode` is
   `ppiCountry`, or null) so chapter-scoped staff lists are one query; no personal data goes to
-  `users`. Firestore: `packages/db/src/firestore/member-profiles.ts`.
+  `users`. Database: `packages/db/src/sql/member-profiles.ts`.
 - Address in Indonesia: province → regency/city pick-lists from
   `packages/domain/src/members/indonesia-regions.ts` (38 provinces, 514 regencies, Kepmendagri;
   generated once from the npm package `idn-area-data@4.0.1`, Open Database License — keep the
@@ -47,8 +47,8 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 
 ## Data changes and graduation (B5)
 
-- Rules: `packages/domain/src/members/verification.ts` (guarded fields, graduation); Firestore
-  `packages/db/src/firestore/member-profiles.ts` (`memberProfiles/{uid}` fields `graduatedOn`,
+- Rules: `packages/domain/src/members/verification.ts` (guarded fields, graduation); database
+  `packages/db/src/sql/member-profiles.ts` (`memberProfiles/{uid}` fields `graduatedOn`,
   `graduationMarkedBy`, `chapterId`); web `apps/web/src/server/profile.ts` (`/account/profile`).
 - There is no profile verification (removed 2026-10-24 together with the admin Members page).
   Every change the member saves applies at once. Changes of the guarded fields (PPIDK §63: full
@@ -88,7 +88,7 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 ## Universities (A3)
 
 - Master `universities/{id}` (`packages/domain/src/members/universities.ts`,
-  `packages/db/src/firestore/universities.ts`): campuses from the ROR dump (`approved`, id
+  `packages/db/src/sql/universities.ts`): campuses from the ROR dump (`approved`, id
   `{rorKey}_{country}`) and campuses members propose (`pending`).
 - Import (owner, once, and again when chapters are added):
   `infrastructure/scripts/import-ror-universities.mjs` reads the official ROR dump (CC0, from

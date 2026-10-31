@@ -1,5 +1,5 @@
 import "server-only";
-import type { FirestoreSignatureStore } from "@website/db/firestore";
+import type { SqlSignatureStore } from "@website/db/sql";
 import {
   MAX_SIGNATURE_BYTES,
   SignatureSettingsSchema,
@@ -10,7 +10,7 @@ import { detectImageType } from "@website/domain/shared";
 import { decryptField, encryptField, jsonError, readBodyLimited } from "@website/security";
 
 export interface SignatureDeps {
-  readonly store: Pick<FirestoreSignatureStore, "get" | "replace" | "configure" | "remove">;
+  readonly store: Pick<SqlSignatureStore, "get" | "replace" | "configure" | "remove">;
   readonly storage: {
     save(
       path: string,

@@ -1,6 +1,6 @@
 /**
  * PPIDK → platform import of people and the organisation (block J, step 3.9): pure mapping from
- * the MariaDB tables (exported as TSV) to Firestore documents. The local script
+ * the MariaDB tables (exported as TSV) to database documents. The local script
  * infrastructure/scripts/import-ppidk-people.mjs reads the files, resolves Firebase uids, and
  * writes what this returns. Every id is derived from the PPIDK id (`ppidk-…`), so a second run
  * writes the same documents again (idempotent).

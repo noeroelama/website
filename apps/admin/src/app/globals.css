@@ -3657,7 +3657,7 @@ form.admin-toolbar::before {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-2) var(--space-6);
-  margin: 0 0 var(--space-4);
+  margin: 0;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
 }
@@ -3903,6 +3903,8 @@ form.admin-toolbar::before {
 
 .admin-audit-tabbar .admin-tabs {
   flex: 1;
+  min-width: 0;
+  overflow-x: auto; /* one tab per side-panel page: scroll instead of wrapping */
   margin-bottom: 0;
   border-bottom: 0;
 }

@@ -1,17 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  createFirestoreMemberProfileStore,
-  createFirestoreUniversityStore,
-} from "@website/db/firestore";
+import { createSqlMemberProfileStore, createSqlUniversityStore } from "@website/db/sql";
 import {
   INDONESIA_PROVINCES,
   isProfileComplete,
   PRIVACY_POLICY_VERSION,
 } from "@website/domain/members";
 import { createOwnProfile } from "../../apps/web/src/server/profile";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreMemberProfileStore>[0];
+type Db = Parameters<typeof createSqlMemberProfileStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 const input = {
   fullName: "Siti Rahma",
@@ -32,15 +29,15 @@ const input = {
 };
 const siti = { uid: "siti", email: "siti@example.org", emailVerified: true };
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestoreMemberProfileStore>;
-const universities = () => createFirestoreUniversityStore(fake.db as unknown as Db);
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlMemberProfileStore>;
+const universities = () => createSqlUniversityStore(fake.db as unknown as Db);
 const own = () =>
   createOwnProfile({ profiles: store, universities: universities(), now: () => now });
 
 beforeEach(() => {
-  fake = fakeFirestore();
-  store = createFirestoreMemberProfileStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlMemberProfileStore(fake.db as unknown as Db);
   fake.docs.set("users/siti", { uid: "siti", status: "active", version: 3 });
   fake.docs.set("chapters/ch-jp", { countryCode: "JP", active: true, name: "PPI Jepang" });
   fake.docs.set("chapters/ch-kr", { countryCode: "KR", active: true, name: "PPI Korea" });

@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import {
-  createFirestoreLetterSettingsStore,
-  createFirestoreLetterStore,
-  createFirestoreLetterTypeStore,
-} from "@website/db/firestore";
+  createSqlLetterSettingsStore,
+  createSqlLetterStore,
+  createSqlLetterTypeStore,
+} from "@website/db/sql";
 import { DEFAULT_LETTERHEAD, letterCanonical, type Letter } from "@website/domain/documents";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { pdfText } from "@website/pdf";
 import { createLetterPdf } from "../../apps/admin/src/server/letter-pdf";
 import { createLetterActions } from "../../apps/admin/src/server/letters";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreLetterStore>[0];
+type Db = Parameters<typeof createSqlLetterStore>[0];
 const clock = new Date("2026-11-02T03:00:00Z");
 let clockShift = 0;
 const staff = (
@@ -41,12 +41,12 @@ const sekjen = staff("sekjen", ["letters.sign", "letters.read"]);
 const koordinator = staff("koor", ["letters.sign_coordinator", "letters.sign"]);
 const director = staff("dir", ["letters.edit"], { type: "orgUnit", orgUnitId: "media" });
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let afterIssue: Letter[] = [];
 let files: Map<string, Uint8Array>;
 let uuids = 0;
 const db = () => fake.db as unknown as Db;
-const letters = () => createFirestoreLetterStore(db());
+const letters = () => createSqlLetterStore(db());
 const storage = {
   read: (path: string) => Promise.resolve(files.get(path) ?? null),
   save: (path: string, bytes: Uint8Array) => {
@@ -72,8 +72,8 @@ const letterPdf = () =>
 const actions = () =>
   createLetterActions({
     letters: letters(),
-    types: createFirestoreLetterTypeStore(db()),
-    settings: createFirestoreLetterSettingsStore(db()),
+    types: createSqlLetterTypeStore(db()),
+    settings: createSqlLetterSettingsStore(db()),
     afterIssue: (letter) => {
       afterIssue.push(letter);
       return Promise.resolve();
@@ -100,7 +100,7 @@ const draft = {
 };
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   afterIssue = [];
   files = new Map();
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
@@ -201,7 +201,7 @@ describe("letter types", () => {
       fields: { numberFormat: "Unknown placeholder {year}." },
     });
     const sk = await createType({ name: "Surat Keputusan", code: "SK", sort: 0 });
-    const typeStore = createFirestoreLetterTypeStore(db());
+    const typeStore = createSqlLetterTypeStore(db());
     await createType({ name: "Surat Edaran", code: "SE", sort: 0 });
     expect((await typeStore.list()).map((t) => t.code)).toEqual(["SE", "SK", "SU"]);
     const renamed = await actions().saveType(...as(secretariat))({
@@ -518,7 +518,7 @@ describe("letters workflow", () => {
     fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "letter", letterId: "older" });
     let calls = 0;
     // First code: all zeros (taken); then all ones.
-    const store = createFirestoreLetterStore(db(), () => (calls++ < 10 ? 0 : 1));
+    const store = createSqlLetterStore(db(), () => (calls++ < 10 ? 0 : 1));
     const issued = await store
       .issue(id, 4, DEFAULT_LETTERHEAD, () => ({}) as never, clock)
       .catch((e: Error) => e);
@@ -555,7 +555,7 @@ describe("letters workflow", () => {
         at: clock,
       },
     ]);
-    const unlucky = createFirestoreLetterStore(db(), () => 0);
+    const unlucky = createSqlLetterStore(db(), () => 0);
     const again = await approvedLetter({ code: "SU3" });
     fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "letter", letterId: "older" });
     await expect(
@@ -564,7 +564,7 @@ describe("letters workflow", () => {
   });
 
   it("the letterhead is versioned, audited and frozen on letters issued after it", async () => {
-    const settings = createFirestoreLetterSettingsStore(db());
+    const settings = createSqlLetterSettingsStore(db());
     expect(await settings.get()).toEqual({ letterhead: DEFAULT_LETTERHEAD, version: null });
     const letterhead = { ...DEFAULT_LETTERHEAD, address: "Tokyo, Japan", initialsBox: true };
     const saved = await actions().saveLetterhead(...as(secretariat))({ letterhead, version: null });

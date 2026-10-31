@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestorePeriodStore } from "@website/db/firestore";
+import type { SqlPeriodStore } from "@website/db/sql";
 import {
   canChangePeriod,
   canDeletePeriod,
@@ -13,7 +13,7 @@ import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface PeriodDeps {
-  readonly periods: Pick<FirestorePeriodStore, "write" | "activate">;
+  readonly periods: Pick<SqlPeriodStore, "write" | "activate">;
   readonly now: () => Date;
 }
 

@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  createFirestoreApplicationStore,
-  createFirestoreRecruitmentStore,
-  createFirestoreRecruitmentWebStore,
-} from "@website/db/firestore";
+  createSqlApplicationStore,
+  createSqlRecruitmentStore,
+  createSqlRecruitmentWebStore,
+} from "@website/db/sql";
 import { nextAction } from "@website/domain/recruitment";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createApplicationActions } from "../../apps/admin/src/server/applications";
 import { createRecruitmentActions } from "../../apps/admin/src/server/recruitment";
 import { createApplying } from "../../apps/web/src/server/recruitment";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 import { noRatification } from "../support/recruitment";
 
-type Db = Parameters<typeof createFirestoreApplicationStore>[0];
+type Db = Parameters<typeof createSqlApplicationStore>[0];
 let clock = new Date("2026-11-10T05:00:00Z");
 const staff = (permissions: string[], userId = "committee-1"): Principal => ({
   kind: "user",
@@ -32,16 +32,16 @@ const context = () =>
   Promise.resolve({ actorEmail: "oprec@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 const db = () => fake.db as unknown as Db;
 const decisions = () =>
   createApplicationActions({
-    applications: createFirestoreApplicationStore(db()),
+    applications: createSqlApplicationStore(db()),
     signedUrl: (path) => Promise.resolve(`https://signed.test/${path}`),
     ...noRatification,
     now: () => clock,
   });
-const web = () => createFirestoreRecruitmentWebStore(db());
+const web = () => createSqlRecruitmentWebStore(db());
 const applying = () =>
   createApplying({
     store: web(),
@@ -74,7 +74,7 @@ const passAndOffer = async (uid: string, orgUnitId = "finance") => {
 
 beforeEach(async () => {
   clock = new Date("2026-11-10T05:00:00Z");
-  fake = fakeFirestore();
+  fake = fakeDb();
   fake.docs.set("periods/p2026", { name: "2026/2027", status: "active", deletedAt: null });
   fake.docs.set("orgUnits/media", { periodId: "p2026", name: "Direktorat Media", deletedAt: null });
   fake.docs.set("orgUnits/finance", { periodId: "p2026", name: "Keuangan", deletedAt: null });
@@ -99,7 +99,7 @@ beforeEach(async () => {
     ],
   });
   const actions = createRecruitmentActions({
-    recruitments: createFirestoreRecruitmentStore(db()),
+    recruitments: createSqlRecruitmentStore(db()),
     now: () => clock,
   });
   const committee = staff(["recruitment.edit"]);
@@ -171,7 +171,7 @@ describe("review (recruitment.review): revision rounds, fail, pass", () => {
       version: version("ari"),
       request: "Shorter, please.",
     });
-    const rounds = await createFirestoreApplicationStore(db()).revisions(appId("ari"));
+    const rounds = await createSqlApplicationStore(db()).revisions(appId("ari"));
     expect(rounds.map((r) => [r.round, r.request, r.resubmittedAt?.toISOString() ?? null])).toEqual(
       [
         [1, "Add your experience.", "2026-11-11T05:00:00.000Z"],
@@ -180,9 +180,10 @@ describe("review (recruitment.review): revision rounds, fail, pass", () => {
     );
     expect(fake.docs.get(`applications/${appId("ari")}`)).toMatchObject({ revisionRound: 2 });
     expect(
-      (await createFirestoreApplicationStore(db()).revisionsForRecruitment(recruitmentId)).map(
-        (r) => [r.applicationId, r.round],
-      ),
+      (await createSqlApplicationStore(db()).revisionsForRecruitment(recruitmentId)).map((r) => [
+        r.applicationId,
+        r.round,
+      ]),
     ).toEqual([
       [appId("ari"), 1],
       [appId("ari"), 2],
@@ -362,7 +363,7 @@ describe("offers and seats (recruitment.offer; accept on the website)", () => {
     // A withdrawn draft was never submitted: listed first (no submission time).
     await applying().saveDraft({ uid: "eko" }, { recruitmentId, choices: [], answers: {} });
     await applying().withdraw({ uid: "eko" }, { recruitmentId });
-    const store = createFirestoreApplicationStore(db());
+    const store = createSqlApplicationStore(db());
     expect((await store.listForRecruitment(recruitmentId)).map((a) => a.userId)).toEqual([
       "eko",
       "ari",

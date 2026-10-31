@@ -1,7 +1,7 @@
 import "server-only";
 import { lazyEnv } from "@website/config/env";
 import type { UserDirectory } from "@website/db";
-import { createFirestoreUserStore } from "@website/db/firestore";
+import { createSqlUserStore } from "@website/db/sql";
 import { adminDb } from "./stores";
 
 /**
@@ -9,4 +9,4 @@ import { adminDb } from "./stores";
  * custom roles in `roles/{id}`, one read each). A valid Firebase login alone grants nothing in
  * admin: no record, an inactive account or no staff role keeps the admin area closed.
  */
-export const userDirectory = lazyEnv((): UserDirectory => createFirestoreUserStore(adminDb()));
+export const userDirectory = lazyEnv((): UserDirectory => createSqlUserStore(adminDb()));

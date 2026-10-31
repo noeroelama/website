@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  createFirestoreEventStore,
-  createFirestoreGalleryReader,
-  createFirestoreGalleryStore,
-} from "@website/db/firestore";
+  createSqlEventStore,
+  createSqlGalleryReader,
+  createSqlGalleryStore,
+} from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { REVERTIBLE_COLLECTIONS } from "../../apps/admin/src/server/audit-log";
 import { createEventActions } from "../../apps/admin/src/server/events";
 import { createGalleryActions } from "../../apps/admin/src/server/gallery";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreGalleryStore>[0];
+type Db = Parameters<typeof createSqlGalleryStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -52,9 +52,9 @@ const eventInput = {
   sponsors: [],
 };
 
-let fake: ReturnType<typeof fakeFirestore>;
-let albums: ReturnType<typeof createFirestoreGalleryStore>;
-let events: ReturnType<typeof createFirestoreEventStore>;
+let fake: ReturnType<typeof fakeDb>;
+let albums: ReturnType<typeof createSqlGalleryStore>;
+let events: ReturnType<typeof createSqlEventStore>;
 const gallery = () => createGalleryActions({ albums, events, now: () => now });
 const eventActions = () => createEventActions({ events, now: () => now, uuid: () => "u" });
 const auditEntries = () =>
@@ -70,9 +70,9 @@ const createEvent = async (publish: boolean, slug = "simposium") => {
 };
 
 beforeEach(() => {
-  fake = fakeFirestore();
-  albums = createFirestoreGalleryStore(fake.db as unknown as Db);
-  events = createFirestoreEventStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  albums = createSqlGalleryStore(fake.db as unknown as Db);
+  events = createSqlEventStore(fake.db as unknown as Db);
 });
 
 describe("Gallery CMS", () => {
@@ -147,7 +147,7 @@ describe("Gallery CMS", () => {
       publish: false,
     });
     const id = created.ok ? created.data.id : "";
-    const reader = createFirestoreGalleryReader(fake.db as unknown as Db);
+    const reader = createSqlGalleryReader(fake.db as unknown as Db);
     expect(await reader.listPublished()).toEqual([]);
     expect(await reader.findPublishedBySlug("simposium")).toBeNull();
     await gallery().save(...as(editor))({

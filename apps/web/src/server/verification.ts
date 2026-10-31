@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreVerificationReader } from "@website/db/firestore";
+import type { SqlVerificationReader } from "@website/db/sql";
 import {
   certificateVerification,
   letterCanonical,
@@ -16,7 +16,7 @@ import { sha256Hex } from "@website/security";
 import { sanitizeRichText } from "@website/security/html";
 
 export interface VerificationDeps {
-  readonly reader: Pick<FirestoreVerificationReader, "find">;
+  readonly reader: Pick<SqlVerificationReader, "find">;
   /** Private Storage read (archived PDFs). */
   readonly readFile: (path: string) => Promise<Uint8Array | null>;
 }
@@ -134,7 +134,7 @@ const PickupInput = z
  * request guard.
  */
 export function createCertificatePickup(deps: {
-  readonly reader: Pick<FirestoreVerificationReader, "certificatesByEmailHash">;
+  readonly reader: Pick<SqlVerificationReader, "certificatesByEmailHash">;
   readonly captcha: (token: string) => Promise<boolean>;
   /** keyedHash(CERTIFICATE_EMAIL_PURPOSE, email, SUBSCRIBER_HASH_SECRET). */
   readonly hashEmail: (email: string) => string;

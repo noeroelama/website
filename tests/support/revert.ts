@@ -1,11 +1,11 @@
-import { createFirestoreAuditStore } from "@website/db/firestore";
+import { createSqlAuditStore } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import {
   createAuditLogActions,
   REVERTIBLE_COLLECTIONS,
 } from "../../apps/admin/src/server/audit-log";
 
-type Db = Parameters<typeof createFirestoreAuditStore>[0];
+type Db = Parameters<typeof createSqlAuditStore>[0];
 
 const auditor: Principal = {
   kind: "user",
@@ -23,7 +23,7 @@ const auditor: Principal = {
 /** Reverts one audit entry the way the Audit Log page does (production revert collections). */
 export function revertEntry(db: unknown, id: string, now: Date) {
   return createAuditLogActions({
-    audit: createFirestoreAuditStore(db as Db),
+    audit: createSqlAuditStore(db as Db),
     revertible: REVERTIBLE_COLLECTIONS,
     now: () => now,
     logSecurityEvent: () => undefined,

@@ -1,12 +1,12 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreOrgUnitStore } from "@website/db/firestore";
+import type { SqlOrgUnitStore } from "@website/db/sql";
 import { OrgUnitInputSchema, type OrgUnit } from "@website/domain/organizations";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface OrgUnitDeps {
-  readonly units: Pick<FirestoreOrgUnitStore, "save" | "move" | "remove">;
+  readonly units: Pick<SqlOrgUnitStore, "save" | "move" | "remove">;
   readonly now: () => Date;
 }
 

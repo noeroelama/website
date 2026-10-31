@@ -22,7 +22,10 @@ const FRAMEWORKS = [
   "@vercel/*",
 ];
 // Regexes (not gitignore globs) so "@website/auth/firebase-admin" is not mistaken for "firebase-admin".
-const FIREBASE_ANY = "^firebase(-admin)?(/.*)?$";
+// Firebase (sign-in only) and the MySQL driver: each has exactly one sanctioned adapter.
+const SDK_ANY = "^(firebase(-admin)?|mysql2)(/.*)?$";
+const SDK_MESSAGE =
+  "Firebase (sign-in) is only accessed via @website/auth/firebase-admin, MySQL via @website/db/sql.";
 const APPS = "^(web|admin|shop|gateway)(/.*)?$|(^|/)apps/";
 
 /** Relative imports that climb into another app (e.g. "../../admin/src/..."). */
@@ -82,8 +85,8 @@ function appBoundaryBlocks() {
         ...rules,
         CROSS_APP,
         {
-          regex: FIREBASE_ANY,
-          message: "Firebase is only accessed via @website/db or @website/auth adapters.",
+          regex: SDK_ANY,
+          message: SDK_MESSAGE,
         },
       ]),
     },
@@ -95,8 +98,8 @@ function appBoundaryBlocks() {
         CROSS_APP,
         SERVER_ONLY_INFRA,
         {
-          regex: FIREBASE_ANY,
-          message: "Firebase is only accessed via @website/db or @website/auth adapters.",
+          regex: SDK_ANY,
+          message: SDK_MESSAGE,
         },
       ]),
     },
@@ -139,13 +142,12 @@ export default tseslint.config(
       "@typescript-eslint/no-floating-promises": "error",
       eqeqeq: ["error", "always"],
       "no-console": ["error", { allow: ["warn", "error"] }],
-      // No package or app may touch Firebase except the two sanctioned adapters below.
+      // No package or app may touch Firebase or MySQL except the two sanctioned adapters below.
       // Client SDK data APIs are banned outright: admin data is never written from the browser.
       ...restrict([
         {
-          regex: FIREBASE_ANY,
-          message:
-            "Firebase is only accessed via @website/db/firestore or @website/auth/firebase-admin.",
+          regex: SDK_ANY,
+          message: SDK_MESSAGE,
         },
       ]),
     },
@@ -156,11 +158,19 @@ export default tseslint.config(
     rules: { ...tseslint.configs.disableTypeChecked.rules, "no-console": "off" },
   },
 
-  // ── Sanctioned Firebase adapters ──────────────────────────────────────────
+  // ── Sanctioned Firebase and MySQL adapters─────────────────────────────────
   {
-    files: ["packages/auth/src/firebase-admin.ts", "packages/db/src/firestore/**/*.ts"],
+    files: ["packages/auth/src/firebase-admin.ts"],
     rules: restrict([
       { group: ["firebase", "firebase/*"], message: "Server adapters use firebase-admin only." },
+      { regex: "^mysql2(/.*)?$", message: "MySQL is only accessed via @website/db/sql." },
+      { regex: APPS, message: "Packages must never import apps." },
+    ]),
+  },
+  {
+    files: ["packages/db/src/sql/store.ts"],
+    rules: restrict([
+      { regex: "^firebase(-admin)?(/.*)?$", message: "Firebase is used for sign-in only." },
       { regex: APPS, message: "Packages must never import apps." },
     ]),
   },
@@ -168,13 +178,12 @@ export default tseslint.config(
   // ── Packages: never import apps ───────────────────────────────────────────
   {
     files: ["packages/**/*.{ts,tsx}"],
-    ignores: ["packages/auth/src/firebase-admin.ts", "packages/db/src/firestore/**"],
+    ignores: ["packages/auth/src/firebase-admin.ts", "packages/db/src/sql/store.ts"],
     rules: restrict([
       { regex: APPS, message: "Packages must never import apps." },
       {
-        regex: FIREBASE_ANY,
-        message:
-          "Firebase is only accessed via @website/db/firestore or @website/auth/firebase-admin.",
+        regex: SDK_ANY,
+        message: SDK_MESSAGE,
       },
     ]),
   },
@@ -190,7 +199,7 @@ export default tseslint.config(
           group: FRAMEWORKS,
           message: "This package must stay framework-independent (no React/Next/Hono/Vercel).",
         },
-        { regex: FIREBASE_ANY, message: "This package must not depend on Firebase." },
+        { regex: SDK_ANY, message: "This package must not depend on Firebase or MySQL." },
         { regex: APPS, message: "Packages must never import apps." },
       ]),
     },
@@ -201,8 +210,8 @@ export default tseslint.config(
       ...restrict([
         { group: FRAMEWORKS, message: "Domain must not depend on React/Next/Hono/Vercel." },
         {
-          regex: FIREBASE_ANY,
-          message: "Domain must not depend on Firebase — declare a port instead.",
+          regex: SDK_ANY,
+          message: "Domain must not depend on Firebase or MySQL — declare a port instead.",
         },
         {
           regex: "^@website/(?!security/validation$)",
@@ -241,7 +250,7 @@ export default tseslint.config(
         message: "Domain imports no other workspace package (except @website/security/validation).",
       },
       { group: FRAMEWORKS, message: "Domain must not depend on frameworks." },
-      { regex: FIREBASE_ANY, message: "Domain must not depend on Firebase." },
+      { regex: SDK_ANY, message: "Domain must not depend on Firebase or MySQL." },
       { regex: APPS, message: "Packages must never import apps." },
     ]),
   },
@@ -254,7 +263,7 @@ export default tseslint.config(
         message: "Domain imports no other workspace package (except @website/security/validation).",
       },
       { group: FRAMEWORKS, message: "Domain must not depend on frameworks." },
-      { regex: FIREBASE_ANY, message: "Domain must not depend on Firebase." },
+      { regex: SDK_ANY, message: "Domain must not depend on Firebase or MySQL." },
       { regex: APPS, message: "Packages must never import apps." },
     ]),
   },
@@ -317,7 +326,7 @@ export default tseslint.config(
         message: "The gateway is not a Next.js/React app.",
       },
       CROSS_APP,
-      { regex: FIREBASE_ANY, message: "Use @website/db." },
+      { regex: SDK_ANY, message: "Use @website/db." },
     ]),
   },
 

@@ -1,18 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import {
-  createFirestoreAccountStore,
-  createFirestoreRoleStore,
-  createFirestoreUserStore,
-} from "@website/db/firestore";
+import { createSqlAccountStore, createSqlRoleStore, createSqlUserStore } from "@website/db/sql";
 import { can, canAccessAdmin, DEFAULT_ROLE_ASSIGNMENTS } from "@website/permissions";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreUserStore>[0];
+type Db = Parameters<typeof createSqlUserStore>[0];
 const setup = () => {
-  const fake = fakeFirestore();
+  const fake = fakeDb();
   const db = fake.db as unknown as Db;
-  return { ...fake, users: createFirestoreUserStore(db), roles: createFirestoreRoleStore(db) };
+  return { ...fake, users: createSqlUserStore(db), roles: createSqlRoleStore(db) };
 };
 const first = new Date("2026-10-16T01:00:00Z");
 const later = new Date("2026-10-17T09:30:00Z");
@@ -157,7 +153,7 @@ describe("accounts by uid (one batched read)", () => {
   it("returns the found accounts by uid, skips missing and invalid ids, reads once", async () => {
     const { db, docs, getAll } = setup();
     docs.set("users/uid-ana", { uid: "uid-ana", email: "ana@example.org", name: "Ana" });
-    const accounts = createFirestoreAccountStore(db as unknown as Db);
+    const accounts = createSqlAccountStore(db as unknown as Db);
     const many = await accounts.getMany(["uid-ana", "uid-missing", "../x", "uid-ana"]);
     expect([...many.keys()]).toEqual(["uid-ana"]);
     expect(many.get("uid-ana")).toMatchObject({ name: "Ana", email: "ana@example.org" });
@@ -199,6 +195,7 @@ describe("roles repository", () => {
 describe("grant-superadmin bootstrap script", () => {
   const script = "infrastructure/scripts/grant-superadmin.mjs";
   const noFirebase = {
+    DATABASE_URL: "",
     FIREBASE_PROJECT_ID: "",
     FIREBASE_CLIENT_EMAIL: "",
     FIREBASE_PRIVATE_KEY: "",
@@ -215,6 +212,7 @@ describe("grant-superadmin bootstrap script", () => {
     expect(noEmail.stderr).toContain("Usage");
     const noCredentials = run(["--email", "a@example.org"]);
     expect(noCredentials.status).toBe(2);
+    expect(noCredentials.stderr).toContain("DATABASE_URL");
     expect(noCredentials.stderr).toContain("FIREBASE_PRIVATE_KEY");
   });
 });

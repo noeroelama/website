@@ -39,9 +39,9 @@ that nobody holds (soft delete). Built-in roles (`superadmin`, `member`, `user`)
 - Rules: `src/server/accounts.ts` (`createAccountActions`: give/remove role, status, Add New
   People and its suggestions, cancel invite, person details), `src/server/roles.ts` (`createRoleActions`), wired in
   `src/server/wiring.ts` (the invite e-mail goes through `messenger()`).
-- Data: `@website/db` → `createFirestoreAccountStore` (`listRoleHolders`, `findByName`,
+- Data: `@website/db` → `createSqlAccountStore` (`listRoleHolders`, `findByName`,
   `searchByPrefix`,
-  `invite`, `cancelInvite`, `listInvites`), `createFirestoreRoleStore`, `createFirestoreUserStore`
+  `invite`, `cancelInvite`, `listInvites`), `createSqlRoleStore`, `createSqlUserStore`
   (`recordSignIn` applies invites) — `packages/db/docs/database.md`.
 - Colours: `ROLE_COLORS` / `DEFAULT_ROLE_COLOR` in `@website/permissions` (display only).
 - Tests: `tests/integration/users-and-roles.test.ts`, `tests/unit/admin-role-manager.test.ts`,
@@ -76,5 +76,4 @@ that nobody holds (soft delete). Built-in roles (`superadmin`, `member`, `user`)
 
 ## Configuration
 
-`WEB_URL` (link in the invite e-mail) and messaging (`apps/admin/docs/messaging.md`). The users
-list needs no composite Firestore index.
+`WEB_URL` (link in the invite e-mail) and messaging (`apps/admin/docs/messaging.md`).

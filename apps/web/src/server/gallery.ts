@@ -1,11 +1,11 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreGalleryReader } from "@website/db/firestore";
+import { createSqlGalleryReader } from "@website/db/sql";
 import type { PublicAlbum } from "@website/domain/gallery";
 import { webDb } from "./db";
 
-const reader = lazyEnv(() => createFirestoreGalleryReader(webDb()));
+const reader = lazyEnv(() => createSqlGalleryReader(webDb()));
 
 /** Published albums, newest change first (cached for minutes under the tag "gallery"). */
 export async function publicAlbums(): Promise<PublicAlbum[]> {

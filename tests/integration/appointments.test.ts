@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountAdmin } from "@website/auth";
 import {
-  createFirestoreAccountStore,
-  createFirestoreAppointmentStore,
-  createFirestoreOrgUnitStore,
-  createFirestoreRoleStore,
-  createFirestoreUserStore,
-} from "@website/db/firestore";
+  createSqlAccountStore,
+  createSqlAppointmentStore,
+  createSqlOrgUnitStore,
+  createSqlRoleStore,
+  createSqlUserStore,
+} from "@website/db/sql";
 import { createMemoryPasskeyStore } from "@website/db/memory";
 import {
   derivedAssignments,
@@ -17,9 +17,9 @@ import { createLogger } from "@website/observability";
 import { can, normalizePermissions, type Principal } from "@website/permissions";
 import { createAccountActions } from "../../apps/admin/src/server/accounts";
 import { createAppointmentActions } from "../../apps/admin/src/server/appointments";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreAppointmentStore>[0];
+type Db = Parameters<typeof createSqlAppointmentStore>[0];
 const now = new Date("2026-11-02T03:00:00Z");
 const unit = (id: string, type: OrgUnit["type"], periodId = "p2026") => ({
   periodId,
@@ -43,15 +43,15 @@ const role = (permissions: string[]) => ({
   deletedAt: null,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let revokeSessions: ReturnType<typeof vi.fn<(uid: string) => Promise<void>>>;
 let methods: Record<string, { providers: string[]; mfaFactors: number }>;
 let logLines: string[];
 let actions: ReturnType<typeof createAppointmentActions>;
-let appointments: ReturnType<typeof createFirestoreAppointmentStore>;
+let appointments: ReturnType<typeof createSqlAppointmentStore>;
 
 const principalOf = async (uid: string) =>
-  (await createFirestoreUserStore(fake.db as unknown as Db).findPrincipalByUid(uid)) as Principal;
+  (await createSqlUserStore(fake.db as unknown as Db).findPrincipalByUid(uid)) as Principal;
 const context = () =>
   Promise.resolve({
     actorEmail: "x@example.org",
@@ -69,7 +69,7 @@ const assignmentsOf = (uid: string) =>
   fake.docs.get(`users/${uid}`)?.["roleAssignments"] as Array<Record<string, unknown>>;
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   const db = fake.db as unknown as Db;
   fake.docs.set("settings/activePeriod", { periodId: "p2026" });
   fake.docs.set("periods/p2026", { status: "active" });
@@ -111,12 +111,12 @@ beforeEach(() => {
     revokeSessions,
   };
   logLines = [];
-  appointments = createFirestoreAppointmentStore(db);
+  appointments = createSqlAppointmentStore(db);
   actions = createAppointmentActions({
     appointments,
-    accounts: createFirestoreAccountStore(db),
-    units: createFirestoreOrgUnitStore(db),
-    roles: createFirestoreRoleStore(db),
+    accounts: createSqlAccountStore(db),
+    units: createSqlOrgUnitStore(db),
+    roles: createSqlRoleStore(db),
     passkeys: createMemoryPasskeyStore(),
     authAdmin,
     logger: createLogger({ service: "admin", write: (line) => logLines.push(line) }),
@@ -276,10 +276,10 @@ describe("appointments → roles (B7)", () => {
     );
     const headId = head.ok ? head.data.id : "";
     // A manual director role for the same unit is not the appointment's to take away.
-    const ana = await createFirestoreAccountStore(fake.db as unknown as Db).get("ana");
+    const ana = await createSqlAccountStore(fake.db as unknown as Db).get("ana");
     await createAccountActions({
-      accounts: createFirestoreAccountStore(fake.db as unknown as Db),
-      roles: createFirestoreRoleStore(fake.db as unknown as Db),
+      accounts: createSqlAccountStore(fake.db as unknown as Db),
+      roles: createSqlRoleStore(fake.db as unknown as Db),
       passkeys: createMemoryPasskeyStore(),
       sendInvite: () => Promise.resolve("logged"),
       authAdmin: {
@@ -335,11 +335,11 @@ describe("appointments → roles (B7)", () => {
   it("an appointment role cannot be removed by hand on the Users page", async () => {
     await actions.saveRoleMap(...as("boss"))({ map: SUGGESTED_APPOINTMENT_ROLES, version: null });
     await actions.appoint(...as("boss"))(appointInput("ana@example.org", "media", "head"));
-    const accounts = createFirestoreAccountStore(fake.db as unknown as Db);
+    const accounts = createSqlAccountStore(fake.db as unknown as Db);
     const ana = await accounts.get("ana");
     const users = createAccountActions({
       accounts,
-      roles: createFirestoreRoleStore(fake.db as unknown as Db),
+      roles: createSqlRoleStore(fake.db as unknown as Db),
       passkeys: createMemoryPasskeyStore(),
       sendInvite: () => Promise.resolve("logged"),
       authAdmin: {

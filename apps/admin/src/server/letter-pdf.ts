@@ -1,5 +1,5 @@
 import "server-only";
-import type { FirestoreLetterStore, FirestoreSignatureStore } from "@website/db/firestore";
+import type { SqlLetterStore, SqlSignatureStore } from "@website/db/sql";
 import {
   certificateCitation,
   deskLabel,
@@ -36,14 +36,14 @@ export interface LetterPdfDeps {
       options: { visibility: "private"; contentType: "application/pdf" },
     ): Promise<unknown>;
   };
-  readonly letters: Pick<FirestoreLetterStore, "setArchive">;
+  readonly letters: Pick<SqlLetterStore, "setArchive">;
   /** Uploaded images are WebP; pdf-lib embeds PNG (sharp in the app). */
   readonly toPng: (bytes: Uint8Array) => Promise<Uint8Array>;
   /** VERIFICATION_HOST (e.g. verif.ppiasiania.id) and WEB_URL. */
   readonly verification: { readonly host: string | null; readonly webUrl: string | null };
   readonly uuid: () => string;
   /** Personal signatures (4.6): their records and FIELD_ENCRYPTION_KEY (null = none printed). */
-  readonly signatures: Pick<FirestoreSignatureStore, "get">;
+  readonly signatures: Pick<SqlSignatureStore, "get">;
   readonly signatureKey: () => string | null;
 }
 

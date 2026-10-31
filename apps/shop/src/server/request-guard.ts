@@ -1,6 +1,6 @@
 // Used by src/proxy.ts. No "server-only" import: the proxy is not a React Server Component.
-import { baseEnv, firebaseAdminEnv, lazyEnv, loadEnv, rateLimitEnv } from "@website/config/env";
-import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
+import { baseEnv, databaseEnv, lazyEnv, loadEnv, rateLimitEnv } from "@website/config/env";
+import { createSqlRateLimitStore, getDatabaseForRole } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 
@@ -20,16 +20,14 @@ const getGuard = lazyEnv(() => {
     secret: env.RATE_LIMIT_SECRET,
     mode: "same-site",
     privatePrefixes: ["/api/", "/account", "/cart", "/checkout"],
-    // Staging/production: counters shared by all server instances (Firestore, pooled client).
+    // Staging/production: counters shared by all server instances (MySQL, pooled).
     sharedStore: () => {
-      const fb = loadEnv(baseEnv.extend(firebaseAdminEnv.shape), process.env);
-      return createFirestoreRateLimitStore(
-        getFirestoreForRole({
-          appEnv: fb.APP_ENV,
+      const db = loadEnv(baseEnv.extend(databaseEnv.shape), process.env);
+      return createSqlRateLimitStore(
+        getDatabaseForRole({
           role: "shop_rw",
-          projectId: fb.FIREBASE_PROJECT_ID,
-          clientEmail: fb.FIREBASE_CLIENT_EMAIL,
-          privateKey: fb.FIREBASE_PRIVATE_KEY,
+          url: db.DATABASE_URL,
+          connectionLimit: db.DATABASE_CONNECTION_LIMIT,
         }),
       );
     },

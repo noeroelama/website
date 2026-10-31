@@ -1,12 +1,12 @@
 import "server-only";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreFormWebStore } from "@website/db/firestore";
+import { createSqlFormWebStore } from "@website/db/sql";
 import { createRecaptchaVerifier, passesCaptcha } from "./captcha";
 import { webDb } from "./db";
 import { getWebEnv } from "./env";
 import { createFormSubmission, createPublicFormReader } from "./forms";
 
-const store = lazyEnv(() => createFirestoreFormWebStore(webDb()));
+const store = lazyEnv(() => createSqlFormWebStore(webDb()));
 
 /**
  * /f/{token}. Read per request (not cached): the answer window and the current version must be

@@ -1,15 +1,15 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreVerificationReader } from "@website/db/firestore";
+import { createSqlVerificationReader } from "@website/db/sql";
 import { letterCanonical, type Letter } from "@website/domain/documents";
 import { isVerificationPath, verificationRewrite } from "../../apps/web/src/lib/verification-host";
 import {
   createCertificatePickup,
   createVerification,
 } from "../../apps/web/src/server/verification";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreVerificationReader>[0];
+type Db = Parameters<typeof createSqlVerificationReader>[0];
 const at = new Date("2026-11-02T03:00:00Z");
 const sha = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 const pdf = new TextEncoder().encode("%PDF-1.7 archived");
@@ -60,18 +60,18 @@ const stored = {
   deletedAt: null,
 };
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let files: Map<string, Uint8Array>;
 const verification = () =>
   createVerification({
-    reader: createFirestoreVerificationReader(fake.db as unknown as Db),
+    reader: createSqlVerificationReader(fake.db as unknown as Db),
     readFile: (path) => Promise.resolve(files.get(path) ?? null),
   });
 const digestOf = (letter: Record<string, unknown>) =>
   sha(letterCanonical(letter as unknown as Letter, "SKet"));
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   files = new Map([["letters/p1/l1_x.pdf", pdf]]);
   fake.docs.set("verificationCodes/8F3KM-QRTVW", {
     kind: "letter",
@@ -291,7 +291,7 @@ describe("certificate pickup (D5-P)", () => {
   const captchas: string[] = [];
   const pickup = () =>
     createCertificatePickup({
-      reader: createFirestoreVerificationReader(fake.db as unknown as Db),
+      reader: createSqlVerificationReader(fake.db as unknown as Db),
       captcha: (token) => {
         captchas.push(token);
         return Promise.resolve(token === "ok");

@@ -8,7 +8,7 @@ import {
 } from "@website/auth";
 import { createFirebaseIdentityProvider } from "@website/auth/firebase-admin";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreUserStore, getFirestoreForRole } from "@website/db/firestore";
+import { createSqlUserStore, getDatabaseForRole } from "@website/db/sql";
 import { createLogger, logSecurityEvent } from "@website/observability";
 import { getWebEnv } from "./env";
 import { ownSignInMethods } from "./passkeys";
@@ -28,13 +28,11 @@ export const logger = lazyEnv(() => createLogger({ service: "web", level: getWeb
 /** Sign-in records (`users/{uid}`): web only ever writes the signed-in user's own record. */
 const users = lazyEnv(() => {
   const env = getWebEnv();
-  return createFirestoreUserStore(
-    getFirestoreForRole({
-      appEnv: env.APP_ENV,
+  return createSqlUserStore(
+    getDatabaseForRole({
       role: "web_ro",
-      projectId: env.FIREBASE_PROJECT_ID,
-      clientEmail: env.FIREBASE_CLIENT_EMAIL,
-      privateKey: env.FIREBASE_PRIVATE_KEY,
+      url: env.DATABASE_URL,
+      connectionLimit: env.DATABASE_CONNECTION_LIMIT,
     }),
   );
 });

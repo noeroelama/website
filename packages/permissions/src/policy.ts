@@ -43,11 +43,11 @@ export interface ResolvedAssignment extends RoleAssignment {
 /**
  * The server-side view of who is acting. One shape for every account (staff, member,
  * customer). Built ONLY on the server from a verified session + the user record and role
- * documents in Firestore — never from client input, URL params, payload fields or token claims.
+ * documents in the database — never from client input, URL params, payload fields or token claims.
  */
 export interface Principal {
   readonly kind: "user";
-  /** Firebase Auth uid; also the Firestore document id in `users`. */
+  /** Firebase Auth uid; also the document id in `users`. */
   readonly userId: string;
   readonly active: boolean;
   readonly assignments: readonly ResolvedAssignment[];

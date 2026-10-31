@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SESSION_COOKIE } from "@website/auth";
 import { PRIVACY_POLICY_VERSION } from "@website/domain/members";
-import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
+import { createSqlRateLimitStore, getDatabaseForRole } from "@website/db/sql";
 import { normalizePermissions, resolveAssignments, type Principal } from "@website/permissions";
 import type * as WebGuardModule from "../../apps/web/src/server/request-guard";
 
-// Staging/production use the shared Firestore store; here it is replaced by a failing fake
+// Staging/production use the shared database store; here it is replaced by a failing fake
 // to check the wiring (role, project, fail-open logging) without a real database.
-vi.mock("@website/db/firestore", () => ({
-  getFirestoreForRole: vi.fn(() => ({})),
-  createFirestoreRateLimitStore: vi.fn(() => ({
+vi.mock("@website/db/sql", () => ({
+  getDatabaseForRole: vi.fn(() => ({})),
+  createSqlRateLimitStore: vi.fn(() => ({
     consume: () => Promise.reject(new Error("down")),
   })),
 }));
@@ -41,21 +41,21 @@ describe.each(apps)("%s request guard wiring", (app) => {
     expect(page.headers["RateLimit-Limit"]).toBe("100");
   });
 
-  it("staging uses the shared Firestore store with the app's role, and fails open if it is down", async () => {
+  it("staging uses the shared database store with the app's role, and fails open if it is down", async () => {
     vi.stubEnv("APP_ENV", "staging");
     vi.stubEnv("RATE_LIMIT_SECRET", "s".repeat(32));
-    vi.stubEnv("FIREBASE_PROJECT_ID", "ppidk-website-prod");
+    vi.stubEnv("DATABASE_URL", "mysql://app:x@localhost:3306/ppidk");
     const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     const { guardRequest } = await load(app);
     expect((await guardRequest(new Request("https://site.example/"))).blocked).toBeNull();
-    expect(getFirestoreForRole).toHaveBeenLastCalledWith(
+    expect(getDatabaseForRole).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        appEnv: "staging",
         role: roles[app],
-        projectId: "ppidk-website-prod",
+        url: "mysql://app:x@localhost:3306/ppidk",
+        connectionLimit: 5,
       }),
     );
-    expect(createFirestoreRateLimitStore).toHaveBeenCalled();
+    expect(createSqlRateLimitStore).toHaveBeenCalled();
     expect(stdout.mock.calls.join()).toContain("rate_limit_store_error");
     stdout.mockRestore();
   });

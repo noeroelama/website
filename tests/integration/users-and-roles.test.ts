@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountAdmin } from "@website/auth";
-import {
-  createFirestoreAccountStore,
-  createFirestoreRoleStore,
-  createFirestoreUserStore,
-} from "@website/db/firestore";
+import { createSqlAccountStore, createSqlRoleStore, createSqlUserStore } from "@website/db/sql";
 import { createMemoryPasskeyStore } from "@website/db/memory";
 import { createLogger } from "@website/observability";
 import {
@@ -15,9 +11,9 @@ import {
 } from "@website/permissions";
 import { createAccountActions } from "../../apps/admin/src/server/accounts";
 import { createRoleActions } from "../../apps/admin/src/server/roles";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreAccountStore>[0];
+type Db = Parameters<typeof createSqlAccountStore>[0];
 const global = { type: "global" } as const;
 const user = (roleIds: string[], extra: Record<string, unknown> = {}) => ({
   status: "active",
@@ -28,15 +24,15 @@ const user = (roleIds: string[], extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let methods: Record<string, { providers: string[]; mfaFactors: number }>;
 let revokeSessions: ReturnType<typeof vi.fn<(uid: string) => Promise<void>>>;
 let setDisabled: ReturnType<typeof vi.fn<(uid: string, disabled: boolean) => Promise<void>>>;
 let logLines: string[];
 let invitesSent: { email: string; roleName: string }[];
 let deps: {
-  accounts: ReturnType<typeof createFirestoreAccountStore>;
-  roles: ReturnType<typeof createFirestoreRoleStore>;
+  accounts: ReturnType<typeof createSqlAccountStore>;
+  roles: ReturnType<typeof createSqlRoleStore>;
   passkeys: ReturnType<typeof createMemoryPasskeyStore>;
   authAdmin: AccountAdmin;
   logger: ReturnType<typeof createLogger>;
@@ -44,7 +40,7 @@ let deps: {
 };
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   const db = fake.db as unknown as Db;
   fake.docs.set("roles/editor", {
     name: "Editor",
@@ -75,8 +71,8 @@ beforeEach(() => {
   logLines = [];
   invitesSent = [];
   deps = {
-    accounts: createFirestoreAccountStore(db),
-    roles: createFirestoreRoleStore(db),
+    accounts: createSqlAccountStore(db),
+    roles: createSqlRoleStore(db),
     passkeys: createMemoryPasskeyStore(),
     authAdmin,
     logger: createLogger({ service: "admin", write: (line) => logLines.push(line) }),
@@ -88,7 +84,7 @@ beforeEach(() => {
 });
 
 const principalOf = async (uid: string) =>
-  (await createFirestoreUserStore(fake.db as unknown as Db).findPrincipalByUid(uid)) as Principal;
+  (await createSqlUserStore(fake.db as unknown as Db).findPrincipalByUid(uid)) as Principal;
 const freshContext = () =>
   Promise.resolve({
     actorEmail: "x@example.org",
@@ -331,7 +327,7 @@ describe("Role Manager: give and remove roles", () => {
 
   it("reads what the first sign-in wrote", async () => {
     const at = new Date("2026-10-16T03:00:00Z");
-    await createFirestoreUserStore(fake.db as unknown as Db).recordSignIn(
+    await createSqlUserStore(fake.db as unknown as Db).recordSignIn(
       { uid: "neo", email: "neo@example.org", name: "Neo" },
       at,
     );
@@ -612,7 +608,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
       person: "neo@example.org",
       roleId: "member",
     });
-    const users = createFirestoreUserStore(fake.db as unknown as Db);
+    const users = createSqlUserStore(fake.db as unknown as Db);
     const neo = { uid: "neo", email: "Neo@example.org", name: "Neo" };
     const two = vi.fn(() => Promise.resolve(false));
 
@@ -651,7 +647,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     const add = createAccountActions(deps).addPerson(...as("boss"));
     await add({ person: "kai@example.org", roleId: "member" });
     await add({ person: "kai@example.org", roleId: "editor" });
-    const users = createFirestoreUserStore(fake.db as unknown as Db);
+    const users = createSqlUserStore(fake.db as unknown as Db);
     // Without a way to check the sign-in methods, the staff role waits.
     expect(
       await users.recordSignIn({ uid: "kai", email: "kai@example.org", emailVerified: true }, at),

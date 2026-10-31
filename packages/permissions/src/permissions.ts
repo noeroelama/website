@@ -5,7 +5,7 @@
  * - Admin permissions come from ADMIN PAGES: every page has `<page>.read` and `<page>.edit`
  *   (edit includes read) and, where needed, named extras (e.g. `members.pii`). Adding a page is
  *   a reviewed code change; WHICH roles get which page permissions is data, edited in the admin
- *   Role Manager (roles are Firestore documents).
+ *   Role Manager (roles are database documents).
  */
 export const SELF_SERVICE_PERMISSIONS = [
   "profile.read_own",
@@ -153,12 +153,12 @@ export function isRoleColor(value: unknown): value is RoleColor {
   return (ROLE_COLORS as readonly unknown[]).includes(value);
 }
 
-/** A role: built-in (code) or custom (Firestore `roles/{id}`, edited in the admin Role Manager). */
+/** A role: built-in (code) or custom (database `roles/{id}`, edited in the admin Role Manager). */
 export interface RoleDefinition {
   readonly id: string;
   readonly name: string;
   readonly permissions: readonly PagePermission[];
-  /** Badge colour (display only); roles read from Firestore always have one. */
+  /** Badge colour (display only); roles read from the database always have one. */
   readonly color?: RoleColor;
 }
 

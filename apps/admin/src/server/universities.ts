@@ -1,12 +1,12 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreUniversityStore } from "@website/db/firestore";
+import type { SqlUniversityStore } from "@website/db/sql";
 import type { University } from "@website/domain/members";
 import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction } from "./guarded-action";
 
 export interface UniversityDeps {
-  readonly universities: Pick<FirestoreUniversityStore, "review">;
+  readonly universities: Pick<SqlUniversityStore, "review">;
   readonly now: () => Date;
 }
 

@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createFirestoreApplicationStore,
-  createFirestoreAppointmentStore,
-  createFirestoreOrgUnitStore,
-  createFirestoreRecruitmentWebStore,
-  createFirestoreRoleStore,
-  createFirestoreUserStore,
-} from "@website/db/firestore";
+  createSqlApplicationStore,
+  createSqlAppointmentStore,
+  createSqlOrgUnitStore,
+  createSqlRecruitmentWebStore,
+  createSqlRoleStore,
+  createSqlUserStore,
+} from "@website/db/sql";
 import { SUGGESTED_APPOINTMENT_ROLES } from "@website/domain/organizations";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createApplicationActions } from "../../apps/admin/src/server/applications";
 import { createApplying } from "../../apps/web/src/server/recruitment";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreApplicationStore>[0];
+type Db = Parameters<typeof createSqlApplicationStore>[0];
 let clock = new Date("2026-11-25T05:00:00Z");
 const role = (permissions: string[]) => ({
   name: "Role",
@@ -31,12 +31,12 @@ const user = (uid: string, roleIds: string[]) => ({
   roleIds,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let secondFactor: Record<string, boolean>;
 let afterRoleChange: ReturnType<typeof vi.fn>;
 const db = () => fake.db as unknown as Db;
 const principalOf = async (uid: string) =>
-  (await createFirestoreUserStore(db()).findPrincipalByUid(uid)) as Principal;
+  (await createSqlUserStore(db()).findPrincipalByUid(uid)) as Principal;
 const context = () =>
   Promise.resolve({
     actorEmail: "x@example.org",
@@ -46,11 +46,11 @@ const context = () =>
 const as = (uid: string) => [() => principalOf(uid), context] as const;
 const actions = () =>
   createApplicationActions({
-    applications: createFirestoreApplicationStore(db()),
+    applications: createSqlApplicationStore(db()),
     signedUrl: (path) => Promise.resolve(`https://signed.test/${path}`),
-    appointments: createFirestoreAppointmentStore(db()),
-    units: createFirestoreOrgUnitStore(db()),
-    roles: createFirestoreRoleStore(db()),
+    appointments: createSqlAppointmentStore(db()),
+    units: createSqlOrgUnitStore(db()),
+    roles: createSqlRoleStore(db()),
     hasSecondFactor: (uid) => Promise.resolve(secondFactor[uid] ?? false),
     afterRoleChange: afterRoleChange as unknown as (
       actor: Principal,
@@ -61,7 +61,7 @@ const actions = () =>
   });
 const applying = () =>
   createApplying({
-    store: createFirestoreRecruitmentWebStore(db()),
+    store: createSqlRecruitmentWebStore(db()),
     profileComplete: () => Promise.resolve(true),
     storage: { save: () => Promise.resolve({ url: null }) },
     now: () => clock,
@@ -104,7 +104,7 @@ const setApplication = (status: string, extra: Record<string, unknown> = {}) =>
 
 beforeEach(() => {
   clock = new Date("2026-11-25T05:00:00Z");
-  fake = fakeFirestore();
+  fake = fakeDb();
   secondFactor = { ari: true };
   afterRoleChange = vi.fn(() => Promise.resolve());
   fake.docs.set("settings/activePeriod", { periodId: "p2026" });
@@ -296,7 +296,7 @@ describe("ratification (C3 step 9)", () => {
     ).toMatchObject({ error: "refused" });
     // The store re-reads the application inside its transaction.
     await expect(
-      createFirestoreApplicationStore(db()).ratify(
+      createSqlApplicationStore(db()).ratify(
         "missing",
         1,
         { title: "Staf" },

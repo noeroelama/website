@@ -11,7 +11,7 @@
  */
 export const SESSION_COOKIE = "__Secure-session";
 
-/** Verified identity. Says WHO someone is — never what they may do (that is RBAC, from Firestore). */
+/** Verified identity. Says WHO someone is — never what they may do (that is RBAC, from the database). */
 export interface VerifiedIdentity {
   readonly uid: string;
   readonly email: string | null;

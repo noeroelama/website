@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { CertificateAudit, FirestoreCertificateStore } from "@website/db/firestore";
+import type { CertificateAudit, SqlCertificateStore } from "@website/db/sql";
 import {
   CERTIFICATE_PICKUP_PURPOSE,
   parseParticipants,
@@ -15,7 +15,7 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 import type { LetterContext, LetterPdf } from "./letter-pdf";
 
 export interface CertificateDeps {
-  readonly certificates: Pick<FirestoreCertificateStore, "add" | "remove">;
+  readonly certificates: Pick<SqlCertificateStore, "add" | "remove">;
   readonly getLetter: (id: string) => Promise<Letter | null>;
   /** keyedHash(CERTIFICATE_EMAIL_PURPOSE, email) with SUBSCRIBER_HASH_SECRET (pickup page). */
   readonly hashEmail: (email: string) => string;

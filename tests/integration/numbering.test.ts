@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { nextNumbers } from "@website/db/firestore";
-import { fakeFirestore } from "../support/fake-firestore";
+import { nextNumbers } from "@website/db/sql";
+import { fakeDb } from "../support/fake-db";
 
 type Db = Parameters<typeof nextNumbers>[0];
 
 describe("atomic number counters", () => {
   it("reserves ranges that never overlap and never go back", async () => {
-    const fake = fakeFirestore();
+    const fake = fakeDb();
     const db = fake.db as unknown as Db;
     const reserve = (count: number) =>
       db.runTransaction((tx) =>

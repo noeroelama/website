@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { REVERT_WINDOW_MS, type AuditEvent } from "@website/audit";
+import { ADMIN_NAVIGATION } from "../../apps/admin/src/navigation";
 import {
+  AUDIT_TABS,
   auditCsv,
   daysLeft,
   matchesTab,
   parseRange,
   previousChanges,
   rangeStart,
+  shortUtc,
   toAuditRow,
   wordDiff,
 } from "../../apps/admin/src/components/audit-model";
@@ -129,12 +132,29 @@ describe("Audit Log rows (server mapping)", () => {
 describe("Audit Log list (browser)", () => {
   const row = toAuditRow(entry, author, { allowed: true }, null);
 
+  it("tabs follow the side panel: a new page gets a tab without touching the Audit Log", () => {
+    const pages = ADMIN_NAVIGATION.filter(
+      (e) => e.permission !== null && e.permission !== "audit.read",
+    ).map((e) => e.label);
+    expect(Object.values(AUDIT_TABS).map((t) => t.label)).toEqual(["All", ...pages]);
+    expect(Object.values(AUDIT_TABS).map((t) => t.label)).not.toContain("Dashboard");
+    expect(Object.values(AUDIT_TABS).map((t) => t.label)).not.toContain("Audit Log");
+  });
+
   it("tabs group admin pages; Organizations includes periods, structure and appointments", () => {
     expect(matchesTab(row, "all")).toBe(true);
     expect(matchesTab(row, "gallery")).toBe(true);
     expect(matchesTab(row, "events")).toBe(false);
     expect(matchesTab({ ...row, module: "periods" }, "organizations")).toBe(true);
     expect(matchesTab({ ...row, module: "appointments" }, "organizations")).toBe(true);
+    expect(matchesTab({ ...row, module: "letter_types" }, "letters")).toBe(true);
+    expect(matchesTab({ ...row, module: "roles" }, "users")).toBe(true);
+  });
+
+  it("Before shows day and time (year only when it differs); After shows the time", () => {
+    expect(shortUtc("2026-09-28T10:05:00Z", "2026-10-18T03:36:00Z")).toBe("28 Sep, 10:05");
+    expect(shortUtc("2025-12-01T09:00:00Z", "2026-10-18T03:36:00Z")).toBe("1 Dec 2025, 09:00");
+    expect(shortUtc("2026-10-18T14:32:00Z")).toBe("14:32");
   });
 
   it("days left in the 14-day revert window (rounded up, never below 0)", () => {

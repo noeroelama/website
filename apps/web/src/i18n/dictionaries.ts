@@ -3,7 +3,7 @@ import { PRIVACY_POLICY_VERSION } from "@website/domain/members";
 /**
  * UI text of the public website in Indonesian (default) and English. No i18n library: two typed
  * dictionaries with the same shape (tests/unit/web-i18n.test.ts checks every key in both).
- * Content from Firestore (news, events) is shown in the language it was written in.
+ * Content from the database (news, events) is shown in the language it was written in.
  */
 export const LANGUAGES = ["id", "en"] as const;
 export type Language = (typeof LANGUAGES)[number];

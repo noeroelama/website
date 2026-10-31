@@ -14,7 +14,7 @@ Zod schema built from the version.
 - Rules: `packages/domain/src/forms/index.ts` (question types, `FormInputSchema`,
   `planVersion`, `assertPublishable`, `formWindow`, `answersSchema`/`parseAnswers`,
   `responseTable`).
-- Storage: `packages/db/src/firestore/forms.ts` — `forms/{id}`,
+- Storage: `packages/db/src/sql/forms.ts` — `forms/{id}`,
   `formVersions/{formId}_{n}` and `formResponses/{id}` (index: formId + submittedAt desc).
 - Admin: `apps/admin/src/server/forms.ts` (guarded actions), pages `/forms`
   (`src/components/forms-page.tsx`, `forms-model.ts`) and `/forms/{id}/responses`

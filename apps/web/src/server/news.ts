@@ -1,11 +1,11 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreNewsReader } from "@website/db/firestore";
+import { createSqlNewsReader } from "@website/db/sql";
 import type { PublicNews, PublicNewsDetail } from "@website/domain/content";
 import { webDb } from "./db";
 
-const reader = lazyEnv(() => createFirestoreNewsReader(webDb()));
+const reader = lazyEnv(() => createSqlNewsReader(webDb()));
 
 /**
  * Visible news, newest first (shared by Home, /news and the related list). Cached for minutes

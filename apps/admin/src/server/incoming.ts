@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { AuditAction } from "@website/audit";
-import type { FirestoreIncomingStore, IncomingAudit } from "@website/db/firestore";
+import type { SqlIncomingStore, IncomingAudit } from "@website/db/sql";
 import {
   archiveIncoming,
   completeDisposition,
@@ -19,7 +19,7 @@ import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder, type AuditContext } from "./guarded-action";
 
 export interface IncomingDeps {
-  readonly letters: Pick<FirestoreIncomingStore, "get" | "record" | "update" | "change">;
+  readonly letters: Pick<SqlIncomingStore, "get" | "record" | "update" | "change">;
   /** Period of a unit (null when it does not exist or is deleted). */
   readonly unitPeriod: (orgUnitId: string) => Promise<string | null>;
   readonly userExists: (uid: string) => Promise<boolean>;

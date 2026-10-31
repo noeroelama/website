@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreFormStore } from "@website/db/firestore";
+import type { SqlFormStore } from "@website/db/sql";
 import {
   assertPublishable,
   FormInputSchema,
@@ -14,7 +14,7 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface FormDeps {
   readonly forms: Pick<
-    FirestoreFormStore,
+    SqlFormStore,
     "save" | "write" | "get" | "versionIn" | "listVersions" | "listResponses"
   >;
   readonly now: () => Date;

@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createFirestoreCampaignStore,
-  createFirestoreCampaignWebStore,
-  createFirestoreSubscriberReader,
-  createFirestoreSubscriberStore,
-} from "@website/db/firestore";
+  createSqlCampaignStore,
+  createSqlCampaignWebStore,
+  createSqlSubscriberReader,
+  createSqlSubscriberStore,
+} from "@website/db/sql";
 import type { Message } from "@website/domain/messaging";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createNewsletterActions } from "../../apps/admin/src/server/newsletter";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 import { revertEntry } from "../support/revert";
 
-type Db = Parameters<typeof createFirestoreCampaignStore>[0];
+type Db = Parameters<typeof createSqlCampaignStore>[0];
 let now = new Date("2026-10-18T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -31,7 +31,7 @@ const context = () =>
   Promise.resolve({ actorEmail: "staff@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let sentKeys: Set<string>;
 let mails: Array<{ message: Message; key: string }>;
 let exports: Array<[string, number]>;
@@ -39,10 +39,10 @@ let crashAfter: number | null;
 const actions = () => {
   const db = fake.db as unknown as Db;
   return createNewsletterActions({
-    campaigns: createFirestoreCampaignStore(db),
+    campaigns: createSqlCampaignStore(db),
     subscribers: {
-      ...createFirestoreSubscriberReader(db),
-      ...createFirestoreSubscriberStore(db),
+      ...createSqlSubscriberReader(db),
+      ...createSqlSubscriberStore(db),
     },
     // Like the messenger: a key is claimed once; a repeat answers "duplicate".
     send: vi.fn((message: Message, key: string) => {
@@ -66,7 +66,7 @@ const actions = () => {
   });
 };
 const subscribe = async (n: number, status: "confirmed" | "pending" | "unsubscribed") => {
-  const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+  const store = createSqlSubscriberStore(fake.db as unknown as Db);
   const id = `${status[0]}${String(n).padStart(63, "0")}`;
   await store.startOptIn(id, `user${n}@example.org`, "hash", new Date(now.getTime() + 1e9), now);
   if (status === "confirmed") await store.confirm(id, "hash", now);
@@ -87,7 +87,7 @@ const draft = async () => {
 
 beforeEach(() => {
   now = new Date("2026-10-18T05:00:00Z");
-  fake = fakeFirestore();
+  fake = fakeDb();
   sentKeys = new Set();
   mails = [];
   exports = [];
@@ -202,7 +202,7 @@ describe("newsletter campaigns", () => {
     now = new Date("2026-10-18T06:00:00Z");
     const second = await draft();
     await actions().send(...as(sender))({ id: second, version: 1, sendAt: null });
-    const store = createFirestoreCampaignStore(fake.db as unknown as Db);
+    const store = createSqlCampaignStore(fake.db as unknown as Db);
     expect((await store.listForAdmin()).map((c) => c.id)).toEqual([second, first]);
     expect(await actions().runBatch()).toMatchObject({ campaign: first });
     const third = await draft();
@@ -270,7 +270,7 @@ describe("newsletter campaigns", () => {
     });
     await actions().runBatch();
     expect(await actions().remove(...as(editor))({ id, version: 2 })).toMatchObject({ ok: true });
-    const store = createFirestoreCampaignStore(fake.db as unknown as Db);
+    const store = createSqlCampaignStore(fake.db as unknown as Db);
     expect(await store.listForAdmin()).toEqual([]);
     const entry = auditEntries().at(-1) as { id: string; action: string };
     expect(entry.action).toBe("DELETE");
@@ -296,7 +296,7 @@ describe("newsletter campaigns", () => {
     expect(mails[0]?.message.to).toBe("sari@example.org");
     expect(mails[0]?.message.text).toContain("newsletter/confirm?s=hsariexampleorg");
     expect(mails[0]?.key).toMatch(/^newsletter:hsariexampleorg0+:optin:1$/);
-    const list = await createFirestoreSubscriberReader(fake.db as unknown as Db).listForAdmin();
+    const list = await createSqlSubscriberReader(fake.db as unknown as Db).listForAdmin();
     expect(list).toEqual([
       expect.objectContaining({ status: "pending", name: "Sari Wulandari", chapterId: "jp" }),
     ]);
@@ -312,7 +312,7 @@ describe("newsletter campaigns", () => {
       ok: true,
       data: { outcome: "exists" },
     });
-    const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+    const store = createSqlSubscriberStore(fake.db as unknown as Db);
     const gone = "hgoneexampleorg".padEnd(64, "0");
     await store.startOptIn(gone, "gone@example.org", "x", now, now);
     await store.unsubscribe(gone, now);
@@ -330,7 +330,7 @@ describe("newsletter campaigns", () => {
       name: "",
       chapterId: null,
     });
-    const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+    const store = createSqlSubscriberStore(fake.db as unknown as Db);
     const gone = "hgoneexampleorg".padEnd(64, "0");
     await store.startOptIn(gone, "gone@example.org", "x", now, now);
     await store.unsubscribe(gone, now);
@@ -351,7 +351,7 @@ describe("newsletter campaigns", () => {
       "new@example.org",
       "other@example.org",
     ]);
-    const rows = await createFirestoreSubscriberReader(fake.db as unknown as Db).listForAdmin();
+    const rows = await createSqlSubscriberReader(fake.db as unknown as Db).listForAdmin();
     expect(rows.find((r) => r.email === "new@example.org")).toMatchObject({ chapterId: "jp" });
     expect(rows.find((r) => r.email === "other@example.org")).toMatchObject({ chapterId: null });
     expect(await actions().importSubscribers(...as(sender))({ csv: "name\nx" })).toMatchObject({
@@ -367,7 +367,7 @@ describe("newsletter campaigns", () => {
     expect(await actions().removeSubscriber(...as(editor))({ id })).toMatchObject({
       error: "refused",
     });
-    const reader = createFirestoreSubscriberReader(fake.db as unknown as Db);
+    const reader = createSqlSubscriberReader(fake.db as unknown as Db);
     expect((await reader.listForAdmin()).map((r) => r.email)).toEqual(["user2@example.org"]);
     const campaign = await draft();
     await actions().send(...as(sender))({ id: campaign, version: 1, sendAt: null });
@@ -397,7 +397,7 @@ describe("newsletter campaigns", () => {
       ok: true,
     });
     expect(fake.docs.get(`subscribers/${legacy}`)).toMatchObject({ version: 1 });
-    const store = createFirestoreSubscriberStore(fake.db as unknown as Db);
+    const store = createSqlSubscriberStore(fake.db as unknown as Db);
     expect(await store.startOptIn(id, "user1@example.org", "h2", later(), now)).toEqual({
       optIn: 2,
     });
@@ -416,7 +416,7 @@ describe("open and click tracking (web routes) and the public archive", () => {
 
   it("counts each subscriber's open and click once; a click also counts as an open", async () => {
     const id = await sendOne();
-    const web = createFirestoreCampaignWebStore(fake.db as unknown as Db);
+    const web = createSqlCampaignWebStore(fake.db as unknown as Db);
     expect(await web.findPublic("missing")).toBeNull();
     await actions().runBatch();
     expect(await web.track("click", id, sid, now)).toBe(true);
