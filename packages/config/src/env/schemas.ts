@@ -13,13 +13,31 @@ export const baseEnv = z.object({
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
-/** Firebase Admin SDK (server only). Credentials are optional so that
+/** Firebase Admin SDK (server only): Authentication only. Credentials are optional so that
  * Workload Identity Federation / ADC can be used instead of a JSON key. */
 export const firebaseAdminEnv = z.object({
   FIREBASE_PROJECT_ID: nonEmpty,
   FIREBASE_CLIENT_EMAIL: z.email().optional(),
   FIREBASE_PRIVATE_KEY: nonEmpty.optional(),
-  FIREBASE_STORAGE_BUCKET: nonEmpty.optional(),
+});
+
+/** MySQL 8 on cPanel: all data except sign-in. Each app has its own MySQL user. */
+export const databaseEnv = z.object({
+  DATABASE_URL: nonEmpty.regex(/^mysql:\/\//, "mysql://user:password@localhost:3306/database"),
+  /** Connections per server process (Passenger may run several processes per app). */
+  DATABASE_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(20).default(5),
+});
+
+/**
+ * Uploaded files on the cPanel disk (web and admin): an absolute folder outside every app folder,
+ * e.g. /home/<user>/ppidk-files (C:\ppidk-files when developing on Windows). Empty = uploads are off.
+ */
+export const filesEnv = z.object({
+  FILE_STORAGE_DIR: z
+    .string()
+    .trim()
+    .regex(/^(\/|[A-Za-z]:[\\/])/, "an absolute path (/home/… or C:\\…)")
+    .optional(),
 });
 
 /** Firebase web config. Public by design — never put secrets here. */

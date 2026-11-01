@@ -584,17 +584,19 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {canEdit ? (
-            <Button
-              variant="outline"
-              size="sm"
-              icon="plus"
-              disabled={!periodName}
-              onClick={() => openForm()}
-            >
-              Record letter
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="plus"
+                disabled={!periodName}
+                onClick={() => openForm()}
+              >
+                Record letter
+              </Button>
+            ) : null}
+          </div>
           <SearchBox
             placeholder="Search agenda, sender or subject..."
             label="Search incoming letters"

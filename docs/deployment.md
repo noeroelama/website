@@ -20,7 +20,7 @@ gateway (plain Node, tsup) is built on the server.
 What Passenger means for the code:
 
 - Passenger may stop an idle app and may run **more than one process**. Nothing that must be
-  shared lives in memory (rate-limit counters are in Firestore); small per-process caches are fine.
+  shared lives in memory (rate-limit counters are in MySQL); small per-process caches are fine.
 - No background workers or timers: work without a visitor runs through [cron jobs](#scheduled-jobs-cpanel-cron-jobs).
 - `"use cache"` entries live in one process, so `revalidateTag()` clears only the process that ran
   it. Public lists use `cacheLife("minutes")` at most; revalidation is a speed-up, not the guarantee.
@@ -94,6 +94,20 @@ Also add these five as **Variables** (public values, not secret): `NEXT_PUBLIC_F
 8. **SSL/TLS Status** → run AutoSSL for the main domain and the `admin.`, `shop.` and `api.`
    subdomains (webhooks and cron calls need a valid certificate on `admin.`).
 
+9. **MySQL Databases** (once): create one database (e.g. `<cpanel>_ppidk`) and one user per app
+   (`<cpanel>_web`, `<cpanel>_admin`, `<cpanel>_shop`), each added to the database with ALL
+   PRIVILEGES (tables are created on first use). Their URLs go into `DATABASE_URL` of each app
+   (`mysql://<user>:<password>@localhost:3306/<database>`). Keep the passwords in the password manager.
+10. **Files folder** (once, cPanel Terminal): `mkdir -p ~/ppidk-files && chmod 700 ~/ppidk-files`, then
+    set `FILE_STORAGE_DIR=/home/<cpanel>/ppidk-files` on web AND admin. Never put it inside an app
+    folder: deploys replace those.
+11. **Cron Jobs**: add the `expire` job (once a day) next to the others (`apps/admin/docs/cron.md`),
+    and the nightly backup lines from [disaster-recovery.md](disaster-recovery.md).
+12. **Moving existing data off Firestore** (once, only if Firestore still holds data): in cPanel
+    Terminal in `~/repositories/2026`, run `infrastructure/scripts/copy-firestore-to-mysql.mjs`
+    (header of the script: dry run, read `copy-report.json`, then `--files --apply`) while nobody
+    edits, then restart web and admin. Spot-check news, a member profile and an uploaded image.
+
 ## Every release
 
 Merge to `prod` (PR from `staging`, as above).
@@ -153,22 +167,25 @@ web and admin answer `GET /health`, the gateway `GET /health` and `GET /v1/healt
 Filled in by the owner from the DomaiNesia plan (step 0.3). Steps that stream big files, render
 big PDFs or send in batches must stay inside them.
 
-| Limit                                 | Value |
-| ------------------------------------- | ----- |
-| Memory per account / per process      | _tbd_ |
-| CPU                                   | _tbd_ |
-| Entry processes (concurrent requests) | _tbd_ |
-| Number of processes                   | _tbd_ |
-| Maximum request time                  | _tbd_ |
-| Shortest cron interval                | _tbd_ |
-| Node.js versions offered (`/opt/alt`) | _tbd_ |
-| glibc version (`ldd --version`)       | _tbd_ |
-| Passenger processes per app           | _tbd_ |
+| Limit                                 | Value                                                                |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| Memory per account / per process      | 3 GB per account (Hosting 3.0 Monster, 2026-10-31)                   |
+| CPU                                   | 100% (one core)                                                      |
+| Entry processes (concurrent requests) | 20                                                                   |
+| Number of processes                   | 200                                                                  |
+| Maximum request time                  | _tbd_                                                                |
+| Shortest cron interval                | _tbd_                                                                |
+| Node.js versions offered (`/opt/alt`) | _tbd_                                                                |
+| glibc version (`ldd --version`)       | _tbd_                                                                |
+| Passenger processes per app           | _tbd_                                                                |
+| MySQL                                 | 8.0.46; databases 7.94 GB of the 12 GB disk; I/O 150 MB/s, 6000 IOPS |
 
 ## Migrations
 
-Firestore has no schema migrations: use versioned scripts in `infrastructure/scripts/` (local,
-`--dry-run` first) plus a `schemaVersion` field and tolerant readers.
+Collections are MySQL tables with a JSON `data` column, created on first use from
+`packages/db/src/sql/collections.ts`, so a new collection needs no migration. Data changes use
+versioned scripts in `infrastructure/scripts/` (`--dry-run` first) plus a `schemaVersion` field and
+tolerant readers. Take a `mysqldump` before every data change.
 
 ## Feature flags
 
@@ -180,8 +197,9 @@ percentage rollouts are needed.
 - Runtime values live in each app's **Setup Node.js App** screen; `NEXT_PUBLIC_*` values (public,
   baked into browser bundles) are GitHub Actions **Variables**. Everything secret is also kept in
   the password manager.
-- Each app uses its own Firebase service account (`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
-  with the narrowest IAM role it needs. Rotate keys on schedule and when anyone leaves.
+- Each app uses its own MySQL user (`DATABASE_URL`) and its own Firebase service account
+  (`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, Authentication only) with the narrowest IAM role
+  it needs. Rotate passwords and keys on schedule and when anyone leaves.
 - Every new variable: schema fragment (`packages/config/src/env/schemas.ts`) + `.env.example`
   placeholder + a row in [environment.md](environment.md).
 
@@ -196,11 +214,13 @@ file (they live in the cPanel app screens and the password manager).
       `packages/db/docs/files.md` → Configuration).
 - [ ] Firebase Authentication: **multi-factor authentication** enabled (Identity Platform upgrade) —
       staff roles require a second sign-in method.
-- [ ] Firebase Storage: default bucket exists; its name is in `FIREBASE_STORAGE_BUCKET`.
-- [ ] Firestore: **point-in-time recovery**, **scheduled backups** and **delete protection**
-      enabled ([disaster-recovery.md](disaster-recovery.md)).
-- [ ] One Firebase service account per app (web, admin, shop, gateway) with the narrowest role; keys
-      only in that app's Setup Node.js App screen and the password manager.
+- [ ] MySQL database + one user per app, `FILE_STORAGE_DIR` folder, cron `expire` (One-time setup
+      steps 9–11).
+- [ ] Nightly `mysqldump` + files backup and a weekly off-server copy
+      ([disaster-recovery.md](disaster-recovery.md)).
+- [ ] Existing Firestore data and Storage files copied once (One-time setup step 12).
+- [ ] One Firebase service account per app (web, admin, shop) for Authentication only; keys only in
+      that app's Setup Node.js App screen and the password manager.
 - [ ] Generate `CRON_SECRET`, `FIELD_ENCRYPTION_KEY` and `SIGNED_LINK_SECRET` and store them in the
       password manager; they are added to the app screens when the step that uses them is built.
 - [ ] Decide the main domain name and whether to run a `staging.*` set of apps (DEC-17); then

@@ -3,10 +3,10 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, type AuditEvent } from "@website/audit";
-import { createFirestoreAuditWriter } from "@website/db/firestore";
-import { fakeFirestore } from "../support/fake-firestore";
+import { createSqlAuditWriter } from "@website/db/sql";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreAuditWriter>[0];
+type Db = Parameters<typeof createSqlAuditWriter>[0];
 const event = (id: string, title: string): AuditEvent => ({
   id,
   occurredAt: new Date("2026-10-16T02:00:00Z"),
@@ -29,9 +29,9 @@ const event = (id: string, title: string): AuditEvent => ({
 });
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 const setup = () => {
-  const fake = fakeFirestore();
+  const fake = fakeDb();
   const db = fake.db as unknown as Db;
-  return { ...fake, db, writer: createFirestoreAuditWriter(db) };
+  return { ...fake, db, writer: createSqlAuditWriter(db) };
 };
 
 describe("Firestore audit writer (append-only, hash chain, same transaction)", () => {
@@ -88,13 +88,13 @@ describe("Firestore audit writer (append-only, hash chain, same transaction)", (
 
 describe("architecture: the audit log has no update or delete path", () => {
   it("audit entries are only ever created, inside a transaction", () => {
-    const source = readFileSync("packages/db/src/firestore/audit.ts", "utf8");
+    const source = readFileSync("packages/db/src/sql/audit.ts", "utf8");
     expect(source).toMatch(/tx\.create\(logs\.doc\(/);
     // `logs` (the auditLogs collection) is never set, updated or deleted, in or out of a transaction.
     expect(source).not.toMatch(/tx\.(set|update|delete)\(\s*logs\b/);
     expect(source).not.toMatch(/logs\.doc\([^)]*\)\.(set|update|delete|create)\(/);
     expect(source).not.toMatch(/recursiveDelete|bulkWriter|batch\(\)/);
-    // No other database code touches the audit collection.
+    // No other database code touches the audit collection (collections.ts only declares its table).
     const others = execFileSync(
       "git",
       ["grep", "--untracked", "-l", '"auditLogs"', "--", "packages", "apps"],
@@ -104,6 +104,6 @@ describe("architecture: the audit log has no update or delete path", () => {
     )
       .trim()
       .split("\n");
-    expect(others).toEqual(["packages/db/src/firestore/audit.ts"]);
+    expect(others).toEqual(["packages/db/src/sql/audit.ts", "packages/db/src/sql/collections.ts"]);
   });
 });

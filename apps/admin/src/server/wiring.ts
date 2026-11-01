@@ -3,12 +3,13 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import {
+  deleteExpired,
   inviteId,
   type AuditListQuery,
-  type FirestoreFormStore,
+  type SqlFormStore,
   type LetterListQuery,
-} from "@website/db/firestore";
-import type { Letter } from "@website/domain/documents";
+} from "@website/db/sql";
+import { CERTIFICATE_EMAIL_PURPOSE, type Letter } from "@website/domain/documents";
 import { orgUnitPath } from "@website/domain/organizations";
 import sharp from "sharp";
 import { trackingLinkData, unsubscribeLinkData } from "@website/domain/newsletter";
@@ -31,7 +32,11 @@ import { createImageUploads } from "./images";
 import { createIncomingActions } from "./incoming";
 import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
-import { createCertificateActions, createCertificateFileRoute } from "./certificates";
+import {
+  createCertificateActions,
+  createCertificateFileRoute,
+  createCertificatePickupRoute,
+} from "./certificates";
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
 import { createMessageActions } from "./messaging";
 import { createNewsletterActions } from "./newsletter";
@@ -41,7 +46,7 @@ import { createPeriodActions } from "./periods";
 import { createRecruitmentActions } from "./recruitment";
 import { createRoleActions } from "./roles";
 import { createUniversityActions } from "./universities";
-import { adminStores, imageStorage } from "./stores";
+import { adminDb, adminStores, imageStorage } from "./stores";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -190,6 +195,12 @@ export const certificateActions = lazyEnv(() =>
   createCertificateActions({
     certificates: adminStores().certificates,
     getLetter: (id) => adminStores().letters.get(id),
+    // Only a pasted e-mail column needs it (the same secret as apps/web, for the pickup page).
+    hashEmail: (email) => {
+      const secret = getAdminEnv().SUBSCRIBER_HASH_SECRET;
+      if (!secret) throw new Error("SUBSCRIBER_HASH_SECRET is required for e-mail columns.");
+      return keyedHash(CERTIFICATE_EMAIL_PURPOSE, email, secret);
+    },
     now: () => new Date(),
   }),
 );
@@ -201,6 +212,18 @@ export const certificateFile = lazyEnv(() =>
     getSheet: (id) => adminStores().certificates.get(id),
     load: letterContext,
     pdf: letterPdf(),
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+  }),
+);
+
+/** GET /certificates/pickup?t=… (D5-P): the link signed by the website's pickup page. */
+export const certificatePickupFile = lazyEnv(() =>
+  createCertificatePickupRoute({
+    find: (code) => adminStores().verification.find(code),
+    load: letterContext,
+    pdf: letterPdf(),
+    secret: () => getAdminEnv().LINK_SIGNING_SECRET ?? null,
+    now: () => new Date(),
     logError: (message, fields) => adminStores().logger.error(message, fields),
   }),
 );
@@ -312,7 +335,11 @@ export const auditLogActions = lazyEnv(() =>
 export const cronRoute = lazyEnv(() =>
   createCronRoute({
     secret: getAdminEnv().CRON_SECRET,
-    jobs: { ...CRON_JOBS, "newsletter-send": () => newsletterActions().runBatch() },
+    jobs: {
+      ...CRON_JOBS,
+      "newsletter-send": () => newsletterActions().runBatch(),
+      expire: () => deleteExpired(adminDb(), new Date()),
+    },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
         ? adminStores().logger.error(String(message), fields)
@@ -433,7 +460,7 @@ export const adminReads = {
   getForm: (id: string) => adminStores().forms.get(id),
   listFormVersions: (id: string) => adminStores().forms.listVersions(id),
   listFormResponses: (id: string, limit: number) => adminStores().forms.listResponses(id, limit),
-  currentFormVersions: (forms: Parameters<FirestoreFormStore["currentVersions"]>[0]) =>
+  currentFormVersions: (forms: Parameters<SqlFormStore["currentVersions"]>[0]) =>
     adminStores().forms.currentVersions(forms),
   listAlbums: () => adminStores().galleries.listForAdmin(),
   listChapters: () => adminStores().chapters.listForAdmin(),

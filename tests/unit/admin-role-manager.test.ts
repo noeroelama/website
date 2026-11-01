@@ -25,7 +25,7 @@ const account = (over: Record<string, unknown> = {}) => ({
   createdAt: new Date("2026-10-01T00:00:00Z"),
   lastSignInAt: null,
   roleAssignments: [
-    { roleId: "user", scope: global },
+    { roleId: "visitor", scope: global },
     { roleId: "bph", scope: global, periodId: null, source: "manual" as const, revokedAt: null },
     { roleId: "it", scope: { type: "chapter", chapterId: "jp" } as const },
     { roleId: "old", scope: global, revokedAt: new Date("2026-01-01T00:00:00Z") },
@@ -86,7 +86,7 @@ describe("Role Manager people rows", () => {
     expect(pick("all", "b@x")).toEqual(["budi"]);
     const roles = [
       { id: "superadmin", name: "Superadmin" },
-      { id: "user", name: "User" },
+      { id: "visitor", name: "Visitor" },
       { id: "bph", name: "BPH" },
       { id: "it", name: "IT" },
       { id: "head", name: "Head" },

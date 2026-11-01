@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createFirestoreCertificateStore,
-  createFirestoreLetterStore,
+  createSqlCertificateStore,
+  createSqlLetterStore,
+  createSqlVerificationReader,
   type LetterAudit,
-} from "@website/db/firestore";
+} from "@website/db/sql";
 import {
   DEFAULT_LETTERHEAD,
   passReview,
@@ -14,14 +15,16 @@ import {
 } from "@website/domain/documents";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
 import { pdfText } from "@website/pdf";
+import { signLink } from "@website/security";
 import {
   createCertificateActions,
   createCertificateFileRoute,
+  createCertificatePickupRoute,
 } from "../../apps/admin/src/server/certificates";
 import { createLetterPdf, type LetterContext } from "../../apps/admin/src/server/letter-pdf";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreLetterStore>[0];
+type Db = Parameters<typeof createSqlLetterStore>[0];
 const clock = new Date("2026-11-02T03:00:00Z");
 const staff = (permissions: string[], scope: Scope = { type: "global" }): Principal => ({
   kind: "user",
@@ -56,14 +59,15 @@ const audited: LetterAudit = (_b, _a, _c, next) =>
 
 const certAudit = (batchLetter: Letter) => audited(null, null, null, batchLetter);
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 const db = () => fake.db as unknown as Db;
-const letters = () => createFirestoreLetterStore(db());
-const sheets = () => createFirestoreCertificateStore(db());
+const letters = () => createSqlLetterStore(db());
+const sheets = () => createSqlCertificateStore(db());
 const actions = () =>
   createCertificateActions({
     certificates: sheets(),
     getLetter: (id) => letters().get(id),
+    hashEmail: (email) => `h:${email}`,
     now: () => clock,
   });
 const type = {
@@ -129,7 +133,7 @@ const walk = async (letter: Letter) => {
 };
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
   fake.docs.set("periods/p1", { name: "2026/2027" });
   fake.docs.set("letterTypes/sert", type);
@@ -186,6 +190,17 @@ describe("certificate batches (D5)", () => {
       { participant: { seq: 2, name: "Rina" } },
       { participantsAdded: 1 },
     ]);
+  });
+
+  it("an e-mail column is stored only as its keyed hash (for the pickup page)", async () => {
+    const { id } = await batch();
+    await actions().add(...as(secretariat))({
+      batchId: id,
+      text: "Arif\tArif@Example.org\nRina",
+      titleCase: false,
+    });
+    expect((await sheets().list(id)).map((s) => s.emailHash)).toEqual(["h:arif@example.org", null]);
+    expect(JSON.stringify([...fake.docs.values()])).not.toContain("Arif@Example.org");
   });
 
   it("writes large pastes in chunks; refuses empty lists, other letters and passed batches", async () => {
@@ -256,14 +271,14 @@ describe("certificate batches (D5)", () => {
 
   it("a taken code is drawn again; five taken draws stop", async () => {
     const { id } = await batch();
-    const unlucky = createFirestoreCertificateStore(db(), () => 0);
+    const unlucky = createSqlCertificateStore(db(), () => 0);
     fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "letter", letterId: "older" });
-    await expect(unlucky.add(id, [{ name: "A", note: null }], certAudit, clock)).rejects.toThrow(
-      "No free verification code.",
-    );
+    await expect(
+      unlucky.add(id, [{ name: "A", note: null, emailHash: null }], certAudit, clock),
+    ).rejects.toThrow("No free verification code.");
     let draw = 0;
-    const second = createFirestoreCertificateStore(db(), () => (draw++ < 10 ? 0 : 1));
-    await second.add(id, [{ name: "B", note: null }], certAudit, clock);
+    const second = createSqlCertificateStore(db(), () => (draw++ < 10 ? 0 : 1));
+    await second.add(id, [{ name: "B", note: null, emailHash: null }], certAudit, clock);
     expect((await sheets().list(id))[0]?.verificationCode).toBe("BBBBB-BBBBB");
   });
 });
@@ -358,5 +373,48 @@ describe("certificate sheets as PDF", () => {
       sheetId: sheet.id,
       error: "Error: boom",
     });
+  });
+});
+
+describe("certificate pickup download (D5-P)", () => {
+  const SECRET = "s".repeat(32);
+  const ctx = (): LetterContext => ({
+    type: { ...type, id: "sert", createdAt: clock, updatedAt: clock },
+    unitName: "Sekretariat Jenderal",
+    names: new Map(),
+    letterhead: DEFAULT_LETTERHEAD,
+  });
+  const pickupRoute = (now = clock, secret: string | null = SECRET) =>
+    createCertificatePickupRoute({
+      find: (code) => createSqlVerificationReader(db()).find(code),
+      load: () => Promise.resolve({ context: ctx() }),
+      pdf: { renderCertificate: () => Promise.resolve(new Uint8Array([37, 80])) },
+      secret: () => secret,
+      now: () => now,
+      logError: vi.fn(),
+    });
+  const token = (code: string, purpose = "certificate-pickup") =>
+    signLink({ purpose, code }, SECRET, new Date(clock.getTime() + 15 * 60_000));
+
+  it("a valid link downloads the sheet of an issued batch; anything else is 404", async () => {
+    const { id } = await batch();
+    await actions().add(...as(secretariat))({ batchId: id, text: "Arif", titleCase: false });
+    const { verificationCode: code } = (await sheets().list(id))[0] as Certificate;
+    expect((await pickupRoute()(token(code))).status).toBe(404); // draft: not issued yet
+    await walk((await letters().get(id)) as Letter);
+    const ok = await pickupRoute()(token(code));
+    expect([ok.status, ok.headers.get("content-disposition")]).toEqual([
+      200,
+      'attachment; filename="sertifikat-001.pdf"',
+    ]);
+    expect((await pickupRoute()(null)).status).toBe(404);
+    expect((await pickupRoute()(`${token(code)}x`)).status).toBe(404);
+    expect((await pickupRoute()(token(code, "personality"))).status).toBe(404);
+    expect((await pickupRoute(new Date(clock.getTime() + 16 * 60_000))(token(code))).status).toBe(
+      404,
+    );
+    expect((await pickupRoute(clock, null)(token(code))).status).toBe(404);
+    fake.docs.set(`letters/${id}`, { ...fake.docs.get(`letters/${id}`), status: "cancelled" });
+    expect((await pickupRoute()(token(code))).status).toBe(404);
   });
 });

@@ -75,17 +75,19 @@ export function FormResponsesPage(props: {
           >
             Back
           </Button>
-          {props.canExport ? (
-            <Button
-              variant="outline"
-              size="sm"
-              icon="download"
-              disabled={busy || props.total === 0}
-              onClick={() => void exportCsv()}
-            >
-              Export CSV
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {props.canExport ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="download"
+                disabled={busy || props.total === 0}
+                onClick={() => void exportCsv()}
+              >
+                Export CSV
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       <Card className="admin-list-card">

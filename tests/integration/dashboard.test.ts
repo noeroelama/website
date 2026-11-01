@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AuditEvent } from "@website/audit";
-import { createFirestoreDashboardCounts } from "@website/db/firestore";
+import { createSqlDashboardCounts } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createDashboard } from "../../apps/admin/src/server/dashboard";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreDashboardCounts>[0];
+type Db = Parameters<typeof createSqlDashboardCounts>[0];
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
   userId: "u",
@@ -20,7 +20,7 @@ const staff = (permissions: string[]): Principal => ({
 });
 
 describe("admin dashboard overview", () => {
-  const fake = fakeFirestore();
+  const fake = fakeDb();
   for (const [path, data] of [
     ["events/e1", { deletedAt: null }],
     ["events/e2", { deletedAt: new Date() }],
@@ -39,7 +39,7 @@ describe("admin dashboard overview", () => {
       nextCursor: null,
     });
   const dashboard = createDashboard({
-    counts: createFirestoreDashboardCounts(fake.db as unknown as Db),
+    counts: createSqlDashboardCounts(fake.db as unknown as Db),
     listAudit,
     graduatedOfficers: () =>
       Promise.resolve([

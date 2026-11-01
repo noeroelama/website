@@ -1,4 +1,5 @@
 import {
+  DEFAULT_ROLE_ASSIGNMENTS,
   DEFAULT_ROLE_COLOR,
   isRoleColor,
   isSystemRoleId,
@@ -126,10 +127,16 @@ const parseScope = (scope: Record<string, unknown>): Scope | null => {
   return scope["type"] === "orgUnit" ? { type: "orgUnit", orgUnitId: id } : null;
 };
 
-/** Keeps only well-formed stored assignments (fail closed on anything unexpected). */
+/** The default role every account has (Visitor), as one plain assignment. */
+const isDefaultAssignment = (a: RoleAssignment) =>
+  a.roleId === SYSTEM_ROLES.visitor.id && a.scope.type === "global" && !a.periodId && !a.revokedAt;
+
+/**
+ * Keeps only well-formed stored assignments (fail closed on anything unexpected). Every account
+ * is a Visitor: the default role is added when missing (the next account change stores it).
+ */
 export function parseAssignments(value: unknown): RoleAssignment[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item: unknown): RoleAssignment[] => {
+  const parsed = (Array.isArray(value) ? value : []).flatMap((item: unknown): RoleAssignment[] => {
     if (!isRecord(item) || !isRecord(item["scope"])) return [];
     const roleId = item["roleId"];
     const scope = parseScope(item["scope"]);
@@ -145,7 +152,17 @@ export function parseAssignments(value: unknown): RoleAssignment[] {
     if (item["revokedAt"] !== undefined && item["revokedAt"] !== null && !revokedAt) return [];
     return [{ roleId, scope, periodId, source, revokedAt, appointmentId }];
   });
+  return parsed.some(isDefaultAssignment) ? parsed : [...plainDefault(), ...parsed];
 }
+
+const plainDefault = (): RoleAssignment[] =>
+  DEFAULT_ROLE_ASSIGNMENTS.map((a) => ({
+    ...a,
+    periodId: null,
+    source: "manual",
+    revokedAt: null,
+    appointmentId: null,
+  }));
 
 /** A stored custom role, or null when it is deleted, malformed or uses a built-in id. */
 export function parseCustomRole(id: string, data: unknown): CustomRole | null {
@@ -215,7 +232,7 @@ export const isActiveSuperadmin = (user: UserSummary): boolean =>
     (a) => a.roleId === "superadmin" && a.scope.type === "global" && !a.revokedAt && !a.periodId,
   );
 
-/** Assignments as stored in Firestore: every field present (null when unset). */
+/** Assignments as stored in the database: every field present (null when unset). */
 export const plainAssignments = (assignments: readonly RoleAssignment[]) =>
   assignments.map((a) => ({
     roleId: a.roleId,

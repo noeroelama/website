@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  createFirestoreAppointmentStore,
-  createFirestoreMemberProfileStore,
-  createFirestoreUniversityStore,
-} from "@website/db/firestore";
+  createSqlAppointmentStore,
+  createSqlMemberProfileStore,
+  createSqlUniversityStore,
+} from "@website/db/sql";
 import { PRIVACY_POLICY_VERSION, studyStatus } from "@website/domain/members";
 import { createOwnProfile } from "../../apps/web/src/server/profile";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreMemberProfileStore>[0];
+type Db = Parameters<typeof createSqlMemberProfileStore>[0];
 const now = new Date("2026-10-19T05:00:00Z");
 const input = (changes: Record<string, unknown> = {}) => ({
   fullName: "Siti Rahma",
@@ -30,20 +30,20 @@ const input = (changes: Record<string, unknown> = {}) => ({
 });
 const member = (uid: string) => ({ uid, email: `${uid}@example.org`, emailVerified: true });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let profiles: ReturnType<typeof createFirestoreMemberProfileStore>;
+let fake: ReturnType<typeof fakeDb>;
+let profiles: ReturnType<typeof createSqlMemberProfileStore>;
 const own = () =>
   createOwnProfile({
     profiles,
-    universities: createFirestoreUniversityStore(fake.db as unknown as Db),
+    universities: createSqlUniversityStore(fake.db as unknown as Db),
     now: () => now,
   });
 const audit = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);
 
 beforeEach(async () => {
-  fake = fakeFirestore();
-  profiles = createFirestoreMemberProfileStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  profiles = createSqlMemberProfileStore(fake.db as unknown as Db);
   fake.docs.set("chapters/ch-jp", { countryCode: "JP", active: true });
   fake.docs.set("chapters/ch-kr", { countryCode: "KR", active: true });
   for (const uid of ["siti", "kim"]) fake.docs.set(`users/${uid}`, { uid, version: 1 });
@@ -183,7 +183,7 @@ describe("graduation: student, graduating, alumni (B5, PPIDK §67)", () => {
     }
     await own().setGraduation(member("siti"), { version: 1, graduatedOn: "2026-09-30" });
     await own().setGraduation(member("kim"), { version: 1, graduatedOn: "2027-03-01" });
-    const appointments = createFirestoreAppointmentStore(db);
+    const appointments = createSqlAppointmentStore(db);
     expect((await appointments.graduatedOfficers("2026-10-19")).map((a) => a.name)).toEqual([
       "siti",
     ]);

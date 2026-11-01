@@ -1,6 +1,7 @@
 import {
   canAccessAdmin,
   canInSomeScope,
+  type AdminPageId,
   type PagePermission,
   type Principal,
 } from "@website/permissions";
@@ -14,6 +15,8 @@ export interface NavItem {
 interface NavEntry extends NavItem {
   /** Permission needed to see the page; `null` = every staff member (the dashboard). */
   readonly permission: PagePermission | null;
+  /** Other audited pages shown under this page's Audit Log tab (their entries belong to it). */
+  readonly also?: readonly AdminPageId[];
 }
 
 /**
@@ -24,18 +27,23 @@ interface NavEntry extends NavItem {
 export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "Dashboard", href: "/", permission: null },
   { label: "Tools", href: "/tools", permission: "tools.read" },
-  { label: "Event", href: "/events", permission: "events.read" },
+  { label: "Event", href: "/events", permission: "events.read", also: ["registrants"] },
   { label: "Gallery", href: "/gallery", permission: "gallery.read" },
   { label: "Article", href: "/articles", permission: "articles.read" },
   { label: "Newsletter", href: "/newsletter", permission: "newsletter.read" },
   { label: "Forms", href: "/forms", permission: "forms.read" },
   { label: "Recruitment", href: "/recruitment", permission: "recruitment.read" },
-  { label: "Letters", href: "/letters", permission: "letters.read" },
+  { label: "Letters", href: "/letters", permission: "letters.read", also: ["letter_types"] },
   { label: "Incoming letters", href: "/incoming", permission: "incoming.read" },
-  { label: "Organizations", href: "/organizations", permission: "organizations.read" },
+  {
+    label: "Organizations",
+    href: "/organizations",
+    permission: "organizations.read",
+    also: ["periods", "structure", "appointments"],
+  },
   { label: "Universities", href: "/universities", permission: "universities.read" },
   // People and their roles (users.read); the roles themselves are under "Edit Role" (roles.read).
-  { label: "Role Manager", href: "/roles", permission: "users.read" },
+  { label: "Role Manager", href: "/roles", permission: "users.read", also: ["roles"] },
   { label: "Audit Log", href: "/audit", permission: "audit.read" },
   // E-mails sent by the system (failed ones can be retried). Profile and Account are on the web app.
   { label: "Email", href: "/emails", permission: "messages.read" },

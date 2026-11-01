@@ -1,10 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
-import {
-  createFirestoreEventReader,
-  createFirestoreRegistrationStore,
-} from "@website/db/firestore";
+import { createSqlEventReader, createSqlRegistrationStore } from "@website/db/sql";
 import type { PublicEvent } from "@website/domain/events";
 import { createRecaptchaVerifier, passesCaptcha } from "./captcha";
 import { webDb } from "./db";
@@ -13,8 +10,8 @@ import { messenger } from "./messaging";
 import { hasCompleteProfile } from "./profile-wiring";
 import { createEventRegistration } from "./registrations";
 
-const reader = lazyEnv(() => createFirestoreEventReader(webDb()));
-export const registrations = lazyEnv(() => createFirestoreRegistrationStore(webDb()));
+const reader = lazyEnv(() => createSqlEventReader(webDb()));
+export const registrations = lazyEnv(() => createSqlRegistrationStore(webDb()));
 
 /** Published events, newest first (cached for minutes under the tag "events"). */
 export async function publicEvents(): Promise<PublicEvent[]> {

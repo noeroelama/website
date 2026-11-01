@@ -43,6 +43,7 @@ export default async function ParticipantsRoute({ params }: { params: Promise<{ 
         note: s.note,
         number: sheetNumber(batch.sheetNumberTemplate, s.seq),
         code: batch.verificationCode ? s.verificationCode : null,
+        hasEmail: s.emailHash !== null,
       }))}
       canEdit={isEditable(batch) && can(viewer.principal, "letters.edit", scope)}
     />

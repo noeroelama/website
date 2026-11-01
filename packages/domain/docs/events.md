@@ -20,7 +20,7 @@ change, from the newest 500 `events` audit entries and `users/{uid}`, mapped by
 - Rules and form schema: `packages/domain/src/events/index.ts` (`EventEntity`, `EVENT_TYPES`,
   `EventInputSchema`, `randomEventSlug`, `sortedSponsors`, `isRegistrationOpen`)
 - Time zone helpers: `packages/domain/src/shared/time.ts` (`wallTimeToUtc`, `utcToWallTime`)
-- Firestore: `packages/db/src/firestore/events.ts` (`events/{id}`, slug index `eventSlugs/{slug}`,
+- Database: `packages/db/src/sql/events.ts` (`events/{id}`, slug index `eventSlugs/{slug}`,
   built on `slugged.ts`)
 - Admin actions: `apps/admin/src/server/events.ts`; page `apps/admin/src/app/(panel)/events/`
   (`src/components/events-page.tsx`, rows mapped in `events-model.ts`)
@@ -51,7 +51,7 @@ change, from the newest 500 `events` audit entries and `users/{uid}`, mapped by
 ## Public pages and registration
 
 `toPublicEvent` is what the website shows (no version or capacity). The web reader
-(`createFirestoreEventReader`) lists published, live events; `createFirestoreRegistrationStore`
+(`createSqlEventReader`) lists published, live events; `createSqlRegistrationStore`
 registers a member in one transaction: event open (`isRegistrationOpen`, closes exactly at the
 deadline) → no existing `eventRegistrations/{eventId}_{uid}` → status by
 `nextRegistrationStatus` and the counter `eventCounters/{eventId}`. Pages and captcha:
@@ -59,4 +59,4 @@ deadline) → no existing `eventRegistrations/{eventId}_{uid}` → status by
 
 ## Configuration
 
-Uploads need `FIREBASE_STORAGE_BUCKET`.
+Uploads need `FILE_STORAGE_DIR`.

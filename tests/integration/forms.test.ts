@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreFormStore } from "@website/db/firestore";
+import { createSqlFormStore } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createFormActions } from "../../apps/admin/src/server/forms";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 import { revertEntry } from "../support/revert";
 
-type Db = Parameters<typeof createFirestoreFormStore>[0];
+type Db = Parameters<typeof createSqlFormStore>[0];
 const now = new Date("2026-10-20T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -47,8 +47,8 @@ const form = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestoreFormStore>;
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlFormStore>;
 let uuids = 0;
 const actions = () =>
   createFormActions({
@@ -73,8 +73,8 @@ const markAnswered = (formId: string, n: number) =>
 
 beforeEach(() => {
   uuids = 0;
-  fake = fakeFirestore();
-  store = createFirestoreFormStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlFormStore(fake.db as unknown as Db);
 });
 
 describe("form builder (Forms page, C1)", () => {

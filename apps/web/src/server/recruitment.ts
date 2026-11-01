@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { ApplyOutcome, FirestoreRecruitmentWebStore } from "@website/db/firestore";
+import type { ApplyOutcome, SqlRecruitmentWebStore } from "@website/db/sql";
 import type { ApplicationStatus } from "@website/domain/recruitment";
 import {
   formFilePath,
@@ -20,7 +20,7 @@ import { safeId, safeText } from "@website/security/validation";
  */
 export interface ApplyingDeps {
   readonly store: Pick<
-    FirestoreRecruitmentWebStore,
+    SqlRecruitmentWebStore,
     | "getVisible"
     | "saveDraft"
     | "setPortfolio"

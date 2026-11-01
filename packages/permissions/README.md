@@ -6,7 +6,7 @@ Role-based access control (RBAC), evaluated on the server.
 
 - The admin page catalogue (`ADMIN_PAGES`: read / edit / extras per page) and self-service
   permissions
-- Built-in roles (`superadmin`, `member`, `user`); custom roles are Firestore data
+- Built-in roles (`superadmin`, `visitor`); custom roles are database data
 - `can()`, `requirePermission()`, `canAccessAdmin()`, `canInSomeScope()` (what to show)
 - Anti-escalation checks: `canSaveRole()`, `canDeleteRole()`, `canAssignRole()`
 

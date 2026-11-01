@@ -153,11 +153,13 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
               </div>
             ) : null}
           </div>
-          {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" href={`${unitsPath}/new`}>
-              Add New Unit
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" href={`${unitsPath}/new`}>
+                Add New Unit
+              </Button>
+            ) : null}
+          </div>
           <Button variant="outline" size="sm" icon="chevronLeft" href="/organizations">
             Back
           </Button>

@@ -3,10 +3,10 @@ import { z } from "zod";
 import type {
   AppointmentAudit,
   Decision,
-  FirestoreApplicationStore,
-  FirestoreAppointmentStore,
-  FirestoreRoleStore,
-} from "@website/db/firestore";
+  SqlApplicationStore,
+  SqlAppointmentStore,
+  SqlRoleStore,
+} from "@website/db/sql";
 import { derivedAssignments, type OrgUnit } from "@website/domain/organizations";
 import type { FileAnswer } from "@website/domain/forms";
 import {
@@ -23,11 +23,11 @@ import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface ApplicationDeps {
-  readonly applications: Pick<FirestoreApplicationStore, "decide" | "get" | "ratify">;
+  readonly applications: Pick<SqlApplicationStore, "decide" | "get" | "ratify">;
   /** Ratification creates the appointment through the step 3.7 rules (roles, escalation, MFA). */
-  readonly appointments: Pick<FirestoreAppointmentStore, "getRoleMap">;
+  readonly appointments: Pick<SqlAppointmentStore, "getRoleMap">;
   readonly units: { get(id: string): Promise<OrgUnit | null> };
-  readonly roles: Pick<FirestoreRoleStore, "getMany">;
+  readonly roles: Pick<SqlRoleStore, "getMany">;
   /** True when the account has a second sign-in method (staff roles need it). */
   readonly hasSecondFactor: (uid: string) => Promise<boolean>;
   /** Sessions revoked + `staff.role_changed` security event, after the roles changed. */

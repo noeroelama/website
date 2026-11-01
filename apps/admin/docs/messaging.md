@@ -12,7 +12,7 @@ them. It replaced the separate Messages page and the mock Emails page of the acc
 
 - Rules and orchestration: `packages/domain/src/messaging` (`createMessenger`,
   `deliveryDecision`, `isValidMessageKey`, `MessageChannel` and `MessageLogStore` ports).
-- Log: `packages/db/src/firestore/messages.ts` (`createFirestoreMessageLog`, collection
+- Log: `packages/db/src/sql/messages.ts` (`createSqlMessageLog`, collection
   `messageLog/{sha256(key)}`).
 - E-mail channel: `packages/email/src/channel.ts` (`emailChannel`, shared by admin and web).
 - Admin: `src/server/messaging.ts` (retry action), `src/server/wiring.ts` (`messenger()`), page
@@ -34,7 +34,7 @@ await messenger().send(
 
 Keys are meaningful and stable: `<topic>:<id>:<event>[:…]` (letters, digits, `_ - . @`). The
 same key always means the same message. Web server code (newsletter, step 2.8) uses the same
-`createMessenger` + `createFirestoreMessageLog` once its dependency matrix allows
+`createMessenger` + `createSqlMessageLog` once its dependency matrix allows
 `domain/messaging`.
 
 ## Rules and assumptions

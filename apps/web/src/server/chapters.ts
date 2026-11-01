@@ -1,11 +1,11 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
-import { createFirestoreChapterReader } from "@website/db/firestore";
+import { createSqlChapterReader } from "@website/db/sql";
 import type { PublicChapter } from "@website/domain/organizations";
 import { webDb } from "./db";
 
-const reader = lazyEnv(() => createFirestoreChapterReader(webDb()));
+const reader = lazyEnv(() => createSqlChapterReader(webDb()));
 
 /**
  * Active chapters by name: the map markers, the member councils on About and the chapter count

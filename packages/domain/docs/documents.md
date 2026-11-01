@@ -13,7 +13,7 @@ with each step.
   (batch activity code, upper case). Month and year come from the letter date.
 - `checkNumberPattern(pattern)` refuses an unknown placeholder and a pattern without `{nomor}`
   (PPIDK printed unknown placeholders as they were; a printed number can never be corrected).
-- Counters: `nextNumbers(db, tx, { collection, id }, count)` (`packages/db/src/firestore/counters.ts`)
+- Counters: `nextNumbers(db, tx, { collection, id }, count)` (`packages/db/src/sql/counters.ts`)
   reserves `count` numbers from `{ last }` inside the caller's transaction, before its first
   write. Numbers are reserved only when a letter is issued (no gaps from abandoned drafts) and
   never given back (a cancelled letter keeps its number).
@@ -27,7 +27,7 @@ with each step.
 
 ## Letters workflow (D1, D2)
 
-`src/documents/letters.ts` (pure rules, from PPIDK `SuratService`), `packages/db/src/firestore/letters.ts`
+`src/documents/letters.ts` (pure rules, from PPIDK `SuratService`), `packages/db/src/sql/letters.ts`
 (store), `apps/admin/src/server/letters.ts` (guarded actions), admin pages `/letters` and
 `/letters/types`.
 
@@ -94,7 +94,7 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
   never a silent re-render); drafts: rendered now without number or QR; cancelled letters:
   rendered now with the stamp. The Letters detail view has the button.
 - Code: `apps/admin/src/server/letter-pdf.ts`, route `apps/admin/src/app/api/letters/[id]/pdf/route.ts`.
-- Configuration: `VERIFICATION_HOST` (or `WEB_URL`) and `FIREBASE_STORAGE_BUCKET` on admin.
+- Configuration: `VERIFICATION_HOST` (or `WEB_URL`) and `FILE_STORAGE_DIR` on admin.
 
 ## Upload path (D3)
 
@@ -143,9 +143,12 @@ Many sheets from one template, from PPIDK `SertifikatService` (the opposite of t
   the batch is a draft or under review): pasted from a spreadsheet, one per line, a note after
   the first TAB, `;` or `|` (never a comma: names carry degrees), spaces tidied, duplicates KEPT
   (two people may share a name), at most 1000 lines per paste, optional title case (degrees and
-  particles kept). Each sheet gets its sequence (`certificateCounters/{batchId}`) and its own
-  verification code when added, CERTIFICATE_CHUNK (200) per transaction. Removing one deletes its
-  sheet and code; the others keep their numbers (audit: module `letters`).
+  particles kept). A column that is an e-mail address (anywhere after the name) is the pickup
+  e-mail: stored only as `emailHash` = keyedHash("certificate-email", lower-cased address,
+  SUBSCRIBER_HASH_SECRET), never as the address. Each sheet gets its sequence
+  (`certificateCounters/{batchId}`) and its own verification code when added, CERTIFICATE_CHUNK
+  (200) per transaction. Removing one deletes its sheet and code; the others keep their numbers
+  (audit: module `letters`).
 - **Numbers**: at issue the batch freezes `sheetNumberTemplate` (`001.{sheet:3}/SERT/LKMM/...`);
   sheet 37 is `001.037/SERT/LKMM/...`. A later pattern change never renumbers printed sheets.
 - **Sheets** are rendered on demand (`GET /api/letters/<id>/certificates/<sheetId>`,
@@ -156,9 +159,20 @@ Many sheets from one template, from PPIDK `SertifikatService` (the opposite of t
 - **Cancel** the batch (as any letter): every sheet then verifies as cancelled.
 - **Verification**: a sheet's code shows "certificate", the number, the holder's name in full
   (it is printed on the sheet), the note, the activity, the date, the unit, the signers; no
-  file here (the pickup page, 4.9, gives the sheets).
-- Code: `src/documents/certificates.ts`, `packages/db/src/firestore/certificates.ts`,
+  file here (the pickup page gives the sheets; the page links to it).
+- **Pickup (D5-P)**: `<WEB_URL>/certificates`, no sign-in. The holder types the e-mail given at
+  registration; reCAPTCHA (action `certificate_pickup`) and the 20/minute verification limit
+  apply. EXACT match through `emailHash` only (no lists, no partial search; at most 100 sheets),
+  sheets of issued batches only (drafts, cancelled and deleted batches give nothing). Each sheet
+  comes with a 15-minute link signed with LINK_SIGNING_SECRET (purpose `certificate-pickup`,
+  the sheet's verification code) to admin `GET /certificates/pickup?t=…`, which re-checks the
+  token and that the batch is issued, then renders the sheet (`attachment`). Bad, expired or
+  foreign tokens are 404. Sheets without an e-mail cannot be picked up (the participants page
+  says so per sheet).
+- Code: `src/documents/certificates.ts`, `packages/db/src/sql/certificates.ts`,
   `apps/admin/src/server/certificates.ts`, `packages/pdf/src/certificate.ts`,
+  `apps/web/src/server/verification.ts` (`createCertificatePickup`),
+  `apps/web/src/app/certificates/**`, `apps/admin/src/app/certificates/pickup/route.ts`,
   `apps/admin/src/app/(panel)/letters/[id]/participants/page.tsx`.
 
 ## Personal signatures (D4)
@@ -179,7 +193,7 @@ From PPIDK `TandaTanganPengguna`: one image per person, printed on the letters t
   letter's archive freezes it: a later change never alters an issued letter. A missing record,
   a lost or undecryptable file, or an image pdf-lib cannot read prints the electronic-signature
   box instead — a signature never blocks a letter.
-- Code: `src/documents/signatures.ts`, `packages/db/src/firestore/signatures.ts`,
+- Code: `src/documents/signatures.ts`, `packages/db/src/sql/signatures.ts`,
   `apps/web/src/server/signature.ts`, `apps/web/src/app/account/signature/**`,
   `apps/web/src/app/api/account/signature/route.ts`.
 
@@ -205,13 +219,13 @@ Anyone holding a letter checks it without signing in (PPIDK `VerifikasiControlle
   cancelled letters (the archive has no stamp), never when its sha256 does not match (the page
   then says so).
 - Code: `packages/domain/src/documents/verification.ts`, reader
-  `createFirestoreVerificationReader`, `apps/web/src/server/verification.ts`, pages
+  `createSqlVerificationReader`, `apps/web/src/server/verification.ts`, pages
   `apps/web/src/app/verify/**`. Not built: PPIDK's camera scanner (the phone's camera app opens
   the QR link directly).
 
 ## Incoming letters and dispositions (D6)
 
-`src/documents/incoming.ts` (rules, from PPIDK `AgendaService`), `packages/db/src/firestore/incoming.ts`,
+`src/documents/incoming.ts` (rules, from PPIDK `AgendaService`), `packages/db/src/sql/incoming.ts`,
 `apps/admin/src/server/incoming.ts`, admin page `/incoming` (Admin page "Incoming letters":
 read, edit, extra `dispose`).
 

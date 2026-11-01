@@ -1,7 +1,7 @@
 import "server-only";
 import type { AuditEvent } from "@website/audit";
-import type { DashboardCounter, FirestoreDashboardCounts } from "@website/db/firestore";
-import type { AuditListQuery } from "@website/db/firestore";
+import type { DashboardCounter, SqlDashboardCounts } from "@website/db/sql";
+import type { AuditListQuery } from "@website/db/sql";
 import { can, canInSomeScope, type PagePermission, type Principal } from "@website/permissions";
 
 /** Dashboard counters, each shown only to staff who can read its page. */
@@ -28,11 +28,11 @@ export const DASHBOARD_COUNTERS: ReadonlyArray<{
 ];
 
 /**
- * The dashboard for one staff member: counters for the pages they can read (Firestore count())
+ * The dashboard for one staff member: counters for the pages they can read (COUNT queries)
  * and, with audit.read, the 10 newest audit entries. Nothing is counted for hidden pages.
  */
 export function createDashboard(deps: {
-  counts: Pick<FirestoreDashboardCounts, "count">;
+  counts: Pick<SqlDashboardCounts, "count">;
   listAudit: (query: AuditListQuery) => Promise<{ items: AuditEvent[] }>;
   /** Officers of the active period who graduated (B5): for whoever may end appointments. */
   graduatedOfficers: () => Promise<GraduatedOfficer[]>;

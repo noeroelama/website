@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreOrgUnitStore, createFirestorePeriodStore } from "@website/db/firestore";
+import { createSqlOrgUnitStore, createSqlPeriodStore } from "@website/db/sql";
 import { orgUnitPath } from "@website/domain/organizations";
 import { can, normalizePermissions, type Principal } from "@website/permissions";
 import { createOrgUnitActions } from "../../apps/admin/src/server/org-units";
 import { createPeriodActions } from "../../apps/admin/src/server/periods";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 import { revertEntry } from "../support/revert";
 
-type Db = Parameters<typeof createFirestoreOrgUnitStore>[0];
+type Db = Parameters<typeof createSqlOrgUnitStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -26,8 +26,8 @@ const context = () =>
   Promise.resolve({ actorEmail: "sekjen@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 
-let fake: ReturnType<typeof fakeFirestore>;
-let units: ReturnType<typeof createFirestoreOrgUnitStore>;
+let fake: ReturnType<typeof fakeDb>;
+let units: ReturnType<typeof createSqlOrgUnitStore>;
 let periodId: string;
 const actions = () => createOrgUnitActions({ units, now: () => now });
 const auditEntries = () =>
@@ -53,11 +53,11 @@ const create = async (name: string, code: string, parentId: string | null, type?
 const pathOf = async (id: string) => (await units.get(id))?.path;
 
 beforeEach(async () => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   const db = fake.db as unknown as Db;
-  units = createFirestoreOrgUnitStore(db);
+  units = createSqlOrgUnitStore(db);
   const periods = createPeriodActions({
-    periods: createFirestorePeriodStore(db),
+    periods: createSqlPeriodStore(db),
     now: () => now,
   });
   const saved = await periods.save(...as(secretary))({
@@ -262,7 +262,7 @@ describe("organisation structure (org units)", () => {
     const media = await create("Direktorat Media", "MED", koor);
     const db = fake.db as unknown as Db;
     const periods = createPeriodActions({
-      periods: createFirestorePeriodStore(db),
+      periods: createSqlPeriodStore(db),
       now: () => now,
     });
     const next = await periods.save(...as(secretary))({

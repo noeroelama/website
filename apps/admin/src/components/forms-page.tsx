@@ -569,11 +569,13 @@ function FormsList({
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => toForm()}>
-              Add New Form
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" onClick={() => toForm()}>
+                Add New Form
+              </Button>
+            ) : null}
+          </div>
           <SearchBox
             key={searchKey}
             placeholder="Search by title..."

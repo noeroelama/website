@@ -1,12 +1,12 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreInterviewStore } from "@website/db/firestore";
+import type { SqlInterviewStore } from "@website/db/sql";
 import { SlotPlanSchema } from "@website/domain/recruitment";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction } from "./guarded-action";
 
 export interface InterviewDeps {
-  readonly interviews: Pick<FirestoreInterviewStore, "createPlan" | "remove">;
+  readonly interviews: Pick<SqlInterviewStore, "createPlan" | "remove">;
   readonly now: () => Date;
 }
 

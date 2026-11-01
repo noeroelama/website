@@ -12,7 +12,7 @@ a confirmation e-mail; the subscription is active only after they open the link 
   `confirmDecision`, `OPTIN_TTL_MS`, `canReceiveCampaigns`)
 - Signed links and keyed hashes: `packages/security/src/signatures.ts` (`signLink`, `verifyLink`,
   `keyedHash`) — the one implementation later steps reuse
-- Firestore: `packages/db/src/firestore/subscribers.ts` (`subscribers/{emailHash}`)
+- Database: `packages/db/src/sql/subscribers.ts` (`subscribers/{emailHash}`)
 - Web: `apps/web/src/server/newsletter.ts` (rules), `newsletter-wiring.ts`, field
   `src/components/newsletter-field.tsx`, pages `src/app/newsletter/{confirm,unsubscribe}`
 - Tests: `tests/unit/newsletter.test.ts`, `tests/security/signed-links.test.ts`,
@@ -39,8 +39,8 @@ a confirmation e-mail; the subscription is active only after they open the link 
 
 - Code: rules in `packages/domain/src/newsletter/index.ts` (`Campaign`, `CampaignInputSchema`,
   `sendState`, `canChangeCampaign`, `canDeleteCampaign`, `isDue`, `maskEmail`, `unsubscribeLinkData`,
-  tracking and stats helpers); stores `packages/db/src/firestore/campaigns.ts` (`campaigns/{id}`,
-  web side `createFirestoreCampaignWebStore`) and `subscribers.ts`; actions and the cron job in
+  tracking and stats helpers); stores `packages/db/src/sql/campaigns.ts` (`campaigns/{id}`,
+  web side `createSqlCampaignWebStore`) and `subscribers.ts`; actions and the cron job in
   `apps/admin/src/server/newsletter.ts`; page `apps/admin/src/components/newsletter-page.tsx`;
   web routes `apps/web/src/app/newsletter/{o,c,[id]}`. Tests: `tests/unit/newsletter.test.ts`,
   `tests/integration/newsletter-campaigns.test.ts`, `tests/integration/newsletter-signup.test.ts`.
@@ -89,5 +89,4 @@ a confirmation e-mail; the subscription is active only after they open the link 
 `SUBSCRIBER_HASH_SECRET` (never rotate) and `LINK_SIGNING_SECRET`, ≥ 32 characters each, plus the
 captcha and e-mail settings in `apps/web/.env.example`. Admin needs the same
 `LINK_SIGNING_SECRET` (unsubscribe, open and click links), the same `SUBSCRIBER_HASH_SECRET`
-(Add / Import) and `WEB_URL`. Firestore index
-`subscribers (status, subscriberId)`.
+(Add / Import) and `WEB_URL`.

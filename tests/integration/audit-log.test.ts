@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AuditEvent } from "@website/audit";
-import { createFirestoreAuditStore, createFirestoreAuditWriter } from "@website/db/firestore";
+import { createSqlAuditStore, createSqlAuditWriter } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createAuditLogActions } from "../../apps/admin/src/server/audit-log";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreAuditStore>[0];
+type Db = Parameters<typeof createSqlAuditStore>[0];
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date("2026-10-16T12:00:00Z");
 
@@ -50,10 +50,10 @@ const fresh = () =>
     authTime: Date.now() / 1000, // the recent-sign-in check uses the real clock
   });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestoreAuditStore>;
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlAuditStore>;
 const write = async (...events: AuditEvent[]) => {
-  const writer = createFirestoreAuditWriter(fake.db as unknown as Db);
+  const writer = createSqlAuditWriter(fake.db as unknown as Db);
   for (const event of events) await writer.appendAlone(event);
 };
 const actions = () =>
@@ -68,8 +68,8 @@ const revert = (id: string, principal = staff(["audit.read", "audit.revert"])) =
   actions().revert(() => Promise.resolve(principal), fresh)({ id });
 
 beforeEach(() => {
-  fake = fakeFirestore();
-  store = createFirestoreAuditStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlAuditStore(fake.db as unknown as Db);
   fake.docs.set("testItems/t1", { title: "New", summary: "Added", body: "same", version: 2 });
 });
 

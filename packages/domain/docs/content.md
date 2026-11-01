@@ -12,7 +12,7 @@ job.
 - Rules and form schema: `packages/domain/src/content/index.ts` (`NewsInputSchema`,
   `publishState`, `slugify`, `normalizeTags`, `formatNewsDate`, `NEWS_CATEGORIES`)
 - Rich-text allowlist: `packages/security/src/html.ts` (`sanitizeRichText`)
-- Firestore: `packages/db/src/firestore/content.ts` (`content/{id}`, slug index
+- Database: `packages/db/src/sql/content.ts` (`content/{id}`, slug index
   `contentSlugs/{kind}_{slug}`)
 - Admin actions: `apps/admin/src/server/news.ts`; page `apps/admin/src/app/(panel)/articles/`
   (list + form in `src/components/articles-page.tsx`, rows mapped in `articles-model.ts`);
@@ -50,12 +50,10 @@ job.
   CREATE / UPDATE / PUBLISH / UNPUBLISH / DELETE. Delete is a soft delete and can be reverted
   for 14 days on the Audit Log page; an edit that changed the URL is not revertible.
 - The admin list loads the 500 most recently changed articles and filters them in the browser.
-- Public site: `createFirestoreNewsReader` returns `PublicNews` DTOs (no id, version, status or
+- Public site: `createSqlNewsReader` returns `PublicNews` DTOs (no id, version, status or
   chapter); `relatedNews` picks up to 3 others with the same category or a shared tag. Pages:
   `apps/web/docs/public-site.md`. Cached for minutes.
 
 ## Configuration
 
-Firestore indexes `content (kind asc, updatedAt desc)` (admin list) and
-`content (kind asc, publishAt desc)` (public list) in
-`infrastructure/firebase/firestore.indexes.json`. Image uploads need `FIREBASE_STORAGE_BUCKET`.
+Image uploads need `FILE_STORAGE_DIR`.

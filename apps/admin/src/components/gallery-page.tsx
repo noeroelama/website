@@ -231,20 +231,25 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setView("list");
   };
 
-  /* Uploads one image (preset "gallery") into tile `index` (or appends it). */
-  const addPhoto = async (file: File, index = form.photos.length) => {
-    if (index >= ALBUM_MAX_IMAGES) {
-      toast.show(`At most ${ALBUM_MAX_IMAGES} images`);
-      return;
-    }
+  /* Uploads one image (preset "gallery") in place of tile `index`. */
+  const replacePhoto = async (file: File, index: number) => {
     const image = await upload.upload(file);
     const photo = image ? publicImage(image) : null;
     if (!photo) return;
-    setForm((f) => {
-      const photos = [...f.photos];
-      photos.splice(index, index < photos.length ? 1 : 0, photo);
-      return { ...f, photos };
-    });
+    setForm((f) => ({ ...f, photos: f.photos.map((p, i) => (i === index ? photo : p)) }));
+  };
+
+  /* Uploads the picked or dropped images one by one and appends them (only as many as fit). */
+  const addPhotos = async (files: FileList | null) => {
+    const room = ALBUM_MAX_IMAGES - form.photos.length;
+    const picked = Array.from(files ?? []);
+    if (picked.length > room) toast.show(`At most ${ALBUM_MAX_IMAGES} images — adding ${room}`);
+    for (const file of picked.slice(0, room)) {
+      const image = await upload.upload(file);
+      const photo = image ? publicImage(image) : null;
+      if (!photo) return; // stop so the upload error stays on screen
+      setForm((f) => ({ ...f, photos: [...f.photos, photo] }));
+    }
   };
 
   /* Red field + message for a server validation error. */
@@ -535,14 +540,12 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               {errorFor("slug")}
             </div>
 
-            {/* Event Banner — the label sits above the photos, then the
-                dropzone below the grid while fewer than 10 images are set. */}
             <div className="admin-field admin-form-grid__full">
-              <span className="admin-field__label">Event Banner *</span>
+              <span className="admin-field__label">Photos *</span>
 
               <PhotoGrid
                 photos={form.photos}
-                onPick={(index, file) => void addPhoto(file, index)}
+                onPick={(index, file) => void replacePhoto(file, index)}
                 onRemove={(index) =>
                   setForm((f) => ({ ...f, photos: f.photos.filter((_, i) => i !== index) }))
                 }
@@ -553,7 +556,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                   className="admin-dropzone"
                   role="button"
                   tabIndex={0}
-                  aria-label="Upload a banner image"
+                  aria-label="Upload banner images"
                   onClick={() => bannerInputRef.current?.click()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -564,13 +567,12 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) void addPhoto(file);
+                    void addPhotos(e.dataTransfer.files);
                   }}
                 >
                   <Icon name="upload" size={34} />
                   <span className="admin-dropzone__title">
-                    {upload.busy ? "Uploading…" : "Drag & drop banner image or click to browse"}
+                    {upload.busy ? "Uploading…" : "Drag & drop banner images or click to browse"}
                   </span>
                   <span className="admin-card__subtitle">
                     Any image format • Converted to WebP • Max 5MB •{" "}
@@ -582,10 +584,10 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                 ref={bannerInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 style={{ display: "none" }}
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void addPhoto(file);
+                  void addPhotos(e.target.files);
                   e.target.value = "";
                 }}
               />
@@ -644,11 +646,13 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
-              Add New Album
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
+                Add New Album
+              </Button>
+            ) : null}
+          </div>
           <FiltersButton
             count={activeFilterCount}
             open={filtersOpen}

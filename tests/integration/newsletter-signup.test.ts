@@ -1,20 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createFirestoreCampaignWebStore,
-  createFirestoreSubscriberStore,
-} from "@website/db/firestore";
+import { createSqlCampaignWebStore, createSqlSubscriberStore } from "@website/db/sql";
 import { trackingLinkData } from "@website/domain/newsletter";
 import { signLink } from "@website/security";
 import { createNewsletter } from "../../apps/web/src/server/newsletter";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreSubscriberStore>[0];
+type Db = Parameters<typeof createSqlSubscriberStore>[0];
 let now = new Date("2026-10-18T00:00:00Z");
 const secrets = {
   hashSecret: "subscriber-hash-secret-for-tests-0123456789",
   linkSecret: "link-signing-secret-for-tests-0123456789ab",
 };
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let send: ReturnType<typeof vi.fn<(message: unknown, key: string) => Promise<string>>>;
 let tokens: string[];
 let newsletter: ReturnType<typeof createNewsletter>;
@@ -22,13 +19,13 @@ let trackErrors: unknown[];
 
 beforeEach(() => {
   now = new Date("2026-10-18T00:00:00Z");
-  fake = fakeFirestore();
+  fake = fakeDb();
   send = vi.fn((_message: unknown, _key: string) => Promise.resolve("sent"));
   tokens = ["token-1", "token-2", "token-3"];
   trackErrors = [];
   newsletter = createNewsletter({
-    store: createFirestoreSubscriberStore(fake.db as unknown as Db),
-    campaigns: createFirestoreCampaignWebStore(fake.db as unknown as Db),
+    store: createSqlSubscriberStore(fake.db as unknown as Db),
+    campaigns: createSqlCampaignWebStore(fake.db as unknown as Db),
     onTrackError: (error) => trackErrors.push(error),
     captcha: (token) => Promise.resolve(token === "good"),
     send,
@@ -156,7 +153,7 @@ describe("campaign open/click tracking and the public archive", () => {
   it("a failing counter never blocks the reader: the click still redirects, the error is reported", async () => {
     campaign("sent");
     const broken = createNewsletter({
-      store: createFirestoreSubscriberStore(fake.db as unknown as Db),
+      store: createSqlSubscriberStore(fake.db as unknown as Db),
       campaigns: {
         track: () => Promise.reject(new Error("down")),
         findPublic: () => Promise.resolve(null),

@@ -5,7 +5,7 @@
  * - Admin permissions come from ADMIN PAGES: every page has `<page>.read` and `<page>.edit`
  *   (edit includes read) and, where needed, named extras (e.g. `members.pii`). Adding a page is
  *   a reviewed code change; WHICH roles get which page permissions is data, edited in the admin
- *   Role Manager (roles are Firestore documents).
+ *   Role Manager (roles are database documents).
  */
 export const SELF_SERVICE_PERMISSIONS = [
   "profile.read_own",
@@ -153,12 +153,12 @@ export function isRoleColor(value: unknown): value is RoleColor {
   return (ROLE_COLORS as readonly unknown[]).includes(value);
 }
 
-/** A role: built-in (code) or custom (Firestore `roles/{id}`, edited in the admin Role Manager). */
+/** A role: built-in (code) or custom (database `roles/{id}`, edited in the admin Role Manager). */
 export interface RoleDefinition {
   readonly id: string;
   readonly name: string;
   readonly permissions: readonly PagePermission[];
-  /** Badge colour (display only); roles read from Firestore always have one. */
+  /** Badge colour (display only); roles read from the database always have one. */
   readonly color?: RoleColor;
 }
 
@@ -168,8 +168,7 @@ export const SUPERADMIN_ROLE_ID = "superadmin";
  * Built-in roles. They cannot be created, edited or deleted in the Role Manager, and a stored role
  * document with the same id is ignored.
  * - superadmin: every admin page (keep 2-3 people)
- * - member: an approved PPI member (self-service only, for now)
- * - user: every account (assigned on first sign-in)
+ * - visitor: the default role of every account, no admin pages.
  */
 export const SYSTEM_ROLES = {
   [SUPERADMIN_ROLE_ID]: {
@@ -178,8 +177,7 @@ export const SYSTEM_ROLES = {
     permissions: PAGE_PERMISSIONS,
     color: "#D9534F",
   },
-  member: { id: "member", name: "Member", permissions: [], color: "#10B981" },
-  user: { id: "user", name: "User", permissions: [], color: DEFAULT_ROLE_COLOR },
+  visitor: { id: "visitor", name: "Visitor", permissions: [], color: DEFAULT_ROLE_COLOR },
 } as const satisfies Record<string, RoleDefinition>;
 
 export function isSystemRoleId(id: string): id is keyof typeof SYSTEM_ROLES {

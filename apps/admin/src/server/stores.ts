@@ -2,100 +2,101 @@ import "server-only";
 import { createFirebaseAccountAdmin } from "@website/auth/firebase-admin";
 import { lazyEnv } from "@website/config/env";
 import {
-  appForRole,
-  createFirebaseImageStorage,
-  createFirestoreAccountStore,
-  createFirestoreApplicationStore,
-  createFirestoreAppointmentStore,
-  createFirestoreAuditStore,
-  createFirestoreAuditWriter,
-  createFirestoreCertificateStore,
-  createFirestoreCampaignStore,
-  createFirestoreChapterStore,
-  createFirestoreContentStore,
-  createFirestoreDashboardCounts,
-  createFirestoreEventStore,
-  createFirestoreFormStore,
-  createFirestoreIncomingStore,
-  createFirestoreInterviewStore,
-  createFirestoreLetterSettingsStore,
-  createFirestoreLetterStore,
-  createFirestoreLetterTypeStore,
-  createFirestoreGalleryStore,
-  createFirestoreMemberProfileStore,
-  createFirestoreMessageLog,
-  createFirestoreOrgUnitStore,
-  createFirestorePasskeyStore,
-  createFirestorePeriodStore,
-  createFirestorePersonalityStore,
-  createFirestoreRecruitmentStore,
-  createFirestoreSignatureStore,
-  createFirestoreRoleStore,
-  createFirestoreUniversityStore,
-  createFirestoreSubscriberReader,
-  createFirestoreSubscriberStore,
-  getFirestoreForRole,
-} from "@website/db/firestore";
+  createDbFileStorage,
+  createSqlAccountStore,
+  createSqlApplicationStore,
+  createSqlAppointmentStore,
+  createSqlAuditStore,
+  createSqlAuditWriter,
+  createSqlCertificateStore,
+  createSqlVerificationReader,
+  createSqlCampaignStore,
+  createSqlChapterStore,
+  createSqlContentStore,
+  createSqlDashboardCounts,
+  createSqlEventStore,
+  createSqlFormStore,
+  createSqlIncomingStore,
+  createSqlInterviewStore,
+  createSqlLetterSettingsStore,
+  createSqlLetterStore,
+  createSqlLetterTypeStore,
+  createSqlGalleryStore,
+  createSqlMemberProfileStore,
+  createSqlMessageLog,
+  createSqlOrgUnitStore,
+  createSqlPasskeyStore,
+  createSqlPeriodStore,
+  createSqlPersonalityStore,
+  createSqlRecruitmentStore,
+  createSqlSignatureStore,
+  createSqlRoleStore,
+  createSqlUniversityStore,
+  createSqlSubscriberReader,
+  createSqlSubscriberStore,
+  getDatabaseForRole,
+} from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { getAdminEnv } from "./env";
 
-const adminRole = () => {
+/** Admin's database (MySQL, role `admin_rw`, pooled). */
+export const adminDb = lazyEnv(() => {
   const env = getAdminEnv();
-  return {
-    appEnv: env.APP_ENV,
-    role: "admin_rw" as const,
-    projectId: env.FIREBASE_PROJECT_ID,
-    clientEmail: env.FIREBASE_CLIENT_EMAIL,
-    privateKey: env.FIREBASE_PRIVATE_KEY,
-  };
-};
+  return getDatabaseForRole({
+    role: "admin_rw",
+    url: env.DATABASE_URL,
+    connectionLimit: env.DATABASE_CONNECTION_LIMIT,
+  });
+});
 
-/** Admin's Firestore client (role `admin_rw`, pooled) and Firebase Auth account operations. */
-export const adminDb = lazyEnv(() => getFirestoreForRole(adminRole()));
-
-/** Image uploads: Firebase Storage bucket FIREBASE_STORAGE_BUCKET (required for uploads). */
+/** Uploads in the MySQL `files` collection; public URLs on WEB_URL. */
 export const imageStorage = lazyEnv(() => {
-  const bucket = getAdminEnv().FIREBASE_STORAGE_BUCKET;
-  if (!bucket) throw new Error("FIREBASE_STORAGE_BUCKET is required for image uploads.");
-  return createFirebaseImageStorage(appForRole(adminRole()), bucket);
+  const env = getAdminEnv();
+  return createDbFileStorage({
+    db: adminDb(),
+    baseUrl: env.WEB_URL ?? "",
+    secret: env.LINK_SIGNING_SECRET,
+  });
 });
 
 export const adminStores = lazyEnv(() => {
   const env = getAdminEnv();
   const db = adminDb();
   return {
-    accounts: createFirestoreAccountStore(db),
-    roles: createFirestoreRoleStore(db),
-    passkeys: createFirestorePasskeyStore(db),
-    audit: createFirestoreAuditWriter(db),
-    auditLog: createFirestoreAuditStore(db),
-    messageLog: createFirestoreMessageLog(db),
-    content: createFirestoreContentStore(db),
-    events: createFirestoreEventStore(db),
-    forms: createFirestoreFormStore(db),
-    recruitments: createFirestoreRecruitmentStore(db),
-    applications: createFirestoreApplicationStore(db),
-    interviews: createFirestoreInterviewStore(db),
-    personality: createFirestorePersonalityStore(db),
-    letters: createFirestoreLetterStore(db),
-    letterTypes: createFirestoreLetterTypeStore(db),
-    letterSettings: createFirestoreLetterSettingsStore(db),
-    incoming: createFirestoreIncomingStore(db),
-    signatures: createFirestoreSignatureStore(db),
-    certificates: createFirestoreCertificateStore(db),
-    galleries: createFirestoreGalleryStore(db),
-    chapters: createFirestoreChapterStore(db),
-    periods: createFirestorePeriodStore(db),
-    orgUnits: createFirestoreOrgUnitStore(db),
-    memberProfiles: createFirestoreMemberProfileStore(db),
-    universities: createFirestoreUniversityStore(db),
-    appointments: createFirestoreAppointmentStore(db),
-    campaigns: createFirestoreCampaignStore(db),
+    accounts: createSqlAccountStore(db),
+    roles: createSqlRoleStore(db),
+    passkeys: createSqlPasskeyStore(db),
+    audit: createSqlAuditWriter(db),
+    auditLog: createSqlAuditStore(db),
+    messageLog: createSqlMessageLog(db),
+    content: createSqlContentStore(db),
+    events: createSqlEventStore(db),
+    forms: createSqlFormStore(db),
+    recruitments: createSqlRecruitmentStore(db),
+    applications: createSqlApplicationStore(db),
+    interviews: createSqlInterviewStore(db),
+    personality: createSqlPersonalityStore(db),
+    letters: createSqlLetterStore(db),
+    letterTypes: createSqlLetterTypeStore(db),
+    letterSettings: createSqlLetterSettingsStore(db),
+    incoming: createSqlIncomingStore(db),
+    signatures: createSqlSignatureStore(db),
+    certificates: createSqlCertificateStore(db),
+    /** Verification codes → sheet + batch (certificate pickup downloads, D5-P). */
+    verification: createSqlVerificationReader(db),
+    galleries: createSqlGalleryStore(db),
+    chapters: createSqlChapterStore(db),
+    periods: createSqlPeriodStore(db),
+    orgUnits: createSqlOrgUnitStore(db),
+    memberProfiles: createSqlMemberProfileStore(db),
+    universities: createSqlUniversityStore(db),
+    appointments: createSqlAppointmentStore(db),
+    campaigns: createSqlCampaignStore(db),
     subscribers: {
-      ...createFirestoreSubscriberReader(db),
-      ...createFirestoreSubscriberStore(db),
+      ...createSqlSubscriberReader(db),
+      ...createSqlSubscriberStore(db),
     },
-    dashboardCounts: createFirestoreDashboardCounts(db),
+    dashboardCounts: createSqlDashboardCounts(db),
     authAdmin: createFirebaseAccountAdmin({
       appEnv: env.APP_ENV,
       projectId: env.FIREBASE_PROJECT_ID,

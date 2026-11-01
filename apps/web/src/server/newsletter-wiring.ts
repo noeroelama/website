@@ -1,10 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { lazyEnv } from "@website/config/env";
-import {
-  createFirestoreCampaignWebStore,
-  createFirestoreSubscriberStore,
-} from "@website/db/firestore";
+import { createSqlCampaignWebStore, createSqlSubscriberStore } from "@website/db/sql";
 import { createRecaptchaVerifier, passesCaptcha } from "./captcha";
 import { webDb } from "./db";
 import { getWebEnv } from "./env";
@@ -25,8 +22,8 @@ export const newsletter = lazyEnv(() => {
     ? createRecaptchaVerifier({ secret: env.RECAPTCHA_SECRET_KEY, fetchImpl: fetch })
     : null;
   return createNewsletter({
-    store: createFirestoreSubscriberStore(webDb()),
-    campaigns: createFirestoreCampaignWebStore(webDb()),
+    store: createSqlSubscriberStore(webDb()),
+    campaigns: createSqlCampaignWebStore(webDb()),
     onTrackError: (error) => logger().error("newsletter_tracking_failed", { error: String(error) }),
     captcha: (token) =>
       passesCaptcha(

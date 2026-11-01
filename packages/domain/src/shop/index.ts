@@ -1,5 +1,5 @@
 /**
- * Shop module (Firestore). MUST stay self-contained (no imports from other domain modules)
+ * Shop module (MySQL via @website/db). MUST stay self-contained (no imports from other domain modules)
  * so it can be extracted later without touching the rest.
  * Enforced by eslint (see eslint.config.mjs).
  */

@@ -1,16 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  createFirestoreMemberProfileStore,
-  createFirestoreUniversityStore,
-} from "@website/db/firestore";
+import { createSqlMemberProfileStore, createSqlUniversityStore } from "@website/db/sql";
 import { normalizeUniversityName, PRIVACY_POLICY_VERSION } from "@website/domain/members";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createUniversityActions } from "../../apps/admin/src/server/universities";
 import { createOwnProfile } from "../../apps/web/src/server/profile";
 import { createUniversityPicker } from "../../apps/web/src/server/universities";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreUniversityStore>[0];
+type Db = Parameters<typeof createSqlUniversityStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 const member = (uid: string) => ({ uid, email: `${uid}@example.org`, emailVerified: true });
 const staff = (permissions: string[]): Principal => ({
@@ -69,9 +66,9 @@ const profileInput = (universityId: string | null, ppiCountry = "JP") => ({
   consent: { privacyPolicyVersion: PRIVACY_POLICY_VERSION, accepted: true },
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let universities: ReturnType<typeof createFirestoreUniversityStore>;
-let profiles: ReturnType<typeof createFirestoreMemberProfileStore>;
+let fake: ReturnType<typeof fakeDb>;
+let universities: ReturnType<typeof createSqlUniversityStore>;
+let profiles: ReturnType<typeof createSqlMemberProfileStore>;
 const picker = () => createUniversityPicker({ universities, now: () => now });
 const choices = async (owner: ReturnType<typeof member> | null, countryCode: string) => [
   ...(await picker().approved(countryCode)),
@@ -81,10 +78,10 @@ const own = () => createOwnProfile({ profiles, universities, now: () => now });
 const review = () => createUniversityActions({ universities, now: () => now });
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   const db = fake.db as unknown as Db;
-  universities = createFirestoreUniversityStore(db);
-  profiles = createFirestoreMemberProfileStore(db);
+  universities = createSqlUniversityStore(db);
+  profiles = createSqlMemberProfileStore(db);
   fake.docs.set(
     "universities/057zh3y96_JP",
     campus("The University of Tokyo", "JP", {

@@ -18,13 +18,14 @@
  * Accounts: a person who already signed in keeps their account (matched by e-mail) and gets the
  * imported roles added; everybody else gets a Firebase account `ppidk-<id>` with that e-mail and
  * no password: they sign in with Google or "Forgot password", then re-register passkeys.
- * Needs FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
+ * Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { mapPpidk, parseTsv, PPIDK_TABLES } from "../../packages/db/src/ppidk/people.ts";
+import { getDatabase } from "../../packages/db/src/sql/store.ts";
 
 const { values } = parseArgs({
   options: { dir: { type: "string" }, apply: { type: "boolean", default: false } },
@@ -33,19 +34,21 @@ if (!values.dir) {
   console.error("Usage: import-ppidk-people.mjs --dir <folder with the .tsv files> [--apply]");
   process.exit(2);
 }
-const missing = ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"].filter(
-  (name) => !process.env[name],
-);
+const missing = [
+  "DATABASE_URL",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+].filter((name) => !process.env[name]);
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
   process.exit(2);
 }
 
-// firebase-admin is a dependency of @website/db; resolve it from there.
-const require = createRequire(new URL("../../packages/db/package.json", import.meta.url));
+// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
+const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
-const { getFirestore } = require("firebase-admin/firestore");
 
 const app = initializeApp({
   projectId: process.env.FIREBASE_PROJECT_ID,
@@ -56,7 +59,7 @@ const app = initializeApp({
   }),
 });
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getDatabase({ url: process.env.DATABASE_URL });
 
 const tables = Object.fromEntries(
   PPIDK_TABLES.map((name) => [
@@ -149,3 +152,4 @@ for (let i = 0; i < plan.writes.length; i += 400) {
   await batch.commit();
 }
 console.log(`Done: ${plan.writes.length} documents written.`);
+await db.close();

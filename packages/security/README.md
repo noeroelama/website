@@ -20,8 +20,8 @@ sanitization, safe error responses and private caching headers.
 
 ## Rules
 
-- Framework-free. The Firestore counter store lives in `@website/db/firestore`.
-- The in-memory store is for development/test only; staging/production use Firestore.
+- Framework-free. The MySQL counter store lives in `@website/db/sql`.
+- The in-memory store is for development/test only; staging/production use MySQL.
 
 ## Commands
 

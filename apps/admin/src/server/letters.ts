@@ -2,11 +2,11 @@ import "server-only";
 import { z } from "zod";
 import type { AuditAction } from "@website/audit";
 import type {
-  FirestoreLetterSettingsStore,
-  FirestoreLetterStore,
-  FirestoreLetterTypeStore,
+  SqlLetterSettingsStore,
+  SqlLetterStore,
+  SqlLetterTypeStore,
   LetterAudit,
-} from "@website/db/firestore";
+} from "@website/db/sql";
 import {
   attachUpload,
   cancelLetter,
@@ -38,11 +38,11 @@ import type { LetterPdf } from "./letter-pdf";
 
 export interface LetterDeps {
   readonly letters: Pick<
-    FirestoreLetterStore,
+    SqlLetterStore,
     "get" | "create" | "update" | "transition" | "remove" | "issue"
   >;
-  readonly types: Pick<FirestoreLetterTypeStore, "save">;
-  readonly settings: Pick<FirestoreLetterSettingsStore, "get" | "save">;
+  readonly types: Pick<SqlLetterTypeStore, "save">;
+  readonly settings: Pick<SqlLetterSettingsStore, "get" | "save">;
   /** After the issue transaction: renders and archives the PDF (errors are logged there; the
    *  preview route archives a letter that has none yet). */
   readonly afterIssue: (letter: Letter) => Promise<void>;

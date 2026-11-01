@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { FirestoreCampaignWebStore, FirestoreSubscriberStore } from "@website/db/firestore";
+import type { SqlCampaignWebStore, SqlSubscriberStore } from "@website/db/sql";
 import type { Message } from "@website/domain/messaging";
 import {
   NewsletterEmailSchema,
@@ -15,9 +15,9 @@ import { safeId } from "@website/security/validation";
 import { DICTIONARIES, type Language } from "../i18n/dictionaries";
 
 export interface NewsletterDeps {
-  readonly store: Pick<FirestoreSubscriberStore, "startOptIn" | "confirm" | "unsubscribe">;
+  readonly store: Pick<SqlSubscriberStore, "startOptIn" | "confirm" | "unsubscribe">;
   /** Public archive page and open/click counters. */
-  readonly campaigns: Pick<FirestoreCampaignWebStore, "findPublic" | "track">;
+  readonly campaigns: Pick<SqlCampaignWebStore, "findPublic" | "track">;
   /** A counter that could not be written (the reader still gets the pixel or the redirect). */
   readonly onTrackError: (error: unknown) => void;
   /** reCAPTCHA v3, action "newsletter". */

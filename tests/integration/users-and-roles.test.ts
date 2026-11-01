@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountAdmin } from "@website/auth";
-import {
-  createFirestoreAccountStore,
-  createFirestoreRoleStore,
-  createFirestoreUserStore,
-} from "@website/db/firestore";
+import { createSqlAccountStore, createSqlRoleStore, createSqlUserStore } from "@website/db/sql";
 import { createMemoryPasskeyStore } from "@website/db/memory";
 import { createLogger } from "@website/observability";
 import {
@@ -15,9 +11,9 @@ import {
 } from "@website/permissions";
 import { createAccountActions } from "../../apps/admin/src/server/accounts";
 import { createRoleActions } from "../../apps/admin/src/server/roles";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreAccountStore>[0];
+type Db = Parameters<typeof createSqlAccountStore>[0];
 const global = { type: "global" } as const;
 const user = (roleIds: string[], extra: Record<string, unknown> = {}) => ({
   status: "active",
@@ -28,15 +24,15 @@ const user = (roleIds: string[], extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 let methods: Record<string, { providers: string[]; mfaFactors: number }>;
 let revokeSessions: ReturnType<typeof vi.fn<(uid: string) => Promise<void>>>;
 let setDisabled: ReturnType<typeof vi.fn<(uid: string, disabled: boolean) => Promise<void>>>;
 let logLines: string[];
 let invitesSent: { email: string; roleName: string }[];
 let deps: {
-  accounts: ReturnType<typeof createFirestoreAccountStore>;
-  roles: ReturnType<typeof createFirestoreRoleStore>;
+  accounts: ReturnType<typeof createSqlAccountStore>;
+  roles: ReturnType<typeof createSqlRoleStore>;
   passkeys: ReturnType<typeof createMemoryPasskeyStore>;
   authAdmin: AccountAdmin;
   logger: ReturnType<typeof createLogger>;
@@ -44,7 +40,7 @@ let deps: {
 };
 
 beforeEach(() => {
-  fake = fakeFirestore();
+  fake = fakeDb();
   const db = fake.db as unknown as Db;
   fake.docs.set("roles/editor", {
     name: "Editor",
@@ -52,6 +48,8 @@ beforeEach(() => {
     version: 1,
     deletedAt: null,
   });
+  // A custom role without admin pages (no second sign-in method needed).
+  fake.docs.set("roles/alumni", { name: "Alumni", permissions: [], version: 1, deletedAt: null });
   fake.docs.set("roles/user_manager", {
     name: "User manager",
     permissions: ["users.read", "users.edit"],
@@ -60,7 +58,7 @@ beforeEach(() => {
   });
   fake.docs.set("users/boss", { uid: "boss", ...user(["superadmin"]) });
   fake.docs.set("users/manager", { uid: "manager", ...user(["user_manager"]) });
-  fake.docs.set("users/ana", { uid: "ana", ...user(["user"]), email: "ana@example.org" });
+  fake.docs.set("users/ana", { uid: "ana", ...user(["visitor"]), email: "ana@example.org" });
   methods = {
     ana: { providers: ["google.com"], mfaFactors: 1 },
     boss: { providers: ["google.com"], mfaFactors: 1 },
@@ -75,8 +73,8 @@ beforeEach(() => {
   logLines = [];
   invitesSent = [];
   deps = {
-    accounts: createFirestoreAccountStore(db),
-    roles: createFirestoreRoleStore(db),
+    accounts: createSqlAccountStore(db),
+    roles: createSqlRoleStore(db),
     passkeys: createMemoryPasskeyStore(),
     authAdmin,
     logger: createLogger({ service: "admin", write: (line) => logLines.push(line) }),
@@ -88,7 +86,7 @@ beforeEach(() => {
 });
 
 const principalOf = async (uid: string) =>
-  (await createFirestoreUserStore(fake.db as unknown as Db).findPrincipalByUid(uid)) as Principal;
+  (await createSqlUserStore(fake.db as unknown as Db).findPrincipalByUid(uid)) as Principal;
 const freshContext = () =>
   Promise.resolve({
     actorEmail: "x@example.org",
@@ -103,7 +101,7 @@ describe("Role Manager: give and remove roles", () => {
     const result = await createAccountActions(deps).assignRole(...as("boss"))(giveEditor);
     expect(result).toEqual({ ok: true, data: { version: 2 } });
     expect(fake.docs.get("users/ana")).toMatchObject({
-      roleIds: ["user", "editor"],
+      roleIds: ["visitor", "editor"],
       version: 2,
     });
     const entries = [...fake.docs.entries()].filter(([path]) => path.startsWith("auditLogs/"));
@@ -224,11 +222,11 @@ describe("Role Manager: give and remove roles", () => {
       ok: true,
       data: { version: 3 },
     });
-    expect(fake.docs.get("users/ana")?.["roleIds"]).toEqual(["user", "editor"]);
+    expect(fake.docs.get("users/ana")?.["roleIds"]).toEqual(["visitor", "editor"]);
     expect(
       await actions.revokeRole(...as("boss"))({ ...giveEditor, version: 3, scope: jp }),
     ).toMatchObject({ ok: true, data: { version: 4 } });
-    expect(fake.docs.get("users/ana")?.["roleIds"]).toEqual(["user"]);
+    expect(fake.docs.get("users/ana")?.["roleIds"]).toEqual(["visitor"]);
     expect(logLines.filter((l) => l.includes("staff.role_changed"))).toHaveLength(3);
   });
 
@@ -265,7 +263,7 @@ describe("Role Manager: give and remove roles", () => {
     });
     expect(fake.docs.get("users/ana")?.["roleAssignments"]).toEqual([
       {
-        roleId: "user",
+        roleId: "visitor",
         scope: global,
         periodId: null,
         source: "manual",
@@ -294,7 +292,7 @@ describe("Role Manager: give and remove roles", () => {
     };
     fake.docs.set("users/ana", {
       ...fake.docs.get("users/ana"),
-      roleAssignments: [{ roleId: "user", scope: global }, ended],
+      roleAssignments: [{ roleId: "visitor", scope: global }, ended],
     });
     expect(await createAccountActions(deps).assignRole(...as("boss"))(giveEditor)).toMatchObject({
       ok: true,
@@ -309,13 +307,13 @@ describe("Role Manager: give and remove roles", () => {
     expect(fake.docs.get("users/ana")?.["roleAssignments"]).toHaveLength(3);
   });
 
-  it("built-in roles without admin pages need no second method; entries are titled by uid when there is no e-mail", async () => {
+  it("roles without admin pages need no second method; entries are titled by uid when there is no e-mail", async () => {
     methods["ana"] = { providers: ["google.com"], mfaFactors: 0 };
-    fake.docs.set("users/ana", { uid: "ana", ...user(["user"]), email: null });
+    fake.docs.set("users/ana", { uid: "ana", ...user(["visitor"]), email: null });
     expect(
       await createAccountActions(deps).assignRole(...as("boss"))({
         ...giveEditor,
-        roleId: "member",
+        roleId: "alumni",
       }),
     ).toMatchObject({ ok: true });
     const entry = [...fake.docs.entries()].find(([path]) => path.startsWith("auditLogs/"));
@@ -331,7 +329,7 @@ describe("Role Manager: give and remove roles", () => {
 
   it("reads what the first sign-in wrote", async () => {
     const at = new Date("2026-10-16T03:00:00Z");
-    await createFirestoreUserStore(fake.db as unknown as Db).recordSignIn(
+    await createSqlUserStore(fake.db as unknown as Db).recordSignIn(
       { uid: "neo", email: "neo@example.org", name: "Neo" },
       at,
     );
@@ -340,7 +338,7 @@ describe("Role Manager: give and remove roles", () => {
       status: "active",
       createdAt: at,
       lastSignInAt: at,
-      roleAssignments: [{ roleId: "user", scope: global }],
+      roleAssignments: [{ roleId: "visitor", scope: global }],
       version: 1,
     });
   });
@@ -353,11 +351,38 @@ describe("Role Manager: give and remove roles", () => {
       name: null,
       status: "inactive",
       chapterId: null,
-      roleAssignments: [],
+      // Every account is a Visitor (the default role), even one stored without roles.
+      roleAssignments: [
+        {
+          roleId: "visitor",
+          scope: global,
+          periodId: null,
+          source: "manual",
+          revokedAt: null,
+          appointmentId: null,
+        },
+      ],
       createdAt: null,
       lastSignInAt: null,
       version: 0,
     });
+  });
+
+  it("gives an account without the default role the Visitor role and stores it on the next change", async () => {
+    fake.docs.set("users/old", { uid: "old", ...user(["editor"]) });
+    const roleIds = async (uid: string) =>
+      (await deps.accounts.get(uid))?.roleAssignments.map((a) => a.roleId);
+    expect(await roleIds("old")).toEqual(["visitor", "editor"]);
+    expect(
+      await createAccountActions(deps).setStatus(...as("boss"))({
+        uid: "old",
+        version: 1,
+        status: "inactive",
+      }),
+    ).toMatchObject({ ok: true });
+    expect(fake.docs.get("users/old")?.["roleIds"]).toEqual(["visitor", "editor"]);
+    // Visitors (only the default role) are never Role Manager rows.
+    expect((await deps.accounts.listRoleHolders(["editor"])).map((u) => u.uid)).toEqual(["old"]);
   });
 
   it("lists the accounts holding one of the given roles (Role Manager), once each", async () => {
@@ -365,12 +390,12 @@ describe("Role Manager: give and remove roles", () => {
     fake.docs.set("users/both", { uid: "both", ...user(["editor", "user_manager"]) });
     fake.docs.set("users/ended", {
       uid: "ended",
-      ...user(["user"]),
+      ...user(["visitor"]),
       roleAssignments: [
-        { roleId: "user", scope: global },
+        { roleId: "visitor", scope: global },
         { roleId: "editor", scope: global, revokedAt: new Date("2026-01-01T00:00:00Z") },
       ],
-      roleIds: ["user", "editor"],
+      roleIds: ["visitor", "editor"],
     });
     const ids = async (roleIds: string[], chapterIds?: string[]) =>
       (await store.listRoleHolders(roleIds, chapterIds)).map((u) => u.uid).sort();
@@ -394,7 +419,7 @@ describe("Role Manager: give and remove roles", () => {
     fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), chapterId: "jp" });
     fake.docs.set("users/kim", {
       uid: "kim",
-      ...user(["user"]),
+      ...user(["visitor"]),
       email: "kim@example.org",
       chapterId: "kr",
     });
@@ -406,7 +431,7 @@ describe("Role Manager: give and remove roles", () => {
     });
     const store = deps.accounts;
     const holders = async (chapterIds: string[]) =>
-      (await store.listRoleHolders(["editor", "user"], chapterIds)).map((u) => u.uid).sort();
+      (await store.listRoleHolders(["editor", "visitor"], chapterIds)).map((u) => u.uid).sort();
     expect(await holders(["jp"])).toEqual(["ana", "sam"]);
     expect(await holders(["jp", "kr"])).toEqual(["ana", "kim", "sam"]);
     expect(await store.listRoleHolders(["superadmin"], ["jp"])).toEqual([]);
@@ -436,7 +461,7 @@ describe("Role Manager: give and remove roles", () => {
     expect(
       await createAccountActions(deps).assignRole(...as("jpadmin"))({
         ...giveEditor,
-        roleId: "user",
+        roleId: "visitor",
       }),
     ).toEqual({ ok: false, error: "forbidden" });
   });
@@ -463,7 +488,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
       data: { invited: false },
     });
     expect(fake.docs.get("users/ana")).toMatchObject({
-      roleIds: ["user", "editor", "user_manager"],
+      roleIds: ["visitor", "editor", "user_manager"],
       version: 3,
     });
     expect(revokeSessions).toHaveBeenCalledWith("ana");
@@ -484,9 +509,14 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
 
   it("suggests accounts while typing: e-mail or name prefix, any letter case, at most 8", async () => {
     fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), name: "Ana Putri" });
-    fake.docs.set("users/anto", { uid: "anto", ...user(["user"]), email: "x@y.org", name: "Anto" });
+    fake.docs.set("users/anto", {
+      uid: "anto",
+      ...user(["visitor"]),
+      email: "x@y.org",
+      name: "Anto",
+    });
     for (let i = 0; i < 10; i++) {
-      fake.docs.set(`users/z${i}`, { uid: `z${i}`, ...user(["user"]), email: `zed${i}@y.org` });
+      fake.docs.set(`users/z${i}`, { uid: `z${i}`, ...user(["visitor"]), email: `zed${i}@y.org` });
     }
     const find = createAccountActions(deps).findPeople(...as("boss"));
     expect(await find({ query: "ANA" })).toEqual({
@@ -518,7 +548,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
 
   it("refuses a name that matches no account or several, and input that is not a person", async () => {
     fake.docs.set("users/ana", { ...fake.docs.get("users/ana"), name: "Ana" });
-    fake.docs.set("users/ana2", { uid: "ana2", ...user(["user"]), name: "Ana" });
+    fake.docs.set("users/ana2", { uid: "ana2", ...user(["visitor"]), name: "Ana" });
     const add = createAccountActions(deps).addPerson(...as("boss"));
     expect(await add({ person: "Nobody Here", roleId: "editor" })).toMatchObject({
       error: "refused",
@@ -557,16 +587,16 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
       error: "refused",
       issues: [expect.stringContaining("already invited")],
     });
-    expect(await add({ person: "new.person@example.org", roleId: "member" })).toMatchObject({
+    expect(await add({ person: "new.person@example.org", roleId: "alumni" })).toMatchObject({
       ok: true,
     });
-    expect(inviteDoc()[0]).toMatchObject({ roleIds: ["editor", "member"], version: 2 });
+    expect(inviteDoc()[0]).toMatchObject({ roleIds: ["editor", "alumni"], version: 2 });
     expect(auditOf("invite").map((d) => [d["action"], d["module"], d["revertible"]])).toEqual([
       ["CREATE", "users", false],
       ["UPDATE", "users", false],
     ]);
     expect(await deps.accounts.listInvites()).toEqual([
-      expect.objectContaining({ email: "new.person@example.org", roleIds: ["editor", "member"] }),
+      expect.objectContaining({ email: "new.person@example.org", roleIds: ["editor", "alumni"] }),
     ]);
 
     // Escalation: nobody invites into a role they could not give.
@@ -610,26 +640,26 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     });
     await createAccountActions(deps).addPerson(...as("boss"))({
       person: "neo@example.org",
-      roleId: "member",
+      roleId: "alumni",
     });
-    const users = createFirestoreUserStore(fake.db as unknown as Db);
+    const users = createSqlUserStore(fake.db as unknown as Db);
     const neo = { uid: "neo", email: "Neo@example.org", name: "Neo" };
     const two = vi.fn(() => Promise.resolve(false));
 
     // Unverified e-mail: anyone could have typed it, so nothing is applied.
     expect(await users.recordSignIn({ ...neo, emailVerified: false }, at, two)).toEqual({
-      roleIds: ["user"],
+      roleIds: ["visitor"],
     });
     expect(two).not.toHaveBeenCalled();
     // Verified, one sign-in method: the role without admin pages applies, the staff role waits.
     expect(await users.recordSignIn({ ...neo, emailVerified: true }, at, two)).toEqual({
-      roleIds: ["user", "member"],
+      roleIds: ["visitor", "alumni"],
     });
     expect(inviteDoc()[0]).toMatchObject({ status: "pending", roleIds: ["editor"] });
     // After adding a passkey, the next sign-in applies the rest.
     two.mockResolvedValue(true);
     expect(await users.recordSignIn({ ...neo, emailVerified: true }, at, two)).toEqual({
-      roleIds: ["user", "member", "editor"],
+      roleIds: ["visitor", "alumni", "editor"],
     });
     expect(inviteDoc()[0]).toMatchObject({ status: "accepted", roleIds: [] });
     expect(fake.docs.get("users/neo")?.["roleAssignments"]).toContainEqual(
@@ -649,14 +679,17 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
 
   it("applies on the first sign-in; drops invited roles that were deleted or are already held", async () => {
     const add = createAccountActions(deps).addPerson(...as("boss"));
-    await add({ person: "kai@example.org", roleId: "member" });
+    await add({ person: "kai@example.org", roleId: "alumni" });
     await add({ person: "kai@example.org", roleId: "editor" });
-    const users = createFirestoreUserStore(fake.db as unknown as Db);
+    const users = createSqlUserStore(fake.db as unknown as Db);
     // Without a way to check the sign-in methods, the staff role waits.
     expect(
       await users.recordSignIn({ uid: "kai", email: "kai@example.org", emailVerified: true }, at),
-    ).toEqual({ roleIds: ["user", "member"] });
-    expect(fake.docs.get("users/kai")).toMatchObject({ version: 1, roleIds: ["user", "member"] });
+    ).toEqual({ roleIds: ["visitor", "alumni"] });
+    expect(fake.docs.get("users/kai")).toMatchObject({
+      version: 1,
+      roleIds: ["visitor", "alumni"],
+    });
     expect(
       [...fake.docs.values()].find((d) => d["email"] === "kai@example.org" && "invitedBy" in d),
     ).toMatchObject({ status: "pending", roleIds: ["editor"] });
@@ -664,7 +697,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     await add({ person: "zoe@example.org", roleId: "editor" });
     fake.docs.set("users/zoe", {
       uid: "zoe",
-      ...user(["user", "editor"]),
+      ...user(["visitor", "editor"]),
       email: "zoe@example.org",
     });
     const id = [...fake.docs.entries()].find(
@@ -677,7 +710,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
         at,
         () => Promise.resolve(true),
       ),
-    ).toEqual({ roleIds: ["user", "editor"] });
+    ).toEqual({ roleIds: ["visitor", "editor"] });
     expect(fake.docs.get(id)).toMatchObject({ status: "accepted", roleIds: [] });
   });
 
@@ -760,8 +793,8 @@ describe("Role Manager → Edit Role: custom roles are data", () => {
     });
     expect(
       await actions().saveRole(...as("boss"))({
-        id: "member",
-        name: "Member",
+        id: "visitor",
+        name: "Visitor",
         color: "#10B981",
         permissions: [],
         version: 1,

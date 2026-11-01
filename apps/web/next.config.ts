@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
     "@website/permissions",
     "@website/ui",
   ],
-  serverExternalPackages: ["firebase-admin"],
+  serverExternalPackages: ["firebase-admin", "mysql2"],
   ...standalone,
   // The news list moved from /articles to /news (step 2.3); keep old links working.
   async redirects() {

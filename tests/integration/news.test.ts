@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestoreContentStore, createFirestoreNewsReader } from "@website/db/firestore";
+import { createSqlContentStore, createSqlNewsReader } from "@website/db/sql";
 import { isPubliclyVisible } from "@website/domain/content";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { REVERTIBLE_COLLECTIONS } from "../../apps/admin/src/server/audit-log";
 import { createNewsActions } from "../../apps/admin/src/server/news";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreContentStore>[0];
+type Db = Parameters<typeof createSqlContentStore>[0];
 let now = new Date("2026-10-18T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -25,8 +25,8 @@ const publisher = staff(["articles.edit", "articles.publish"]);
 const context = () =>
   Promise.resolve({ actorEmail: "editor@example.org", requestId: "req-123456", authTime: null });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestoreContentStore>;
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlContentStore>;
 const actions = () => createNewsActions({ content: store, now: () => now });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 const image = {
@@ -54,8 +54,8 @@ const auditEntries = () =>
 
 beforeEach(() => {
   now = new Date("2026-10-18T05:00:00Z");
-  fake = fakeFirestore();
-  store = createFirestoreContentStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlContentStore(fake.db as unknown as Db);
 });
 
 describe("News CMS: save draft, publish, schedule", () => {
@@ -311,7 +311,7 @@ describe("content store reads", () => {
 
 describe("public news reader (web)", () => {
   it("lists only visible news, newest first, and finds the detail by slug", async () => {
-    const reader = createFirestoreNewsReader(fake.db as unknown as Db);
+    const reader = createSqlNewsReader(fake.db as unknown as Db);
     const save = (slug: string, intent: "draft" | "publish", publishAt: string) =>
       actions().save(...as(publisher))({ ...article, slug, publishAt, version: null, intent });
     await save("draft", "draft", "2026-10-01T00:00:00.000Z");

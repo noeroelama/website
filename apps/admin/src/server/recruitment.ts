@@ -1,12 +1,12 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreRecruitmentStore } from "@website/db/firestore";
+import type { SqlRecruitmentStore } from "@website/db/sql";
 import { RecruitmentInputSchema, type Recruitment } from "@website/domain/recruitment";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface RecruitmentDeps {
-  readonly recruitments: Pick<FirestoreRecruitmentStore, "save" | "write">;
+  readonly recruitments: Pick<SqlRecruitmentStore, "save" | "write">;
   readonly now: () => Date;
 }
 

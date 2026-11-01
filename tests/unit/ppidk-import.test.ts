@@ -349,9 +349,9 @@ describe("PPIDK people import (block J)", () => {
     expect(ana).toMatchObject({
       status: "active",
       chapterId: "ppidk-chapter-7",
-      roleIds: ["user", "member", "officer", "director"],
+      roleIds: ["visitor", "officer", "director"],
     });
-    expect((ana?.["roleAssignments"] as unknown[]).slice(2)).toEqual([
+    expect((ana?.["roleAssignments"] as unknown[]).slice(1)).toEqual([
       {
         roleId: "officer",
         scope: { type: "global" },
@@ -369,7 +369,7 @@ describe("PPIDK people import (block J)", () => {
         appointmentId: "ppidk-appointment-500",
       },
     ]);
-    expect(doc("users/ppidk-2")).toMatchObject({ status: "inactive", roleIds: ["user"] });
+    expect(doc("users/ppidk-2")).toMatchObject({ status: "inactive", roleIds: ["visitor"] });
     expect(plan.writes.find((w) => w.path === "users/ppidk-2")?.mode).toBe("user");
   });
 

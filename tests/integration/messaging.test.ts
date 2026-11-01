@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFirestoreMessageLog } from "@website/db/firestore";
+import { createSqlMessageLog } from "@website/db/sql";
 import {
   createMessenger,
   deliveryDecision,
@@ -9,9 +9,9 @@ import {
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createMemorySender, emailChannel, type EmailSender } from "@website/email";
 import { createMessageActions } from "../../apps/admin/src/server/messaging";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreMessageLog>[0];
+type Db = Parameters<typeof createSqlMessageLog>[0];
 const now = new Date("2026-10-16T05:00:00Z");
 const email = (to: string | null = "ana@example.org") => ({
   channel: "email" as const,
@@ -29,8 +29,8 @@ function setup(
     result?: Awaited<ReturnType<MessageChannel["send"]>>;
   } = {},
 ) {
-  const fake = fakeFirestore();
-  const log = createFirestoreMessageLog(fake.db as unknown as Db);
+  const fake = fakeDb();
+  const log = createSqlMessageLog(fake.db as unknown as Db);
   const send = vi.fn((..._args: Parameters<MessageChannel["send"]>) =>
     Promise.resolve(options.result ?? { ok: true as const, providerId: "re_1" }),
   );

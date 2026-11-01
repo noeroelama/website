@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreMemberProfileStore, FirestoreUniversityStore } from "@website/db/firestore";
+import type { SqlMemberProfileStore, SqlUniversityStore } from "@website/db/sql";
 import {
   canCancelGraduation,
   checkGraduationDate,
@@ -13,9 +13,9 @@ import {
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 
 export interface ProfileDeps {
-  readonly profiles: MemberProfileRepository & Pick<FirestoreMemberProfileStore, "setGraduation">;
+  readonly profiles: MemberProfileRepository & Pick<SqlMemberProfileStore, "setGraduation">;
   /** The picked campus is checked and its name used (A3). */
-  readonly universities: Pick<FirestoreUniversityStore, "get">;
+  readonly universities: Pick<SqlUniversityStore, "get">;
   readonly now: () => Date;
 }
 

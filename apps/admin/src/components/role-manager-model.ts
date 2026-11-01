@@ -6,7 +6,7 @@ import { ADMIN_PAGES, isPagePermission, type RoleAssignment } from "@website/per
  */
 
 /** Every account has it; it is never shown, filtered by or given here. */
-export const DEFAULT_ROLE_ID = "user";
+export const DEFAULT_ROLE_ID = "visitor";
 
 export type PersonStatus = "active" | "inactive" | "invited";
 

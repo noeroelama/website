@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreContentStore } from "@website/db/firestore";
+import type { SqlContentStore } from "@website/db/sql";
 import {
   isPubliclyVisible,
   NewsInputSchema,
@@ -14,7 +14,7 @@ import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface NewsDeps {
-  readonly content: Pick<FirestoreContentStore, "write">;
+  readonly content: Pick<SqlContentStore, "write">;
   readonly now: () => Date;
 }
 

@@ -14,7 +14,7 @@ shows ONE next action.
 
 - Rules: `packages/domain/src/recruitment/index.ts` (statuses and transitions, set-up schema,
   window, choices, portfolio rule, `nextAction`, offer expiry).
-- Storage: `packages/db/src/firestore/recruitment.ts` — admin store (`recruitments`,
+- Storage: `packages/db/src/sql/recruitment.ts` — admin store (`recruitments`,
   `seatCounters`) and web store (the applicant's own `applications/{recruitmentId}_{uid}`).
 - Admin: `apps/admin/src/server/recruitment.ts` (set-up) and `applications.ts` (selection), pages
   `/recruitment` (`src/components/recruitment-page.tsx`, `recruitment-model.ts`) and
@@ -113,9 +113,9 @@ storage>] [--apply]` (dry run by default, writes `import-recruitment-report.json
   revision rounds, interview and pact; seat counters are rebuilt from the applications that hold
   a seat. Personality results keep the scores only.
 - Files: only real PDFs (checked by their first bytes) found under `--files` are referenced and
-  copied privately to `FIREBASE_STORAGE_BUCKET`; other files are listed in the report as skipped.
+  copied privately to `FILE_STORAGE_DIR`; other files are listed in the report as skipped.
 
 ## Configuration
 
-`FIREBASE_STORAGE_BUCKET` on web (portfolio uploads); `LINK_SIGNING_SECRET` on web (the
+`FILE_STORAGE_DIR` on web (portfolio uploads); `LINK_SIGNING_SECRET` on web (the
 personality test links; the same secret signs newsletter links, the purpose keeps them apart).

@@ -785,18 +785,20 @@ function LettersList(props: Props) {
               Letter types
             </Button>
           ) : null}
-          {canWrite ? (
-            <Button
-              variant="outline"
-              size="sm"
-              icon="plus"
-              disabled={!periodName || types.length === 0 || units.length === 0}
-              title={types.length === 0 ? "Add a letter type first" : undefined}
-              onClick={() => openForm()}
-            >
-              Write letter
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canWrite ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="plus"
+                disabled={!periodName || types.length === 0 || units.length === 0}
+                title={types.length === 0 ? "Add a letter type first" : undefined}
+                onClick={() => openForm()}
+              >
+                Write letter
+              </Button>
+            ) : null}
+          </div>
           <SearchBox
             placeholder="Search subject, number or recipient..."
             label="Search letters"

@@ -51,6 +51,9 @@ export default async function Page() {
   complete are sent to `WEB_URL/account/profile?next=ADMIN_URL/<path>` first, and their actions
   are refused (`packages/domain/docs/members.md`). A unit test checks that every menu entry has a
   page calling `requireAdminViewer` with the same href and permission.
+- The Audit Log tabs are built from this list (every page except Dashboard and Audit Log). Give an
+  entry `also: [...]` when other audited modules belong under it (Organizations: periods, structure,
+  appointments).
 - The name comes from the sign-in provider (Google); otherwise the email is shown.
 - Profile and Account open the public website (`WEB_URL/account/profile`, `WEB_URL/account`;
   same session cookie), so there is one profile and one account page. The web header has the

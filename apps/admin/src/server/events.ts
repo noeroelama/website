@@ -1,12 +1,12 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreEventStore } from "@website/db/firestore";
+import type { SqlEventStore } from "@website/db/sql";
 import { EventInputSchema, randomEventSlug, type EventEntity } from "@website/domain/events";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface EventDeps {
-  readonly events: Pick<FirestoreEventStore, "write">;
+  readonly events: Pick<SqlEventStore, "write">;
   readonly now: () => Date;
   readonly uuid: () => string;
 }

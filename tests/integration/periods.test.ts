@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFirestorePeriodStore } from "@website/db/firestore";
+import { createSqlPeriodStore } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createPeriodActions } from "../../apps/admin/src/server/periods";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 import { revertEntry } from "../support/revert";
 
-type Db = Parameters<typeof createFirestorePeriodStore>[0];
+type Db = Parameters<typeof createSqlPeriodStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -26,8 +26,8 @@ const as = (principal: Principal) => [() => Promise.resolve(principal), context]
 /** The admin form has only the period (its years) and the cabinet. */
 const period = { name: "2026/2027", cabinet: "Kolaborasi Asiania" };
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestorePeriodStore>;
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlPeriodStore>;
 const actions = () => createPeriodActions({ periods: store, now: () => now });
 const auditEntries = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);
@@ -39,8 +39,8 @@ const create = async (fields: Partial<typeof period> = {}) => {
 const activePeriodId = () => fake.docs.get("settings/activePeriod")?.["periodId"];
 
 beforeEach(() => {
-  fake = fakeFirestore();
-  store = createFirestorePeriodStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlPeriodStore(fake.db as unknown as Db);
 });
 
 describe("board periods (Organizations → Period)", () => {

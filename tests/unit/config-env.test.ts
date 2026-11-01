@@ -143,3 +143,18 @@ describe("documents env (VERIFICATION_HOST)", () => {
     }
   });
 });
+
+describe("files env (FILE_STORAGE_DIR)", () => {
+  it("takes an absolute folder on the cPanel host or a Windows development machine", async () => {
+    const { filesEnv } = await import("@website/config/env");
+    expect(filesEnv.parse({})).toEqual({});
+    for (const value of ["/home/asiaosea/ppidk-files", "C:\\ppidk-files", "D:/ppidk-files"]) {
+      expect(filesEnv.parse({ FILE_STORAGE_DIR: value }), value).toEqual({
+        FILE_STORAGE_DIR: value,
+      });
+    }
+    for (const value of ["ppidk-files", "./files", "C:files"]) {
+      expect(filesEnv.safeParse({ FILE_STORAGE_DIR: value }).success, value).toBe(false);
+    }
+  });
+});

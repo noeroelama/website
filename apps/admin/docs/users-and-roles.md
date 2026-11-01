@@ -5,7 +5,7 @@
 One page, **Role Manager** in the side panel, for who holds which role and what each role may do.
 
 **People** (`/roles`, `users.read` / `users.edit`): everyone who holds a role other than the
-default `user`, plus pending invites (inactive and invited rows carry a badge). Tabs per role
+default role (Visitor: every account has it, so Visitors are never listed), plus pending invites (inactive and invited rows carry a badge). Tabs per role
 (with counts), search by name or e-mail, sort by name or role, 10/20/50 per page.
 
 - **Add New People**: "Email or Name" + a role. An e-mail or the exact name of an account gives
@@ -28,7 +28,7 @@ the page gives all its permissions and disables the single boxes; ticking a sing
 disables the page box. The search keeps a page whose name matches with all its permissions,
 otherwise only the matching permissions. A role that has every permission of a page opens with
 the page ticked (`splitPermissions` / `joinPermissions` in the model). The bin deletes a custom role
-that nobody holds (soft delete). Built-in roles (`superadmin`, `member`, `user`) are read-only.
+that nobody holds (soft delete). Built-in roles (`superadmin`, Visitor) are read-only.
 
 ## Where it lives
 
@@ -39,9 +39,9 @@ that nobody holds (soft delete). Built-in roles (`superadmin`, `member`, `user`)
 - Rules: `src/server/accounts.ts` (`createAccountActions`: give/remove role, status, Add New
   People and its suggestions, cancel invite, person details), `src/server/roles.ts` (`createRoleActions`), wired in
   `src/server/wiring.ts` (the invite e-mail goes through `messenger()`).
-- Data: `@website/db` → `createFirestoreAccountStore` (`listRoleHolders`, `findByName`,
+- Data: `@website/db` → `createSqlAccountStore` (`listRoleHolders`, `findByName`,
   `searchByPrefix`,
-  `invite`, `cancelInvite`, `listInvites`), `createFirestoreRoleStore`, `createFirestoreUserStore`
+  `invite`, `cancelInvite`, `listInvites`), `createSqlRoleStore`, `createSqlUserStore`
   (`recordSignIn` applies invites) — `packages/db/docs/database.md`.
 - Colours: `ROLE_COLORS` / `DEFAULT_ROLE_COLOR` in `@website/permissions` (display only).
 - Tests: `tests/integration/users-and-roles.test.ts`, `tests/unit/admin-role-manager.test.ts`,
@@ -76,5 +76,4 @@ that nobody holds (soft delete). Built-in roles (`superadmin`, `member`, `user`)
 
 ## Configuration
 
-`WEB_URL` (link in the invite e-mail) and messaging (`apps/admin/docs/messaging.md`). The users
-list needs no composite Firestore index.
+`WEB_URL` (link in the invite e-mail) and messaging (`apps/admin/docs/messaging.md`).

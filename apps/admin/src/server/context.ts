@@ -42,7 +42,7 @@ const getIdentity = cache(async (): Promise<VerifiedIdentity | null> => {
 
 /**
  * Resolves the current staff member on the server for every request:
- * session cookie → Firebase verification → user record + roles in Firestore.
+ * session cookie → Firebase verification → user record + roles in MySQL.
  * Returns null unless the user holds a staff role (any admin-page permission).
  * Never trusts client state, token claims, URL params or payload role fields.
  */

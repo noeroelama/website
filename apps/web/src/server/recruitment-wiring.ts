@@ -2,10 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
-import {
-  createFirestorePersonalityStore,
-  createFirestoreRecruitmentWebStore,
-} from "@website/db/firestore";
+import { createSqlPersonalityStore, createSqlRecruitmentWebStore } from "@website/db/sql";
 import type { Recruitment } from "@website/domain/recruitment";
 import { webDb, webStorage } from "./db";
 import { getWebEnv } from "./env";
@@ -13,7 +10,7 @@ import { hasCompleteProfile } from "./profile-wiring";
 import { createPersonalityTest } from "./personality";
 import { createApplying } from "./recruitment";
 
-export const recruitmentStore = lazyEnv(() => createFirestoreRecruitmentWebStore(webDb()));
+export const recruitmentStore = lazyEnv(() => createSqlRecruitmentWebStore(webDb()));
 
 /** Published recruitments (cached for minutes under the tag "recruitment"). */
 export async function publishedRecruitments(): Promise<Recruitment[]> {
@@ -37,7 +34,7 @@ export const applying = lazyEnv(() =>
 );
 
 /** `personalityResults/{uid}` with the website's client (the applicant's own result). */
-export const personalityResults = lazyEnv(() => createFirestorePersonalityStore(webDb()));
+export const personalityResults = lazyEnv(() => createSqlPersonalityStore(webDb()));
 
 /** The personality test (C5): signed 7-day links (LINK_SIGNING_SECRET), one result per person. */
 export const personalityTest = lazyEnv(() => {

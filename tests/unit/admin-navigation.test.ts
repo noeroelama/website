@@ -92,8 +92,7 @@ describe("admin side panel navigation", () => {
   });
 
   it("shows nothing to members, customers and inactive accounts", () => {
-    expect(navigationFor(staff("member"))).toEqual([]);
-    expect(navigationFor(staff("user"))).toEqual([]);
+    expect(navigationFor(staff("visitor"))).toEqual([]);
     expect(navigationFor(staff(SUPERADMIN_ROLE_ID, { type: "global" }, false))).toEqual([]);
   });
 

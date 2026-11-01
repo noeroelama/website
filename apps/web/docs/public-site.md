@@ -63,6 +63,12 @@ on `VERIFICATION_HOST`) show whether a letter or a certificate sheet is ours, it
 for letters by their type's rule, the content and archived PDF (`/verify/[code]/pdf`). No sign-in, noindex, 20 requests/minute per IP.
 Rules: `packages/domain/docs/documents.md` → Public verification.
 
+**Certificate pickup**: `/certificates` — the e-mail given at registration finds that person's
+sheets of issued certificate batches (exact match on a keyed hash, reCAPTCHA, the same 20/minute
+limit) and gives 15-minute signed download links to the admin app, where sheets are rendered.
+Needs SUBSCRIBER_HASH_SECRET, LINK_SIGNING_SECRET (both as in admin) and ADMIN_URL.
+Rules: `packages/domain/docs/documents.md` → Certificates (D5) → Pickup.
+
 **Signature**: `/account/signature` (linked from `/account`) holds the signed-in person's own
 signature for letters: upload (`POST /api/account/signature`, PNG/JPEG ≤ 2 MB, stored encrypted),
 preview (`GET`, owner only), printed width and rotation, removal (`src/server/signature.ts`).
@@ -114,7 +120,7 @@ completeness test fail until both exist.
   Google's OAuth review see); the cookie's language streams in at request time. Nothing personal
   is read in these components.
 - `/` never redirects and always contains the purpose statement and the Google data notice.
-- Content from Firestore (news, events) is shown in the language it was written in.
+- Content from the database (news, events) is shown in the language it was written in.
 - `LEGAL_VERSION` is the "last updated" date of Terms and Privacy: change it with the text.
 - `<html lang>` stays `id` (the root layout is static).
 - The social icons link to the networks' home pages until the organisation's profile URLs are put in
@@ -135,5 +141,4 @@ completeness test fail until both exist.
 
 `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `RECAPTCHA_MIN_SCORE` (captcha);
 `MESSAGING_MODE`, `MESSAGING_TEST_RECIPIENTS`, `RESEND_API_KEY`, `EMAIL_FROM_TRANSACTIONAL`
-(confirmation e-mails, same meaning as in admin). Firestore index `events (published, startsAt
-desc)`.
+(confirmation e-mails, same meaning as in admin).

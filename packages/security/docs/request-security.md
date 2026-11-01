@@ -20,14 +20,14 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 ## Where it lives
 
 - Policy and guard: `packages/security/src/` (`rate-limit.ts`, `request-guard.ts`, `errors.ts`, `validation.ts`)
-- Shared counter store: `packages/db/src/firestore/rate-limit.ts` (`rateLimits/{key}`)
+- Shared counter store: `packages/db/src/sql/rate-limit.ts` (`rateLimits/{key}`)
 - App wiring: `apps/{web,admin,shop}/src/server/request-guard.ts` + `src/proxy.ts`;
   `apps/gateway/src/middleware/request-guard.ts`
 - Tests: `tests/security/` (and `tests/e2e/security.spec.ts`)
 
 ## Rules and assumptions
 
-- **Race conditions**: counters are updated in a Firestore transaction (atomic across all server
+- **Race conditions**: counters are updated in a MySQL transaction (row lock) (atomic across all server
   instances); denied requests are not written. Transaction contention (only under bursts far above
   the limit) is treated as "limited".
 - **Fail-open**: if the counter store is unavailable the request is allowed and the error is
@@ -44,23 +44,23 @@ action (`src/proxy.ts` in web/admin/shop, `requestGuard` middleware in the gatew
 - **Uploads**: read bodies with `readBodyLimited(request, maxBytes)` (`src/body.ts`): it refuses by
   the declared `Content-Length` and while streaming, so an oversized upload is never held in
   memory (admin images, web recruitment PDFs).
-- Cost: each guarded request performs one Firestore transaction in staging/production (~1 read + 1 write).
+- Cost: each guarded request performs one MySQL transaction in staging/production (~1 read + 1 write).
   A delayed request keeps its server function running for the extra 500 ms (billed time).
 
 ## Configuration
 
-| Variable                                | Where            | Notes                                                                                                        |
-| --------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| `RATE_LIMIT_SECRET`                     | every app        | ≥ 32 chars, different per environment. Required in staging/production (the app refuses to serve without it). |
-| `FIREBASE_*`                            | web, admin, shop | Counter store (staging/production only)                                                                      |
-| Firestore TTL on `rateLimits.expiresAt` | Firebase         | Deletes old counters automatically (`infrastructure/firebase/README.md`)                                     |
+| Variable            | Where            | Notes                                                                                                        |
+| ------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `RATE_LIMIT_SECRET` | every app        | ≥ 32 chars, different per environment. Required in staging/production (the app refuses to serve without it). |
+| `DATABASE_URL`      | web, admin, shop | Counter store (staging/production only)                                                                      |
+| Cron job `expire`   | admin            | Deletes old counters (`rateLimits.expiresAt`, `apps/admin/docs/cron.md`)                                     |
 
 ## Tighter limits for some paths
 
 `GuardOptions.extraLimits` adds a second counter for matching requests (after the general
-100/minute one passes): the website counts public verification (`/verify…` and every request
-on `VERIFICATION_HOST`) at **20 per minute per IP** (`verify_` counter), so codes cannot be
-guessed in bulk (PPIDK `throttle:20,1`).
+100/minute one passes): the website counts public verification (`/verify…`, certificate pickup `/certificates` and every
+request on `VERIFICATION_HOST`) at **20 per minute per IP** (`verify_` counter), so codes and
+e-mails cannot be guessed in bulk (PPIDK `throttle:20,1`).
 
 ## Cron secret and webhook signatures
 

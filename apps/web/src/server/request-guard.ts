@@ -3,12 +3,12 @@ import { readCookie, SESSION_COOKIE, signInUrl } from "@website/auth";
 import {
   baseEnv,
   documentsEnv,
-  firebaseAdminEnv,
+  databaseEnv,
   lazyEnv,
   loadEnv,
   rateLimitEnv,
 } from "@website/config/env";
-import { createFirestoreRateLimitStore, getFirestoreForRole } from "@website/db/firestore";
+import { createSqlRateLimitStore, getDatabaseForRole } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 import { isVerificationPath, verificationRewrite } from "../lib/verification-host";
@@ -38,16 +38,14 @@ const getGuard = lazyEnv(() => {
           isVerificationPath(path) || verificationTarget(request, path) !== null,
       },
     ],
-    // Staging/production: counters shared by all server instances (Firestore, pooled client).
+    // Staging/production: counters shared by all server instances (MySQL, pooled).
     sharedStore: () => {
-      const fb = loadEnv(baseEnv.extend(firebaseAdminEnv.shape), process.env);
-      return createFirestoreRateLimitStore(
-        getFirestoreForRole({
-          appEnv: fb.APP_ENV,
+      const db = loadEnv(baseEnv.extend(databaseEnv.shape), process.env);
+      return createSqlRateLimitStore(
+        getDatabaseForRole({
           role: "web_ro",
-          projectId: fb.FIREBASE_PROJECT_ID,
-          clientEmail: fb.FIREBASE_CLIENT_EMAIL,
-          privateKey: fb.FIREBASE_PRIVATE_KEY,
+          url: db.DATABASE_URL,
+          connectionLimit: db.DATABASE_CONNECTION_LIMIT,
         }),
       );
     },

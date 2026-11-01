@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { CustomRole } from "@website/db";
-import type { FirestoreRoleStore } from "@website/db/firestore";
+import type { SqlRoleStore } from "@website/db/sql";
 import { RuleViolationError } from "@website/domain/shared";
 import {
   canDeleteRole,
@@ -16,7 +16,7 @@ import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface RoleDeps {
-  readonly roles: Pick<FirestoreRoleStore, "save" | "remove" | "get">;
+  readonly roles: Pick<SqlRoleStore, "save" | "remove" | "get">;
   readonly now: () => Date;
 }
 

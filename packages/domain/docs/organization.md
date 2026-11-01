@@ -26,20 +26,20 @@ These members are display data for the cabinet page only — not accounts and no
 
 - Rules and form schema: `packages/domain/src/organizations/index.ts` (`Chapter`,
   `ChapterInputSchema`, `CHAPTER_RISKS`, `mapPosition`, `toPublicChapter`)
-- Firestore: `packages/db/src/firestore/chapters.ts` (`chapters/{id}`, slug index
-  `chapterSlugs/{slug}`, built on `slugged.ts`; `createFirestoreChapterReader` for the web)
+- Database: `packages/db/src/sql/chapters.ts` (`chapters/{id}`, slug index
+  `chapterSlugs/{slug}`, built on `slugged.ts`; `createSqlChapterReader` for the web)
 - Admin: `apps/admin/src/server/chapters.ts`, `src/components/chapter-form.tsx`, the PPI tab in
   `src/components/organizations-page.tsx`, rows in `chapters-model.ts`
 - Web: `apps/web/src/server/chapters.ts`, `src/app/map/…`, About `src/app/about/page.tsx`, map
   image `apps/web/public/map/asia-oceania.svg` (from PPIDK)
 - Periods: `Period`, `PeriodFormSchema`, `periodDatesFromName`, `canChangePeriod`,
-  `canActivatePeriod`, `canDeletePeriod` in the same domain file; Firestore `packages/db/src/firestore/periods.ts`
+  `canActivatePeriod`, `canDeletePeriod` in the same domain file; database `packages/db/src/sql/periods.ts`
   (`periods/{id}`, `settings/activePeriod`); admin `apps/admin/src/server/periods.ts`, the Period
   tab in `organizations-page.tsx`, rows in `periods-model.ts`
 - Structure: `OrgUnit`, `OrgUnitInputSchema`, `UnitMemberSchema`, `UnitDivisionSchema`,
   `unitPeopleCount`, `placeOrgUnit`, `assertNoCycle`, `movedPath`, `orgUnitPath`, `inTreeOrder` in
-  the same domain file; Firestore
-  `packages/db/src/firestore/org-units.ts` (`orgUnits/{id}`, code index
+  the same domain file; database
+  `packages/db/src/sql/org-units.ts` (`orgUnits/{id}`, code index
   `orgUnitCodes/{periodId}_{code}`); admin `apps/admin/src/server/org-units.ts`,
   `src/app/(panel)/organizations/periods/[id]/page.tsx`, `src/components/org-structure-page.tsx`,
   the unit page `periods/[id]/units/{new,[unitId]}/page.tsx` + `src/components/org-unit-editor.tsx`,
@@ -111,4 +111,4 @@ These members are display data for the cabinet page only — not accounts and no
 
 ## Configuration
 
-Logo and member-photo uploads need `FIREBASE_STORAGE_BUCKET`. Firestore index `chapters (active, name)`.
+Logo and member-photo uploads need `FILE_STORAGE_DIR`.

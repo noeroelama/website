@@ -1,14 +1,11 @@
 import "server-only";
-import type { FirestoreUniversityStore } from "@website/db/firestore";
+import type { SqlUniversityStore } from "@website/db/sql";
 import { UniversityProposalSchema } from "@website/domain/members";
 import { RuleViolationError } from "@website/domain/shared";
 import type { ProfileOwner } from "./profile";
 
 export interface UniversityPickerDeps {
-  readonly universities: Pick<
-    FirestoreUniversityStore,
-    "listApproved" | "listOwnPending" | "propose"
-  >;
+  readonly universities: Pick<SqlUniversityStore, "listApproved" | "listOwnPending" | "propose">;
   readonly now: () => Date;
 }
 

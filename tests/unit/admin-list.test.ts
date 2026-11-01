@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cardRoles,
   countText,
   emptyText,
   matchesDate,
@@ -114,5 +115,26 @@ describe("admin list pages: sort, page, select, bulk actions", () => {
     expect(moveItem(["a", "b", "c"], 2, 0)).toEqual(["c", "a", "b"]);
     expect(moveItem(["a", "b", "c"], 1, 1)).toEqual(["a", "b", "c"]);
     expect(moveItem(["a", "b", "c"], 0, 5)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("admin list pages: phone card layout", () => {
+  it("leading controls, row actions and the first other column pick their card place", () => {
+    expect(cardRoles(["check", "title", "date", "status", "aksi"])).toEqual([
+      "lead",
+      "title",
+      "meta",
+      "meta",
+      "actions",
+    ]);
+    // No checkbox column: the first column is the title.
+    expect(cardRoles(["name", "role", "edit"])).toEqual(["title", "meta", "actions"]);
+    // The expander of the audit log leads; "open" / "revert" are row actions.
+    expect(cardRoles(["expand", "date", "user", "revert"])).toEqual([
+      "lead",
+      "title",
+      "meta",
+      "actions",
+    ]);
   });
 });

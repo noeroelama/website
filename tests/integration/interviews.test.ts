@@ -1,20 +1,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  createFirestoreApplicationStore,
-  createFirestoreInterviewStore,
-  createFirestoreRecruitmentStore,
-  createFirestoreRecruitmentWebStore,
-} from "@website/db/firestore";
+  createSqlApplicationStore,
+  createSqlInterviewStore,
+  createSqlRecruitmentStore,
+  createSqlRecruitmentWebStore,
+} from "@website/db/sql";
 import { utcToWallTime } from "@website/domain/shared";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createApplicationActions } from "../../apps/admin/src/server/applications";
 import { createInterviewActions } from "../../apps/admin/src/server/interviews";
 import { createRecruitmentActions } from "../../apps/admin/src/server/recruitment";
 import { createApplying } from "../../apps/web/src/server/recruitment";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 import { noRatification } from "../support/recruitment";
 
-type Db = Parameters<typeof createFirestoreInterviewStore>[0];
+type Db = Parameters<typeof createSqlInterviewStore>[0];
 let clock = new Date("2026-11-10T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -33,11 +33,11 @@ const context = () =>
   Promise.resolve({ actorEmail: "oprec@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 
-let fake: ReturnType<typeof fakeFirestore>;
+let fake: ReturnType<typeof fakeDb>;
 const db = () => fake.db as unknown as Db;
 const interviews = () =>
-  createInterviewActions({ interviews: createFirestoreInterviewStore(db()), now: () => clock });
-const web = () => createFirestoreRecruitmentWebStore(db());
+  createInterviewActions({ interviews: createSqlInterviewStore(db()), now: () => clock });
+const web = () => createSqlRecruitmentWebStore(db());
 const applying = () =>
   createApplying({
     store: web(),
@@ -58,7 +58,7 @@ const plan = {
   capacity: 1,
   location: "https://meet.example/oprec",
 };
-const slots = () => createFirestoreInterviewStore(db()).listForRecruitment(recruitmentId);
+const slots = () => createSqlInterviewStore(db()).listForRecruitment(recruitmentId);
 const booked = (id: string) => fake.docs.get(`interviewSlots/${id}`)?.["booked"];
 
 /** An application in "interview" for `uid`. */
@@ -67,7 +67,7 @@ const inInterview = async (uid: string) => {
   await applying().submit({ uid }, { recruitmentId });
   const version = fake.docs.get(`applications/${recruitmentId}_${uid}`)?.["version"] as number;
   await createApplicationActions({
-    applications: createFirestoreApplicationStore(db()),
+    applications: createSqlApplicationStore(db()),
     signedUrl: () => Promise.resolve(""),
     ...noRatification,
     now: () => clock,
@@ -76,7 +76,7 @@ const inInterview = async (uid: string) => {
 
 beforeEach(async () => {
   clock = new Date("2026-11-10T05:00:00Z");
-  fake = fakeFirestore();
+  fake = fakeDb();
   fake.docs.set("periods/p2026", { name: "2026/2027", status: "active", deletedAt: null });
   fake.docs.set("orgUnits/finance", { periodId: "p2026", name: "Keuangan", deletedAt: null });
   fake.docs.set("forms/form1", { usage: "recruitment", currentVersion: 1, deletedAt: null });
@@ -88,7 +88,7 @@ beforeEach(async () => {
   });
   const committee = staff(["recruitment.edit"]);
   const actions = createRecruitmentActions({
-    recruitments: createFirestoreRecruitmentStore(db()),
+    recruitments: createSqlRecruitmentStore(db()),
     now: () => clock,
   });
   const created = await actions.save(...as(committee))({

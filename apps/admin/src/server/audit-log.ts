@@ -6,14 +6,14 @@ import {
   type AuditEvent,
   type RevertDecision,
 } from "@website/audit";
-import type { FirestoreAuditStore, RevertibleCollections } from "@website/db/firestore";
+import type { SqlAuditStore, RevertibleCollections } from "@website/db/sql";
 import { RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
 import { REVERT_REJECTION_LABELS, label } from "../labels";
 import { createGuardedAction } from "./guarded-action";
 
 /**
- * How each module's records are reverted: resourceType → Firestore collection. A module adds
+ * How each module's records are reverted: resourceType → database collection. A module adds
  * its row when its records become revertible. Role and account
  * changes, uploads and sends are never listed here.
  */
@@ -41,7 +41,7 @@ export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
 };
 
 export interface AuditLogDeps {
-  readonly audit: Pick<FirestoreAuditStore, "revert" | "revertContext">;
+  readonly audit: Pick<SqlAuditStore, "revert" | "revertContext">;
   readonly revertible: RevertibleCollections;
   readonly now: () => Date;
   /** `audit.revert` security event (observability logger in production). */

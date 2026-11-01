@@ -287,7 +287,7 @@ export const OrgUnitInputSchema = z
   .strict();
 export type OrgUnitInput = z.infer<typeof OrgUnitInputSchema>;
 
-/** At most this many units move at once (one Firestore transaction holds 500 writes). */
+/** At most this many units move at once (keeps one transaction small). */
 export const ORG_UNIT_MOVE_LIMIT = 400;
 
 /** For `ResourceContext.orgUnitPath`: the unit's ancestors and the unit itself. */

@@ -132,6 +132,27 @@ export function emptyText(state: {
   return { title, hint };
 }
 
+/** Where a column goes in the phone card (`DataTable` cards, `globals.css` "Mobile list cards"). */
+export type CardRole = "lead" | "title" | "meta" | "actions";
+
+const LEAD_KEYS = new Set(["check", "expand"]);
+const ACTION_KEYS = new Set(["aksi", "actions", "edit", "open", "revert"]);
+
+/**
+ * Card place of each column, by its key: the checkbox / expander leads, the row buttons are the
+ * action row, the first other column is the title and the rest are detail lines.
+ */
+export function cardRoles(keys: readonly string[]): CardRole[] {
+  let titled = false;
+  return keys.map((key) => {
+    if (LEAD_KEYS.has(key)) return "lead";
+    if (ACTION_KEYS.has(key)) return "actions";
+    if (titled) return "meta";
+    titled = true;
+    return "title";
+  });
+}
+
 /** A copy of `items` with the item at `from` moved to `to` (drag & drop); out of range = same. */
 export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
   const next = [...items];

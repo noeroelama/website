@@ -3,7 +3,7 @@ import { PRIVACY_POLICY_VERSION } from "@website/domain/members";
 /**
  * UI text of the public website in Indonesian (default) and English. No i18n library: two typed
  * dictionaries with the same shape (tests/unit/web-i18n.test.ts checks every key in both).
- * Content from Firestore (news, events) is shown in the language it was written in.
+ * Content from the database (news, events) is shown in the language it was written in.
  */
 export const LANGUAGES = ["id", "en"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -384,6 +384,20 @@ const id = {
     activity: "Kegiatan",
     certificateCompare:
       "Bandingkan nama dan nomor ini dengan lembar yang kamu pegang; bila berbeda, lembar itu bukan yang kami terbitkan.",
+    pickupHint: "Pemegang sertifikat dapat mengunduh lembarnya di halaman",
+    pickupTitle: "Ambil Sertifikat",
+    pickupIntro:
+      "Tulis alamat e-mail yang kamu pakai saat mendaftar kegiatan. Sertifikatmu muncul bila alamatnya sama persis dengan yang tercatat.",
+    emailLabel: "Alamat e-mail",
+    find: "Cari sertifikat",
+    searching: "Mencari…",
+    badEmail: "Tulis alamat e-mail yang benar, mis. nama@contoh.com.",
+    captchaFailed: "Pemeriksaan keamanan gagal. Muat ulang halaman lalu coba lagi.",
+    none: "Tidak ada sertifikat terbit untuk alamat itu. Pastikan penulisannya sama dengan saat mendaftar; bila sudah benar, hubungi panitia kegiatan.",
+    found: "Sertifikat untuk alamat ini",
+    downloadSheet: "Unduh PDF",
+    linkExpiry: "Tautan unduh berlaku 15 menit; cari lagi bila sudah lewat.",
+    recaptchaNotice: "Halaman ini dilindungi reCAPTCHA Google.",
   },
   personality: {
     title: "Tes Kepribadian 16 Tipe",
@@ -1047,6 +1061,20 @@ const en: Dictionary = {
     activity: "Activity",
     certificateCompare:
       "Compare this name and number with the sheet you hold; if they differ, the sheet is not one we issued.",
+    pickupHint: "Certificate holders can download their sheet on the page",
+    pickupTitle: "Get Your Certificate",
+    pickupIntro:
+      "Type the e-mail address you used to register for the activity. Your certificates appear when the address matches the one on record exactly.",
+    emailLabel: "E-mail address",
+    find: "Find certificates",
+    searching: "Searching…",
+    badEmail: "Type a valid e-mail address, e.g. name@example.com.",
+    captchaFailed: "The security check failed. Reload the page and try again.",
+    none: "No issued certificate for that address. Check that it is spelled as when you registered; if it is, contact the activity's committee.",
+    found: "Certificates for this address",
+    downloadSheet: "Download PDF",
+    linkExpiry: "Download links work for 15 minutes; search again after that.",
+    recaptchaNotice: "This page is protected by Google reCAPTCHA.",
   },
   personality: {
     title: "16-type personality test",

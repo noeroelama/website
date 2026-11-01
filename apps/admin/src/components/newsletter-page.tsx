@@ -803,7 +803,7 @@ function NewsletterList({
   const publishCount = publishFor?.length ?? 0;
   const publishLabel =
     publishCount === 1 ? "Publish Campaign" : `Publish ${publishCount} Campaigns`;
-  const footer = (back: () => void, action: ReactNode) => (
+  const footer = (back: () => void, action?: ReactNode) => (
     <div className="admin-modal__footer-row">
       <Button variant="outline" icon="chevronLeft" onClick={back}>
         Back
@@ -849,7 +849,7 @@ function NewsletterList({
       <Modal
         open={scheduleFor !== null}
         title="Schedule campaign"
-        subtitle={scheduleFor?.subject}
+        subtitle={`“${scheduleFor?.subject ?? ""}” goes to every active subscriber at this time.`}
         width={460}
         hideClose
         onClose={() => setScheduleFor(null)}
@@ -885,8 +885,11 @@ function NewsletterList({
       <Modal
         open={resultsFor !== null}
         title={resultsFor?.subject ?? "Results"}
+        subtitle="Opens are approximate: some mail apps load images for every message, others block them. A click also counts as an open."
         width={460}
+        hideClose
         onClose={() => setResultsFor(null)}
+        footer={footer(() => setResultsFor(null))}
       >
         {resultsFor ? (
           <dl className="admin-newsletter-results">
@@ -904,17 +907,15 @@ function NewsletterList({
             <dd>{formatDate(resultsFor.sentAt ?? resultsFor.sendAt ?? resultsFor.modifiedAt)}</dd>
           </dl>
         ) : null}
-        <p className="admin-delete-confirm__message">
-          Opens are approximate: some mail apps load images for every message, others block them. A
-          click also counts as an open.
-        </p>
       </Modal>
 
       <Modal
         open={previewFor !== null}
         title={previewFor?.subject || "Preview"}
         width={680}
+        hideClose
         onClose={() => setPreviewFor(null)}
+        footer={footer(() => setPreviewFor(null))}
       >
         <EmailPreview html={previewFor?.body ?? ""} />
       </Modal>
@@ -923,6 +924,7 @@ function NewsletterList({
       <Modal
         open={addOpen}
         title="Add New Subscriber"
+        subtitle="They get a confirmation e-mail and receive campaigns only after they confirm."
         width={460}
         hideClose
         onClose={() => setAddOpen(false)}
@@ -987,9 +989,6 @@ function NewsletterList({
             </Select>
           </div>
         </div>
-        <p className="admin-delete-confirm__message">
-          They get a confirmation e-mail and receive campaigns only after they confirm.
-        </p>
       </Modal>
     </>
   );
@@ -1153,11 +1152,13 @@ function NewsletterList({
         <div className="admin-page-header__actions">
           {isCampaign ? (
             <>
-              {canEdit ? (
-                <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
-                  Add New Campaign
-                </Button>
-              ) : null}
+              <div className="admin-fab">
+                {canEdit ? (
+                  <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
+                    Add New Campaign
+                  </Button>
+                ) : null}
+              </div>
               {/* Status dropdown (All · Sent · Scheduled · Draft). */}
               <div className="admin-row-menu">
                 {statusMenuOpen ? (
@@ -1208,16 +1209,18 @@ function NewsletterList({
             </>
           ) : (
             <>
-              {canExport ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon="download"
-                  onClick={() => void exportCsv()}
-                >
-                  Export CSV
-                </Button>
-              ) : null}
+              <div className="admin-fab">
+                {canExport ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon="download"
+                    onClick={() => void exportCsv()}
+                  >
+                    Export CSV
+                  </Button>
+                ) : null}
+              </div>
               {canEdit ? (
                 <>
                   <Button

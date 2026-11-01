@@ -60,8 +60,8 @@ const rename = createGuardedAction({
 - `audit(...)` (from `createGuardedAction`, `apps/admin/src/server/guarded-action.ts`) fills in the
   id, time, actor (the server-side principal + e-mail, never the input), request id and the
   operation id shared by every entry of that mutation, and keeps only the changed fields.
-- `createFirestoreAuditWriter(db).begin(tx)` (`packages/db/src/firestore/audit.ts`) must be called
-  after the transaction's reads and before its writes (Firestore runs all reads first). Its
+- `createSqlAuditWriter(db).begin(tx)` (`packages/db/src/sql/audit.ts`) must be called
+  after the transaction's reads and before its writes (the store requires all reads first). Its
   `append` queues `tx.create(auditLogs/{id})` and moves `auditChain/head`; a failed transaction
   leaves no entry.
 - Personal data: build `before`/`after` with `profileAuditSnapshots` (`@website/domain/members`),
@@ -75,8 +75,9 @@ Admin `/audit` (`audit.read`, global), a dark list page like the Event page. The
 entries of the chosen date range (`?range=` 1d / 7d (default) / 14d / 30d / all, newest
 `AUDIT_PAGE_LIMIT` = 500; a note says when the range has more) and maps them to rows
 (`toAuditRow` in `apps/admin/src/components/audit-model.ts`, user names from `users/{uid}`). The
-browser then filters and pages them: tabs per admin page with counts (Organizations = PPI, Period,
-Structure, Appointments), User and Action pickers, title search, "Reversible only", sort by date
+browser then filters and pages them: one tab per side-panel page with counts, built from `ADMIN_NAVIGATION` (a new page gets a tab
+automatically; `also` on its entry lists the other modules shown under it, e.g. Organizations =
+Period, Structure, Appointments), User and Action pickers, title search, "Reversible only", sort by date
 or action, 10/20/50 rows per page, and Export CSV of the filtered rows. Each row shows the time
 (UTC), the user, the action badge, page and title, `#` + the record id, and either "N days left" +
 Revert or "Irreversible" (reason as tooltip). The chevron opens the changed fields (Field,
@@ -95,7 +96,7 @@ trash, a delete is restored) with version + 1, and appends a NEW `REVERT` entry
 
 - Code: `apps/admin/src/app/(panel)/audit/**`, `apps/admin/src/components/audit-{model,page}.ts(x)`,
   `apps/admin/src/server/audit-log.ts`
-  (`REVERTIBLE_COLLECTIONS`), `packages/db/src/firestore/audit.ts` (`createFirestoreAuditStore`).
+  (`REVERTIBLE_COLLECTIONS`), `packages/db/src/sql/audit.ts` (`createSqlAuditStore`).
 - A module makes its records revertible by adding `resourceType: "collection"` to
   `REVERTIBLE_COLLECTIONS` (its documents must carry `version`, `updatedAt`, `deletedAt`). The map
   is empty until the content modules (news, events, gallery) add theirs.
@@ -108,6 +109,6 @@ trash, a delete is restored) with version + 1, and appends a NEW `REVERT` entry
   (`prevHash` empty for the first entry); `auditChain/head` holds the newest `{ hash, seq }`.
   Because every audited transaction reads and writes the head, entries get a strict order and
   a gap or an edited entry breaks the chain.
-- Only `packages/db/src/firestore/audit.ts` references `auditLogs`, and entries are only ever
+- Only `packages/db/src/sql/audit.ts` references `auditLogs`, and entries are only ever
   created inside a transaction (architecture test). Planned: nightly chain verification and a daily export to a
   retention-locked bucket in a separate project.

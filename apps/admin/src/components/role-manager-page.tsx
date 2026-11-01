@@ -241,11 +241,13 @@ export function RoleManagerPeople({
               Edit Role
             </Button>
           ) : null}
-          {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => setAdding(true)}>
-              Add New People
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" onClick={() => setAdding(true)}>
+                Add New People
+              </Button>
+            ) : null}
+          </div>
           <SearchBox
             key={searchKey}
             placeholder="Search by name or e-mail..."
@@ -934,11 +936,13 @@ export function RoleManagerRoles({
           <p className="admin-page-header__desc">PPIDK Asiania Role Management System</p>
         </div>
         <div className="admin-page-header__actions">
-          {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => setEditing("new")}>
-              Add New Role
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" onClick={() => setEditing("new")}>
+                Add New Role
+              </Button>
+            ) : null}
+          </div>
           <SearchBox
             key={searchKey}
             placeholder="Search by role..."

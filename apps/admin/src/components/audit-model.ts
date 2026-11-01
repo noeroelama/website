@@ -7,6 +7,7 @@ import {
 } from "@website/audit";
 import { ADMIN_PAGES, type AdminPageId } from "@website/permissions";
 import { AUDIT_ACTION_LABELS, label, REVERT_REJECTION_LABELS } from "../labels";
+import { ADMIN_NAVIGATION } from "../navigation";
 import type { Author } from "./authors";
 import { esc } from "./format";
 
@@ -36,23 +37,38 @@ export function rangeStart(range: AuditRange, now: Date): Date | undefined {
   return days === null ? undefined : new Date(now.getTime() - days * 86_400_000);
 }
 
-/** Tabs: admin pages grouped as in the side panel (Organizations holds Period and Structure). */
-export const AUDIT_TABS = {
-  all: { label: "All", modules: null },
-  events: { label: "Event", modules: ["events"] },
-  gallery: { label: "Gallery", modules: ["gallery"] },
-  articles: { label: "Article", modules: ["articles"] },
-  newsletter: { label: "Newsletter", modules: ["newsletter"] },
-  organizations: {
-    label: "Organizations",
-    modules: ["organizations", "periods", "structure", "appointments"],
+/**
+ * Tabs: one per side-panel page (in its order) after "All", so a new page in `ADMIN_NAVIGATION`
+ * gets a tab automatically. The Dashboard has no entries and the Audit Log is this page. The tab
+ * key is the page id; `also` pages (Organizations holds Period and Structure) share its tab.
+ */
+export type AuditTab = "all" | AdminPageId;
+type TabDefinition = { label: string; modules: readonly string[] | null };
+const pageTabs = ADMIN_NAVIGATION.flatMap(
+  ({ label, permission, also = [] }): [AdminPageId, TabDefinition][] => {
+    const page = permission?.split(".")[0] as AdminPageId | undefined;
+    return page && page !== "audit" ? [[page, { label, modules: [page, ...also] }]] : [];
   },
-} as const satisfies Record<string, { label: string; modules: readonly AdminPageId[] | null }>;
-export type AuditTab = keyof typeof AUDIT_TABS;
+);
+export const AUDIT_TABS = Object.fromEntries([
+  ["all", { label: "All", modules: null }],
+  ...pageTabs,
+]) as Record<AuditTab, TabDefinition>;
 
 export function matchesTab(row: Pick<AuditRow, "module">, tab: AuditTab): boolean {
-  const modules: readonly string[] | null = AUDIT_TABS[tab].modules;
+  const modules = AUDIT_TABS[tab].modules;
   return modules === null || modules.includes(row.module);
+}
+
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
+
+/** UTC "28 Sep, 10:05" (year added when it differs from `ref`); without `ref` just "14:32". */
+export function shortUtc(iso: string, ref?: string): string {
+  const d = new Date(iso);
+  const time = d.toISOString().slice(11, 16);
+  if (ref === undefined) return time;
+  const year = d.getUTCFullYear() === new Date(ref).getUTCFullYear() ? "" : ` ${d.getUTCFullYear()}`;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${year}, ${time}`;
 }
 
 /** One photo of an image field; `change` marks photos only on one side. */

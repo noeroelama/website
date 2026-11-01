@@ -10,15 +10,16 @@ wide thumbnail for tables and card grids.
 
 ## Where it lives
 
-| Part                                     | File                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------- |
-| Rules: types, 5 MB, magic bytes, presets | `packages/domain/src/shared/images.ts`                                |
-| Firebase Storage adapter                 | `packages/db/src/firestore/storage.ts` (`createFirebaseImageStorage`) |
-| Server pipeline + route logic (sharp)    | `apps/admin/src/server/images.ts` (`createImageUploads`)              |
-| Route                                    | `apps/admin/src/app/api/uploads/[preset]/route.ts`                    |
-| Browser: checks, compression, upload     | `apps/admin/src/components/image-upload.ts` (`useImageUpload`)        |
-| Drop zone (presentational)               | `apps/admin/src/components/ui/drop-zone.tsx`                          |
-| Tests                                    | `tests/unit/images.test.ts`, `tests/security/uploads.test.ts`         |
+| Part                                     | File                                                                                                 |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Rules: types, 5 MB, magic bytes, presets | `packages/domain/src/shared/images.ts`                                                               |
+| Disk storage adapter (cPanel)            | `packages/db/src/sql/storage.ts` (`createDiskFileStorage`)                                           |
+| Serving: `/files/…`, `/private-files?t=` | `apps/web/src/server/files.ts` (`createFileRoutes`)                                                  |
+| Server pipeline + route logic (sharp)    | `apps/admin/src/server/images.ts` (`createImageUploads`)                                             |
+| Route                                    | `apps/admin/src/app/api/uploads/[preset]/route.ts`                                                   |
+| Browser: checks, compression, upload     | `apps/admin/src/components/image-upload.ts` (`useImageUpload`)                                       |
+| Drop zone (presentational)               | `apps/admin/src/components/ui/drop-zone.tsx`                                                         |
+| Tests                                    | `tests/unit/images.test.ts`, `tests/security/uploads.test.ts`, `tests/security/file-storage.test.ts` |
 
 ## How to use it
 
@@ -53,16 +54,21 @@ const { upload, busy, error } = useImageUpload("banner");
   broken files → 400 "File type not supported"). Signatures are uploaded on web later.
 - Browser: `checkImageFile` first (nothing is uploaded when it fails), then the native canvas
   shrinks the image to WebP (no library); the server re-encodes anyway.
+- Web and admin keep files in the MySQL `files` collection (`createDbFileStorage`, id `public/<path>` or `private/<path>`, bytes as base64), so no folder or `FILE_STORAGE_DIR` is needed. `createDiskFileStorage` (folder `FILE_STORAGE_DIR`, `public/<path>` and `private/<path>`) is still used by the ops scripts.
+  Paths are checked (`checkFilePath`: plain names only, no `..`, no absolute paths).
 - Storage names: `<folder>/<preset>_<timestamp>_<uuid8>.webp` and `…_thumb.webp`, never
-  overwritten. Public presets get a download-token URL with `Cache-Control: public,
-max-age=31536000, immutable`; private presets (`ktm`, `signature`) get no URL — read them with
-  `signedReadUrl(path)` (15 minutes) after a permission check.
+  overwritten. Public presets get the URL `<WEB_URL>/files/<path>`, served by web with
+  `Cache-Control: public, max-age=31536000, immutable`; private presets (`ktm`, `signature`) and
+  PDFs get no URL — read them with `signedReadUrl(path)` (a `<WEB_URL>/private-files?t=` link
+  signed with `LINK_SIGNING_SECRET`, 15 minutes, purpose `file`) after a permission check.
 - Each upload writes an `UPLOAD` audit entry (not revertible). Files are not deleted when a
-  record changes; Storage soft delete (≥ 30 days) covers the 14-day revert window.
+  record changes, so a revert within 14 days still finds them.
 
 ## Configuration
 
-- `FIREBASE_STORAGE_BUCKET` in admin (e.g. `ppidk-website-prod.firebasestorage.app`).
+- `WEB_URL`, the same on web and admin; `LINK_SIGNING_SECRET` (the same on both) for private links.
+- Backups: the files are rows in the database, so the nightly `mysqldump` includes them
+  (`docs/disaster-recovery.md`).
 - `sharp` (native) is a dependency of admin. The cPanel host's glibc is old: after the first
   deploy run `node -e "require('sharp')"` in the admin app root. If it fails, install the
   WebAssembly build instead (`npm install --cpu=wasm32 sharp`, package `@img/sharp-wasm32`):

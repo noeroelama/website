@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createFirestoreFormStore, createFirestoreFormWebStore } from "@website/db/firestore";
+import { createSqlFormStore, createSqlFormWebStore } from "@website/db/sql";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createFormActions } from "../../apps/admin/src/server/forms";
 import { createFormSubmission, createPublicFormReader } from "../../apps/web/src/server/forms";
-import { fakeFirestore } from "../support/fake-firestore";
+import { fakeDb } from "../support/fake-db";
 
-type Db = Parameters<typeof createFirestoreFormStore>[0];
+type Db = Parameters<typeof createSqlFormStore>[0];
 let clock = new Date("2026-10-20T05:00:00Z");
 const staff = (permissions: string[]): Principal => ({
   kind: "user",
@@ -50,9 +50,9 @@ const formInput = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-let fake: ReturnType<typeof fakeFirestore>;
-let store: ReturnType<typeof createFirestoreFormStore>;
-let web: ReturnType<typeof createFirestoreFormWebStore>;
+let fake: ReturnType<typeof fakeDb>;
+let store: ReturnType<typeof createSqlFormStore>;
+let web: ReturnType<typeof createSqlFormWebStore>;
 let tokens = 0;
 const securityEvents: Array<{ actorId: string; details: Record<string, unknown> }> = [];
 const actions = () =>
@@ -91,9 +91,9 @@ beforeEach(() => {
   tokens = 0;
   securityEvents.length = 0;
   captcha.mockClear();
-  fake = fakeFirestore();
-  store = createFirestoreFormStore(fake.db as unknown as Db);
-  web = createFirestoreFormWebStore(fake.db as unknown as Db);
+  fake = fakeDb();
+  store = createSqlFormStore(fake.db as unknown as Db);
+  web = createSqlFormWebStore(fake.db as unknown as Db);
 });
 
 describe("publishing a form (forms.publish)", () => {

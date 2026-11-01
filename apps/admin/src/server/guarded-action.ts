@@ -21,7 +21,7 @@ import {
  * The ONLY way to define an admin mutation. Order is fixed:
  * authenticate (+ staff role) → validate → authorize → business logic. The handler gets an
  * `audit` builder (actor = the server-side principal, never the input) and writes the entry with
- * `createFirestoreAuditWriter(db).begin(tx)` in the SAME transaction as the record change.
+ * `createSqlAuditWriter(db).begin(tx)` in the SAME transaction as the record change.
  *
  * Kept free of `server-only` so it is unit-testable; it is wired in ./context.ts.
  */

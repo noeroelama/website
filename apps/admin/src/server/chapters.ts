@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { FirestoreChapterStore } from "@website/db/firestore";
+import type { SqlChapterStore } from "@website/db/sql";
 import { slugify } from "@website/domain/content";
 import { ChapterInputSchema, type Chapter } from "@website/domain/organizations";
 import { RuleViolationError } from "@website/domain/shared";
@@ -9,7 +9,7 @@ import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface ChapterDeps {
-  readonly chapters: Pick<FirestoreChapterStore, "write">;
+  readonly chapters: Pick<SqlChapterStore, "write">;
   readonly now: () => Date;
 }
 

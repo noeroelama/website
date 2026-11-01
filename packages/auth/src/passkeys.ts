@@ -37,7 +37,7 @@ export interface PasskeyChallenge {
   readonly expiresAt: Date;
 }
 
-/** Storage port. Implemented in @website/db (Firestore and in-memory). */
+/** Storage port. Implemented in @website/db (MySQL and in-memory). */
 export interface PasskeyStore {
   listByUser(userId: string): Promise<PasskeyCredential[]>;
   findById(credentialId: string): Promise<PasskeyCredential | null>;

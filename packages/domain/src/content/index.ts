@@ -94,7 +94,11 @@ export function normalizeTags(tags: readonly string[]): string[] {
   return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
 }
 
-const httpsUrl = z.url({ protocol: /^https$/ }).max(2000);
+/** https only; http://localhost is allowed so uploads work in local development (WEB_URL). */
+const httpsUrl = z
+  .url({ protocol: /^https?$/ })
+  .max(2000)
+  .refine((u) => u.startsWith("https://") || /^http:\/\/localhost[:/]/.test(u), "Use https.");
 const storagePath = z
   .string()
   .max(300)

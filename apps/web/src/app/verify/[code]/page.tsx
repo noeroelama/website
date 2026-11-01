@@ -120,6 +120,11 @@ export default async function VerifyCodePage({
           )}
         </dl>
         <p>{t.certificateCompare}</p>
+        {!view.cancelled && (
+          <p>
+            {t.pickupHint} <a href="/certificates">{t.pickupTitle}</a>.
+          </p>
+        )}
         {signers}
       </main>
     );

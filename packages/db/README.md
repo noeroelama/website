@@ -1,6 +1,6 @@
 # @website/db
 
-Firestore access, exposed per application role.
+Database access (MySQL 8 on cPanel) and file storage (cPanel disk), exposed per application role.
 
 ## Responsibilities
 
@@ -10,16 +10,16 @@ Firestore access, exposed per application role.
 
 ## Structure
 
-| Import                  | Contains                                                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `@website/db`           | Role types and repository sets per role                                                                            |
-| `@website/db/firestore` | `getFirestoreForRole()` (the only place Firestore is imported), rate-limit and passkey stores, `getDocumentsByIds` |
-| `@website/db/memory`    | In-memory repositories for tests and local development                                                             |
+| Import               | Contains                                                                                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@website/db`        | Role types and repository sets per role                                                                                                                                                |
+| `@website/db/sql`    | `getDatabaseForRole()` (pooled MySQL; `mysql2` only in `src/sql/store.ts`), repositories, rate-limit and passkey stores, `getDocumentsByIds`, `createDiskFileStorage`, `deleteExpired` |
+| `@website/db/memory` | In-memory repositories for tests and local development                                                                                                                                 |
 
 ## Rules
 
 - Server-only. Apps import it only from `src/server/**`.
-- Runs the staging/production isolation guard before connecting.
+- Every collection is a MySQL table listed in `src/sql/collections.ts` (created on first use).
 
 ## Commands
 

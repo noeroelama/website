@@ -8,7 +8,7 @@ export const APP_ENVIRONMENTS = ["development", "test", "staging", "production"]
 export type AppEnvironment = (typeof APP_ENVIRONMENTS)[number];
 
 /**
- * The ONE Firebase/GCP project (Auth + Firestore + Storage) used by every environment.
+ * The ONE Firebase/GCP project (Authentication only since DEC-19) used by every environment.
  * Keep in sync with infrastructure/firebase/.firebaserc.
  */
 export const WEBSITE_FIREBASE_PROJECT_ID = "ppidk-website-prod";

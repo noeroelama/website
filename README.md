@@ -9,7 +9,8 @@ administration, online shop and a public API — in one TypeScript monorepo.
 ![Node](https://img.shields.io/badge/node-24%20LTS-339933?logo=node.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-12-F69220?logo=pnpm&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore-FFCA28?logo=firebase&logoColor=black)
+![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
 
 </div>
 
@@ -49,10 +50,10 @@ the public website.
        @website/* packages: domain · db · auth · permissions · audit
                             contracts · apikeys · email · ui · observability · config
                             │
-     Firebase Auth (one user pool) · Firestore (all data) · Cloud Storage · Resend
+     Firebase Auth (one user pool) · MySQL on cPanel (all data) · files on cPanel disk · Resend
 ```
 
-- **Data** — Cloud Firestore for everything; browsers never access it directly.
+- **Data** — MySQL 8 on the cPanel host for everything; files on the cPanel disk; browsers never access either directly. Firebase is used only for sign-in.
 - **Identity** — one Firebase Authentication user pool for staff, members and customers.
 - **Access** — role-based access control (RBAC) evaluated on the server for every request.
 - **Boundaries** — enforced by tooling (`pnpm lint`), not only by convention.
@@ -68,7 +69,7 @@ Details: [docs/architecture.md](docs/architecture.md).
 | [`apps/shop`](apps/shop/README.md)                           | Online shop                                             |
 | [`apps/gateway`](apps/gateway/README.md)                     | Third-party API                                         |
 | [`packages/domain`](packages/domain/README.md)               | Business rules (framework-free)                         |
-| [`packages/db`](packages/db/README.md)                       | Firestore access, per application role                  |
+| [`packages/db`](packages/db/README.md)                       | MySQL and file access, per application role             |
 | [`packages/auth`](packages/auth/README.md)                   | Identity verification and sessions                      |
 | [`packages/permissions`](packages/permissions/README.md)     | Roles, permissions, authorization checks                |
 | [`packages/audit`](packages/audit/README.md)                 | Append-only audit log and revert rules                  |
@@ -119,8 +120,8 @@ See [docs/development.md](docs/development.md).
 | `prod`    | Production (live)      | `ppidk-website-prod` |
 
 Work is committed to `dev` and promoted by pull request `dev → staging → prod`.
-No other branches are created. There is **one** Firebase project (one Firestore, one Auth) for every
-environment, so `dev` and `staging` deployments work on the live data.
+No other branches are created. There is **one** MySQL database and **one** Firebase Auth user pool
+for every environment, so `dev` and `staging` deployments work on the live data.
 See [docs/deployment.md](docs/deployment.md) and [docs/environment.md](docs/environment.md).
 
 ## Documentation
