@@ -2,7 +2,7 @@ import "server-only";
 import { createFirebaseAccountAdmin } from "@website/auth/firebase-admin";
 import { lazyEnv } from "@website/config/env";
 import {
-  createDiskFileStorage,
+  createDbFileStorage,
   createSqlAccountStore,
   createSqlApplicationStore,
   createSqlAppointmentStore,
@@ -49,12 +49,11 @@ export const adminDb = lazyEnv(() => {
   });
 });
 
-/** Uploads on the cPanel disk (FILE_STORAGE_DIR, required for uploads); public URLs on WEB_URL. */
+/** Uploads in the MySQL `files` collection; public URLs on WEB_URL. */
 export const imageStorage = lazyEnv(() => {
   const env = getAdminEnv();
-  if (!env.FILE_STORAGE_DIR) throw new Error("FILE_STORAGE_DIR is required for image uploads.");
-  return createDiskFileStorage({
-    root: env.FILE_STORAGE_DIR,
+  return createDbFileStorage({
+    db: adminDb(),
     baseUrl: env.WEB_URL ?? "",
     secret: env.LINK_SIGNING_SECRET,
   });

@@ -138,11 +138,13 @@ export function InterviewsPage(props: {
           >
             Back
           </Button>
-          {props.canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => setPlanning(true)}>
-              Add a day
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {props.canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" onClick={() => setPlanning(true)}>
+                Add a day
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 

@@ -131,6 +131,24 @@ describe("admin tables", () => {
     );
   });
 
+  it("content wraps onto the next line instead of overflowing the table", () => {
+    const cells = ruleFor(".admin-table td")
+      .map((rule) => rule.body)
+      .join("");
+    expect(cells).toMatch(/overflow-wrap:\s*break-word/);
+    // Links and e-mails (the line under a title) have no spaces, so they may break anywhere.
+    expect(
+      ruleFor(".admin-table__sub")
+        .map((rule) => rule.body)
+        .join(""),
+    ).toMatch(/overflow-wrap:\s*anywhere/);
+    for (const rule of adminRules.filter((r) => /\.admin-table(?!-)/.test(r.selector))) {
+      expect(rule.body, rule.selector).not.toMatch(
+        /white-space:\s*nowrap|text-overflow|min-width:\s*[1-9]/,
+      );
+    }
+  });
+
   it("the no-results message sits in the middle of the table, under its header", () => {
     const body = ruleFor(".admin-table__empty")
       .map((rule) => rule.body)
@@ -142,5 +160,115 @@ describe("admin tables", () => {
         .map((rule) => rule.body)
         .join(""),
     ).toMatch(/display:\s*flex/);
+  });
+});
+
+describe("admin tabs", () => {
+  const tabRules = adminRules.filter((rule) => /\.admin-tabs(?![_-])/.test(rule.selector));
+  const base = tabRules.find((rule) => rule.selector === ".admin-tabs")?.body ?? "";
+
+  it("scroll sideways without a scrollbar and keep their items inside the tab height", () => {
+    expect(base).toMatch(/overflow-x:\s*auto/);
+    expect(base).toMatch(/overflow-y:\s*hidden/);
+    expect(base).toMatch(/scrollbar-width:\s*none/);
+    expect(adminRules.some((r) => r.selector === ".admin-tabs::-webkit-scrollbar")).toBe(true);
+    // One place decides the scrolling: page-specific tab rules must not change it.
+    for (const rule of tabRules.filter((r) => r.selector !== ".admin-tabs")) {
+      expect(rule.body, rule.selector).not.toMatch(/overflow/);
+    }
+    // The active underline sits inside the tab row (a line below it would need vertical scroll).
+    for (const rule of adminRules.filter((r) => r.selector.includes(".admin-tabs__btn::after"))) {
+      expect(rule.body, rule.selector).not.toMatch(/bottom:\s*(-|calc\(-)/);
+    }
+  });
+
+  it("fade into the background at the end", () => {
+    expect(base).toMatch(/mask-image:\s*linear-gradient\(\s*to right/);
+  });
+
+  it("every tab row is the shared Tabs component, which scrolls when dragged with the mouse", () => {
+    const admin = join(ROOT, "apps/admin/src");
+    const controls = readFileSync(join(admin, "components/ui/list-controls.tsx"), "utf8");
+    expect(controls).toMatch(/className="admin-tabs"[\s\S]*onPointerDown=/);
+    const tablists = files("apps/admin/src", [".tsx"]).filter((path) =>
+      readFileSync(join(ROOT, path), "utf8").includes('role="tablist"'),
+    );
+    expect(tablists.map((path) => path.replaceAll("\\", "/"))).toEqual([
+      "apps/admin/src/components/ui/list-controls.tsx",
+    ]);
+  });
+});
+
+describe("admin scrollbar", () => {
+  const bodyOf = (selector: string) =>
+    adminRules
+      .filter((rule) => rule.selector === selector)
+      .map((rule) => rule.body)
+      .join("");
+
+  it("reserves its gutter, so content keeps its width when a page becomes scrollable", () => {
+    expect(bodyOf("html:has(.admin-dark-page)")).toMatch(/scrollbar-gutter:\s*stable/);
+  });
+
+  it("is the same slim rounded thumb on every scroll area, not only the page (Firefox gets the standard properties)", () => {
+    const bar = "*::-webkit-scrollbar";
+    expect(bodyOf(bar)).toMatch(/width:\s*[\d.]+(px|rem)/);
+    expect(bodyOf(`${bar}-track`)).toMatch(/background:\s*transparent/);
+    expect(bodyOf(`${bar}-thumb`)).toMatch(/border-radius:\s*var\(--radius-full\)/);
+    expect(bodyOf("*")).toMatch(/scrollbar-color:[^;]*transparent/);
+  });
+});
+
+describe("admin tables on a phone", () => {
+  // The phone rules sit between two markers, in one @media block, at the end of the stylesheet.
+  const source = readFileSync(join(ROOT, "apps/admin/src/app/globals.css"), "utf8");
+  const [, afterBegin = ""] = source.split("/* Mobile list cards: begin */");
+  const [block = ""] = afterBegin.split("/* Mobile list cards: end */");
+  const rules = [...block.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
+    ([, selector, body]) => ({
+      selector: (selector ?? "").replace(/@media[^{]*$/, "").trim(),
+      body: body ?? "",
+    }),
+  );
+  const bodyOf = (selector: string) =>
+    rules
+      .filter((rule) => rule.selector.split(/,\s*/).includes(selector))
+      .map((rule) => rule.body)
+      .join("");
+
+  it("applies only up to the phone width", () => {
+    expect(block).toMatch(/@media \(max-width: 767px\)/);
+  });
+
+  it("a row is a cream card and the header row is hidden (sorting moves to the summary line)", () => {
+    const card = bodyOf(".admin-dark-page .admin-table tbody tr");
+    expect(card).toMatch(/display:\s*grid/);
+    expect(card).toMatch(/background:\s*var\(--color-brand-50\)/);
+    expect(card).toMatch(/border-radius:\s*var\(--radius-/);
+    expect(bodyOf(".admin-dark-page .admin-table thead")).toMatch(/display:\s*none/);
+  });
+
+  it("the cream card flips the surface colours like every other cream surface", () => {
+    // Only on a phone: on a wide screen the same rows are dark, so the flip stays in this block.
+    const card = bodyOf(".admin-dark-page .admin-table tbody tr");
+    for (const flipped of [
+      /--admin-ink:\s*var\(--color-brand-950\)/,
+      /--admin-btn-bg:\s*var\(--color-brand-950\)/,
+      /--admin-field-bg:\s*var\(--color-brand-950\)/,
+    ]) {
+      expect(card).toMatch(flipped);
+    }
+  });
+
+  it("the Add / Export buttons float at the bottom right and the bulk bar sticks to the bottom", () => {
+    expect(bodyOf(".admin-fab")).toMatch(/position:\s*fixed/);
+    expect(bodyOf(".admin-dark-page .admin-list-card .admin-bulkbar")).toMatch(/position:\s*fixed/);
+    // Outside the phone block the wrapper does not exist as a box.
+    expect(
+      adminRules
+        .filter((rule) => rule.selector === ".admin-fab")
+        .map((rule) => rule.body)
+        .join(""),
+    ).toMatch(/display:\s*contents/);
   });
 });

@@ -2,6 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ImageStorage } from "@website/domain/shared";
 import { signLink } from "@website/security";
+import type { Database } from "./store";
 
 /** Every segment is a plain file or folder name: no `..`, no absolute paths, no backslashes. */
 const SAFE_PATH = /^(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
@@ -24,6 +25,22 @@ export const fileContentType = (path: string): string =>
 /** Purpose stored in signed file links, so other signed links (unsubscribe…) never open files. */
 export const FILE_LINK_PURPOSE = "file";
 
+function signedReadUrl(
+  config: Pick<DiskFileStorageConfig, "baseUrl" | "secret" | "now">,
+  path: string,
+  minutes = 15,
+): Promise<string> {
+  if (!config.secret) {
+    return Promise.reject(new Error("LINK_SIGNING_SECRET is required for private file links."));
+  }
+  const token = signLink(
+    { purpose: FILE_LINK_PURPOSE, path: checkFilePath(path) },
+    config.secret,
+    new Date((config.now ?? (() => new Date()))().getTime() + minutes * 60_000),
+  );
+  return Promise.resolve(`${config.baseUrl}/private-files?t=${token}`);
+}
+
 export interface DiskFileStorageConfig {
   /** FILE_STORAGE_DIR: absolute folder outside every app folder (deploys replace those). */
   readonly root: string;
@@ -41,7 +58,6 @@ export interface DiskFileStorageConfig {
  * server, `read`. All apps of the cPanel account share the folder.
  */
 export function createDiskFileStorage(config: DiskFileStorageConfig) {
-  const now = config.now ?? (() => new Date());
   const fileOf = (visibility: FileVisibility, path: string) =>
     join(config.root, visibility, checkFilePath(path));
 
@@ -79,17 +95,41 @@ export function createDiskFileStorage(config: DiskFileStorageConfig) {
         rm(fileOf("public", path), { force: true }),
       ]);
     },
-    signedReadUrl(path, minutes = 15) {
-      if (!config.secret) {
-        return Promise.reject(new Error("LINK_SIGNING_SECRET is required for private file links."));
-      }
-      const token = signLink(
-        { purpose: FILE_LINK_PURPOSE, path: checkFilePath(path) },
-        config.secret,
-        new Date(now().getTime() + minutes * 60_000),
-      );
-      return Promise.resolve(`${config.baseUrl}/private-files?t=${token}`);
+    signedReadUrl: (path, minutes) => signedReadUrl(config, path, minutes),
+  };
+  return storage;
+}
+
+/**
+ * Same API as the disk storage, but the bytes live in the MySQL `files` collection (one row per
+ * file, base64 in the JSON document), so no folder is needed. shortcut: whole file in one row
+ * (images ≤ 5 MB), move to a BLOB column if big files are added.
+ */
+export function createDbFileStorage(
+  config: Omit<DiskFileStorageConfig, "root"> & { db: Database },
+) {
+  const files = config.db.collection("files");
+  const ref = (visibility: FileVisibility, path: string) =>
+    files.doc(`${visibility}/${checkFilePath(path)}`);
+  const readOne = async (visibility: FileVisibility, path: string) => {
+    const snapshot = await ref(visibility, path).get();
+    return snapshot.exists
+      ? new Uint8Array(Buffer.from(snapshot.data()?.["bytes"] as string, "base64"))
+      : null;
+  };
+  const storage: ReturnType<typeof createDiskFileStorage> = {
+    async save(path, bytes, { visibility }) {
+      await ref(visibility, path).set({ bytes: Buffer.from(bytes).toString("base64") });
+      return { url: visibility === "public" ? `${config.baseUrl}/files/${path}` : null };
     },
+    async read(path, visibility) {
+      if (visibility) return readOne(visibility, path);
+      return (await readOne("private", path)) ?? readOne("public", path);
+    },
+    async remove(path) {
+      await Promise.all([ref("private", path).delete(), ref("public", path).delete()]);
+    },
+    signedReadUrl: (path, minutes) => signedReadUrl(config, path, minutes),
   };
   return storage;
 }

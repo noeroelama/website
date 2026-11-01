@@ -51,7 +51,7 @@ const toInvite = (data: Record<string, unknown>): Invite => ({
 /**
  * `users/{uid}`: uid, email, name, status, roleAssignments[], roleIds[] (for queries), version,
  * createdAt, lastSignInAt. The record is created on the first sign-in with the default role
- * (`user`); later sign-ins refresh lastSignInAt, email and name. The only role change a sign-in
+ * (`visitor`); later sign-ins refresh lastSignInAt, email and name. The only role change a sign-in
  * makes is applying a pending invite (Role Manager → Add New People) for a VERIFIED e-mail: a
  * role with admin pages only once `twoSignInMethods()` says the account has two sign-in methods
  * (asked only then); the rest of the invite waits for a later sign-in.

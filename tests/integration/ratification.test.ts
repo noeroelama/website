@@ -146,7 +146,7 @@ beforeEach(() => {
   fake.docs.set("roles/committee", role(["recruitment.review"]));
   fake.docs.set("users/sekjen", user("sekjen", ["sekjen"]));
   fake.docs.set("users/panitia", user("panitia", ["committee"]));
-  fake.docs.set("users/ari", user("ari", ["user"]));
+  fake.docs.set("users/ari", user("ari", ["visitor"]));
 });
 
 describe("placement approval and integrity pact (C3 steps 7-8)", () => {
@@ -197,7 +197,7 @@ describe("ratification (C3 step 9)", () => {
   it("confirms and appoints in ONE transaction, once; roles come from the appointment", async () => {
     setApplication("pakta_review");
     // An account without an e-mail is filed under its uid in the audit log.
-    fake.docs.set("users/ari", { ...user("ari", ["user"]), email: null });
+    fake.docs.set("users/ari", { ...user("ari", ["visitor"]), email: null });
     expect(
       await actions().ratify(...as("sekjen"))({ id: "rec1_ari", version: 4, title: "Staf Media" }),
     ).toMatchObject({ ok: false, error: "conflict" });

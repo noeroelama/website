@@ -207,7 +207,7 @@ describe("admin page gate (requireAdminViewer)", () => {
   it("shows the restricted (403) page to a signed-in user without any admin role", async () => {
     adminSession.cookie = "token";
     await expect(gate()).rejects.toThrow("forbidden");
-    adminSession.principal = asRole("member");
+    adminSession.principal = asRole("visitor");
     await expect(gate()).rejects.toThrow("forbidden");
   });
 

@@ -1037,11 +1037,13 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {canEdit ? (
-            <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
-              Add New Event
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
+                Add New Event
+              </Button>
+            ) : null}
+          </div>
           <FiltersButton
             count={activeFilterCount}
             open={filtersOpen}

@@ -1152,11 +1152,13 @@ function NewsletterList({
         <div className="admin-page-header__actions">
           {isCampaign ? (
             <>
-              {canEdit ? (
-                <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
-                  Add New Campaign
-                </Button>
-              ) : null}
+              <div className="admin-fab">
+                {canEdit ? (
+                  <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
+                    Add New Campaign
+                  </Button>
+                ) : null}
+              </div>
               {/* Status dropdown (All · Sent · Scheduled · Draft). */}
               <div className="admin-row-menu">
                 {statusMenuOpen ? (
@@ -1207,16 +1209,18 @@ function NewsletterList({
             </>
           ) : (
             <>
-              {canExport ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon="download"
-                  onClick={() => void exportCsv()}
-                >
-                  Export CSV
-                </Button>
-              ) : null}
+              <div className="admin-fab">
+                {canExport ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon="download"
+                    onClick={() => void exportCsv()}
+                  >
+                    Export CSV
+                  </Button>
+                ) : null}
+              </div>
               {canEdit ? (
                 <>
                   <Button

@@ -22,6 +22,7 @@ export const COLLECTIONS = [
   "events",
   "formResponses",
   "formVersions",
+  "files",
   "forms",
   "galleries",
   "gallerySlugs",

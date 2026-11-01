@@ -518,20 +518,24 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {canEdit ? (
-            <Button
-              variant="outline"
-              size="sm"
-              icon="plus"
-              disabled={periods.length === 0 || forms.length === 0}
-              title={
-                forms.length === 0 ? "Create a recruitment form on the Forms page first" : undefined
-              }
-              onClick={() => open()}
-            >
-              Add Recruitment
-            </Button>
-          ) : null}
+          <div className="admin-fab">
+            {canEdit ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="plus"
+                disabled={periods.length === 0 || forms.length === 0}
+                title={
+                  forms.length === 0
+                    ? "Create a recruitment form on the Forms page first"
+                    : undefined
+                }
+                onClick={() => open()}
+              >
+                Add Recruitment
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       <ListCard

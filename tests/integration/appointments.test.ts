@@ -92,8 +92,8 @@ beforeEach(() => {
     roleIds,
   });
   fake.docs.set("users/boss", user("boss", ["superadmin"]));
-  fake.docs.set("users/ana", user("ana", ["user"]));
-  fake.docs.set("users/rio", user("rio", ["user"]));
+  fake.docs.set("users/ana", user("ana", ["visitor"]));
+  fake.docs.set("users/rio", user("rio", ["visitor"]));
   fake.docs.set("users/sec", {
     ...user("sec", []),
     roleAssignments: [{ roleId: "secretary_general", scope: { type: "global" } }],
@@ -200,7 +200,7 @@ describe("appointments → roles (B7)", () => {
     });
     expect(assignmentsOf("ana")).toEqual([
       {
-        roleId: "user",
+        roleId: "visitor",
         scope: { type: "global" },
         periodId: null,
         source: "manual",
@@ -306,7 +306,7 @@ describe("appointments → roles (B7)", () => {
       .filter((a) => a["revokedAt"] === null)
       .map((a) => [a["roleId"], a["source"]]);
     expect(live).toEqual([
-      ["user", "manual"],
+      ["visitor", "manual"],
       ["officer", "appointment"], // from the koor appointment
       ["director", "manual"],
     ]);

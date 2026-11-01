@@ -278,7 +278,7 @@ describe("can()", () => {
     expect(
       canRatifyInto(sekjen, { ...officer, permissions: normalizePermissions(["members.pii"]) }),
     ).toBe(false);
-    expect(canRatifyInto(sekjen, { id: "member", name: "x", permissions: [] })).toBe(false);
+    expect(canRatifyInto(sekjen, { id: "visitor", name: "x", permissions: [] })).toBe(false);
     expect(canRatifyInto(principal([{ roleId: "viewer" }]), officer)).toBe(false);
     lookup.delete(sekjenRole.id);
   });
@@ -301,7 +301,7 @@ describe("can()", () => {
   it("canAccessAdmin needs at least one admin-page permission", () => {
     expect(canAccessAdmin(principal([{ roleId: "viewer" }]))).toBe(true);
     expect(canAccessAdmin(principal([{ roleId: "nothing" }]))).toBe(false);
-    expect(canAccessAdmin(principal([{ roleId: "member" }]))).toBe(false);
+    expect(canAccessAdmin(principal([{ roleId: "visitor" }]))).toBe(false);
     expect(canAccessAdmin(null)).toBe(false);
   });
 
@@ -344,6 +344,11 @@ describe("no privilege escalation through the Roles page", () => {
     expect(canSaveRole(superadmin, updated, role("chapter_admin"))).toBe(true);
   });
 
+  it("has two built-in roles: superadmin and the default role, shown as Visitor", () => {
+    expect(Object.keys(SYSTEM_ROLES)).toEqual([SUPERADMIN_ROLE_ID, "visitor"]);
+    expect(SYSTEM_ROLES.visitor).toMatchObject({ name: "Visitor", permissions: [] });
+  });
+
   it("system roles can never be saved or deleted", () => {
     for (const id of Object.keys(SYSTEM_ROLES)) {
       expect(canSaveRole(superadmin, role(id))).toBe(false);
@@ -358,8 +363,8 @@ describe("no privilege escalation through the Roles page", () => {
 
   it("assigning a role needs users.edit and every permission of that role", () => {
     expect(canAssignRole(manager, role("editor"))).toBe(false); // lacks gallery.edit / publish
-    expect(canAssignRole(manager, role("member"))).toBe(true);
-    expect(canAssignRole(principal([{ roleId: "viewer" }]), role("member"))).toBe(false);
+    expect(canAssignRole(manager, role("visitor"))).toBe(true);
+    expect(canAssignRole(principal([{ roleId: "viewer" }]), role("visitor"))).toBe(false);
   });
 
   it("only a superadmin assigns superadmin, even if a custom role holds every permission", () => {

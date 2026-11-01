@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Fragment } from "react";
-import { PAGE_SIZE_OPTIONS } from "../list-model";
+import { Fragment, isValidElement } from "react";
+import { cardRoles, PAGE_SIZE_OPTIONS } from "../list-model";
 import { Icon } from "./icon";
 import { Select } from "./select";
 
@@ -14,6 +14,26 @@ function cellText(value: unknown): string {
  * Generic admin data table + pagination. Presentational only; state (page, pageSize, sorting…)
  * lives in the caller. Styling via `admin-table*` classes in globals.css.
  */
+
+interface SortHeaderProps {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+}
+
+/** The props of a header made with `SortHeader`, or null for any other header. */
+const sortHeaderProps = (header: ReactNode): SortHeaderProps | null =>
+  isValidElement<SortHeaderProps>(header) && header.type === SortHeader ? header.props : null;
+
+/** Text of a column header (a plain string or a `SortHeader` label); "" when it has none. */
+export function headerText(header: ReactNode): string {
+  return typeof header === "string" ? header : (sortHeaderProps(header)?.label ?? "");
+}
+
+/** The sortable columns (those with a `SortHeader`): what the phone's sort menu offers. */
+export const sortChoices = <T,>(columns: readonly Column<T>[]): SortHeaderProps[] =>
+  columns.flatMap((col) => sortHeaderProps(col.header) ?? []);
 
 export interface Column<T> {
   key: string;
@@ -61,6 +81,8 @@ export function DataTable<T>({
   expandedRow,
 }: DataTableProps<T>) {
   const empty = rows.length === 0;
+  // On a phone each row is a card: the role says where a cell goes, the label names a detail line.
+  const roles = cardRoles(columns.map((col) => col.key));
 
   return (
     <div className={empty ? "admin-table-wrap admin-table-wrap--empty" : "admin-table-wrap"}>
@@ -82,8 +104,13 @@ export function DataTable<T>({
             return (
               <Fragment key={rowKey(row)}>
                 <tr>
-                  {columns.map((col) => (
-                    <td key={col.key} style={{ textAlign: col.align ?? "left" }}>
+                  {columns.map((col, i) => (
+                    <td
+                      key={col.key}
+                      data-card={roles[i]}
+                      data-label={headerText(col.header) || undefined}
+                      style={{ textAlign: col.align ?? "left" }}
+                    >
                       {col.render
                         ? col.render(row)
                         : cellText((row as Record<string, unknown>)[col.key])}
@@ -167,6 +194,7 @@ export function Pagination({
         aria-label="Previous page"
       >
         <Icon name="chevronLeft" size={14} />
+        <span className="admin-darkbar__word">Prev</span>
       </button>
       {pages.map((p) => (
         <button
@@ -179,6 +207,7 @@ export function Pagination({
           {p}
         </button>
       ))}
+      <span className="admin-darkbar__of">of {totalPages}</span>
       <button
         type="button"
         className="admin-darkbar__btn"
@@ -186,6 +215,7 @@ export function Pagination({
         onClick={() => onPageChange(page + 1)}
         aria-label="Next page"
       >
+        <span className="admin-darkbar__word">Next</span>
         <Icon name="chevronRight" size={14} />
       </button>
     </div>
@@ -193,17 +223,7 @@ export function Pagination({
 }
 
 /** Sortable table header: label + arrow icon. Active column shows a filled arrow. */
-export function SortHeader({
-  label,
-  active,
-  dir,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
-}) {
+export function SortHeader({ label, active, dir, onClick }: SortHeaderProps) {
   return (
     <button
       type="button"

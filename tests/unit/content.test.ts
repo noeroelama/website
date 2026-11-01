@@ -88,6 +88,17 @@ describe("news form validation (strict)", () => {
     expect(parsed.publishAt).toEqual(later);
   });
 
+  it("takes http only on localhost (local uploads), never on other hosts", () => {
+    const local = {
+      ...image,
+      url: "http://localhost:3000/files/a.webp",
+      thumbUrl: "http://localhost:3000/files/t.webp",
+    };
+    expect(NewsInputSchema.safeParse({ ...valid, featuredImage: local }).success).toBe(true);
+    const remote = { ...image, url: "http://x.example/a.webp" };
+    expect(NewsInputSchema.safeParse({ ...valid, featuredImage: remote }).success).toBe(false);
+  });
+
   it("requires the featured image, publish date, URL and short summary (marked * in the form)", () => {
     const fields = (input: unknown) => {
       const result = NewsInputSchema.safeParse(input);

@@ -48,10 +48,10 @@ sign in: POST /api/passkeys/login-options → browser signs → POST /api/passke
 
 1. Anyone may create an account. Every sign-in method ends in web `POST /api/session`; after the
    session cookie is created, `onSignIn` (from `createSessionRoutes`) reads the uid back from that
-   verified cookie and `recordSignIn` creates `users/{uid}` with the default role `user`
+   verified cookie and `recordSignIn` creates `users/{uid}` with the default role `visitor`
    (self-service only) the first time, and updates `lastSignInAt` every time. If that write fails,
    the sign-in fails (no cookie).
-2. Completing the member profile + approval by a `chapter_admin`/`admin` adds `member`.
+2. There is no separate member role: every account is a **Visitor** (`visitor`).
 3. Staff roles are granted only by holders of `users.edit` who hold every permission of that role (superadmin only by a superadmin), never by sign-up.
    **There is no way to self-register into the admin area.**
 4. **Bootstrap** — the first superadmin: the person signs in on web once, then the owner runs

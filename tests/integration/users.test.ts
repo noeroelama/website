@@ -58,13 +58,15 @@ describe("principal from Firestore (admin user directory)", () => {
     expect(await users.findPrincipalByUid("unknown")).toBeNull();
   });
 
-  it("an account record without role assignments has no permissions (and reads no roles)", async () => {
+  it("an account record without role assignments is a Visitor: no permissions (and reads no roles)", async () => {
     const { users, docs, getAll } = setup();
     await users.recordSignIn({ uid: "u2", email: null }, first); // e.g. a provider without a name
     expect(docs.get("users/u2")).toMatchObject({ email: null, name: null });
     docs.set("users/u2", { status: "active" });
     const principal = await users.findPrincipalByUid("u2");
-    expect(principal).toMatchObject({ userId: "u2", active: true, assignments: [] });
+    expect(principal).toMatchObject({ userId: "u2", active: true });
+    expect(principal?.assignments.map((a) => a.roleId)).toEqual(["visitor"]);
+    expect(canAccessAdmin(principal)).toBe(false);
     expect(getAll).toHaveBeenCalledTimes(1); // user + active period together; no roles read
   });
 
@@ -80,11 +82,11 @@ describe("principal from Firestore (admin user directory)", () => {
       roleAssignments: [
         { roleId: "editor", scope: { type: "chapter", chapterId: "jp" } },
         { roleId: "gone", scope: { type: "global" } },
-        { roleId: "user", scope: { type: "global" } },
+        { roleId: "visitor", scope: { type: "global" } },
       ],
     });
     const principal = await users.findPrincipalByUid("u1");
-    expect(principal?.assignments.map((a) => a.roleId)).toEqual(["editor", "user"]);
+    expect(principal?.assignments.map((a) => a.roleId)).toEqual(["editor", "visitor"]);
     expect(can(principal, "articles.publish", { chapterId: "jp" })).toBe(true);
     expect(can(principal, "articles.read", { chapterId: "jp" })).toBe(true); // publish adds read
     expect(can(principal, "articles.publish", { chapterId: "kr" })).toBe(false);
@@ -99,11 +101,11 @@ describe("principal from Firestore (admin user directory)", () => {
         { roleId: "superadmin", scope: { type: "global" }, periodId: "p2025" },
         { roleId: "superadmin", scope: { type: "orgUnit", orgUnitId: "media" }, periodId: "p2026" },
         { roleId: "superadmin", scope: { type: "global" }, revokedAt: new Date("2026-01-01") },
-        { roleId: "user", scope: { type: "global" } },
+        { roleId: "visitor", scope: { type: "global" } },
       ],
     });
     const before = await users.findPrincipalByUid("u1"); // no active period yet
-    expect(before?.assignments.map((a) => a.roleId)).toEqual(["user"]);
+    expect(before?.assignments.map((a) => a.roleId)).toEqual(["visitor"]);
 
     docs.set("settings/activePeriod", { periodId: "p2026" });
     const during = await users.findPrincipalByUid("u1");
@@ -128,23 +130,23 @@ describe("principal from Firestore (admin user directory)", () => {
 
   it("ignores a stored role document that uses a built-in id, deleted roles and malformed data", async () => {
     const { users, docs } = setup();
-    docs.set("roles/member", { name: "Member", permissions: ["users.edit"], deletedAt: null });
+    docs.set("roles/visitor", { name: "Visitor", permissions: ["users.edit"], deletedAt: null });
     docs.set("roles/old", { name: "Old", permissions: ["users.edit"], deletedAt: new Date() });
     docs.set("users/u1", {
       status: "active",
       roleAssignments: [
-        { roleId: "member", scope: { type: "global" }, appointmentId: "../x" },
+        { roleId: "visitor", scope: { type: "global" }, appointmentId: "../x" },
         { roleId: "old", scope: { type: "global" } },
         { roleId: "bad id/../x", scope: { type: "global" } },
-        { roleId: "user", scope: { type: "planet" } },
-        { roleId: "user", scope: { type: "planet", orgUnitId: "earth" } },
+        { roleId: "visitor", scope: { type: "planet" } },
+        { roleId: "visitor", scope: { type: "planet", orgUnitId: "earth" } },
         { roleId: "superadmin", scope: { type: "orgUnit", orgUnitId: "../x" } },
         { roleId: "superadmin", scope: { type: "global" }, revokedAt: "not a date" },
         "superadmin",
       ],
     });
     const principal = await users.findPrincipalByUid("u1");
-    expect(principal?.assignments.map((a) => a.roleId)).toEqual(["member"]);
+    expect(principal?.assignments.map((a) => a.roleId)).toEqual(["visitor"]);
     expect(canAccessAdmin(principal)).toBe(false);
   });
 });
@@ -175,7 +177,7 @@ describe("roles repository", () => {
     docs.set("roles/broken", { permissions: ["articles.read"] }); // no name
     docs.set("roles/admin", { name: "Admin", permissions: ["users.read"], deletedAt: null });
     const list = await roles.list();
-    expect(list.map((r) => r.id)).toEqual(["superadmin", "member", "user", "admin", "editor"]);
+    expect(list.map((r) => r.id)).toEqual(["superadmin", "visitor", "admin", "editor"]);
     expect(list.find((r) => r.id === "superadmin")?.name).toBe("Superadmin");
     expect(list.find((r) => r.id === "editor")?.permissions).toEqual([
       "articles.edit",
@@ -187,8 +189,8 @@ describe("roles repository", () => {
     expect(await roles.get("old")).toBeNull();
     expect(await roles.get("missing")).toBeNull();
     expect(await roles.get("../users/x")).toBeNull(); // never a path outside roles/
-    const many = await roles.getMany(["editor", "user", "missing", "old"]);
-    expect([...many.keys()]).toEqual(["editor", "user"]);
+    const many = await roles.getMany(["editor", "visitor", "missing", "old"]);
+    expect([...many.keys()]).toEqual(["editor", "visitor"]);
   });
 });
 

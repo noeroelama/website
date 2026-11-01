@@ -57,8 +57,24 @@ const result = await db.runTransaction(async (tx) => {
     return "already";
   }
   if (values.apply) {
+    // Same shape as the Role Manager writes (packages/db/src/users.ts plainAssignments), and
+    // roleIds too: Role Manager lists and the last-superadmin guard query by roleIds.
+    const roleAssignments = [
+      ...assignments,
+      {
+        roleId: "superadmin",
+        scope: { type: "global" },
+        periodId: null,
+        source: "manual",
+        revokedAt: null,
+        appointmentId: null,
+      },
+    ];
     tx.update(ref, {
-      roleAssignments: [...assignments, { roleId: "superadmin", scope: { type: "global" } }],
+      roleAssignments,
+      roleIds: [...new Set(roleAssignments.map((a) => a.roleId))],
+      version: (snapshot.get("version") ?? 0) + 1,
+      updatedAt: new Date(),
     });
   }
   return values.apply ? "granted" : "would-grant";

@@ -42,9 +42,11 @@ describe("admin guarded actions (server-side enforcement)", () => {
   });
 
   it("rejects signed-in members (same user pool, no staff role)", async () => {
-    expect(await publishNews(() => Promise.resolve(asUser("member")))({ id: "n1" })).toMatchObject({
-      error: "forbidden",
-    });
+    expect(await publishNews(() => Promise.resolve(asUser("visitor")))({ id: "n1" })).toMatchObject(
+      {
+        error: "forbidden",
+      },
+    );
   });
 
   it("rejects staff without the permission, ignoring payload role fields", async () => {

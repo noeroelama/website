@@ -39,6 +39,14 @@ No `.env.local` is needed for the smoke pages. When you need real services, copy
 
 Run one app: `pnpm --filter web dev` (or `admin`, `shop`, `gateway`).
 
+### Database from your computer (SSH tunnel)
+
+MySQL on cPanel does not accept connections from the internet, and allowing an IP breaks with a
+VPN or a changing IP. Reach it through SSH instead: keep `ssh -N ppidk-db` running (a `Host
+ppidk-db` entry in `~/.ssh/config` with `LocalForward 3307 localhost:3306`) and point
+`DATABASE_URL` in `apps/<app>/.env.local` to `127.0.0.1:3307`. This is the live database: test with
+drafts and your own account.
+
 ## Commands
 
 | Command                        | What it does                                                                                       |

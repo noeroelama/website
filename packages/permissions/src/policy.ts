@@ -64,7 +64,7 @@ export interface ResourceContext {
 
 /** Roles every new account receives on first sign-in. */
 export const DEFAULT_ROLE_ASSIGNMENTS: readonly RoleAssignment[] = [
-  { roleId: "user", scope: { type: "global" } },
+  { roleId: "visitor", scope: { type: "global" } },
 ];
 
 /**

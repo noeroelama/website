@@ -388,15 +388,17 @@ export function AuditPage({
           </p>
         </div>
         <div className="admin-page-header__actions">
-          <Button
-            variant="outline"
-            size="sm"
-            icon="download"
-            disabled={filtered.length === 0}
-            onClick={() => downloadCsv("audit-log", auditCsv(filtered))}
-          >
-            Export CSV
-          </Button>
+          <div className="admin-fab">
+            <Button
+              variant="outline"
+              size="sm"
+              icon="download"
+              disabled={filtered.length === 0}
+              onClick={() => downloadCsv("audit-log", auditCsv(filtered))}
+            >
+              Export CSV
+            </Button>
+          </div>
           <label className="admin-audit-pick">
             <Icon name="calendar" size={14} />
             <Select

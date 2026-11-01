@@ -43,13 +43,17 @@ export function rangeStart(range: AuditRange, now: Date): Date | undefined {
  * key is the page id; `also` pages (Organizations holds Period and Structure) share its tab.
  */
 export type AuditTab = "all" | AdminPageId;
-export const AUDIT_TABS = Object.fromEntries([
-  ["all", { label: "All", modules: null }],
-  ...ADMIN_NAVIGATION.flatMap(({ label, permission, also = [] }) => {
+type TabDefinition = { label: string; modules: readonly string[] | null };
+const pageTabs = ADMIN_NAVIGATION.flatMap(
+  ({ label, permission, also = [] }): [AdminPageId, TabDefinition][] => {
     const page = permission?.split(".")[0] as AdminPageId | undefined;
     return page && page !== "audit" ? [[page, { label, modules: [page, ...also] }]] : [];
-  }),
-]) as Record<AuditTab, { label: string; modules: readonly string[] | null }>;
+  },
+);
+export const AUDIT_TABS = Object.fromEntries([
+  ["all", { label: "All", modules: null }],
+  ...pageTabs,
+]) as Record<AuditTab, TabDefinition>;
 
 export function matchesTab(row: Pick<AuditRow, "module">, tab: AuditTab): boolean {
   const modules = AUDIT_TABS[tab].modules;

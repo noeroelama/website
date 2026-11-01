@@ -50,7 +50,7 @@ export const sessionRoutes = lazyEnv(() =>
         hasTwoSignInMethods(await ownSignInMethods(signedIn.uid)),
       );
       // Staff sign-ins are security events (DEC-16); Role Manager shows "last sign-in".
-      if (roleIds.some((id) => id !== "user" && id !== "member")) {
+      if (roleIds.some((id) => id !== "visitor")) {
         logSecurityEvent(logger(), { type: "staff.login", actorId: signedIn.uid });
       }
     },

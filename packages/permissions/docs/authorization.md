@@ -19,9 +19,10 @@
 - **Roles** are data. Custom roles live in MySQL (`roles/{id}`: name + page permissions) and
   are created and edited in the admin **Role Manager → Edit Role** (with a badge colour). `normalizePermissions()` cleans every
   saved list (unknown entries dropped, edit/extras add read).
-- **Built-in roles** (`SYSTEM_ROLES`, code only, never editable): `superadmin` (every page),
-  `member` (approved member), `user` (every account). A stored role with one of these ids is
-  ignored.
+- **Built-in roles** (`SYSTEM_ROLES`, code only, never editable): `superadmin` (every page) and
+  `visitor` (every account, no admin pages). A stored role with one of these ids is ignored.
+  Every account is a Visitor: `parseAssignments` adds the default role when it is missing and the
+  next account change stores it.
 - **Assignments** in `users/{uid}.roleAssignments`:
   `{ roleId, scope, periodId, source, revokedAt }`. On each request the server resolves them
   against the role documents (`resolveAssignments`); an assignment to a deleted role grants

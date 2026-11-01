@@ -105,6 +105,32 @@ router.push("/things"); router.refresh();
   the card fills the rest of the screen height, and grows with the page when its rows need more
   room. No fixed heights or blank rows; the CSS is "A page with a table fills the screen height"
   in `globals.css` (test: `tests/unit/design-tokens.test.ts`, "admin tables").
+- **Table width.** Cell text wraps onto the next line between words, and the line under a title
+  (`.admin-table__sub`: links, e-mails) breaks anywhere, so a table is never wider than its card
+  and never scrolls sideways. Do not add `white-space: nowrap`, ellipsis or a `min-width` to
+  table rules (same test).
+- **Tabs.** Every tab row is `Tabs` (`ui/list-controls.tsx`). It scrolls sideways with no
+  scrollbar (touch, trackpad, or mouse drag; a drag does not select a tab), its tabs stay inside
+  its height, and its end fades into the background (`.admin-tabs`, test "admin tabs"). Page CSS
+  may change gaps and margins, not the row's overflow.
+- **Scrollbar.** Every scrollbar (page, side panel, popups, menus, tables, code blocks) is a slim
+  rounded thumb on a transparent track (`*::-webkit-scrollbar` in `globals.css`, test "admin
+  scrollbar"); the tab row has none (see Tabs). Only the page reserves its gutter
+  (`html:has(.admin-dark-page)`, `scrollbar-gutter: stable`), so content keeps its width when a page
+  becomes long enough to scroll.
+- **Phone cards** (up to 767px). Every `DataTable` row becomes a cream card; the CSS is the block
+  between `Mobile list cards: begin/end` in `globals.css` (test "admin tables on a phone").
+  `DataTable` puts `data-card` on each cell (`cardRoles` in `list-model.ts`, by column key: `check`
+  / `expand` lead, `aksi` / `actions` / `edit` / `open` / `revert` are the action row, the first
+  other column is the title, the rest are detail lines) and `data-label` (the header text) so a
+  detail line reads "Label value". The header row is hidden: `ListCard` adds a summary line
+  (count, sort menu from the `SortHeader` columns, **Select** / **Unselect** / **Select all**).
+  Wrap the header's Add / Export buttons in `<div className="admin-fab">` (a plain wrapper on a
+  wide screen, floating bottom right on a phone). Row menus (`RowMenu`) stay in the page, so on a
+  phone their entries are the card's labelled buttons (Delete first); an icon button gets its
+  label from its `title`. The bulk bar is fixed at the bottom; `Pagination` shows Prev / page /
+  Next. Adding a page: use `ListCard` or `DataTable`, give columns these keys, and wrap its header
+  buttons.
 - **Dark list pages** (Event, Gallery, Article, Newsletter, Audit Log) share one set of parts —
   add a new list page with them instead of copying markup:
   - `useListTable(rows, sortValue, initialSort?)`: sort, page, page size and row selection. Define

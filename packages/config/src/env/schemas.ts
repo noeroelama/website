@@ -30,10 +30,14 @@ export const databaseEnv = z.object({
 
 /**
  * Uploaded files on the cPanel disk (web and admin): an absolute folder outside every app folder,
- * e.g. /home/<user>/ppidk-files. Empty = uploads are off.
+ * e.g. /home/<user>/ppidk-files (C:\ppidk-files when developing on Windows). Empty = uploads are off.
  */
 export const filesEnv = z.object({
-  FILE_STORAGE_DIR: z.string().trim().startsWith("/", "an absolute path").optional(),
+  FILE_STORAGE_DIR: z
+    .string()
+    .trim()
+    .regex(/^(\/|[A-Za-z]:[\\/])/, "an absolute path (/home/… or C:\\…)")
+    .optional(),
 });
 
 /** Firebase web config. Public by design — never put secrets here. */

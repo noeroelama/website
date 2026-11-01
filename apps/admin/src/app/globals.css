@@ -1305,7 +1305,12 @@ a.admin-stat-card:hover {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   padding: var(--space-2-5) var(--space-4);
-  white-space: nowrap;
+}
+
+/* Text wraps onto the next line between words; the table never gets wider than its card. */
+.admin-table th,
+.admin-table td {
+  overflow-wrap: break-word;
 }
 
 .admin-table td {
@@ -1352,10 +1357,7 @@ a.admin-stat-card:hover {
   color: var(--color-text-muted);
   font-size: var(--text-2xs);
   line-height: var(--leading-2xs);
-  max-width: 340px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere; /* links and e-mails have no spaces: break them anywhere */
 }
 
 .admin-table__actions {
@@ -1781,12 +1783,32 @@ a.admin-stat-card:hover {
    Events — tabs, bulk action bar, list chips (Figma "EVENT ADMIN")
    ================================================================== */
 
-/* Tab row (All / Upcoming / Past / Drafts): underline style, sits above the table. */
+/* Tab row (All / Upcoming / Past / Drafts): underline style, sits above the table. Every tab row
+   scrolls sideways here (no scrollbar; drag with the mouse, see Tabs in ui/list-controls.tsx) and
+   fades out at its end; the end padding lets the last tab scroll clear of the fade. */
 .admin-tabs {
   display: flex;
   align-items: center;
   gap: var(--space-1-5);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-4);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    to right,
+    var(--color-black) calc(100% - var(--space-8)),
+    transparent
+  );
+}
+
+.admin-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tabs--dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .admin-tabs__btn {
@@ -1809,7 +1831,7 @@ a.admin-stat-card:hover {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(-1 * var(--space-2));
+  bottom: 0;
   height: 2px;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -2213,6 +2235,42 @@ a.admin-stat-card:hover {
    card is `.admin-list-card`, the add/edit page wrapper `.admin-dark-form`. */
 body:has(.admin-dark-page) {
   background: var(--admin-page-dark);
+}
+
+/* Every scrollbar (page, side panel, popups, menus, tables, code blocks): a slim rounded thumb on a
+   transparent track. Only the page reserves its gutter (`stable`), so content keeps its width when
+   a page becomes long enough to scroll. Chromium and Safari use the `::-webkit-` parts; Firefox
+   gets the standard properties. `.admin-tabs` hides its own scrollbar (more specific rules). */
+html:has(.admin-dark-page) {
+  scrollbar-gutter: stable;
+}
+
+*::-webkit-scrollbar {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-panel-line);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: var(--radius-full);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-on-panel-muted);
+  background-clip: padding-box;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-panel-line) transparent;
+  }
 }
 
 /* Colours that depend on the surface. The dark canvas (and dark blocks inside cream cards): cream
@@ -2822,11 +2880,6 @@ form.admin-toolbar::before {
   margin-top: auto;
 }
 
-/* Small screens: the album table keeps its columns and scrolls sideways inside the card. */
-.admin-dark-page .admin-table {
-  min-width: 760px;
-}
-
 /* Long event titles in the select must not widen the form past the screen. */
 .admin-dark-page .admin-form-grid > * {
   min-width: 0;
@@ -3046,7 +3099,7 @@ form.admin-toolbar::before {
 .admin-dark-page .admin-tabs {
   gap: var(--space-8);
   margin-bottom: var(--space-4);
-  padding: 0;
+  padding: 0 var(--space-8) 0 0;
   border-bottom: 1px solid var(--color-panel-line);
 }
 
@@ -3055,10 +3108,6 @@ form.admin-toolbar::before {
   padding: var(--space-2);
   color: var(--color-on-panel-muted);
   font-size: var(--text-sm);
-}
-
-.admin-dark-page .admin-tabs__btn::after {
-  bottom: -1px;
 }
 
 .admin-dark-page .admin-tabs__btn--active,
@@ -3347,7 +3396,6 @@ form.admin-toolbar::before {
 
   .admin-dark-page .admin-tabs {
     gap: var(--space-2);
-    overflow-x: auto;
   }
 }
 
@@ -3468,8 +3516,6 @@ form.admin-toolbar::before {
 
 .admin-table__sub--redirect span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .admin-tools .admin-table__actions {
@@ -3904,7 +3950,6 @@ form.admin-toolbar::before {
 .admin-audit-tabbar .admin-tabs {
   flex: 1;
   min-width: 0;
-  overflow-x: auto; /* one tab per side-panel page: scroll instead of wrapping */
   margin-bottom: 0;
   border-bottom: 0;
 }
@@ -4553,11 +4598,9 @@ form.admin-toolbar::before {
   font-size: var(--text-sm);
 }
 
-/* Many roles = many tabs: they scroll sideways instead of widening the page. */
+/* Many roles = many tabs: they scroll sideways (.admin-tabs) instead of widening the page. */
 .admin-role-manager .admin-audit-tabbar .admin-tabs {
-  min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
 }
 
 @media (max-width: 767px) {
@@ -4565,3 +4608,404 @@ form.admin-toolbar::before {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
+
+/* ================================================================
+   Mobile list cards (phone): every admin table becomes a list of cream cards — checkbox, title,
+   detail lines, then a row of labelled buttons — with a summary line (count, sort, Select), the
+   Add / Export buttons floating bottom right, and the bulk bar fixed at the bottom. The cell
+   places come from `data-card` / `data-label` set by `DataTable` (`cardRoles` in list-model.ts);
+   docs/admin-shell.md "Phone cards". Wide screens keep the table: the parts below that only exist
+   for the phone are hidden here.
+   ================================================================ */
+.admin-fab {
+  display: contents;
+}
+
+.admin-list-summary,
+.admin-searchbox__icon,
+.admin-darkbar__word,
+.admin-darkbar__of {
+  display: none;
+}
+
+.admin-row-menu__panel--closed {
+  display: none;
+}
+
+/* Mobile list cards: begin */
+@media (max-width: 767px) {
+  /* Page: title, tabs, then the search row (the header becomes part of the page column). */
+  .admin-dark-page :has(> .admin-page-header):has(> .admin-tabs) {
+    gap: var(--space-3);
+  }
+
+  .admin-dark-page :has(> .admin-tabs) > .admin-page-header {
+    display: contents;
+  }
+
+  .admin-dark-page :has(> .admin-page-header) > .admin-tabs {
+    order: 1;
+  }
+
+  .admin-dark-page :has(> .admin-page-header) > .admin-page-header__actions,
+  .admin-dark-page .admin-page-header > .admin-page-header__actions {
+    order: 2;
+  }
+
+  .admin-dark-page :has(> .admin-page-header):has(> .admin-tabs) > .admin-list-card {
+    order: 3;
+  }
+
+  .admin-dark-page .admin-page-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  /* Search: one rounded cream field with a magnifier (Enter searches); Filters: icon + count. */
+  .admin-dark-page .admin-page-header__actions .admin-searchbox {
+    flex: 1 1 var(--space-16);
+    min-width: 0;
+    max-width: none;
+    height: var(--size-control);
+    border-radius: var(--radius-lg);
+  }
+
+  .admin-dark-page .admin-page-header__actions .admin-searchbox {
+    order: 1;
+    border-color: var(--color-brand-50);
+    background: var(--color-brand-50);
+  }
+
+  .admin-dark-page .admin-searchbox__icon {
+    display: inline-grid;
+    place-items: center;
+    padding-left: var(--space-3);
+    color: var(--color-brand-950);
+  }
+
+  .admin-dark-page .admin-searchbox__input {
+    height: var(--size-control);
+    padding-left: var(--space-2);
+    color: var(--color-brand-950);
+  }
+
+  .admin-dark-page .admin-searchbox__input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .admin-dark-page .admin-searchbox__submit {
+    display: none;
+  }
+
+  .admin-dark-page .admin-filters-btn {
+    order: 2;
+    height: var(--size-control);
+    border-radius: var(--radius-lg);
+  }
+
+  .admin-filters-btn__label {
+    display: none;
+  }
+
+  /* Add New … / Export CSV float bottom right; they step aside while rows are selected. */
+  .admin-fab {
+    position: fixed;
+    right: var(--space-4);
+    bottom: var(--space-5);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+  }
+
+  .admin-fab .admin-btn {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-popover);
+  }
+
+  .admin-dark-page:has(.admin-bulkbar) .admin-fab {
+    display: none;
+  }
+
+  /* Room under the list for the floating buttons and the fixed bulk bar. */
+  .admin-dark-page:has(.admin-list-card) {
+    padding-bottom: calc(var(--space-16) + var(--space-8));
+  }
+
+  /* The list card has no frame of its own: the cards are the frame. */
+  .admin-dark-page .admin-list-card {
+    border: 0;
+    overflow: visible;
+  }
+
+  .admin-list-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+    color: var(--color-on-panel-muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-xs);
+  }
+
+  .admin-list-summary__count {
+    flex: 1;
+  }
+
+  .admin-list-summary__btn {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-brand-50);
+    font: inherit;
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+  }
+
+  /* A row is a card. Columns: checkbox | picture | text; the action row spans all three. */
+  .admin-dark-page .admin-table-wrap {
+    overflow: visible;
+  }
+
+  .admin-dark-page .admin-table,
+  .admin-dark-page .admin-table tbody {
+    display: block;
+  }
+
+  .admin-dark-page .admin-table thead {
+    display: none;
+  }
+
+  .admin-dark-page .admin-table tbody tr {
+    --admin-ink: var(--color-brand-950);
+    --admin-ink-muted: var(--color-text-muted);
+    --admin-field-bg: var(--color-brand-950);
+    --admin-field-ink: var(--color-brand-50);
+    --admin-btn-bg: var(--color-brand-950);
+    --admin-btn-ink: var(--color-brand-50);
+    --admin-btn-hover: var(--color-brand-800);
+    --admin-ghost-hover: var(--color-hover);
+    --admin-ok: var(--color-success);
+    --admin-error: var(--color-danger);
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: start;
+    row-gap: var(--space-1);
+    margin-bottom: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    background: var(--color-brand-50);
+    color: var(--color-brand-950);
+  }
+
+  .admin-dark-page .admin-table tbody tr:hover td {
+    background: transparent;
+  }
+
+  .admin-dark-page .admin-table td {
+    display: block;
+    grid-column: 3;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-brand-950);
+    font-size: var(--text-xs);
+    line-height: var(--leading-xs);
+  }
+
+  .admin-dark-page .admin-table td[data-card="lead"] {
+    grid-column: 1;
+    grid-row: 1;
+    margin-right: var(--space-3);
+  }
+
+  .admin-dark-page .admin-table td[data-card="title"] .admin-table__title,
+  .admin-dark-page .admin-table td .admin-table__title {
+    color: var(--color-brand-950);
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
+  }
+
+  .admin-dark-page .admin-table td .admin-table__sub {
+    color: var(--color-text-muted);
+  }
+
+  /* Detail lines: "Label  value". */
+  .admin-dark-page .admin-table td[data-card="meta"][data-label] {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .admin-dark-page .admin-table td[data-card="meta"][data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 var(--space-16);
+    color: var(--color-text-muted);
+    font-size: var(--text-2xs);
+  }
+
+  /* Cells that say what they are by themselves (pin, status pill, date) need no label. */
+  .admin-dark-page
+    .admin-table
+    td[data-card="meta"]:has(
+      :is(.admin-event-location, .admin-event-date, .admin-status-badge, .admin-badge)
+    )::before {
+    display: none;
+  }
+
+  /* Event: a big picture beside the title, type and status as pills (as the phone design). */
+  .admin-dark-page .admin-table td[data-card="title"]:has(> .admin-event-title),
+  .admin-dark-page .admin-table .admin-event-title {
+    display: contents;
+  }
+
+  .admin-dark-page .admin-table .admin-event-avatar {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    width: var(--space-16);
+    height: var(--space-16);
+    margin-right: var(--space-3);
+    border-radius: var(--radius-lg);
+  }
+
+  .admin-dark-page .admin-table .admin-event-title > div {
+    display: contents;
+  }
+
+  .admin-dark-page .admin-table .admin-event-title .admin-table__title {
+    grid-column: 3;
+  }
+
+  .admin-dark-page .admin-table .admin-event-title .admin-table__sub {
+    grid-column: 3;
+    justify-self: start;
+    padding: var(--space-0-5) var(--space-2-5);
+    border-radius: var(--radius-full);
+    background: var(--color-brand-950);
+    color: var(--color-brand-50);
+    font-weight: var(--font-semibold);
+  }
+
+  .admin-dark-page .admin-table .admin-status-badge {
+    background: var(--color-brand-950);
+    color: var(--color-success-bright);
+  }
+
+  /* The checkbox box shows on the cream card. */
+  .admin-dark-page .admin-table tbody tr .admin-checkbox span {
+    border-color: var(--color-brand-950);
+  }
+
+  /* Action row: the row buttons and the ⋯ menu entries with their labels, Delete first. */
+  .admin-dark-page .admin-table td[data-card="actions"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1);
+    grid-column: 1 / -1;
+    margin-top: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .admin-dark-page .admin-table td[data-card="actions"] :is(.admin-table__actions, .admin-row-menu),
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu__panel {
+    display: contents;
+  }
+
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu > .admin-btn,
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu__divider {
+    display: none;
+  }
+
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu__item--danger {
+    order: -1;
+  }
+
+  .admin-dark-page
+    .admin-table
+    td[data-card="actions"]
+    :is(.admin-row-menu__item, .admin-btn--icon) {
+    flex: 1 1 auto;
+    justify-content: center;
+    width: auto;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-2xs);
+    font-weight: var(--font-regular);
+  }
+
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-btn--icon::after {
+    content: attr(title);
+  }
+
+  /* An opened row (Audit Log details) continues its card. */
+  .admin-dark-page .admin-table .admin-table__expanded-row {
+    display: block;
+    margin-top: calc(-1 * var(--space-3));
+    padding-top: 0;
+  }
+
+  /* Bulk bar: Publish · Make private · Delete across the bottom (the summary line has the count). */
+  .admin-dark-page .admin-list-card .admin-bulkbar {
+    --admin-ink: var(--color-brand-50);
+    --admin-btn-bg: var(--color-brand-50);
+    --admin-btn-ink: var(--color-brand-950);
+    --admin-btn-hover: var(--color-brand-200);
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 10;
+    margin: 0;
+    padding: var(--space-4);
+    background: var(--admin-page-dark);
+    box-shadow: var(--shadow-popover);
+  }
+
+  .admin-bulkbar__summary,
+  .admin-bulkbar__select-all {
+    display: none;
+  }
+
+  .admin-bulkbar__actions {
+    display: flex;
+    flex: 1;
+    gap: var(--space-2);
+  }
+
+  .admin-bulkbar__actions .admin-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Pagination: ‹ Prev · 1 of 10 · Next ›. */
+  .admin-dark-page .admin-darkbar {
+    justify-content: center;
+    gap: var(--space-3);
+  }
+
+  .admin-darkbar__info,
+  .admin-darkbar__spacer,
+  .admin-darkbar__btn:not([aria-label]):not(.admin-darkbar__btn--active) {
+    display: none;
+  }
+
+  .admin-darkbar__word,
+  .admin-darkbar__of {
+    display: inline;
+  }
+
+  .admin-dark-page .admin-darkbar__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    width: auto;
+    padding: 0 var(--space-3);
+  }
+}
+/* Mobile list cards: end */

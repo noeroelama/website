@@ -54,8 +54,7 @@ const { upload, busy, error } = useImageUpload("banner");
   broken files → 400 "File type not supported"). Signatures are uploaded on web later.
 - Browser: `checkImageFile` first (nothing is uploaded when it fails), then the native canvas
   shrinks the image to WebP (no library); the server re-encodes anyway.
-- Files live on the cPanel disk in `FILE_STORAGE_DIR`: `public/<path>` and `private/<path>`
-  (one folder for every app of the account, outside the app folders that deploys replace).
+- Web and admin keep files in the MySQL `files` collection (`createDbFileStorage`, id `public/<path>` or `private/<path>`, bytes as base64), so no folder or `FILE_STORAGE_DIR` is needed. `createDiskFileStorage` (folder `FILE_STORAGE_DIR`, `public/<path>` and `private/<path>`) is still used by the ops scripts.
   Paths are checked (`checkFilePath`: plain names only, no `..`, no absolute paths).
 - Storage names: `<folder>/<preset>_<timestamp>_<uuid8>.webp` and `…_thumb.webp`, never
   overwritten. Public presets get the URL `<WEB_URL>/files/<path>`, served by web with
@@ -67,9 +66,8 @@ const { upload, busy, error } = useImageUpload("banner");
 
 ## Configuration
 
-- `FILE_STORAGE_DIR` (absolute, e.g. `/home/<cpaneluser>/ppidk-files`) and `WEB_URL`, the same
-  on web and admin; `LINK_SIGNING_SECRET` (the same on both) for private links.
-- Backups: the folder is in the cPanel account, so cPanel backups include it
+- `WEB_URL`, the same on web and admin; `LINK_SIGNING_SECRET` (the same on both) for private links.
+- Backups: the files are rows in the database, so the nightly `mysqldump` includes them
   (`docs/disaster-recovery.md`).
 - `sharp` (native) is a dependency of admin. The cPanel host's glibc is old: after the first
   deploy run `node -e "require('sharp')"` in the admin app root. If it fails, install the

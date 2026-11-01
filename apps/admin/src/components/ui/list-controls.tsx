@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionFailure } from "../action-message";
 import {
@@ -16,7 +16,7 @@ import {
 } from "../list-model";
 import { Button } from "./button";
 import { Card, CardBody } from "./card";
-import { DataTable, Pagination, type Column } from "./data-table";
+import { DataTable, Pagination, sortChoices, type Column } from "./data-table";
 import { Icon, type IconName } from "./icon";
 
 /*
@@ -148,6 +148,9 @@ export function SearchBox({
         onSearch(text);
       }}
     >
+      <span className="admin-searchbox__icon" aria-hidden="true">
+        <Icon name="search" size={16} />
+      </span>
       <input
         className="admin-searchbox__input"
         type="search"
@@ -177,8 +180,16 @@ export function FiltersButton({
   onToggle: () => void;
 }) {
   return (
-    <Button variant="outline" size="sm" icon="filter" onClick={onToggle} aria-expanded={open}>
-      Filters
+    <Button
+      variant="outline"
+      size="sm"
+      icon="filter"
+      className="admin-filters-btn"
+      aria-label="Filters"
+      onClick={onToggle}
+      aria-expanded={open}
+    >
+      <span className="admin-filters-btn__label">Filters</span>
       {count > 0 ? (
         <span className="admin-filter-count" aria-label={`${count} on`}>
           {count}
@@ -200,8 +211,40 @@ export function Tabs<K extends string>({
   active: K;
   onSelect: (key: K) => void;
 }) {
+  // Mouse drag scrolls the row sideways (touch and trackpads scroll natively). A drag of more
+  // than a few pixels is not a click, so letting go over a tab does not select it.
+  const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
   return (
-    <div className="admin-tabs" role="tablist" aria-label={label}>
+    <div
+      className="admin-tabs"
+      role="tablist"
+      aria-label={label}
+      onPointerDown={(event) => {
+        if (event.pointerType !== "mouse" || event.button !== 0) return;
+        drag.current = { x: event.clientX, left: event.currentTarget.scrollLeft, moved: false };
+      }}
+      onPointerMove={(event) => {
+        const state = drag.current;
+        if (!state || event.buttons !== 1) return;
+        const dx = event.clientX - state.x;
+        if (!state.moved && Math.abs(dx) < 5) return;
+        if (!state.moved) {
+          state.moved = true;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          event.currentTarget.classList.add("admin-tabs--dragging");
+        }
+        event.currentTarget.scrollLeft = state.left - dx;
+      }}
+      onPointerUp={(event) => {
+        event.currentTarget.classList.remove("admin-tabs--dragging");
+        if (!drag.current?.moved) drag.current = null;
+      }}
+      onClickCapture={(event) => {
+        if (!drag.current?.moved) return;
+        drag.current = null;
+        event.stopPropagation();
+      }}
+    >
       {tabs.map((tab) => (
         <button
           key={tab.key}
@@ -248,32 +291,43 @@ export function SelectCheckbox({
   );
 }
 
-/** Row "more" menu (⋯). Choosing an entry closes it; so does a click outside. */
-export function RowMenu({ children }: { children: ReactNode }) {
+/**
+ * Row "more" menu (⋯). Choosing an entry closes it; so does a click outside. The entries are
+ * always in the page: closed they are hidden, but on a phone the card shows them as its buttons.
+ */
+export function RowMenu({
+  children,
+  icon = "more",
+  label = "More actions",
+  className = "",
+}: {
+  children: ReactNode;
+  icon?: IconName;
+  label?: string;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="admin-row-menu">
+    <div className={`admin-row-menu ${className}`.trim()}>
       {open ? <div className="admin-row-menu__backdrop" onClick={() => setOpen(false)} /> : null}
       <Button
         variant="ghost"
         size="icon"
-        icon="more"
-        aria-label="More actions"
-        title="More actions"
+        icon={icon}
+        aria-label={label}
+        title={label}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       />
-      {open ? (
-        <div
-          className="admin-row-menu__panel"
-          role="menu"
-          onClick={(event) => {
-            if ((event.target as HTMLElement).closest("[role=menuitem]")) setOpen(false);
-          }}
-        >
-          {children}
-        </div>
-      ) : null}
+      <div
+        className={`admin-row-menu__panel${open ? "" : " admin-row-menu__panel--closed"}`}
+        role="menu"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("[role=menuitem]")) setOpen(false);
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -394,6 +448,69 @@ export function ListEmpty({
 }
 
 /**
+ * Phone only (`globals.css` "Mobile list cards"; hidden on a wide screen): "112 events · sorted by
+ * Date", the sort menu, and "Select" (this page) / "Unselect" + "Select all" while rows are selected.
+ */
+function ListSummary<T extends { id: string }>({
+  table,
+  total,
+  noun,
+  columns,
+  selectable,
+}: {
+  table: Pick<
+    ReturnType<typeof useListTable<T, string>>,
+    "sort" | "selected" | "allSelected" | "togglePage" | "toggleAll" | "clearSelection"
+  >;
+  total: number;
+  noun: string;
+  columns: Column<T>[];
+  selectable: boolean;
+}) {
+  const choices = sortChoices(columns);
+  const active = choices.find((choice) => choice.active);
+  const picked = table.selected.size;
+  return (
+    <div className="admin-list-summary">
+      <span className="admin-list-summary__count">
+        {picked > 0
+          ? `${picked} of ${total} selected`
+          : `${countText(total, noun)}${active ? ` · ${active.label} ${active.dir === "asc" ? "↑" : "↓"}` : ""}`}
+      </span>
+      {choices.length > 0 ? (
+        <RowMenu icon="sort" label="Sort by" className="admin-sort-menu">
+          {choices.map((choice) => (
+            <MenuItem
+              key={choice.label}
+              icon={choice.active ? (choice.dir === "asc" ? "arrowUp" : "arrowDown") : "sort"}
+              onClick={choice.onClick}
+            >
+              {choice.label}
+            </MenuItem>
+          ))}
+        </RowMenu>
+      ) : null}
+      {selectable && total > 0 ? (
+        <>
+          <button
+            type="button"
+            className="admin-list-summary__btn"
+            onClick={picked > 0 ? table.clearSelection : table.togglePage}
+          >
+            {picked > 0 ? "Unselect" : "Select"}
+          </button>
+          {picked > 0 && !table.allSelected ? (
+            <button type="button" className="admin-list-summary__btn" onClick={table.toggleAll}>
+              Select all
+            </button>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * The list card: optional filter panel, the table (fills the screen height; the empty message
  * sits in its middle), then the bulk bar while rows are selected, else the pagination.
  */
@@ -419,6 +536,9 @@ export function ListCard<T extends { id: string }>({
     | "selected"
     | "allSelected"
     | "toggleAll"
+    | "sort"
+    | "togglePage"
+    | "clearSelection"
   >;
   /** Rows that match the filters (all pages). */
   total: number;
@@ -437,6 +557,13 @@ export function ListCard<T extends { id: string }>({
     <Card className="admin-events-card admin-list-card">
       <CardBody flush>
         {filters}
+        <ListSummary
+          table={table}
+          total={total}
+          noun={noun}
+          columns={columns}
+          selectable={Boolean(bulkActions)}
+        />
         <DataTable
           columns={columns}
           rows={table.pageRows}

@@ -261,7 +261,6 @@ export function mapPpidk(
   const provinces = new Map(tables.provinces.map((p) => [p["code"] ?? "", p["name"] ?? ""]));
   const regencies = new Map(tables.regencies.map((r) => [r["code"] ?? "", r["name"] ?? ""]));
   const chapterOfUser = new Map<string, string | null>();
-  const verified = new Set<string>();
   for (const p of tables.profiles) {
     const owner = uid(p["user_id"]);
     if (!owner) {
@@ -270,7 +269,6 @@ export function mapPpidk(
     }
     const chapter = p["chapter_id"] ? (chapterId.get(p["chapter_id"]) ?? null) : null;
     chapterOfUser.set(owner, chapter);
-    if (p["verification_status"] === "verified") verified.add(owner);
     const person = users.get(p["user_id"] ?? "");
     set(`memberProfiles/${owner}`, {
       userId: owner,
@@ -367,12 +365,11 @@ export function mapPpidk(
     });
   }
 
-  // Accounts: the default role, member when verified, and the appointment roles.
+  // Accounts: the default role (Visitor) and the appointment roles.
   for (const person of people) {
     const owner = uidOf(person.ppidkId);
     const roleAssignments = [
-      { roleId: "user", scope: { type: "global" } },
-      ...(verified.has(owner) ? [{ roleId: "member", scope: { type: "global" } }] : []),
+      { roleId: "visitor", scope: { type: "global" } },
       ...(assignments.get(owner) ?? []),
     ].map((a) => ({
       periodId: null,

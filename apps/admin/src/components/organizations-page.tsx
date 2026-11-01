@@ -19,6 +19,7 @@ import { FieldError } from "@/components/ui/field-error";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
+import { MenuDivider, MenuItem, RowMenu, Tabs } from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { CHAPTER_RISK_LABELS, label } from "@/labels";
@@ -62,31 +63,19 @@ export function OrgTabs({
   showPeriod?: boolean;
 }) {
   const router = useRouter();
-  const tabs: [OrgView, string][] = showPeriod
-    ? [
-        ["period", "Period"],
-        ["ppi", "PPI"],
-      ]
-    : [["ppi", "PPI"]];
+  const ppi = { key: "ppi" as const, label: "PPI" };
+  const tabs = showPeriod ? [{ key: "period" as const, label: "Period" }, ppi] : [ppi];
   return (
-    <div className="admin-tabs" role="tablist" aria-label="Organization lists">
-      {tabs.map(([key, text]) => (
-        <button
-          key={key}
-          type="button"
-          role="tab"
-          aria-selected={view === key}
-          className={`admin-tabs__btn${view === key ? " admin-tabs__btn--active" : ""}`}
-          onClick={() =>
-            onSelect
-              ? onSelect(key)
-              : router.push(key === "ppi" ? "/organizations?view=ppi" : "/organizations")
-          }
-        >
-          {text}
-        </button>
-      ))}
-    </div>
+    <Tabs
+      label="Organization lists"
+      tabs={tabs}
+      active={view}
+      onSelect={(key) =>
+        onSelect
+          ? onSelect(key)
+          : router.push(key === "ppi" ? "/organizations?view=ppi" : "/organizations")
+      }
+    />
   );
 }
 
@@ -203,7 +192,6 @@ function OrganizationsList({
   const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<OrgView>(periodList ? initialView : "ppi");
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [periodModal, setPeriodModal] = useState<PeriodModalState>(null);
   const [periodErrors, setPeriodErrors] = useState<Readonly<Record<string, string>>>({});
@@ -226,7 +214,6 @@ function OrganizationsList({
   };
   const switchView = (next: OrgView) => {
     setView(next);
-    setMenuFor(null);
     setPage(1);
   };
 
@@ -504,66 +491,36 @@ function OrganizationsList({
                 aria-label={`Edit ${r.name}`}
                 title="Edit"
                 onClick={() => {
-                  setMenuFor(null);
                   setPeriodErrors({});
                   setPeriodModal({ mode: "edit", item: r });
                 }}
               />
             ) : null}
-            <div className="admin-row-menu">
-              {menuFor === r.id ? (
-                <div className="admin-row-menu__backdrop" onClick={() => setMenuFor(null)} />
+            <RowMenu>
+              <MenuItem
+                icon="settings"
+                onClick={() => router.push(`/organizations/periods/${r.id}`)}
+              >
+                Manage Structure
+              </MenuItem>
+              {canEditPeriods && r.status === "draft" ? (
+                <MenuItem icon="globe" onClick={() => setActivating(r)}>
+                  Set as Active
+                </MenuItem>
               ) : null}
-              <Button
-                variant="ghost"
-                size="icon"
-                icon="more"
-                aria-label="More actions"
-                title="More actions"
-                onClick={() => setMenuFor(menuFor === r.id ? null : r.id)}
-              />
-              {menuFor === r.id ? (
-                <div className="admin-row-menu__panel" role="menu">
-                  <button
-                    type="button"
-                    className="admin-row-menu__item"
-                    role="menuitem"
-                    onClick={() => router.push(`/organizations/periods/${r.id}`)}
+              {canEditPeriods && r.status !== "active" ? (
+                <>
+                  <MenuDivider />
+                  <MenuItem
+                    icon="trash"
+                    danger
+                    onClick={() => setDeleting({ kind: "period", item: r })}
                   >
-                    <Icon name="settings" size={14} /> Manage Structure
-                  </button>
-                  {canEditPeriods && r.status === "draft" ? (
-                    <button
-                      type="button"
-                      className="admin-row-menu__item"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuFor(null);
-                        setActivating(r);
-                      }}
-                    >
-                      <Icon name="globe" size={14} /> Set as Active
-                    </button>
-                  ) : null}
-                  {canEditPeriods && r.status !== "active" ? (
-                    <div className="admin-row-menu__divider" role="separator" />
-                  ) : null}
-                  {canEditPeriods && r.status !== "active" ? (
-                    <button
-                      type="button"
-                      className="admin-row-menu__item admin-row-menu__item--danger"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuFor(null);
-                        setDeleting({ kind: "period", item: r });
-                      }}
-                    >
-                      <Icon name="trash" size={14} /> Delete Period
-                    </button>
-                  ) : null}
-                </div>
+                    Delete Period
+                  </MenuItem>
+                </>
               ) : null}
-            </div>
+            </RowMenu>
           </div>
         ),
       },
@@ -573,7 +530,7 @@ function OrganizationsList({
       <div>
         {header(
           "Organizations > Period",
-          <>
+          <div className="admin-fab">
             <Button variant="outline" size="sm" icon="download" onClick={exportPeriodsCsv}>
               Export CSV
             </Button>
@@ -590,7 +547,7 @@ function OrganizationsList({
                 Add New Period
               </Button>
             ) : null}
-          </>,
+          </div>,
         )}
 
         <Card className="admin-events-card admin-list-card admin-org-card">
@@ -819,7 +776,7 @@ function OrganizationsList({
     <div>
       {header(
         "Organizations > PPI",
-        <>
+        <div className="admin-fab">
           <Button variant="outline" size="sm" icon="download" onClick={exportPpisCsv}>
             Export CSV
           </Button>
@@ -828,7 +785,7 @@ function OrganizationsList({
               Add New PPI
             </Button>
           ) : null}
-        </>,
+        </div>,
       )}
 
       <Card className="admin-events-card admin-list-card admin-org-card">

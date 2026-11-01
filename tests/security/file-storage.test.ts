@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createDiskFileStorage, fileContentType } from "@website/db/sql";
+import { createDbFileStorage, createDiskFileStorage, fileContentType } from "@website/db/sql";
 import { signLink } from "@website/security";
 import { createFileRoutes } from "../../apps/web/src/server/files";
 
@@ -121,5 +121,46 @@ describe("files on the cPanel disk", () => {
       secret: undefined,
     });
     await expect(unsigned.signedReadUrl("x.pdf")).rejects.toThrow("LINK_SIGNING_SECRET");
+  });
+});
+
+describe("files in the MySQL database", () => {
+  const rows = new Map<string, Record<string, unknown>>();
+  const fakeDb = {
+    collection: () => ({
+      doc: (id: string) => ({
+        get: () => Promise.resolve({ exists: rows.has(id), data: () => rows.get(id) }),
+        set: (data: Record<string, unknown>) => Promise.resolve(void rows.set(id, data)),
+        delete: () => Promise.resolve(void rows.delete(id)),
+      }),
+    }),
+  };
+  const storage = createDbFileStorage({
+    db: fakeDb as never,
+    baseUrl: "https://web.example",
+    secret,
+    now: () => now,
+  });
+
+  it("keeps public and private bytes in the database and reads them back", async () => {
+    const pub = await storage.save("galleries/a.webp", new Uint8Array([1, 2]), {
+      visibility: "public",
+    });
+    expect(pub.url).toBe("https://web.example/files/galleries/a.webp");
+    const priv = await storage.save("members/ktm/k.webp", new Uint8Array([3]), {
+      visibility: "private",
+    });
+    expect(priv.url).toBeNull();
+    expect([...((await storage.read("galleries/a.webp", "public")) ?? [])]).toEqual([1, 2]);
+    expect([...((await storage.read("members/ktm/k.webp")) ?? [])]).toEqual([3]);
+    expect(await storage.read("members/ktm/k.webp", "public")).toBeNull();
+    await storage.remove("members/ktm/k.webp");
+    expect(await storage.read("members/ktm/k.webp")).toBeNull();
+    await expect(storage.save("../x", new Uint8Array(), { visibility: "public" })).rejects.toThrow(
+      "Invalid file path",
+    );
+    expect(await storage.signedReadUrl("galleries/a.webp")).toMatch(
+      /^https:\/\/web.example\/private-files\?t=/,
+    );
   });
 });

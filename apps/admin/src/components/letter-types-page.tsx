@@ -373,9 +373,11 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
               >
                 Letterhead
               </Button>
-              <Button variant="outline" size="sm" icon="plus" onClick={() => open()}>
-                Add type
-              </Button>
+              <div className="admin-fab">
+                <Button variant="outline" size="sm" icon="plus" onClick={() => open()}>
+                  Add type
+                </Button>
+              </div>
             </>
           ) : null}
         </div>

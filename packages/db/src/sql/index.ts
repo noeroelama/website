@@ -58,6 +58,7 @@ export {
 export { createSqlPasskeyStore } from "./passkeys";
 export {
   checkFilePath,
+  createDbFileStorage,
   createDiskFileStorage,
   fileContentType,
   FILE_LINK_PURPOSE,

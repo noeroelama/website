@@ -75,8 +75,9 @@ Admin `/audit` (`audit.read`, global), a dark list page like the Event page. The
 entries of the chosen date range (`?range=` 1d / 7d (default) / 14d / 30d / all, newest
 `AUDIT_PAGE_LIMIT` = 500; a note says when the range has more) and maps them to rows
 (`toAuditRow` in `apps/admin/src/components/audit-model.ts`, user names from `users/{uid}`). The
-browser then filters and pages them: tabs per admin page with counts (Organizations = PPI, Period,
-Structure, Appointments), User and Action pickers, title search, "Reversible only", sort by date
+browser then filters and pages them: one tab per side-panel page with counts, built from `ADMIN_NAVIGATION` (a new page gets a tab
+automatically; `also` on its entry lists the other modules shown under it, e.g. Organizations =
+Period, Structure, Appointments), User and Action pickers, title search, "Reversible only", sort by date
 or action, 10/20/50 rows per page, and Export CSV of the filtered rows. Each row shows the time
 (UTC), the user, the action badge, page and title, `#` + the record id, and either "N days left" +
 Revert or "Irreversible" (reason as tooltip). The chevron opens the changed fields (Field,
