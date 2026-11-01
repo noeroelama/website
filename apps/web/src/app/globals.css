@@ -481,13 +481,13 @@
   overflow: hidden;
 }
 
-/* Full-bleed photo behind the maroon overlay (hero.png, sized locally). */
+/* Full-bleed photo behind the maroon overlay (section.png, sized locally). */
 .home-hero::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-image: url("/home/hero.png");
+  background-image: url("/home/section.png");
   background-size: cover;
   background-position: center;
 }
