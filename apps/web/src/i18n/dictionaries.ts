@@ -57,16 +57,57 @@ const id = {
     privacy: "Kebijakan Privasi",
   },
   home: {
-    title: "PPIDK Asia-Oseania",
-    tagline:
-      "Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania — rumah bersama PPI Negara di kawasan Asia dan Oseania.",
-    purposeHeading: "Tentang situs ini",
-    purpose:
-      "Situs ini memuat berita, acara, galeri, dan peta PPI Negara di kawasan Asia-Oseania. Anggota dapat membuat akun untuk mendaftar acara dan mengelola profilnya; pengurus memakai akun yang sama untuk mengelola konten.",
     googleHeading: "Pemberitahuan data Google",
     google:
       "Bila kamu masuk dengan Google, kami hanya menerima ID akun, alamat email, nama, dan foto profilmu (izin openid, email, profile). Data itu dipakai untuk membuat dan mengamankan akunmu, tidak pernah dijual, dan tidak dibagikan kepada pengiklan. Kami tidak meminta akses ke Gmail, Drive, Kalender, atau layanan Google lain.",
     googleMore: "Baca Kebijakan Privasi",
+    // TODO: ganti kutipan sambutan dengan teks asli dari ketua umum.
+    heroTitle: "Menyatukan Pelajar Indonesia di Asia & Oseania",
+    heroSubtitle: "Menghubungkan Pelajar Indonesia di Seluruh Asia & Oseania",
+    heroCta: "Pelajari Lebih Lanjut",
+    statsHeading: "Organisasi Kami dalam Angka",
+    stats: [
+      { value: "500+", label: "Relawan" },
+      { value: "15+", label: "Tahun Berkiprah" },
+      { value: "500+", label: "Pelajar Indonesia" },
+      { value: "50+", label: "Acara per Tahun" },
+    ],
+    eventsHeading: "Acara Terbaru",
+    newsHeading: "Berita Terbaru",
+    readMore: "Baca",
+    allEvents: "Lihat Semua Acara",
+    allNews: "Lihat Semua Berita",
+    chairHeading: "Sambutan Ketua Umum",
+    chairQuote:
+      "Selamat datang di PPIDK Asia-Oseania — rumah bagi perhimpunan pelajar Indonesia yang tersebar di Asia dan Oseania. Di sini kami merawat kebersamaan, berbagi informasi, dan menguatkan kontribusi pelajar Indonesia lintas negara. Semoga setiap pengunjung menemukan hal yang bermanfaat dan terinspirasi untuk ikut membangun Indonesia dari mana pun berada.",
+    connectHeading: "Tetap Terhubung",
+    connectBody:
+      "Berlangganan buletin untuk mendapat kabar acara, berita, dan agenda perhimpunan di kawasan.",
+    fallbackEvents: [
+      {
+        title: "Forum Diskusi",
+        desc: "Diskusi antar pelajar se-Asia & Oseania tentang inovasi dan budaya.",
+      },
+      {
+        title: "Webinar Karier",
+        desc: "Berbagi pengalaman studi dan karier bersama alumni lintas negara.",
+      },
+      {
+        title: "Festival Budaya",
+        desc: "Merayakan keberagaman budaya Nusantara bersama keluarga besar PPI.",
+      },
+    ],
+    fallbackNews: [
+      {
+        title: "Berita Perhimpunan",
+        desc: "Kabar terbaru dari perhimpunan pelajar Indonesia di kawasan.",
+      },
+      {
+        title: "Kegiatan Anggota",
+        desc: "Cerita dan dokumentasi kegiatan anggota dari berbagai negara.",
+      },
+      { title: "Pengumuman", desc: "Informasi penting untuk anggota dan calon anggota." },
+    ],
   },
   pages: {
     news: "Berita",
@@ -675,16 +716,60 @@ const en: Dictionary = {
     privacy: "Privacy Policy",
   },
   home: {
-    title: "PPIDK Asia-Oseania",
-    tagline:
-      "The Indonesian Students' Association in Asia-Oceania — home of the national Indonesian student associations (PPI) across Asia and Oceania.",
-    purposeHeading: "About this website",
-    purpose:
-      "This website publishes news, events, galleries and the map of the PPI associations in Asia-Oceania. Members can create an account to register for events and manage their profile; officers use the same account to manage content.",
     googleHeading: "Google data notice",
     google:
       "If you sign in with Google, we only receive your account ID, e-mail address, name and profile picture (openid, email, profile scopes). We use them to create and protect your account, never sell them and never share them with advertisers. We do not request access to Gmail, Drive, Calendar or any other Google service.",
     googleMore: "Read the Privacy Policy",
+    heroTitle: "Connecting Indonesian Students All Across Asia & Oceania",
+    heroSubtitle:
+      "Building bonds, sharing knowledge, and celebrating Indonesian culture across the region.",
+    heroCta: "Learn More",
+    statsHeading: "Our Organization in Numbers",
+    stats: [
+      { value: "500+", label: "Volunteers" },
+      { value: "15+", label: "Years of Operation" },
+      { value: "500+", label: "Indonesian Students" },
+      { value: "50+", label: "Events per Year" },
+    ],
+    eventsHeading: "Latest Events",
+    newsHeading: "Latest News",
+    readMore: "Read",
+    allEvents: "View All Events",
+    allNews: "View All News",
+    chairHeading: "Welcome from the Chair",
+    chairQuote:
+      "Welcome to PPIDK Asia-Oceania — home of the Indonesian student associations across Asia and Oceania. Here we nurture our shared community, exchange information, and strengthen the contribution of Indonesian students across borders. May every visitor find something useful and feel inspired to help build Indonesia, wherever they are.",
+    connectHeading: "Stay Connected",
+    connectBody:
+      "Subscribe to our newsletter for upcoming events, news, and association updates across the region.",
+    fallbackEvents: [
+      {
+        title: "Discussion Forum",
+        desc: "A discussion among students across Asia & Oceania on innovation and culture.",
+      },
+      {
+        title: "Career Webinar",
+        desc: "Insights into studying and working abroad from alumni across the region.",
+      },
+      {
+        title: "Cultural Festival",
+        desc: "Celebrating Indonesia's rich cultural diversity with the PPI family.",
+      },
+    ],
+    fallbackNews: [
+      {
+        title: "Association News",
+        desc: "The latest from Indonesian student associations across the region.",
+      },
+      {
+        title: "Member Activities",
+        desc: "Stories and photos from members' activities in different countries.",
+      },
+      {
+        title: "Announcements",
+        desc: "Important information for members and prospective members.",
+      },
+    ],
   },
   pages: {
     news: "News",
