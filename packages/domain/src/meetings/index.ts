@@ -4,6 +4,7 @@ import { RuleViolationError, wallTimeToUtc, type EntityMeta } from "../shared";
 import { assertAttendanceOpenForChange, type Minutes } from "./minutes";
 
 export * from "./minutes";
+export * from "./drafting";
 
 /**
  * Meetings (F4), ported from PPIDK `Rapat`: a meeting of a unit (or of the whole region), its

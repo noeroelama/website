@@ -9,6 +9,7 @@ import { MeetingPage } from "@/components/meeting-page";
 import { requireAdminViewer } from "@/server/context";
 import { canRunMeeting, canSeeMeeting } from "@/server/meetings";
 import { canApproveMinutes } from "@/server/minutes";
+import { getAdminEnv } from "@/server/env";
 import { adminReads } from "@/server/wiring";
 
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
@@ -82,6 +83,7 @@ export default async function MeetingRoute({ params }: { params: Promise<{ id: s
         })),
       }}
       runs={runs && status !== "cancelled"}
+      canDraft={Boolean(getAdminEnv().ANTHROPIC_API_KEY)}
       canApprove={status !== "cancelled" && canApproveMinutes(principal, meeting)}
       edit={
         canEdit

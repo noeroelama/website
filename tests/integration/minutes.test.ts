@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createSqlActionItemStore, createSqlMeetingStore } from "@website/db/sql";
-import { isOverdue, mergeDraft, quorumMet, type Meeting } from "@website/domain/meetings";
+import {
+  isOverdue,
+  mergeDraft,
+  parseVtt,
+  quorumMet,
+  type DraftRequest,
+  type Meeting,
+  type MinutesDrafter,
+} from "@website/domain/meetings";
 import type { ReportPdfInput } from "@website/pdf";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
+import { createAnthropicDrafter } from "../../apps/admin/src/server/anthropic";
 import { createMinutesActions, createMinutesFileRoute } from "../../apps/admin/src/server/minutes";
 import { fakeDb } from "../support/fake-db";
 
@@ -31,8 +40,19 @@ let fake: ReturnType<typeof fakeDb>;
 const db = () => fake.db as unknown as Db;
 const meetings = () => createSqlMeetingStore(db());
 const items = () => createSqlActionItemStore(db());
+let drafter: MinutesDrafter | null = null;
+let errors: string[] = [];
 const actions = () =>
-  createMinutesActions({ meetings: meetings(), actionItems: items(), now: () => clock });
+  createMinutesActions({
+    meetings: meetings(),
+    actionItems: items(),
+    drafter,
+    // "member" has no name on record: the uid stands in.
+    names: (uids) =>
+      Promise.resolve(new Map(uids.filter((u) => u !== "member").map((u) => [u, u.toUpperCase()]))),
+    logError: (message) => errors.push(message),
+    now: () => clock,
+  });
 
 const meetingDoc = {
   periodId: "p1",
@@ -70,6 +90,8 @@ beforeEach(() => {
   fake = fakeDb();
   clock = new Date("2026-11-10T12:00:00Z");
   fake.docs.set("meetings/m1", { ...meetingDoc });
+  drafter = null;
+  errors = [];
 });
 
 describe("minutes (F5)", () => {
@@ -368,5 +390,187 @@ describe("minutes PDF (F5)", () => {
     fake.docs.set("meetings/m1", { ...meetingDoc });
     await empty("m1", member);
     expect(JSON.stringify(sheet)).toContain("member (Participant)");
+  });
+});
+
+describe("machine-drafted minutes (F6)", () => {
+  const vtt = [
+    "WEBVTT",
+    "",
+    "NOTE recorded by Zoom",
+    "spans two lines",
+    "",
+    "1",
+    "00:00:01.000 --> 00:00:04.000",
+    "Rina: Selamat malam, kita mulai.",
+    "",
+    "2",
+    "00:00:05.000 --> 00:00:08.000",
+    "Rina: <v>Agenda pertama anggaran.</v>",
+    "",
+    "3",
+    "00:00:09.000 --> 00:00:12.000",
+    "Note: this colon line is speech",
+    "Budi: Setuju.",
+    "Budi: Saya kirim besok.",
+    "Rina: Terima kasih.",
+    "(tertawa)",
+  ].join("\r\n");
+
+  it("VTT becomes speaker lines; nothing spoken is dropped", () => {
+    expect(parseVtt(vtt)).toBe(
+      [
+        "Rina: Selamat malam, kita mulai. Agenda pertama anggaran.",
+        "Note: this colon line is speech",
+        "Budi: Setuju. Saya kirim besok.",
+        "Rina: Terima kasih.",
+        "(tertawa)",
+      ].join("\n"),
+    );
+  });
+
+  it("fills only empty items, returns checked proposals, and is off without a key", async () => {
+    const off = await actions().draft(...as(secretary))({
+      id: "m1",
+      version: 1,
+      transcript: vtt,
+      source: "ai_transcript",
+    });
+    expect(off).toMatchObject({ issues: ["Machine drafts are not set up."] });
+
+    let asked: DraftRequest | null = null;
+    drafter = {
+      draft: (request) => {
+        asked = request;
+        return Promise.resolve({
+          items: [
+            { agendaItemId: "a1", notes: "Machine opening" },
+            { agendaItemId: "a2", notes: "Budget agreed." },
+          ],
+          actionItems: [
+            { title: "Send the budget", picUid: "member", dueOn: "2026-11-20" },
+            { title: "Invent a person", picUid: "ghost", dueOn: null },
+          ],
+        });
+      },
+    };
+    await actions().save(...as(secretary))({
+      id: "m1",
+      version: 1,
+      notes: { a1: "Typed." },
+      other: "",
+      quorum: null,
+    });
+    expect(
+      await actions().draft(...as(member))({
+        id: "m1",
+        version: 2,
+        transcript: vtt,
+        source: "ai_transcript",
+      }),
+    ).toMatchObject({ ok: false, error: "refused" });
+    const result = await actions().draft(...as(secretary))({
+      id: "m1",
+      version: 2,
+      transcript: vtt,
+      source: "ai_transcript",
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    expect(result.data.proposals).toEqual([
+      { title: "Send the budget", pic: "member", dueOn: "2026-11-20" },
+      { title: "Invent a person", pic: null, dueOn: null },
+    ]);
+    expect(asked).toMatchObject({
+      title: "Rapat kerja",
+      participants: [
+        { uid: "chair", name: "CHAIR" },
+        { uid: "sec", name: "SEC" },
+        { uid: "member", name: "member" },
+      ],
+    });
+    expect((asked as unknown as DraftRequest).transcript).toContain(
+      "Budi: Setuju. Saya kirim besok.",
+    );
+    const saved = (await meetings().get("m1")) as Meeting;
+    expect(saved.minutes?.notes).toEqual({ a1: "Typed.", a2: "Budget agreed." });
+
+    // Plain pasted text goes to the machine as is.
+    await actions().draft(...as(secretary))({
+      id: "m1",
+      version: 3,
+      transcript: "Rina said the budget is fine.",
+      source: "ai_transcript",
+    });
+    expect((asked as unknown as DraftRequest).transcript).toBe("Rina said the budget is fine.");
+
+    drafter = { draft: () => Promise.reject(new Error("anthropic_529")) };
+    expect(
+      await actions().draft(...as(secretary))({
+        id: "m1",
+        version: 4,
+        transcript: vtt,
+        source: "ai_transcript",
+      }),
+    ).toMatchObject({ issues: ["The machine draft failed. Try again later or write by hand."] });
+    expect(errors).toEqual(["minutes draft failed"]);
+    expect(
+      await actions().draft(...as(secretary))({
+        id: "ghost",
+        version: 1,
+        transcript: vtt,
+        source: "ai_transcript",
+      }),
+    ).toMatchObject({ issues: ["This meeting does not exist."] });
+  });
+});
+
+describe("Anthropic adapter (F6)", () => {
+  const request: DraftRequest = {
+    title: "Rapat",
+    agenda: [{ id: "a1", title: "Opening" }],
+    participants: [{ uid: "u1", name: "Rina" }],
+    transcript: "Rina: halo",
+  };
+  const answer = (body: unknown, status = 200) =>
+    Promise.resolve(new Response(JSON.stringify(body), { status }));
+  const draft = { items: [{ agendaItemId: "a1", notes: "Opened." }], actionItems: [] };
+
+  it("forces the tool, sends the key and validates the answer", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const drafterOf = (fetchImpl: typeof fetch) =>
+      createAnthropicDrafter({ apiKey: "sk-test", model: "claude-test", fetchImpl });
+    const ok = drafterOf((url, init) => {
+      calls.push({ url: url as string, init: init as RequestInit });
+      return answer({
+        content: [
+          { type: "text", text: "Here" },
+          { type: "tool_use", name: "minutes_draft", input: draft },
+        ],
+      });
+    });
+    expect(await ok.draft(request)).toEqual(draft);
+    const sent = calls[0] as { url: string; init: RequestInit };
+    const body = JSON.parse(sent.init.body as string) as Record<string, unknown>;
+    expect(sent.url).toBe("https://api.anthropic.com/v1/messages");
+    expect((sent.init.headers as Record<string, string>)["x-api-key"]).toBe("sk-test");
+    expect(body).toMatchObject({
+      model: "claude-test",
+      tool_choice: { type: "tool", name: "minutes_draft" },
+    });
+    expect(String((body["messages"] as Array<{ content: string }>)[0]?.content)).toContain(
+      "Rina: halo",
+    );
+
+    await expect(
+      drafterOf(() => answer({ error: "overloaded" }, 529)).draft(request),
+    ).rejects.toThrow("anthropic_529");
+    await expect(
+      drafterOf(() =>
+        answer({ content: [{ type: "tool_use", name: "minutes_draft", input: { items: "x" } }] }),
+      ).draft(request),
+    ).rejects.toThrow("anthropic_invalid_answer");
+    await expect(drafterOf(() => answer({ nothing: true })).draft(request)).rejects.toThrow(
+      "anthropic_invalid_answer",
+    );
   });
 });

@@ -5,6 +5,13 @@ import type { MeetingAudit, SqlActionItemStore, SqlMeetingStore } from "@website
 import {
   ActionItemInputSchema,
   approveMinutes,
+  draftNotes,
+  draftProposals,
+  MAX_TRANSCRIPT_CHARS,
+  mergeDraft,
+  parseVtt,
+  type DraftOutput,
+  type MinutesDrafter,
   assertPicIsParticipant,
   MEETING_ROLE_LABELS,
   MinutesInputSchema,
@@ -24,6 +31,11 @@ import { canRunMeeting, canSeeMeeting } from "./meetings";
 export interface MinutesDeps {
   readonly meetings: Pick<SqlMeetingStore, "get" | "write">;
   readonly actionItems: Pick<SqlActionItemStore, "get" | "write" | "readMeeting">;
+  /** null = no ANTHROPIC_API_KEY: machine drafts are off. */
+  readonly drafter: MinutesDrafter | null;
+  /** Display names of accounts (the machine matches speakers to participants). */
+  readonly names: (uids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
+  readonly logError: (message: string, fields: Record<string, unknown>) => void;
   readonly now: () => Date;
 }
 
@@ -35,6 +47,16 @@ const SaveItem = ActionItemInputSchema.extend({
   version: version.nullable(),
   meetingId: safeId,
 }).strict();
+const Draft = z
+  .object({
+    id: safeId,
+    version,
+    /** Pasted text or a Zoom .vtt file's content. */
+    transcript: z.string().min(20, "Paste the transcript.").max(MAX_TRANSCRIPT_CHARS),
+    /** Where the transcript came from (the Zoom pull is step 7.7). */
+    source: z.enum(["ai_transcript", "ai_zoom"]),
+  })
+  .strict();
 const ItemDone = z.object({ id: safeId, version, done: z.boolean() }).strict();
 
 /** Approving: the chair, or `meetings.approve_minutes` for the meeting's unit. */
@@ -236,7 +258,51 @@ export function createMinutesActions(deps: MinutesDeps) {
     },
   });
 
-  return { save, approve, saveItem, setItemDone, removeItem };
+  /**
+   * F6: the machine drafts from a transcript (VTT is turned into plain lines first); the draft
+   * fills only EMPTY agenda items in a transaction, and proposed action items come back to the
+   * page for a person to add (their PICs are checked again on save).
+   */
+  const draft = createGuardedAction({
+    permission: "meetings.read",
+    inSomeScope: true,
+    input: Draft,
+    handler: async ({ id, version: v, transcript, source }, principal, audit) => {
+      if (!deps.drafter) throw new RuleViolationError("Machine drafts are not set up.");
+      const meeting = await deps.meetings.get(id);
+      if (!meeting || meeting.deletedAt)
+        throw new RuleViolationError("This meeting does not exist.");
+      if (!canRunMeeting(principal, meeting)) {
+        throw new RuleViolationError("Only the meeting's chair or secretary can do this.");
+      }
+      const names = await deps.names(meeting.participantIds);
+      let output: DraftOutput;
+      try {
+        output = await deps.drafter.draft({
+          title: meeting.title,
+          agenda: meeting.agenda,
+          participants: meeting.participantIds.map((uid) => ({ uid, name: names.get(uid) ?? uid })),
+          transcript: transcript.trimStart().startsWith("WEBVTT")
+            ? parseVtt(transcript)
+            : transcript,
+        });
+      } catch (error) {
+        deps.logError("minutes draft failed", { meetingId: id, error: String(error) });
+        throw new RuleViolationError("The machine draft failed. Try again later or write by hand.");
+      }
+      const saved = await change(
+        principal,
+        id,
+        v,
+        (m) => canRunMeeting(principal, m),
+        (m) => mergeDraft(m, draftNotes(output), source),
+        minutesAudit(audit, "Minutes drafted"),
+      );
+      return { version: saved.version, proposals: draftProposals(output, saved.participantIds) };
+    },
+  });
+
+  return { save, approve, saveItem, setItemDone, removeItem, draft };
 }
 
 /** The minutes as a printable sheet (PDF at download time; nothing stored). */

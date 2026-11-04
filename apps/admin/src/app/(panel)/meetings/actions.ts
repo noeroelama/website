@@ -40,3 +40,6 @@ export async function setActionItemDoneAction(input: unknown) {
 export async function removeActionItemAction(input: unknown) {
   return done(await minutesActions().removeItem(getPrincipal, getAuditContext)(input));
 }
+export async function draftMinutesAction(input: unknown) {
+  return done(await minutesActions().draft(getPrincipal, getAuditContext)(input));
+}

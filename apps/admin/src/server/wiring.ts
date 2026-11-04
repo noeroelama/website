@@ -57,6 +57,7 @@ import { createLpjActions, createLpjFileRoute } from "./lpj";
 import { renderReportPdf } from "@website/pdf";
 import { createMeetingActions } from "./meetings";
 import { createMinutesActions, createMinutesFileRoute } from "./minutes";
+import { createAnthropicDrafter, DEFAULT_ANTHROPIC_MODEL } from "./anthropic";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -556,19 +557,31 @@ export const minutesActions = lazyEnv(() =>
   createMinutesActions({
     meetings: adminStores().meetings,
     actionItems: adminStores().actionItems,
+    drafter: getAdminEnv().ANTHROPIC_API_KEY
+      ? createAnthropicDrafter({
+          apiKey: getAdminEnv().ANTHROPIC_API_KEY as string,
+          model: getAdminEnv().ANTHROPIC_MODEL ?? DEFAULT_ANTHROPIC_MODEL,
+          fetchImpl: fetch,
+        })
+      : null,
+    names: accountNames,
+    logError: (message, fields) => adminStores().logger.error(message, fields),
     now: () => new Date(),
   }),
 );
+
+/** Display names of accounts (name, else e-mail, else uid). */
+async function accountNames(uids: readonly string[]): Promise<ReadonlyMap<string, string>> {
+  const people = await adminStores().accounts.getMany(uids);
+  return new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
+}
 
 /** GET /api/meetings/<id>/minutes (PDF at download time). */
 export const minutesFile = lazyEnv(() =>
   createMinutesFileRoute({
     getMeeting: (id) => adminStores().meetings.get(id),
     listItems: (id) => adminStores().actionItems.listForMeeting(id),
-    names: async (uids) => {
-      const people = await adminStores().accounts.getMany(uids);
-      return new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
-    },
+    names: accountNames,
     render: renderReportPdf,
     now: () => new Date(),
   }),

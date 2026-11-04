@@ -15,6 +15,7 @@ import {
   resendEnv,
   sessionEnv,
   wahaEnv,
+  anthropicEnv,
   zoomEnv,
 } from "@website/config/env";
 
@@ -26,6 +27,7 @@ const adminEnvSchema = baseEnv
   .extend(cronEnv.shape)
   .extend(messagingEnv.shape)
   .extend(wahaEnv.shape)
+  .extend(anthropicEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(newsletterEnv.partial().shape)
   .extend(zoomEnv.partial().shape)

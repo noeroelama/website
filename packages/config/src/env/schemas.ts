@@ -108,6 +108,12 @@ export const wahaEnv = z.object({
   WAHA_SESSION: z.string().min(1).default("default"),
 });
 
+/** Anthropic for machine-drafted minutes (F6); no key = the feature is off. */
+export const anthropicEnv = z.object({
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_MODEL: z.string().min(1).optional(),
+});
+
 export const resendEnv = z.object({
   RESEND_API_KEY: nonEmpty,
   EMAIL_FROM_TRANSACTIONAL: nonEmpty,

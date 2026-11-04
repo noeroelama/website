@@ -75,6 +75,22 @@ scheduled ──(end time passes, read-time)──→ finished
 - **PDF** at `/api/meetings/[id]/minutes`, rendered on request (`minutesSheet`), never stored:
   attendance (frozen list once approved), quorum, notes per item, action items, approval line.
 
+## Machine-drafted minutes (F6)
+
+- Port `MinutesDrafter` (`drafting.ts`); adapter `apps/admin/src/server/anthropic.ts`
+  (Anthropic Messages API, `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, default
+  `claude-sonnet-4-5`; forced tool output validated with `DraftOutputSchema`; 60 s timeout). No
+  key = the "Draft from transcript" button is hidden and the action refuses.
+- Input: a pasted transcript or a Zoom `.vtt` file (step 7.7 adds the Zoom pull). `parseVtt`
+  drops the header, NOTE blocks, cue numbers and timings, keeps every spoken line, treats a
+  "Name: " prefix as a speaker only when it occurs at least twice, joins a speaker's lines in a
+  row.
+- The draft fills only EMPTY agenda items (`mergeDraft`; a person's notes are never
+  overwritten); `minutes.source` records `ai_transcript` / `ai_zoom` when the machine wrote first.
+- Proposed action items come back to the page; a PIC who is not a participant becomes "no PIC"
+  and a person adds each item, which re-checks the PIC on save.
+- A failure is logged (`minutes draft failed`) and nothing is written.
+
 ## Permissions
 
 `meetings.read`, `meetings.edit`, `meetings.approve_minutes` (F5) — Role Manager → Meetings.

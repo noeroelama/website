@@ -18,6 +18,7 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { formatInZone } from "@/components/format";
 import { MeetingForm, MEETING_STATUS_TONE, type MeetingValues } from "@/components/meetings-page";
+import { DraftMinutes } from "@/components/draft-minutes";
 import { MinutesPanel, type ActionItemView, type MinutesView } from "@/components/minutes-panel";
 import { Field, FormModal, text } from "@/components/program-ui";
 import { Badge } from "@/components/ui/badge";
@@ -104,10 +105,13 @@ export function MeetingPage({
   meeting: m,
   runs,
   canApprove,
+  canDraft,
   edit,
 }: {
   meeting: MeetingView;
   canApprove: boolean;
+  /** Machine drafts are set up (ANTHROPIC_API_KEY). */
+  canDraft: boolean;
   /** The viewer runs it (chair, secretary or the unit's meetings.edit) and it is not cancelled. */
   runs: boolean;
   edit: { units: Array<{ id: string; name: string }>; values: MeetingValues } | null;
@@ -238,6 +242,15 @@ export function MeetingPage({
         participants={m.participants.map((p) => ({ uid: p.uid, name: p.name }))}
         runs={runs}
         canApprove={canApprove}
+        extra={
+          runs && canDraft && !m.minutes?.approvedAt ? (
+            <DraftMinutes
+              meetingId={m.id}
+              version={m.version}
+              names={new Map(m.participants.map((p) => [p.uid, p.name]))}
+            />
+          ) : null
+        }
       />
       {screen ? <CodeScreen meetingId={m.id} onClose={() => setScreen(false)} /> : null}
       {edit ? (
