@@ -4,7 +4,7 @@ Business rules and data shapes, free of any framework.
 
 ## Responsibilities
 
-- One module per area: `content`, `events`, `organizations`, `members`, `newsletter`, `forms`, `recruitment`, `documents`, `programs`, `shop`, `shared`
+- One module per area: `content`, `events`, `organizations`, `members`, `newsletter`, `forms`, `recruitment`, `documents`, `programs`, `finance`, `shop`, `shared`
 - Pure rules (e.g. `isPubliclyVisible`, `isRegistrationOpen`, `orderTotal`)
 - Validation schemas (Zod) and repository _ports_ (interfaces) implemented in `@website/db`
 
@@ -21,13 +21,14 @@ Business rules and data shapes, free of any framework.
 | `@website/domain/recruitment`   | Oprec: application statuses, seats, choices, next action     |
 | `@website/domain/documents`     | Letters: number patterns, desks, verification codes          |
 | `@website/domain/programs`      | OKR, work programmes, LPJ, period report card                |
-| `@website/domain/shop`          | Money, orders, payment provider port                         |
-| `@website/domain/shared`        | Entity metadata, clock, results, time zones, file checks     |
+| `@website/domain/finance`       | Finance requests: categories, desks, required documents      |
+| `@website/domain/shop`          | Orders, payment provider port (re-exports shared Money)      |
+| `@website/domain/shared`        | Entity metadata, clock, time zones, file checks, Money       |
 
 ## Rules
 
 - No React, Next.js, Hono, Firebase, browser or Node APIs (lint + TypeScript enforced). Only `zod` and `@website/security/validation` (sanitization).
-- `shop` imports no other module, so it can be extracted later.
+- `shop` imports no other module (only the shared kernel, e.g. Money, DEC-8), so it can be extracted later.
 - Time is injected (`now: Date`), never read implicitly.
 
 ## Commands

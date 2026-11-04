@@ -67,6 +67,7 @@ describe("admin side panel navigation", () => {
       "OKR",
       "Programmes",
       "LPJ",
+      "Finance",
     ]);
   });
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSqlContactReader, createSqlMessageLog } from "@website/db/sql";
 import type { Letter } from "@website/domain/documents";
+import type { FinanceRequest } from "@website/domain/finance";
 import { createMessenger, deliveryDecision, messageTo } from "@website/domain/messaging";
 import type { LpjReport } from "@website/domain/programs";
 import type { Application } from "@website/domain/recruitment";
@@ -128,6 +129,8 @@ beforeEach(() => {
   fake.docs.set("roles/sekjen", role(["letters.read", "letters.sign", "letters.issue"]));
   fake.docs.set("roles/coordinator", role(["letters.read", "letters.sign_coordinator"]));
   fake.docs.set("roles/director", role(["letters.review"]));
+  fake.docs.set("roles/treasurer", role(["finance.review", "finance.pay"]));
+  fake.docs.set("roles/finance_coordinator", role(["finance.authorize"]));
   fake.docs.set("users/sekre", user("sekre", [{ roleId: "secretariat", scope: global }]));
   fake.docs.set(
     "users/old",
@@ -146,6 +149,8 @@ beforeEach(() => {
   fake.docs.set("users/rina", user("rina", [{ roleId: "sekjen", scope: global }]));
   fake.docs.set("users/koor", user("koor", [{ roleId: "coordinator", scope: global }]));
   fake.docs.set("users/ari", user("ari", []));
+  fake.docs.set("users/tina", user("tina", [{ roleId: "treasurer", scope: global }]));
+  fake.docs.set("users/kord", user("kord", [{ roleId: "finance_coordinator", scope: global }]));
   fake.docs.set("memberProfiles/ari", { whatsappNumber: "+6281234567890" });
 });
 
@@ -310,6 +315,48 @@ describe("notification sources (J2)", () => {
     expect(sent[0]?.text).toContain("Add receipts");
     expect(await run({ status: "returned", version: 7 })).toEqual(["lpj:pr1:returned:7:pic"]);
     expect(await run({ status: "approved", version: 8 })).toEqual(["lpj:pr1:approved:8:pic"]);
+  const finance = (fields: Partial<FinanceRequest>) =>
+    ({
+      id: "f1",
+      title: "Webinar",
+      orgUnitPath: ["media"],
+      createdBy: "ari",
+      version: 2,
+      revisionNote: null,
+      rejection: null,
+      ...fields,
+    }) as FinanceRequest;
+
+  it("finance desks: submitted → treasurer, reviewed → coordinator, authorised → payer", async () => {
+    await notices().finance(finance({ status: "submitted" }));
+    expect(sent.map((s) => [s.to, s.key])).toEqual([
+      ["tina@example.org", "finance:f1:submitted:2:tina"],
+    ]);
+    await notices().finance(finance({ status: "reviewed" }));
+    await notices().finance(finance({ status: "authorized" }));
+    expect(sent.map((s) => s.to)).toEqual([
+      "tina@example.org",
+      "kord@example.org",
+      "tina@example.org",
+    ]);
+  });
+
+  it("finance: returned, rejected and paid requests go to the requester; others tell nobody", async () => {
+    await notices().finance(finance({ status: "revision", revisionNote: "Add the RAB." }));
+    await notices().finance(
+      finance({ status: "rejected", rejection: { uid: "kord", at: now, note: "No budget." } }),
+    );
+    await notices().finance(finance({ status: "rejected" }));
+    await notices().finance(finance({ status: "paid" }));
+    await notices().finance(finance({ status: "done" }));
+    expect(sent.map((s) => s.key)).toEqual([
+      "finance:f1:revision:2:ari",
+      "finance:f1:rejected:2:ari",
+      "finance:f1:rejected:2:ari",
+      "finance:f1:paid:2:ari",
+    ]);
+    expect(sent[0]?.text).toContain("Add the RAB.");
+    expect(sent[1]?.text).toContain("No budget.");
   });
 
   it("never throws: a failed lookup is logged and the decision stands", async () => {

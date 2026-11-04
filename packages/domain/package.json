@@ -17,7 +17,8 @@
     "./forms": "./src/forms/index.ts",
     "./recruitment": "./src/recruitment/index.ts",
     "./documents": "./src/documents/index.ts",
-    "./programs": "./src/programs/index.ts"
+    "./programs": "./src/programs/index.ts",
+    "./finance": "./src/finance/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

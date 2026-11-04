@@ -1,4 +1,4 @@
-import { addMoney, money, type Money } from "../shop";
+import { addMoney, money, type Money } from "../shared";
 import { objectivePercent, type Objective } from "./okr";
 import { PROGRAM_STATUSES, type ProgramStatus } from "./programs";
 

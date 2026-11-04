@@ -25,6 +25,12 @@ import {
 } from "@website/domain/documents";
 import { MESSAGE_STATUSES, type MessageStatus } from "@website/domain/messaging";
 import {
+  FINANCE_CATEGORIES,
+  FINANCE_STATUSES,
+  type FinanceCategory,
+  type FinanceStatus,
+} from "@website/domain/finance";
+import {
   CHAPTER_RISKS,
   ORG_UNIT_TYPES,
   type ChapterRisk,
@@ -222,6 +228,23 @@ export const LPJ_DESK_LABELS = {
   treasurer: { id: "Bendahara", en: "Treasurer review" },
   approval: { id: "Persetujuan", en: "Approval" },
 } as const satisfies Record<LpjDesk, Label>;
+export const FINANCE_STATUS_LABELS = {
+  draft: { id: "Draf", en: "Draft" },
+  submitted: { id: "Diajukan", en: "Submitted (treasurer)" },
+  reviewed: { id: "Direview bendahara", en: "Reviewed (coordinator)" },
+  authorized: { id: "Disetujui", en: "Authorised (to pay)" },
+  paid: { id: "Dicairkan", en: "Paid" },
+  done: { id: "Selesai", en: "Done" },
+  revision: { id: "Perlu revisi", en: "Returned for changes" },
+  rejected: { id: "Ditolak", en: "Rejected" },
+} as const satisfies Record<FinanceStatus, Label>;
+
+export const FINANCE_CATEGORY_LABELS = {
+  receipt: { id: "Penerimaan Dana", en: "Receipt of funds" },
+  disbursement: { id: "Pencairan Dana", en: "Disbursement" },
+  reimbursement: { id: "Reimburse", en: "Reimbursement" },
+  budget: { id: "Pengajuan Anggaran", en: "Budget request (plan, no money moves)" },
+} as const satisfies Record<FinanceCategory, Label>;
 
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
@@ -248,6 +271,8 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "health status", keys: HEALTH_STATUSES, labels: HEALTH_STATUS_LABELS },
   { name: "lpj status", keys: LPJ_STATUSES, labels: LPJ_STATUS_LABELS },
   { name: "lpj desk", keys: LPJ_DESKS, labels: LPJ_DESK_LABELS },
+  { name: "finance status", keys: FINANCE_STATUSES, labels: FINANCE_STATUS_LABELS },
+  { name: "finance category", keys: FINANCE_CATEGORIES, labels: FINANCE_CATEGORY_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

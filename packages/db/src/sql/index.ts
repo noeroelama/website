@@ -55,6 +55,13 @@ export {
   type CertificateAudit,
   type SqlCertificateStore,
 } from "./certificates";
+export {
+  createSqlFinanceStore,
+  financeSnapshot,
+  type FinanceAudit,
+  type FinanceListQuery,
+  type SqlFinanceStore,
+} from "./finance";
 export { createSqlPasskeyStore } from "./passkeys";
 export {
   checkFilePath,

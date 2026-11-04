@@ -99,6 +99,14 @@ export const ADMIN_PAGES = {
       approve: "Approve LPJ (final)",
     },
   },
+  finance: {
+    label: "Finance requests",
+    extras: {
+      review: "Review requests (treasurer)",
+      authorize: "Authorise requests (coordinator)",
+      pay: "Mark requests paid with proof of transfer",
+    },
+  },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

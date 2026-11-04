@@ -1,6 +1,7 @@
 import "server-only";
 import type { SqlContactReader } from "@website/db/sql";
 import { desksOf, type Letter, type LetterType } from "@website/domain/documents";
+import type { FinanceRequest } from "@website/domain/finance";
 import { messageTo, type Messenger } from "@website/domain/messaging";
 import type { LpjReport } from "@website/domain/programs";
 import type { Application, ApplicationStatus } from "@website/domain/recruitment";
@@ -56,8 +57,8 @@ export interface NoticeDeps {
 }
 
 /**
- * Notification sources (J2): recruitment decisions to the applicant and letter desk requests to
- * the desk holders, each on their own channel (WhatsApp when a number exists, else e-mail).
+ * Notification sources (J2): recruitment decisions to the applicant, letter and finance desk
+ * requests to the desk holders (returns to the author or requester), each on their own channel (WhatsApp when a number exists, else e-mail).
  * Called AFTER the action's transaction committed; a failure is logged, never thrown (the
  * decision already stands, and failed messages wait on the Email page).
  */
@@ -179,6 +180,60 @@ export function createNotices(deps: NoticeDeps) {
     });
 
   return { application, letter, lpj };
+  /** Finance requests (I1): the next desk's holders in the request's unit, or the requester. */
+  const finance = (saved: FinanceRequest) =>
+    safely("finance", saved.id, async () => {
+      const link = `${deps.adminUrl}/finance`;
+      const subject = `Keuangan / Finance: ${saved.title}`;
+      const key = (uid: string) => `finance:${saved.id}:${saved.status}:${saved.version}:${uid}`;
+      const desk = async (permission: PagePermission, id: string, en: string) =>
+        tell(
+          await deps.contacts.holders(permission, { orgUnitPath: saved.orgUnitPath }),
+          { subject, text: `${both(id, en)}\n\n${link}` },
+          key,
+        );
+      const requester = (id: string, en: string, note: string | null) =>
+        tell(
+          [saved.createdBy],
+          { subject, text: `${both(id, en)}${note ? `\n\n${note}` : ""}\n\n${link}` },
+          key,
+        );
+      if (saved.status === "submitted") {
+        await desk(
+          "finance.review",
+          "Pengajuan keuangan menunggu diperiksa bendahara.",
+          "A finance request waits for the treasurer's review.",
+        );
+      } else if (saved.status === "reviewed") {
+        await desk(
+          "finance.authorize",
+          "Pengajuan keuangan menunggu otorisasi koordinator.",
+          "A finance request waits for the coordinator's authorisation.",
+        );
+      } else if (saved.status === "authorized") {
+        await desk(
+          "finance.pay",
+          "Pengajuan keuangan disetujui, menunggu dicairkan.",
+          "A finance request is authorised and waits to be paid.",
+        );
+      } else if (saved.status === "revision") {
+        await requester(
+          "Pengajuan keuangan dikembalikan untuk diperbaiki.",
+          "Your finance request was returned for changes.",
+          saved.revisionNote,
+        );
+      } else if (saved.status === "rejected") {
+        await requester(
+          "Pengajuan keuangan ditolak.",
+          "Your finance request was rejected.",
+          saved.rejection?.note ?? null,
+        );
+      } else if (saved.status === "paid") {
+        await requester("Dana telah dicairkan.", "The money has been paid.", null);
+      }
+    });
+
+  return { application, letter, finance };
 }
 
 export type Notices = ReturnType<typeof createNotices>;

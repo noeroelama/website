@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
-import type { Money } from "../shop";
+import type { Money } from "../shared";
 import { BudgetsSchema, type Program } from "./programs";
 
 /**

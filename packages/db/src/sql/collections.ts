@@ -58,4 +58,6 @@ export const COLLECTIONS = [
   "programs",
   "programCheckins",
   "lpjReports",
+  // Finance (I1, I2)
+  "financeRequests",
 ] as const;

@@ -1,27 +1,11 @@
 /**
- * Shop module (MySQL via @website/db). MUST stay self-contained (no imports from other domain modules)
- * so it can be extracted later without touching the rest.
+ * Shop module (MySQL via @website/db). MUST stay self-contained (no imports from other domain modules,
+ * only the shared kernel's Money, DEC-8) so it can be extracted later without touching the rest.
  * Enforced by eslint (see eslint.config.mjs).
  */
-export type CurrencyCode = string; // ISO 4217
-
-/** Money is integer minor units. Never use floats for money. */
-export interface Money {
-  readonly amountMinor: number;
-  readonly currency: CurrencyCode;
-}
-
-export function money(amountMinor: number, currency: CurrencyCode): Money {
-  if (!Number.isSafeInteger(amountMinor))
-    throw new RangeError("amountMinor must be a safe integer");
-  if (!/^[A-Z]{3}$/.test(currency)) throw new RangeError("currency must be ISO 4217");
-  return { amountMinor, currency };
-}
-
-export function addMoney(a: Money, b: Money): Money {
-  if (a.currency !== b.currency) throw new RangeError("currency mismatch");
-  return money(a.amountMinor + b.amountMinor, a.currency);
-}
+// Money lives in the shared kernel (DEC-8); re-exported so the shop API is unchanged.
+import { addMoney, money, type CurrencyCode, type Money } from "../shared/money";
+export { addMoney, money, type CurrencyCode, type Money };
 
 export type OrderStatus = "pending_payment" | "paid" | "fulfilled" | "cancelled" | "refunded";
 

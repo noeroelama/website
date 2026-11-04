@@ -11,6 +11,7 @@
 | [recruitment.md](recruitment.md)   | Recruitment (Oprec): set-up, seats, applying, next action    |
 | [documents.md](documents.md)       | Letters: numbers, desks, verification, certificates          |
 | [programs.md](programs.md)         | OKR, work programmes, LPJ, period report card                |
+| [finance.md](finance.md)           | Money (DEC-8), finance requests: categories, desks           |
 
 Add one Markdown file per feature (`<feature>.md`) using the
 [feature doc template](../../../docs/README.md#feature-doc-template), then list it in the table above

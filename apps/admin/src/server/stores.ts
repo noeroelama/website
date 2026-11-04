@@ -15,6 +15,7 @@ import {
   createSqlContentStore,
   createSqlDashboardCounts,
   createSqlEventStore,
+  createSqlFinanceStore,
   createSqlFormStore,
   createSqlIncomingStore,
   createSqlInterviewStore,
@@ -115,5 +116,7 @@ export const adminStores = lazyEnv(() => {
     programs: createSqlProgramStore(db),
     lpj: createSqlLpjStore(db),
     periodReport: createSqlPeriodReport(db),
+    /** Finance requests (I1). */
+    finance: createSqlFinanceStore(db),
   };
 });

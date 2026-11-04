@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
-// shortcut: Money still lives in domain/shop; switch to domain/shared when DEC-8 moves it (6.5).
-import type { Money } from "../shop";
+import type { Money } from "../shared";
 
 /**
  * Work programmes (E2) and weekly check-ins (E3), ported from PPIDK `ProkerService`,

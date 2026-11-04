@@ -8,6 +8,7 @@ import {
   type AuditListQuery,
   type SqlFormStore,
   type LetterListQuery,
+  type FinanceListQuery,
 } from "@website/db/sql";
 import { CERTIFICATE_EMAIL_PURPOSE, type Letter } from "@website/domain/documents";
 import { orgUnitPath } from "@website/domain/organizations";
@@ -25,6 +26,7 @@ import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { createDashboard } from "./dashboard";
 import { createEventActions } from "./events";
+import { createFinanceActions } from "./finance";
 import { createFormActions } from "./forms";
 import { createGalleryActions } from "./gallery";
 import { getAdminEnv, getAppUrls } from "./env";
@@ -503,6 +505,21 @@ export const lpjFile = lazyEnv(() =>
   }),
 );
 
+/** Finance page (I1): requests, desks, private documents and proof of transfer. */
+export const financeActions = lazyEnv(() =>
+  createFinanceActions({
+    requests: adminStores().finance,
+    unitPath: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit ? orgUnitPath(unit) : null;
+    },
+    storage: imageStorage(),
+    afterStep: (request) => notices().finance(request),
+    now: () => new Date(),
+    uuid: randomUUID,
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -570,4 +587,5 @@ export const adminReads = {
   listLpj: (periodId: string) => adminStores().lpj.listForPeriod(periodId),
   getLpj: (id: string) => adminStores().lpj.get(id),
   periodReportCard: (periodId: string) => adminStores().periodReport.card(periodId, new Date()),
+  listFinance: (query: FinanceListQuery) => adminStores().finance.list(query),
 };

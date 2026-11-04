@@ -183,6 +183,10 @@ router.push("/things"); router.refresh();
   PDF link (`/api/lpj/[id]/pdf`). The dashboard warns when nobody holds the LPJ secretariat desk.
   **Report card** (`/programs/report?period=`, server-rendered): OKR achievement, programme
   completion, LPJ counts and budget absorption per currency, computed on request.
+- **Finance** (`/finance`, `finance-page.tsx`, model `finance-model.ts`): requests of the active
+  period with tabs (Drafts, At a desk, To pay, Paid and done, Rejected), the form, documents and
+  proof uploads (`/api/finance/[id]/files`), and only the desk buttons the viewer holds on other
+  people's requests (`financeActions`). Rules: `packages/domain/docs/finance.md`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

@@ -62,13 +62,15 @@ undoes the decision. Texts are Indonesian then English, with a link.
 | Letter passed (`corrected`, no desk signed yet)                                                                                 | holders of `letters.sign` (+ `letters.sign_coordinator` when the type needs the Coordinator) | same                                             |
 | Letter `approved`                                                                                                               | holders of `letters.issue`                                                                   | same                                             |
 | Letter returned to draft                                                                                                        | its author, with the note                                                                    | same                                             |
+| Finance request `submitted` / `reviewed` / `authorized`                                                                         | holders of `finance.review` / `finance.authorize` / `finance.pay`                            | `finance:{id}:{status}:{version}:{uid}`          |
+| Finance request returned (`revision`), `rejected` or `paid`                                                                     | the requester (with the note)                                                                | same                                             |
 
 Desk holders = active accounts whose CUSTOM role holds the permission and whose assignment
 covers the letter's unit (scope, active period, not revoked); superadmins are not desk holders.
 LPJ desks (`notices.lpj`, key `lpj:{id}:{status}:{version}:{uid}`): programme finished → its
 PICs with the due date; submitted → holders of `lpj.review_secretariat` and
 `lpj.review_treasurer`; both reviews in → holders of `lpj.approve`; returned (with the note) or
-approved → the PICs. Finance desks add their rows when they are built.
+approved → the PICs. Finance desks: see the finance rows above.
 
 ## Rules and assumptions
 
