@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, wallTimeToUtc, type EntityMeta } from "../shared";
+import { assertAttendanceOpenForChange, type Minutes } from "./minutes";
+
+export * from "./minutes";
 
 /**
  * Meetings (F4), ported from PPIDK `Rapat`: a meeting of a unit (or of the whole region), its
@@ -92,6 +95,8 @@ export interface Meeting extends EntityMeta {
   readonly cancelledAt: Date | null;
   readonly cancelReason: string | null;
   readonly createdBy: string;
+  /** Minutes (F5); null until someone writes them. */
+  readonly minutes: Minutes | null;
 }
 
 export type MeetingStatus = "scheduled" | "finished" | "cancelled";
@@ -217,6 +222,7 @@ export function markAttendance(
     throw new RuleViolationError("You are not a participant of this meeting.");
   }
   if (meeting.cancelledAt) throw new RuleViolationError("This meeting is cancelled.");
+  assertAttendanceOpenForChange(meeting);
   if (method === "code" && !attendanceOpen(meeting, now)) {
     throw new RuleViolationError("Attendance for this meeting is not open.");
   }
@@ -225,6 +231,7 @@ export function markAttendance(
 }
 
 export function unmarkAttendance(meeting: Meeting, uid: string): Meeting {
+  assertAttendanceOpenForChange(meeting);
   return {
     ...meeting,
     attendance: Object.fromEntries(Object.entries(meeting.attendance).filter(([u]) => u !== uid)),

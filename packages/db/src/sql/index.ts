@@ -223,8 +223,11 @@ export {
   type SqlProgramStore,
 } from "./programs";
 export {
+  createSqlActionItemStore,
   createSqlMeetingStore,
   meetingSnapshot,
+  type ActionItemAudit,
+  type SqlActionItemStore,
   type MeetingAudit,
   type MeetingFields,
   type SqlMeetingStore,

@@ -8,6 +8,7 @@ import { AccessMessage } from "@/components/access-message";
 import { MeetingPage } from "@/components/meeting-page";
 import { requireAdminViewer } from "@/server/context";
 import { canRunMeeting, canSeeMeeting } from "@/server/meetings";
+import { canApproveMinutes } from "@/server/minutes";
 import { adminReads } from "@/server/wiring";
 
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
@@ -22,9 +23,12 @@ export default async function MeetingRoute({ params }: { params: Promise<{ id: s
   if (!safeId.safeParse(id).success) notFound();
   const meeting = await adminReads.getMeeting(id);
   if (!meeting || meeting.deletedAt || !canSeeMeeting(principal, meeting)) notFound();
-  const [units, people] = await Promise.all([
+  const [units, items] = await Promise.all([
     adminReads.listOrgUnits(meeting.periodId),
-    adminReads.getUsers(meeting.participantIds),
+    adminReads.listActionItems(meeting.id),
+  ]);
+  const people = await adminReads.getUsers([
+    ...new Set([...meeting.participantIds, ...items.map((i) => i.pic)]),
   ]);
   const now = new Date();
   const status = meetingStatus(meeting, now);
@@ -50,6 +54,25 @@ export default async function MeetingRoute({ params }: { params: Promise<{ id: s
         zoomRequestId: meeting.room.zoomRequestId,
         cancelReason: meeting.cancelReason,
         agenda: meeting.agenda.map((a) => a.title),
+        agendaItems: meeting.agenda.map((a) => ({ id: a.id, title: a.title })),
+        minutes: meeting.minutes && {
+          notes: { ...meeting.minutes.notes },
+          other: meeting.minutes.other,
+          quorum: meeting.minutes.quorum,
+          source: meeting.minutes.source,
+          approvedAt: meeting.minutes.approvedAt?.toISOString() ?? null,
+          approvedBy: meeting.minutes.approvedBy ? name(meeting.minutes.approvedBy) : null,
+        },
+        actionItems: items.map((i) => ({
+          id: i.id,
+          version: i.version,
+          title: i.title,
+          pic: i.pic,
+          picName: name(i.pic),
+          dueOn: i.dueOn,
+          done: i.doneAt !== null,
+          mine: i.pic === principal.userId,
+        })),
         participants: meeting.participants.map((p) => ({
           uid: p.uid,
           name: name(p.uid),
@@ -59,6 +82,7 @@ export default async function MeetingRoute({ params }: { params: Promise<{ id: s
         })),
       }}
       runs={runs && status !== "cancelled"}
+      canApprove={status !== "cancelled" && canApproveMinutes(principal, meeting)}
       edit={
         canEdit
           ? {

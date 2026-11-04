@@ -64,4 +64,5 @@ export const COLLECTIONS = [
   // Meetings (F4-F6)
   "meetings",
   "attendanceCodes",
+  "actionItems",
 ] as const;

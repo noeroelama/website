@@ -18,6 +18,7 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { formatInZone } from "@/components/format";
 import { MeetingForm, MEETING_STATUS_TONE, type MeetingValues } from "@/components/meetings-page";
+import { MinutesPanel, type ActionItemView, type MinutesView } from "@/components/minutes-panel";
 import { Field, FormModal, text } from "@/components/program-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,9 @@ export interface MeetingView {
   zoomRequestId: string | null;
   cancelReason: string | null;
   agenda: string[];
+  agendaItems: Array<{ id: string; title: string }>;
+  minutes: MinutesView | null;
+  actionItems: ActionItemView[];
   participants: Array<{
     uid: string;
     name: string;
@@ -99,9 +103,11 @@ function CodeScreen({ meetingId, onClose }: { meetingId: string; onClose: () => 
 export function MeetingPage({
   meeting: m,
   runs,
+  canApprove,
   edit,
 }: {
   meeting: MeetingView;
+  canApprove: boolean;
   /** The viewer runs it (chair, secretary or the unit's meetings.edit) and it is not cancelled. */
   runs: boolean;
   edit: { units: Array<{ id: string; name: string }>; values: MeetingValues } | null;
@@ -153,7 +159,7 @@ export function MeetingPage({
 
   return (
     <div>
-      <ToastBanner {...toast} />
+      <ToastBanner message={toast.message} />
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-header__title">
@@ -223,6 +229,16 @@ export function MeetingPage({
           <DataTable columns={columns} rows={m.participants} rowKey={(p) => p.uid} />
         </CardBody>
       </Card>
+      <MinutesPanel
+        meetingId={m.id}
+        version={m.version}
+        agenda={m.agendaItems}
+        minutes={m.minutes}
+        items={m.actionItems}
+        participants={m.participants.map((p) => ({ uid: p.uid, name: p.name }))}
+        runs={runs}
+        canApprove={canApprove}
+      />
       {screen ? <CodeScreen meetingId={m.id} onClose={() => setScreen(false)} /> : null}
       {edit ? (
         <MeetingForm

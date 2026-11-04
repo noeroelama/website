@@ -57,6 +57,24 @@ scheduled ──(end time passes, read-time)──→ finished
   a number exists, else e-mail), keys `meeting:{id}:start:{uid}` and `meeting:{id}:end:{uid}`,
   so a job interval up to 15 minutes works and a repeated call sends nothing twice.
 
+## Minutes and action items (F5)
+
+- `meeting.minutes`: notes per agenda item (`notes[agendaItemId]`), other business, `quorum`
+  (people needed; null = not set), `source` (`manual`, `ai_transcript`, `ai_zoom`).
+- The chair and the secretary write them (`saveMinutes`); notes of items no longer on the agenda
+  and empty notes are dropped.
+- **Approve and lock**: the chair, or `meetings.approve_minutes` for the meeting's unit, once the
+  meeting has started. Approval sets `approvedAt/By` and freezes `attendanceSnapshot` (uids
+  present); after that the minutes and the attendance no longer change (audited, not revertible).
+- Quorum met = present (the snapshot once approved) ≥ quorum; shown on the PDF.
+- **Action items** (`actionItems/{id}`: meetingId, meetingTitle, periodId, orgUnitPath, title,
+  pic, dueOn, doneAt): added and edited by whoever runs the meeting; the PIC must be a
+  participant (checked in the transaction on every save); the PIC or the chair marks them done;
+  they stay editable after approval. Overdue = due date before today and not done (read-time;
+  My Tasks reads them by PIC).
+- **PDF** at `/api/meetings/[id]/minutes`, rendered on request (`minutesSheet`), never stored:
+  attendance (frozen list once approved), quorum, notes per item, action items, approval line.
+
 ## Permissions
 
 `meetings.read`, `meetings.edit`, `meetings.approve_minutes` (F5) — Role Manager → Meetings.

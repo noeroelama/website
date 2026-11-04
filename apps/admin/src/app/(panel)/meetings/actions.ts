@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
-import { meetingActions } from "@/server/wiring";
+import { meetingActions, minutesActions } from "@/server/wiring";
 
 // Thin server-action wrappers: every rule lives in src/server/meetings.ts (createGuardedAction).
 const done = <T extends { ok: boolean }>(result: T): T => {
@@ -24,4 +24,19 @@ export async function markAttendanceAction(input: unknown) {
 }
 export async function openCodeAction(input: unknown) {
   return meetingActions().openCode(getPrincipal, getAuditContext)(input);
+}
+export async function saveMinutesAction(input: unknown) {
+  return done(await minutesActions().save(getPrincipal, getAuditContext)(input));
+}
+export async function approveMinutesAction(input: unknown) {
+  return done(await minutesActions().approve(getPrincipal, getAuditContext)(input));
+}
+export async function saveActionItemAction(input: unknown) {
+  return done(await minutesActions().saveItem(getPrincipal, getAuditContext)(input));
+}
+export async function setActionItemDoneAction(input: unknown) {
+  return done(await minutesActions().setItemDone(getPrincipal, getAuditContext)(input));
+}
+export async function removeActionItemAction(input: unknown) {
+  return done(await minutesActions().removeItem(getPrincipal, getAuditContext)(input));
 }

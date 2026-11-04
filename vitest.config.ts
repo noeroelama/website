@@ -110,6 +110,7 @@ export default defineConfig({
         "packages/domain/src/meetings/*.ts",
         "packages/db/src/sql/meetings.ts",
         "apps/admin/src/server/meetings.ts",
+        "apps/admin/src/server/minutes.ts",
         "apps/web/src/server/attendance.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },

@@ -56,6 +56,7 @@ import { createProgramActions } from "./programs";
 import { createLpjActions, createLpjFileRoute } from "./lpj";
 import { renderReportPdf } from "@website/pdf";
 import { createMeetingActions } from "./meetings";
+import { createMinutesActions, createMinutesFileRoute } from "./minutes";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -550,6 +551,29 @@ export const meetingActions = lazyEnv(() =>
   }),
 );
 
+/** Minutes (F5): notes, approval, action items. */
+export const minutesActions = lazyEnv(() =>
+  createMinutesActions({
+    meetings: adminStores().meetings,
+    actionItems: adminStores().actionItems,
+    now: () => new Date(),
+  }),
+);
+
+/** GET /api/meetings/<id>/minutes (PDF at download time). */
+export const minutesFile = lazyEnv(() =>
+  createMinutesFileRoute({
+    getMeeting: (id) => adminStores().meetings.get(id),
+    listItems: (id) => adminStores().actionItems.listForMeeting(id),
+    names: async (uids) => {
+      const people = await adminStores().accounts.getMany(uids);
+      return new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
+    },
+    render: renderReportPdf,
+    now: () => new Date(),
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -622,4 +646,5 @@ export const adminReads = {
   listMeetings: (periodId: string) => adminStores().meetings.listForPeriod(periodId),
   listMyMeetings: (uid: string) => adminStores().meetings.listForUser(uid),
   getMeeting: (id: string) => adminStores().meetings.get(id),
+  listActionItems: (meetingId: string) => adminStores().actionItems.listForMeeting(meetingId),
 };

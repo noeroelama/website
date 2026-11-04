@@ -5,7 +5,9 @@ import {
   START_REMINDER_MS,
   type AgendaItem,
   type Attendance,
+  type ActionItem,
   type Meeting,
+  type Minutes,
 } from "@website/domain/meetings";
 import { RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
@@ -21,6 +23,16 @@ export type MeetingAudit = (
   current: Meeting | null,
   next: Meeting,
 ) => AuditEvent;
+
+const toMinutes = (value: unknown): Minutes | null => {
+  if (!value) return null;
+  const m = value as Record<string, unknown>;
+  return {
+    ...(m as unknown as Minutes),
+    approvedAt: toDate(m["approvedAt"]),
+    approvedBy: (m["approvedBy"] as string | null) ?? null,
+  };
+};
 
 const toMeeting = (id: string, data: Record<string, unknown>): Meeting => ({
   id,
@@ -47,6 +59,7 @@ const toMeeting = (id: string, data: Record<string, unknown>): Meeting => ({
   cancelledAt: toDate(data["cancelledAt"]),
   cancelReason: (data["cancelReason"] as string | null) ?? null,
   createdBy: data["createdBy"] as string,
+  minutes: toMinutes(data["minutes"]),
   version: data["version"] as number,
   createdAt: toDate(data["createdAt"]) as Date,
   updatedAt: toDate(data["updatedAt"]) as Date,
@@ -94,6 +107,7 @@ export function createSqlMeetingStore(db: Database) {
       attendance: m.attendance,
       cancelledAt: m.cancelledAt,
       createdBy: m.createdBy,
+      minutes: m.minutes,
     }),
   });
   const codes = db.collection("attendanceCodes");
@@ -189,3 +203,93 @@ export function createSqlMeetingStore(db: Database) {
 }
 
 export type SqlMeetingStore = ReturnType<typeof createSqlMeetingStore>;
+
+export type ActionItemAudit = (
+  before: Snapshot | null,
+  after: Snapshot | null,
+  current: ActionItem | null,
+  next: ActionItem,
+) => AuditEvent;
+
+const toActionItem = (id: string, data: Record<string, unknown>): ActionItem => ({
+  id,
+  meetingId: data["meetingId"] as string,
+  meetingTitle: data["meetingTitle"] as string,
+  periodId: data["periodId"] as string,
+  orgUnitPath: data["orgUnitPath"] as string[],
+  title: data["title"] as string,
+  pic: data["pic"] as string,
+  dueOn: data["dueOn"] as string | null,
+  doneAt: toDate(data["doneAt"]),
+  createdBy: data["createdBy"] as string,
+  version: data["version"] as number,
+  createdAt: toDate(data["createdAt"]) as Date,
+  updatedAt: toDate(data["updatedAt"]) as Date,
+  deletedAt: toDate(data["deletedAt"]),
+});
+
+/**
+ * `actionItems/{id}` (F5): follow-ups of a meeting, one document each (My Tasks reads them by
+ * PIC). Title, PIC, due date and done are audited and revertible.
+ */
+export function createSqlActionItemStore(db: Database) {
+  const store = createSluggedStore<ActionItem>(db, {
+    collection: "actionItems",
+    slug: null,
+    fromDoc: toActionItem,
+    snapshot: (a) => ({
+      title: a.title,
+      pic: a.pic,
+      dueOn: a.dueOn,
+      doneAt: a.doneAt?.toISOString() ?? null,
+    }),
+    fixed: (a) => ({
+      meetingId: a.meetingId,
+      meetingTitle: a.meetingTitle,
+      periodId: a.periodId,
+      orgUnitPath: a.orgUnitPath,
+      createdBy: a.createdBy,
+    }),
+  });
+  const live = (docs: Array<{ id: string; data(): unknown }>) =>
+    docs.map((doc) => store.read(doc.id, doc.data())).filter((a) => a.deletedAt === null);
+  return {
+    get: store.get,
+    async listForMeeting(meetingId: string): Promise<ActionItem[]> {
+      const snapshot = await store.docs.where("meetingId", "==", meetingId).get();
+      return live(snapshot.docs).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    },
+    /** Open and done follow-ups of one person (My Tasks). */
+    async listForPic(uid: string): Promise<ActionItem[]> {
+      const snapshot = await store.docs.where("pic", "==", uid).get();
+      return live(snapshot.docs);
+    },
+    /** All follow-ups of a period (unit boards). */
+    async listForPeriod(periodId: string): Promise<ActionItem[]> {
+      const snapshot = await store.docs.where("periodId", "==", periodId).get();
+      return live(snapshot.docs);
+    },
+    /** A change; `build` reads the meeting in the same transaction (PIC must be a participant). */
+    write(
+      id: string | null,
+      version: number | null,
+      build: (
+        current: ActionItem | null,
+        tx: Transaction,
+      ) => Promise<Omit<ActionItem, "id" | "version" | "createdAt" | "updatedAt">>,
+      audit: ActionItemAudit,
+      now: Date,
+    ) {
+      return store.write(id, version, build, audit, now);
+    },
+    /** The meeting, read inside an action item's transaction. */
+    async readMeeting(tx: Transaction, meetingId: string): Promise<Meeting> {
+      const snapshot = await tx.get(db.collection("meetings").doc(safeId.parse(meetingId)));
+      const data = snapshot.data();
+      if (!data || data["deletedAt"]) throw new RuleViolationError("This meeting does not exist.");
+      return toMeeting(snapshot.id, data);
+    },
+  };
+}
+
+export type SqlActionItemStore = ReturnType<typeof createSqlActionItemStore>;

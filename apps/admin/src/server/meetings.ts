@@ -206,6 +206,7 @@ export function createMeetingActions(deps: MeetingDeps) {
             cancelledAt: null,
             cancelReason: null,
             createdBy: current?.createdBy ?? principal.userId,
+            minutes: current?.minutes ?? null,
             deletedAt: null,
           };
         },
