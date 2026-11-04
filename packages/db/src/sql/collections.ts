@@ -61,4 +61,7 @@ export const COLLECTIONS = [
   // Finance (I1, I2)
   "financeRequests",
   "cashEntries",
+  // Meetings (F4-F6)
+  "meetings",
+  "attendanceCodes",
 ] as const;

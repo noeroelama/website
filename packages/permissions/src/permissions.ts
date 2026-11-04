@@ -109,6 +109,10 @@ export const ADMIN_PAGES = {
       export: "Export the cash report (CSV, PDF)",
     },
   },
+  meetings: {
+    label: "Meetings (schedule, attendance, minutes)",
+    extras: { approve_minutes: "Approve and lock minutes of any meeting in scope" },
+  },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

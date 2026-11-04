@@ -653,6 +653,19 @@ const id = {
       },
     ] satisfies Section[],
   },
+  attend: {
+    title: "Presensi rapat",
+    intro: "Ketik kode yang tampil di layar rapat, atau pindai kode QR-nya.",
+    code: "Kode presensi",
+    submit: "Isi presensi",
+    sending: "Mengirim...",
+    done: "Presensi tercatat untuk rapat",
+    signin: "Masuk dulu untuk mengisi presensi.",
+    invalid: "Kode salah atau sudah kedaluwarsa. Minta kode terbaru di layar.",
+    notParticipant: "Kamu tidak terdaftar sebagai peserta rapat ini.",
+    closed: "Presensi rapat ini sedang tidak dibuka.",
+    failed: "Presensi gagal dikirim. Coba lagi.",
+  },
 };
 
 export type Dictionary = typeof id;
@@ -1285,6 +1298,19 @@ const en: Dictionary = {
         ],
       },
     ],
+  },
+  attend: {
+    title: "Meeting attendance",
+    intro: "Type the code shown on the meeting screen, or scan its QR code.",
+    code: "Attendance code",
+    submit: "Sign attendance",
+    sending: "Sending...",
+    done: "Attendance recorded for the meeting",
+    signin: "Sign in first to sign the attendance.",
+    invalid: "Wrong or expired code. Ask for the latest code on the screen.",
+    notParticipant: "You are not listed as a participant of this meeting.",
+    closed: "Attendance for this meeting is not open.",
+    failed: "Could not send the attendance. Try again.",
   },
 };
 

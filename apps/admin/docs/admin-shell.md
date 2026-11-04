@@ -189,6 +189,11 @@ router.push("/things"); router.refresh();
   people's requests (`financeActions`); **Cash book** at `/finance/cashbook` (report per currency
   for a date range, manual lines, CSV/PDF from `/api/finance/report`). Rules:
   `packages/domain/docs/finance.md`.
+- **Meetings** (`/meetings`, `meetings-page.tsx`; one meeting at `/meetings/[id]`,
+  `meeting-page.tsx`): list per period, the schedule form (participants by e-mail with
+  `chair`/`secretary`), room link, cancel, the attendance list with manual ticks and the
+  **attendance code** screen (code + QR, renewed every 90 s). Rules:
+  `packages/domain/docs/meetings.md`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

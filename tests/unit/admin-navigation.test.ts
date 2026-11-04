@@ -68,6 +68,7 @@ describe("admin side panel navigation", () => {
       "Programmes",
       "LPJ",
       "Finance",
+      "Meetings",
     ]);
   });
 

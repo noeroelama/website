@@ -80,7 +80,7 @@ const SUBPATHS = {
   shop: { domain: ["shop", "shared"] },
   // messaging: confirmation e-mails sent by the website (event registration, newsletter opt-in).
   // forms: public forms answered at /f/{token} (C2); recruitment: applying (C3);
-  // documents: public verification of letters and certificates (D7).
+  // documents: public verification of letters and certificates (D7); meetings: attendance (F4).
   web: {
     domain: [
       "content",
@@ -93,6 +93,7 @@ const SUBPATHS = {
       "forms",
       "recruitment",
       "documents",
+      "meetings",
       "shared",
     ],
   },

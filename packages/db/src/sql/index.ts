@@ -222,6 +222,13 @@ export {
   type SqlObjectiveStore,
   type SqlProgramStore,
 } from "./programs";
+export {
+  createSqlMeetingStore,
+  meetingSnapshot,
+  type MeetingAudit,
+  type MeetingFields,
+  type SqlMeetingStore,
+} from "./meetings";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");

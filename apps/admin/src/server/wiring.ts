@@ -55,6 +55,7 @@ import { createOkrActions } from "./okr";
 import { createProgramActions } from "./programs";
 import { createLpjActions, createLpjFileRoute } from "./lpj";
 import { renderReportPdf } from "@website/pdf";
+import { createMeetingActions } from "./meetings";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -349,6 +350,7 @@ export const cronRoute = lazyEnv(() =>
       ...CRON_JOBS,
       "newsletter-send": () => newsletterActions().runBatch(),
       expire: () => deleteExpired(adminDb(), new Date()),
+      "meeting-reminders": () => meetingActions().sendReminders(),
     },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
@@ -529,6 +531,25 @@ export const financeActions = lazyEnv(() =>
   }),
 );
 
+/** Meetings page (F4): schedule, room, attendance codes, cancel; reminders (cron). */
+export const meetingActions = lazyEnv(() =>
+  createMeetingActions({
+    meetings: adminStores().meetings,
+    unitPath: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit ? orgUnitPath(unit) : null;
+    },
+    findUserId: async (email) => (await adminStores().accounts.findByEmail(email))?.uid ?? null,
+    contacts: (uids) => adminStores().contacts.contacts(uids),
+    send: (message, key) => messenger().send(message, key),
+    adminUrl: getAppUrls().ADMIN_URL ?? "",
+    webUrl: getAppUrls().WEB_URL ?? "",
+    randomBytes: (n) => randomBytes(n),
+    now: () => new Date(),
+    uuid: randomUUID,
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -598,4 +619,7 @@ export const adminReads = {
   periodReportCard: (periodId: string) => adminStores().periodReport.card(periodId, new Date()),
   listFinance: (query: FinanceListQuery) => adminStores().finance.list(query),
   listCashEntries: (periodId: string) => adminStores().finance.listEntries(periodId),
+  listMeetings: (periodId: string) => adminStores().meetings.listForPeriod(periodId),
+  listMyMeetings: (uid: string) => adminStores().meetings.listForUser(uid),
+  getMeeting: (id: string) => adminStores().meetings.get(id),
 };

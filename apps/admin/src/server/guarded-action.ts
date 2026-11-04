@@ -10,8 +10,10 @@ import { isRecentSignIn } from "@website/auth";
 import { toPublicError } from "@website/security";
 import {
   canAccessAdmin,
+  canInSomeScope,
   requirePermission,
   type AdminPageId,
+  type PagePermission,
   type Permission,
   type Principal,
   type ResourceContext,
@@ -81,6 +83,11 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
    * chapter), never from client-supplied scope fields.
    */
   resource?: (input: z.infer<S>) => ResourceContext | Promise<ResourceContext>;
+  /**
+   * The permission is needed in SOME scope only, because the handler checks the record's own rule
+   * (e.g. a seat in the meeting: its chair may come from another unit). Never with `resource`.
+   */
+  inSomeScope?: boolean;
   /** Sensitive actions (role changes, revert): refuse unless signed in within 15 minutes. */
   recentSignIn?: boolean;
   handler: (input: z.infer<S>, principal: Principal, audit: AuditBuilder) => Promise<T>;
@@ -112,11 +119,17 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
         };
       }
       try {
-        requirePermission(
-          principal,
-          definition.permission,
-          await definition.resource?.(parsed.data),
-        );
+        if (definition.inSomeScope) {
+          if (!canInSomeScope(principal, definition.permission as PagePermission)) {
+            return { ok: false, error: "forbidden" };
+          }
+        } else {
+          requirePermission(
+            principal,
+            definition.permission,
+            await definition.resource?.(parsed.data),
+          );
+        }
       } catch {
         return { ok: false, error: "forbidden" };
       }

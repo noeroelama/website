@@ -65,3 +65,35 @@ describe("admin guarded actions (server-side enforcement)", () => {
     });
   });
 });
+
+describe("permission in some scope (the handler checks the record's own rule)", () => {
+  const runMeeting = createGuardedAction({
+    permission: "articles.read",
+    inSomeScope: true,
+    input: z.object({ id: z.string() }),
+    handler: (input) => Promise.resolve(input.id),
+  });
+  const scoped = (permissions: string[]): Principal => ({
+    kind: "user",
+    userId: "u",
+    active: true,
+    assignments: [
+      {
+        roleId: "r",
+        scope: { type: "orgUnit", orgUnitId: "media" },
+        permissions: new Set(normalizePermissions(permissions)),
+      },
+    ],
+  });
+  it("passes with the permission in any scope and refuses without it", async () => {
+    expect(await runMeeting(() => Promise.resolve(scoped(["articles.read"])))({ id: "m" })).toEqual(
+      {
+        ok: true,
+        data: "m",
+      },
+    );
+    expect(
+      await runMeeting(() => Promise.resolve(scoped(["events.read"])))({ id: "m" }),
+    ).toMatchObject({ ok: false, error: "forbidden" });
+  });
+});

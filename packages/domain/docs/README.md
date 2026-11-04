@@ -12,6 +12,7 @@
 | [documents.md](documents.md)       | Letters: numbers, desks, verification, certificates          |
 | [programs.md](programs.md)         | OKR, work programmes, LPJ, period report card                |
 | [finance.md](finance.md)           | Money (DEC-8), finance requests, cash book and cash report   |
+| [meetings.md](meetings.md)         | Meetings, attendance codes, reminders, minutes               |
 
 Add one Markdown file per feature (`<feature>.md`) using the
 [feature doc template](../../../docs/README.md#feature-doc-template), then list it in the table above
