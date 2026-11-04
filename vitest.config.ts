@@ -106,6 +106,7 @@ export default defineConfig({
         "packages/domain/src/finance/*.ts",
         "packages/db/src/sql/finance.ts",
         "apps/admin/src/server/finance.ts",
+        "packages/db/src/ppidk/programs.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
       reporter: ["text-summary"],

@@ -243,6 +243,13 @@ file (they live in the cPanel app screens and the password manager).
       (dry run, read `import-documents-report.json`, then `--apply`; see
       `packages/domain/docs/documents.md` → Import from PPIDK). Open a few PPIDK codes on the
       verification host before switching it over.
+- [ ] OKR, work programmes, LPJ and finance imported from PPIDK after the people import: freeze
+      the PPIDK proker and finance screens, export the tables as TSV, download the finance PDFs
+      from R2, run
+      `infrastructure/scripts/import-ppidk-programs.mjs --dir <folder> --files <pdfs>` (dry
+      run, read `import-programs-report.json`, then `--apply`; see
+      `packages/domain/docs/programs.md` and `finance.md` → Import from PPIDK). Compare the period
+      report card and the cash balance with PPIDK before switching it off.
 - [ ] Before the first letter is issued: add `verif.ppiasiania.id` as an extra domain of the web
       app (cPanel → Domains + AutoSSL, DNS record), set `VERIFICATION_HOST` to it on web AND admin.
 - [ ] Personal signatures: generate `FIELD_ENCRYPTION_KEY` once (`docs/environment.md`), set the

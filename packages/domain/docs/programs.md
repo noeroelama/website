@@ -146,6 +146,38 @@ Code: `src/programs/report.ts` (pure maths), `packages/db/src/sql/programs.ts`
 - The card shows the whole period's totals to anyone with `programs.read` (programmes are open
   to every officer, DECISIONS §24).
 
+## Import from PPIDK (block J, step 6.7, DEC-10)
+
+- Mapping: `packages/db/src/ppidk/programs.ts` (pure, one mapper for OKR, programmes, LPJ and
+  finance; tested in `tests/unit/ppidk-programs-import.test.ts`, which reads the plan back through
+  the objective, programme, LPJ and finance stores and the period report card); script:
+  `infrastructure/scripts/import-ppidk-programs.mjs --dir <tsv folder> [--files <downloaded PPIDK
+PDFs>] [--apply]` (dry run by default, writes `import-programs-report.json`). Run it after the
+  people import (it refuses otherwise) and after freezing the PPIDK proker and finance screens.
+  Tables: `users`, `org_units`, `objectives`, `key_results`, `programs`, `program_members`,
+  `program_milestones`, `program_checkins`, `program_reports`, `keuangan_pengajuan`,
+  `keuangan_transaksi`. Ids come from PPIDK (`ppidk-objective-<id>`, `ppidk-keyresult-<id>`,
+  `ppidk-program-<id>`, `ppidk-milestone-<id>`; check-ins `{programId}_{weekStartUtc}`; the LPJ
+  is `lpjReports/{programId}`).
+- Statuses: `usulan` → proposed, `disetujui` → approved, `berjalan` → running, `selesai` →
+  finished, `dibatalkan` → cancelled; key result direction `naik` → up, `turun` → down; LPJ
+  `diajukan` → submitted, `revisi` → returned, `disetujui` → approved.
+- PICs: the PPIDK PIC first, then the programme members (their role label is not kept). Budgets:
+  `budget_estimate` + `budget_currency` → one budget line, in the currency's minor digits
+  (`50000.00` JPY → 50000; a value with more decimals than the currency has is reported).
+- Progress is recomputed with the platform rule (`withProgress`); a programme whose stored PPIDK
+  percentage differs is reported. Milestone weights outside 1-100 are clamped (reported). Who set
+  the health and who created a programme were not recorded in PPIDK (`ppidk`). Plan fields the
+  platform has no own field for (target audience, indicator, activity, location, partners,
+  risks) become lines of the description; `category`, `level` and `is_online` are not imported.
+- Check-ins: the week is re-computed as the UTC Monday; a second report for the same week is
+  reported and left out.
+- LPJ: opened with the platform's `openLpj` (the plan frozen from the imported programme, not
+  PPIDK's `plan_snapshot`), due on PPIDK's `lpj_deadline` (else 14 days after the finish), the
+  three desks (secretariat, treasurer, approval) with who and when. Testimonials and
+  documentation links (PPIDK had no LPJ files) are added to the realization text. Only LPJs of
+  finished, imported programmes are imported.
+
 ## Suggested roles (data, Role Manager)
 
 Roles are data (DEC-11): create these in Role Manager → Edit Role (nothing is seeded in code).

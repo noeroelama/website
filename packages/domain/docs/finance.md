@@ -138,6 +138,30 @@ requester** = `finance.edit` scoped to their unit.
 | Routes  | `/api/finance/[id]/files` (documents, proof), `/api/finance/report` (CSV, PDF)                       |
 | Tests   | `tests/unit/{finance,cashbook,admin-finance,table-pdf}.test.ts`, `tests/integration/finance.test.ts` |
 
+## Import from PPIDK (block J, step 6.7, DEC-10)
+
+Imported with the programmes (`packages/domain/docs/programs.md` → Import from PPIDK; mapping in
+`packages/db/src/ppidk/programs.ts`, script `infrastructure/scripts/import-ppidk-programs.mjs`).
+
+- Requests (`keuangan_pengajuan` → `financeRequests/ppidk-finance-<id>`): categories
+  `penerimaan` → receipt, `pencairan` → disbursement, `reimburse` → reimbursement, `anggaran` →
+  budget; statuses `diajukan` → submitted, `direview` → reviewed, `disetujui` → authorized,
+  `dicairkan` → paid, `selesai` → done, `revisi` → revision, `ditolak` → rejected. All IDR
+  (PPIDK had no currency column), 2 minor digits. Desks: treasurer and coordinator with who,
+  when and note; a rejection keeps PPIDK's reason (`uid` `ppidk`, at its last change: PPIDK did
+  not record who rejected); `submittedAt` stays empty (not recorded); `doneAt` is PPIDK's last
+  change. `programId` only when the programme is imported and of the same period (reported
+  otherwise); `chapter_id` is not imported.
+- Files: every `dokumen` PDF and the first `bukti_transfer` PDF are copied privately with
+  `--files` (only real PDFs; others and missing files are reported). Extra proofs are reported
+  (the platform keeps one per payment); a payment whose proof is not in the download keeps the
+  empty placeholder and is never served.
+- Cash book: every paid (or done) request writes `cashEntries/{requestId}` with
+  `cashEntryFromRequest` (PPIDK's own line for it is not copied twice; a line whose request is not
+  imported is reported); manual lines (`keuangan_transaksi` without `pengajuan_id`) become
+  `cashEntries/ppidk-cash-<id>` with their category (`saldo_awal` → opening_balance, `lain` →
+  other_in / other_out, …) and their first `bukti` PDF as proof.
+
 ## Assumptions
 
 - `programId` (optional) must be a programme of the active period; the admin save checks it.
