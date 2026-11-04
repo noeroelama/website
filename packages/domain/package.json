@@ -20,7 +20,8 @@
     "./programs": "./src/programs/index.ts",
     "./finance": "./src/finance/index.ts",
     "./meetings": "./src/meetings/index.ts",
-    "./links": "./src/links/index.ts"
+    "./links": "./src/links/index.ts",
+    "./zoom": "./src/zoom/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

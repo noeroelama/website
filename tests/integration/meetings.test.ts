@@ -45,6 +45,7 @@ const people: Record<string, string> = {
 let fake: ReturnType<typeof fakeDb>;
 let sent: string[];
 let seed = 0;
+let currentMeeting = "";
 const db = () => fake.db as unknown as Db;
 const store = () => createSqlMeetingStore(db());
 const actions = () =>
@@ -75,6 +76,14 @@ const actions = () =>
     adminUrl: "https://admin.example.org",
     webUrl: "https://example.org",
     randomBytes: (n) => Uint8Array.from({ length: n }, (_, i) => i * 7 + (seed += 1)),
+    zoomBooking: (id) =>
+      Promise.resolve(
+        id === "z-ok"
+          ? { status: "approved", meetingId: currentMeeting }
+          : id === "z-other"
+            ? { status: "approved", meetingId: "elsewhere" }
+            : null,
+      ),
     now: () => clock,
     uuid: () => "u1",
   });
@@ -201,6 +210,22 @@ describe("meetings (F4)", () => {
     expect((await store().get(m.id))?.room).toEqual({
       zoomRequestId: null,
       externalUrl: "https://meet.example.org/abc",
+    });
+    currentMeeting = m.id;
+    const zoomed = await actions().saveRoom(...as(chair))({
+      id: m.id,
+      version: byChair.ok ? byChair.data.version : 0,
+      room: { kind: "zoom", zoomRequestId: "z-ok" },
+    });
+    expect(zoomed.ok).toBe(true);
+    expect((await store().get(m.id))?.room).toEqual({ zoomRequestId: "z-ok", externalUrl: null });
+    const foreign = await actions().saveRoom(...as(chair))({
+      id: m.id,
+      version: 3,
+      room: { kind: "zoom", zoomRequestId: "z-other" },
+    });
+    expect(foreign).toMatchObject({
+      issues: ["Choose an approved Zoom booking made for this meeting."],
     });
     const code = await actions().openCode(...as(member))({ id: m.id });
     expect(code).toMatchObject({ ok: false, error: "refused" });

@@ -60,6 +60,9 @@ import { createMinutesActions, createMinutesFileRoute } from "./minutes";
 import { createAnthropicDrafter, DEFAULT_ANTHROPIC_MODEL } from "./anthropic";
 import { createLinkActions } from "./links";
 import { goppiShortener, sidShortener } from "./shorteners";
+import { createZoomActions } from "./zoom";
+import { createZoomClient } from "./zoom-client";
+import { encryptField } from "@website/security";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -355,6 +358,7 @@ export const cronRoute = lazyEnv(() =>
       "newsletter-send": () => newsletterActions().runBatch(),
       expire: () => deleteExpired(adminDb(), new Date()),
       "meeting-reminders": () => meetingActions().sendReminders(),
+      "zoom-rooms": () => zoomActions().retryRooms(),
     },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
@@ -549,6 +553,7 @@ export const meetingActions = lazyEnv(() =>
     adminUrl: getAppUrls().ADMIN_URL ?? "",
     webUrl: getAppUrls().WEB_URL ?? "",
     randomBytes: (n) => randomBytes(n),
+    zoomBooking: (id) => adminStores().zoom.get(id),
     now: () => new Date(),
     uuid: randomUUID,
   }),
@@ -603,6 +608,41 @@ export const linkActions = lazyEnv(() => {
       sidShortener(env.SHORTLINK_API_KEY ?? null, fetch),
     ],
     links: adminStores().shortLinks,
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  });
+});
+
+/** The Zoom API client, or null while ZOOM_* are not set. */
+export const zoomClient = lazyEnv(() => {
+  const env = getAdminEnv();
+  return env.ZOOM_ACCOUNT_ID && env.ZOOM_CLIENT_ID && env.ZOOM_CLIENT_SECRET && env.ZOOM_HOST_USER
+    ? createZoomClient(
+        {
+          accountId: env.ZOOM_ACCOUNT_ID,
+          clientId: env.ZOOM_CLIENT_ID,
+          clientSecret: env.ZOOM_CLIENT_SECRET,
+          hostUser: env.ZOOM_HOST_USER,
+        },
+        fetch,
+      )
+    : null;
+});
+
+/** Zoom page (F1): bookings, approval, settings; cron "zoom-rooms". */
+export const zoomActions = lazyEnv(() => {
+  const env = getAdminEnv();
+  const key = env.FIELD_ENCRYPTION_KEY;
+  return createZoomActions({
+    zoom: adminStores().zoom,
+    client: zoomClient(),
+    shorten: (url, title) => linkActions().shorten(url, title, "zoom"),
+    unitOf: async (uid) => {
+      const [first] = await adminStores().appointments.activeForUser(uid);
+      const unit = first ? await adminStores().orgUnits.get(first.orgUnitId) : null;
+      return unit ? { orgUnitId: unit.id, orgUnitPath: orgUnitPath(unit) } : null;
+    },
+    encrypt: key ? (plain) => encryptField(new TextEncoder().encode(plain), key) : null,
     logError: (message, fields) => adminStores().logger.error(message, fields),
     now: () => new Date(),
   });
@@ -681,5 +721,8 @@ export const adminReads = {
   listMyMeetings: (uid: string) => adminStores().meetings.listForUser(uid),
   getMeeting: (id: string) => adminStores().meetings.get(id),
   listShortLinks: () => adminStores().shortLinks.list(),
+  listZoom: (from: Date, to: Date) => adminStores().zoom.listBetween(from, to),
+  getZoom: (id: string) => adminStores().zoom.get(id),
+  zoomSettings: () => adminStores().zoom.readSettings(),
   listActionItems: (meetingId: string) => adminStores().actionItems.listForMeeting(meetingId),
 };

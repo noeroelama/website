@@ -24,9 +24,14 @@ export default async function MeetingRoute({ params }: { params: Promise<{ id: s
   if (!safeId.safeParse(id).success) notFound();
   const meeting = await adminReads.getMeeting(id);
   if (!meeting || meeting.deletedAt || !canSeeMeeting(principal, meeting)) notFound();
-  const [units, items] = await Promise.all([
+  const DAY = 86_400_000;
+  const [units, items, bookings] = await Promise.all([
     adminReads.listOrgUnits(meeting.periodId),
     adminReads.listActionItems(meeting.id),
+    adminReads.listZoom(
+      new Date(meeting.startsAt.getTime() - DAY),
+      new Date(meeting.startsAt.getTime() + DAY),
+    ),
   ]);
   const people = await adminReads.getUsers([
     ...new Set([...meeting.participantIds, ...items.map((i) => i.pic)]),
@@ -53,6 +58,12 @@ export default async function MeetingRoute({ params }: { params: Promise<{ id: s
         started: now.getTime() >= meeting.startsAt.getTime(),
         externalUrl: meeting.room.externalUrl,
         zoomRequestId: meeting.room.zoomRequestId,
+        zoomBookings: bookings
+          .filter((b) => b.meetingId === meeting.id && b.status === "approved")
+          .map((b) => ({
+            id: b.id,
+            label: `${b.topic} (${b.shortUrl ?? b.joinUrl ?? "room pending"})`,
+          })),
         cancelReason: meeting.cancelReason,
         agenda: meeting.agenda.map((a) => a.title),
         agendaItems: meeting.agenda.map((a) => ({ id: a.id, title: a.title })),

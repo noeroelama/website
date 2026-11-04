@@ -52,6 +52,7 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "LPJ", href: "/lpj", permission: "lpj.read" },
   { label: "Finance", href: "/finance", permission: "finance.read" },
   { label: "Meetings", href: "/meetings", permission: "meetings.read" },
+  { label: "Zoom", href: "/zoom", permission: "zoom.read" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {

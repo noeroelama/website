@@ -238,6 +238,13 @@ export {
   type ShortLinkFields,
   type SqlShortLinkStore,
 } from "./links";
+export {
+  createSqlZoomStore,
+  zoomSnapshot,
+  type SqlZoomStore,
+  type ZoomAudit,
+  type ZoomRequestFields,
+} from "./zoom";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");

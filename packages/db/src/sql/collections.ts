@@ -68,4 +68,7 @@ export const COLLECTIONS = [
   // Short links (K1)
   "shortLinks",
   "shortLinkSlugs",
+  // Zoom (F1-F3)
+  "zoomRequests",
+  "zoomCapacity",
 ] as const;

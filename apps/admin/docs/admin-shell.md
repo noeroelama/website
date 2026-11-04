@@ -192,6 +192,9 @@ router.push("/things"); router.refresh();
   `chair`/`secretary`), room link, cancel, the attendance list with manual ticks and the
   **attendance code** screen (code + QR, renewed every 90 s). Rules:
   `packages/domain/docs/meetings.md`.
+- **Zoom** (`/zoom`, `zoom-page.tsx`): bookings 30 days back to 180 ahead, the booking form,
+  approve/reject, cancel, the invitation with its QR, and Settings (`zoom.settings`). Rules:
+  `packages/domain/docs/zoom.md`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

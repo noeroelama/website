@@ -196,6 +196,14 @@ export function createSqlAppointmentStore(db: Database) {
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
     },
 
+    /** A person's active appointments (any period), oldest first: whose unit they act for. */
+    async activeForUser(uid: string): Promise<Appointment[]> {
+      const snapshot = await docs.where("userId", "==", uid).where("status", "==", "active").get();
+      return snapshot.docs
+        .map((doc) => toAppointment(doc.id, doc.data()))
+        .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
+    },
+
     /**
      * Officers of the active period who already graduated (B5, §67): a dashboard item for whoever
      * may end appointments. Graduation never ends an appointment by itself.

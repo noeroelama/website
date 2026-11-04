@@ -37,6 +37,10 @@ export interface MeetingDeps {
   readonly adminUrl: string;
   readonly webUrl: string;
   readonly randomBytes: (n: number) => Uint8Array;
+  /** A Zoom booking (F1), to attach it as the room. */
+  readonly zoomBooking: (
+    id: string,
+  ) => Promise<{ status: string; meetingId: string | null } | null>;
   readonly now: () => Date;
   readonly uuid: () => string;
 }
@@ -87,6 +91,7 @@ const SetRoom = Ref.extend({
   room: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("link"), url: z.url("Enter the meeting link.").max(500) }).strict(),
     z.object({ kind: z.literal("none") }).strict(),
+    z.object({ kind: z.literal("zoom"), zoomRequestId: safeId }).strict(),
   ]),
 }).strict();
 const Cancel = Ref.extend({ reason: safeText(500).pipe(z.string().min(2, "Give a reason.")) });
@@ -217,13 +222,19 @@ export function createMeetingActions(deps: MeetingDeps) {
     },
   });
 
-  /** External link or none; a Zoom booking is attached from the Zoom page (step 7.6). */
+  /** External link, an approved Zoom booking made for this meeting, or none. */
   const saveRoom = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
     input: SetRoom,
     handler: async ({ id, version, room }, principal, audit) => {
       const now = deps.now();
+      if (room.kind === "zoom") {
+        const booking = await deps.zoomBooking(room.zoomRequestId);
+        if (booking?.status !== "approved" || booking.meetingId !== id) {
+          throw new RuleViolationError("Choose an approved Zoom booking made for this meeting.");
+        }
+      }
       const saved = await run(
         principal,
         id,

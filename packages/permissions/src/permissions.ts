@@ -113,6 +113,14 @@ export const ADMIN_PAGES = {
     label: "Meetings (schedule, attendance, minutes)",
     extras: { approve_minutes: "Approve and lock minutes of any meeting in scope" },
   },
+  zoom: {
+    label: "Zoom bookings",
+    extras: {
+      approve: "Approve, reject and cancel bookings",
+      long_duration: "Book longer than the duration limit",
+      settings: "Zoom settings (licences, approval, Host Key)",
+    },
+  },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

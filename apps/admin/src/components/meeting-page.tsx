@@ -20,7 +20,7 @@ import { formatInZone } from "@/components/format";
 import { MeetingForm, MEETING_STATUS_TONE, type MeetingValues } from "@/components/meetings-page";
 import { DraftMinutes } from "@/components/draft-minutes";
 import { MinutesPanel, type ActionItemView, type MinutesView } from "@/components/minutes-panel";
-import { Field, FormModal, text } from "@/components/program-ui";
+import { ChoiceField, Field, FormModal, text } from "@/components/program-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -43,6 +43,8 @@ export interface MeetingView {
   started: boolean;
   externalUrl: string | null;
   zoomRequestId: string | null;
+  /** Approved Zoom bookings made for this meeting (F1), to use as the room. */
+  zoomBookings: Array<{ id: string; label: string }>;
   cancelReason: string | null;
   agenda: string[];
   agendaItems: Array<{ id: string; title: string }>;
@@ -268,10 +270,15 @@ export function MeetingPage({
         onClose={() => setRoom(false)}
         onSubmit={(form) => {
           const url = text(form, "url");
+          const zoom = text(form, "zoom");
           return saveRoomAction({
             id: m.id,
             version: m.version,
-            room: url ? { kind: "link", url } : { kind: "none" },
+            room: zoom
+              ? { kind: "zoom", zoomRequestId: zoom }
+              : url
+                ? { kind: "link", url }
+                : { kind: "none" },
           });
         }}
       >
@@ -281,6 +288,15 @@ export function MeetingPage({
           type="url"
           hint="Google Meet, Teams or a map link; empty removes it. Saving a link clears a Zoom booking."
           defaultValue={m.externalUrl ?? ""}
+        />
+        <ChoiceField
+          label="Or a Zoom booking"
+          name="zoom"
+          defaultValue={m.zoomRequestId ?? ""}
+          options={[
+            { value: "", label: "No Zoom (use the link above)" },
+            ...m.zoomBookings.map((b) => ({ value: b.id, label: b.label })),
+          ]}
         />
       </FormModal>
       <FormModal

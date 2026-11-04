@@ -143,6 +143,8 @@ export const zoomEnv = z.object({
   ZOOM_ACCOUNT_ID: nonEmpty,
   ZOOM_CLIENT_ID: nonEmpty,
   ZOOM_CLIENT_SECRET: nonEmpty,
+  /** The licensed Zoom user the meetings are created for (e-mail or user id). */
+  ZOOM_HOST_USER: nonEmpty,
 });
 
 /**
