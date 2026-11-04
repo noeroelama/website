@@ -50,6 +50,7 @@ import { createRoleActions } from "./roles";
 import { createUniversityActions } from "./universities";
 import { adminDb, adminStores, imageStorage } from "./stores";
 import { createOkrActions } from "./okr";
+import { createProgramActions } from "./programs";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -460,6 +461,20 @@ export const okrActions = lazyEnv(() =>
   }),
 );
 
+/** Programmes page (E2, E3): plans, approval, milestones, health, weekly check-ins. */
+export const programActions = lazyEnv(() =>
+  createProgramActions({
+    programs: adminStores().programs,
+    unitPath: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit ? orgUnitPath(unit) : null;
+    },
+    findUserId: async (email) => (await adminStores().accounts.findByEmail(email))?.uid ?? null,
+    now: () => new Date(),
+    uuid: randomUUID,
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -521,4 +536,7 @@ export const adminReads = {
     return { ...methods, passkeys: keys.length };
   },
   listObjectives: (periodId: string) => adminStores().objectives.listForPeriod(periodId),
+  listPrograms: (periodId: string) => adminStores().programs.listForPeriod(periodId),
+  getProgram: (id: string) => adminStores().programs.get(id),
+  listCheckins: (programId: string) => adminStores().programs.listCheckins(programId),
 };

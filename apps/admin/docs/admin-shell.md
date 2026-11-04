@@ -175,6 +175,10 @@ router.push("/things"); router.refresh();
   mission, objectives with key results and achievement; popup forms share
   `src/components/program-ui.tsx` (`FormModal`, `Field`, `ChoiceField`, `PeriodSwitch`). Rules:
   `packages/domain/docs/programs.md`.
+- **Programmes** (`/programs`, `src/components/programs-page.tsx`; one programme at
+  `/programs/[id]`, `program-page.tsx`): list per period, the plan form (budget lines typed as
+  "JPY 50000", PICs by e-mail), workflow buttons the viewer may use, milestones (tick = done),
+  health and weekly check-ins.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

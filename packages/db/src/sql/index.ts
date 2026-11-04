@@ -196,10 +196,16 @@ export {
 } from "./users";
 export {
   createSqlObjectiveStore,
+  createSqlProgramStore,
   objectiveSnapshot,
+  programSnapshot,
+  type CheckinAudit,
   type ObjectiveAudit,
   type ObjectiveFields,
+  type ProgramAudit,
+  type ProgramFields,
   type SqlObjectiveStore,
+  type SqlProgramStore,
 } from "./programs";
 
 if ("window" in globalThis) {

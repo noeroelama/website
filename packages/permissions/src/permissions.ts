@@ -87,6 +87,10 @@ export const ADMIN_PAGES = {
   shop_products: { label: "Shop products" },
   shop_orders: { label: "Shop orders", extras: { refund: "Refund" } },
   okr: { label: "OKR (vision, mission, objectives, key results)" },
+  programs: {
+    label: "Work programmes",
+    extras: { approve: "Approve, return and cancel programmes; extend LPJ due dates" },
+  },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

@@ -55,4 +55,6 @@ export const COLLECTIONS = [
   "webhookEvents",
   // Phase 6: programmes (E1-E5)
   "objectives",
+  "programs",
+  "programCheckins",
 ] as const;

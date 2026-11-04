@@ -69,7 +69,7 @@ export const MAX_KEY_RESULTS = 20;
 export function assertOkrWritable(period: Pick<Period, "status" | "deletedAt"> | null): void {
   if (!period || period.deletedAt) throw new RuleViolationError("This period does not exist.");
   if (!canChangePeriod(period.status)) {
-    throw new RuleViolationError("This period is archived; its OKR can no longer change.");
+    throw new RuleViolationError("This period is archived; its plans can no longer change.");
   }
 }
 

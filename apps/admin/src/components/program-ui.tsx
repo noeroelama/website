@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { minorDigits } from "@website/domain/programs";
 
 const FieldMessages = createContext<Readonly<Record<string, string>>>({});
 
@@ -177,3 +178,24 @@ export const num = (form: FormData, name: string): number => {
   const value = text(form, name);
   return value === "" ? Number.NaN : Number(value);
 };
+
+/**
+ * Budget lines typed one per line in major units ("JPY 50000", "AUD 12.50") → integer minor
+ * units. A line that is not "<CODE> <amount>" becomes NaN, which the server refuses.
+ */
+export function parseBudgets(value: string): Array<{ amountMinor: number; currency: string }> {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [code = "", amount = ""] = line.split(/\s+/);
+      const currency = code.toUpperCase();
+      const digits = /^[A-Z]{3}$/.test(currency) ? minorDigits(currency) : 0;
+      return { currency, amountMinor: Math.round(Number(amount.replace(/,/g, "")) * 10 ** digits) };
+    });
+}
+
+/** The inverse of `parseBudgets`, for the form's default value. */
+export const budgetText = (budgets: ReadonlyArray<{ amountMinor: number; currency: string }>) =>
+  budgets.map((b) => `${b.currency} ${b.amountMinor / 10 ** minorDigits(b.currency)}`).join("\n");

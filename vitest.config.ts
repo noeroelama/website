@@ -100,6 +100,7 @@ export default defineConfig({
         "packages/domain/src/programs/*.ts",
         "packages/db/src/sql/programs.ts",
         "apps/admin/src/server/okr.ts",
+        "apps/admin/src/server/programs.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
       reporter: ["text-summary"],

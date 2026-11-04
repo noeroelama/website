@@ -40,12 +40,51 @@ Code: `src/programs/okr.ts` (rules), `packages/db/src/sql/programs.ts`
 - Audit: module `okr`, resource `objective` (key result changes are updates of their objective)
   or `period` (vision/mission); not revertible.
 
+## Work programmes (E2) and weekly check-ins (E3)
+
+Code: `src/programs/programs.ts` (rules), `packages/db/src/sql/programs.ts`
+(`createSqlProgramStore`), `apps/admin/src/server/programs.ts` (guarded actions,
+`canManageProgram`), admin pages `/programs` (list per period) and `/programs/[id]`. Tests:
+`tests/unit/programs-workflow.test.ts`, `tests/integration/programs.test.ts`.
+
+```text
+proposed ──→ approved ──→ running ──→ finished
+   ↑            │
+   └────────────┘  returned with a note (the approval is withdrawn)
+cancelled ← from proposed, approved or running, with a reason
+```
+
+- **Plan** (`programs/{id}`, `programs.edit` of the unit, scope `orgUnit`): name, goal,
+  background, the proposing unit (of the period), the key result it serves (an objective of the
+  same period, or none yet), planned dates, **budget lines** (`Money`: integer minor units +
+  ISO 4217, one line per currency, never converted — DECISIONS §27) and the **PICs** (named by
+  account e-mail, stored as uids). The plan can be edited until the programme is finished or
+  cancelled; a new programme cannot be added to an archived period.
+- **Approve** (`programs.approve`) needs at least one PIC; **return** (with a note) withdraws
+  the approval; **cancel** needs a reason. **Start** needs at least one milestone; **finish**
+  does not need every milestone done (what was not done is what the LPJ explains).
+- **Running it** (start, finish, milestones, health, check-ins): `canManageProgram` — a PIC
+  listed on the programme, or someone with `programs.edit` of its unit. Being a PIC is not a
+  role (DECISIONS §24): a PIC only needs `programs.read` to open the page.
+- **Milestones** live in the programme (at most 50): title, due date, **weight** (1-100), sort,
+  completed at / by. `progressPercent` = weight done ÷ total weight, rounded, recomputed in the
+  same write as every milestone change (add, edit weight, remove, done, opened again); there is
+  no input field. No milestones = 0%.
+- **Health** (`on_track` / `at_risk` / `off_track`, approved or running only) always needs a
+  reason — also "on track" — and records who and when.
+- **Weekly check-in**: `programCheckins/{programId}_{weekStartUtc}` (Monday 00:00 UTC: one
+  week line for the whole region, UTC+5:30 to UTC+13). What was done (required), blockers,
+  next week. Sending again in the same week updates that week's check-in; approved or running
+  programmes only.
+- Audit: module `programs`, resources `program` and `checkin`; not revertible.
+
 ## Suggested roles (data, Role Manager)
 
 Roles are data (DEC-11): create these in Role Manager → Edit Role (nothing is seeded in code).
 
-| Role (suggested id)          | Permissions                                    |
-| ---------------------------- | ---------------------------------------------- |
-| `officer` (every officer)    | `okr.read`                                     |
-| `director` (unit head, unit) | `okr.edit` (scoped to the unit by appointment) |
-| `secretary_general`          | `okr.edit` (global: region objectives, vision) |
+| Role (suggested id)          | Permissions                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `officer` (every officer)    | `okr.read`, `programs.read` (enough to be a PIC)                   |
+| `director` (unit head, unit) | `okr.edit`, `programs.edit` (scoped to the unit by appointment)    |
+| `secretary_general`          | `okr.edit`, `programs.approve` (global: region objectives, vision) |
+| `coordinator`                | `programs.approve`                                                 |

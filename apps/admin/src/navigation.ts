@@ -48,6 +48,7 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   // E-mails sent by the system (failed ones can be retried). Profile and Account are on the web app.
   { label: "Email", href: "/emails", permission: "messages.read" },
   { label: "OKR", href: "/okr", permission: "okr.read" },
+  { label: "Programmes", href: "/programs", permission: "programs.read" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {

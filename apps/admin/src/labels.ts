@@ -31,6 +31,12 @@ import {
   type OrgUnitType,
 } from "@website/domain/organizations";
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
+import {
+  HEALTH_STATUSES,
+  PROGRAM_STATUSES,
+  type HealthStatus,
+  type ProgramStatus,
+} from "@website/domain/programs";
 
 /**
  * Display labels for stored keys, one map per module, in Indonesian and English. Keys stay in
@@ -186,6 +192,20 @@ export const DISPOSITION_STATUS_LABELS = {
   done: { id: "Selesai", en: "Done" },
 } as const satisfies Record<DispositionStatus, Label>;
 
+export const PROGRAM_STATUS_LABELS = {
+  proposed: { id: "Usulan", en: "Proposed" },
+  approved: { id: "Disetujui", en: "Approved" },
+  running: { id: "Berjalan", en: "Running" },
+  finished: { id: "Selesai", en: "Finished" },
+  cancelled: { id: "Dibatalkan", en: "Cancelled" },
+} as const satisfies Record<ProgramStatus, Label>;
+
+export const HEALTH_STATUS_LABELS = {
+  on_track: { id: "Sesuai rencana", en: "On track" },
+  at_risk: { id: "Berisiko", en: "At risk" },
+  off_track: { id: "Melenceng", en: "Off track" },
+} as const satisfies Record<HealthStatus, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -207,6 +227,8 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "letter status", keys: LETTER_STATUSES, labels: LETTER_STATUS_LABELS },
   { name: "incoming status", keys: INCOMING_STATUSES, labels: INCOMING_STATUS_LABELS },
   { name: "disposition status", keys: DISPOSITION_STATUSES, labels: DISPOSITION_STATUS_LABELS },
+  { name: "programme status", keys: PROGRAM_STATUSES, labels: PROGRAM_STATUS_LABELS },
+  { name: "health status", keys: HEALTH_STATUSES, labels: HEALTH_STATUS_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

@@ -65,6 +65,7 @@ describe("admin side panel navigation", () => {
       "Audit Log",
       "Email",
       "OKR",
+      "Programmes",
     ]);
   });
 
