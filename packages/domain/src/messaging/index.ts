@@ -1,14 +1,14 @@
 /**
  * Messaging (J1): one port for every outgoing message, an outbox-style log with an idempotency
  * key per message, and the rules that keep test environments from messaging real people (all
- * environments share the live data). Email first; WhatsApp is added as a second channel later.
+ * environments share the live data). E-mail (Resend) and WhatsApp (WAHA, proactive messages).
  */
-export const MESSAGE_CHANNELS = ["email"] as const;
+export const MESSAGE_CHANNELS = ["email", "whatsapp"] as const;
 export type MessageChannelName = (typeof MESSAGE_CHANNELS)[number];
 
 export interface Message {
   readonly channel: MessageChannelName;
-  /** E-mail address (or, later, E.164 phone). null/empty = nothing to send to → "skipped". */
+  /** E-mail address, or E.164 phone for WhatsApp. null/empty = nothing to send to → "skipped". */
   readonly to: string | null;
   readonly subject: string;
   readonly text: string;
@@ -58,6 +58,23 @@ export interface MessageLogStore {
   claimRetry(id: string, now: Date): Promise<MessageLogEntry | null>;
 }
 
+/** Where a person can be reached: the account e-mail and the profile's WhatsApp number. */
+export interface Contact {
+  readonly email: string | null;
+  /** E.164 (`memberProfiles.whatsappNumber`); null when there is no profile. */
+  readonly phone: string | null;
+}
+
+/** The person's channel (J1): WhatsApp when a number exists, else e-mail. */
+export function messageTo(
+  contact: Contact | null,
+  content: Pick<Message, "subject" | "text" | "html">,
+): Message {
+  return contact?.phone
+    ? { channel: "whatsapp", to: contact.phone, ...content }
+    : { channel: "email", to: contact?.email ?? null, ...content };
+}
+
 /** `<topic>:<id>:<event>…` — letters, digits and `_ - . @` per part, max 300 characters. */
 export function isValidMessageKey(key: string): boolean {
   return key.length <= 300 && /^[A-Za-z0-9_-]+(?::[A-Za-z0-9_.@-]+)*$/.test(key);
@@ -68,7 +85,8 @@ export type MessagingMode = "log" | "live";
 /**
  * - `log`: record only, never call a provider (default outside production).
  * - `live` in production: send.
- * - `live` elsewhere: send only to MESSAGING_TEST_RECIPIENTS, block everyone else.
+ * - `live` elsewhere: send only to MESSAGING_TEST_RECIPIENTS (e-mails or E.164 numbers), block
+ *   everyone else.
  */
 export function deliveryDecision(input: {
   mode: MessagingMode;
@@ -90,7 +108,8 @@ export function deliveryDecision(input: {
  */
 export function createMessenger(deps: {
   log: MessageLogStore;
-  channels: Readonly<Record<MessageChannelName, MessageChannel>>;
+  /** A channel left out (the website has no WhatsApp) fails its messages as `not_configured`. */
+  channels: Readonly<Partial<Record<MessageChannelName, MessageChannel>>>;
   mode: MessagingMode;
   appEnv: string;
   testRecipients: readonly string[];
@@ -113,7 +132,10 @@ export function createMessenger(deps: {
       await deps.log.finish(key, { status, attempted: false }, deps.now());
       return status;
     }
-    const result = await deps.channels[message.channel].send({ ...message, to }, key);
+    const channel = deps.channels[message.channel];
+    const result = channel
+      ? await channel.send({ ...message, to }, key)
+      : { ok: false as const, error: "not_configured" };
     await deps.log.finish(
       key,
       result.ok

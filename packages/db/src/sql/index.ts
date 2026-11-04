@@ -65,7 +65,12 @@ export {
   type FileVisibility,
 } from "./storage";
 export { createSqlWebhookEventStore } from "./webhooks";
-export { createSqlMessageLog, type SqlMessageLog } from "./messages";
+export {
+  createSqlContactReader,
+  createSqlMessageLog,
+  type SqlContactReader,
+  type SqlMessageLog,
+} from "./messages";
 export {
   createSqlDashboardCounts,
   type DashboardCounter,

@@ -33,8 +33,8 @@ export default async function EmailPage({
         <div>
           <h1 className="admin-page-header__title">Email</h1>
           <p className="admin-page-header__desc">
-            E-mails that could not be sent. Retry sends the same message again (same key, so the
-            provider never delivers it twice).
+            E-mails and WhatsApp messages that could not be sent. Retry sends the same message again
+            (same key, so the provider never delivers it twice).
           </p>
         </div>
       </div>
@@ -52,7 +52,11 @@ export default async function EmailPage({
                   <>
                     <span className="admin-table__title">{row.subject}</span>
                     <span className="admin-table__sub">
-                      {row.to} · {row.key}
+                      {row.channel === "whatsapp"
+                        ? // A WhatsApp number is restricted personal data: only its end is shown.
+                          `WhatsApp ••••${(row.to ?? "").slice(-4)}`
+                        : row.to}{" "}
+                      · {row.key}
                     </span>
                   </>
                 ),

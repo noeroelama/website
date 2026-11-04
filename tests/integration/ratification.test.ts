@@ -34,6 +34,7 @@ const user = (uid: string, roleIds: string[]) => ({
 let fake: ReturnType<typeof fakeDb>;
 let secondFactor: Record<string, boolean>;
 let afterRoleChange: ReturnType<typeof vi.fn>;
+const notified: string[] = [];
 const db = () => fake.db as unknown as Db;
 const principalOf = async (uid: string) =>
   (await createSqlUserStore(db()).findPrincipalByUid(uid)) as Principal;
@@ -57,6 +58,10 @@ const actions = () =>
       uid: string,
       details: object,
     ) => Promise<void>,
+    notify: (application) => {
+      notified.push(application.status);
+      return Promise.resolve();
+    },
     now: () => clock,
   });
 const applying = () =>
@@ -210,6 +215,7 @@ describe("ratification (C3 step 9)", () => {
       title: "Staf Direktorat Media",
     });
     expect(ratified).toMatchObject({ ok: true, data: { status: "confirmed" } });
+    expect(notified.at(-1)).toBe("confirmed");
     const appointmentId = ratified.ok ? ratified.data.appointmentId : "";
     expect(app()).toMatchObject({ status: "confirmed", appointmentId });
     expect(appointments()).toEqual([

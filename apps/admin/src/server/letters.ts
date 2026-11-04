@@ -58,6 +58,8 @@ export interface LetterDeps {
     remove(path: string): Promise<void>;
   };
   readonly files: Pick<LetterPdf, "stampUpload" | "saveFile">;
+  /** After a desk step committed: tells whoever acts next (J2; never throws). */
+  readonly afterStep: (letter: Letter) => Promise<void>;
   readonly now: () => Date;
   readonly uuid: () => string;
 }
@@ -171,6 +173,7 @@ export function createLetterActions(deps: LetterDeps) {
           letterAudit(audit, action),
           now,
         );
+        await deps.afterStep(saved);
         return { version: saved.version, status: saved.status };
       },
     });

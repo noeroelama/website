@@ -39,6 +39,8 @@ import {
 } from "./certificates";
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
 import { createMessageActions } from "./messaging";
+import { createNotices } from "./notices";
+import { wahaChannel } from "./whatsapp";
 import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
 import { createOrgUnitActions } from "./org-units";
@@ -252,6 +254,7 @@ export const letterActions = lazyEnv(() =>
     },
     storage: imageStorage(),
     files: letterPdf(),
+    afterStep: (letter) => notices().letter(letter),
     now: () => new Date(),
     uuid: randomUUID,
   }),
@@ -286,6 +289,7 @@ export const applicationActions = lazyEnv(() =>
         details: { targetId: uid, ...details },
       });
     },
+    notify: (application, title) => notices().application(application, title),
     now: () => new Date(),
   }),
 );
@@ -360,6 +364,11 @@ export const messenger = lazyEnv(() => {
         env.RESEND_API_KEY ? createResendSender({ apiKey: env.RESEND_API_KEY }) : null,
         env.EMAIL_FROM_TRANSACTIONAL,
       ),
+      whatsapp: wahaChannel(
+        env.WAHA_BASE_URL && env.WAHA_API_KEY
+          ? { baseUrl: env.WAHA_BASE_URL, apiKey: env.WAHA_API_KEY, session: env.WAHA_SESSION }
+          : null,
+      ),
     },
     mode: env.MESSAGING_MODE,
     appEnv: env.APP_ENV,
@@ -367,6 +376,18 @@ export const messenger = lazyEnv(() => {
     now: () => new Date(),
   });
 });
+/** Notification sources (J2): applicants and letter desk holders, on their own channel. */
+export const notices = lazyEnv(() =>
+  createNotices({
+    contacts: adminStores().contacts,
+    send: (message, key) => messenger().send(message, key),
+    letterType: (id) => adminStores().letterTypes.get(id),
+    webUrl: getAppUrls().WEB_URL ?? "",
+    adminUrl: getAppUrls().ADMIN_URL ?? "",
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+  }),
+);
+
 /** A signed link on the website (newsletter pages); needs LINK_SIGNING_SECRET and WEB_URL. */
 function webLink(path: string, data: Record<string, string>): string {
   const secret = getAdminEnv().LINK_SIGNING_SECRET;

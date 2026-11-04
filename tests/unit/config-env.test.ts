@@ -124,6 +124,10 @@ describe("messaging env (MESSAGING_MODE, MESSAGING_TEST_RECIPIENTS)", () => {
       MESSAGING_MODE: "live",
       MESSAGING_TEST_RECIPIENTS: ["qa@example.org", "dev@example.org"],
     });
+    expect(
+      messagingEnv.parse({ MESSAGING_TEST_RECIPIENTS: "qa@example.org,+6281234567890" })
+        .MESSAGING_TEST_RECIPIENTS,
+    ).toEqual(["qa@example.org", "+6281234567890"]);
     expect(messagingEnv.safeParse({ MESSAGING_TEST_RECIPIENTS: "not-an-email" }).success).toBe(
       false,
     );

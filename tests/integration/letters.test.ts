@@ -43,6 +43,7 @@ const director = staff("dir", ["letters.edit"], { type: "orgUnit", orgUnitId: "m
 
 let fake: ReturnType<typeof fakeDb>;
 let afterIssue: Letter[] = [];
+let steps: string[] = [];
 let files: Map<string, Uint8Array>;
 let uuids = 0;
 const db = () => fake.db as unknown as Db;
@@ -84,6 +85,10 @@ const actions = () =>
     },
     storage,
     files: letterPdf(),
+    afterStep: (letter) => {
+      steps.push(letter.status);
+      return Promise.resolve();
+    },
     now: () => new Date(clock.getTime() + clockShift * 60_000),
     uuid,
   });
@@ -102,6 +107,7 @@ const draft = {
 beforeEach(() => {
   fake = fakeDb();
   afterIssue = [];
+  steps = [];
   files = new Map();
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
   fake.docs.set("periods/p1", { name: "2026/2027" });
@@ -390,6 +396,8 @@ describe("letters workflow", () => {
 
   it("issue numbers, codes and freezes the letter in one transaction; numbers never repeat", async () => {
     const { id, version } = await approvedLetter({ requiresCoordinator: true });
+    // Every desk step tells whoever acts next (notices.ts decides who, after the commit).
+    expect(steps).toEqual(["review", "corrected", "corrected", "approved"]);
     const result = await actions().issue(...as(secretariat))({ id, version });
     expect(result).toMatchObject({
       ok: true,

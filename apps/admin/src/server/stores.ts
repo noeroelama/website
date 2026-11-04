@@ -23,6 +23,7 @@ import {
   createSqlLetterTypeStore,
   createSqlGalleryStore,
   createSqlMemberProfileStore,
+  createSqlContactReader,
   createSqlMessageLog,
   createSqlOrgUnitStore,
   createSqlPasskeyStore,
@@ -69,6 +70,8 @@ export const adminStores = lazyEnv(() => {
     audit: createSqlAuditWriter(db),
     auditLog: createSqlAuditStore(db),
     messageLog: createSqlMessageLog(db),
+    /** E-mail + WhatsApp number and desk holders, for notifications (J1, J2). */
+    contacts: createSqlContactReader(db),
     content: createSqlContentStore(db),
     events: createSqlEventStore(db),
     forms: createSqlFormStore(db),

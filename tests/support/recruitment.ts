@@ -5,4 +5,5 @@ export const noRatification = {
   roles: { getMany: () => Promise.resolve(new Map()) },
   hasSecondFactor: () => Promise.resolve(true),
   afterRoleChange: () => Promise.resolve(),
+  notify: () => Promise.resolve(),
 };

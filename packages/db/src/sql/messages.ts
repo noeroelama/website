@@ -1,7 +1,18 @@
 import { createHash } from "node:crypto";
 import type { Database } from "./store";
-import type { Message, MessageLogEntry, MessageLogStore } from "@website/domain/messaging";
+import type { Contact, Message, MessageLogEntry, MessageLogStore } from "@website/domain/messaging";
+import {
+  can,
+  isSystemRoleId,
+  normalizePermissions,
+  type PagePermission,
+  type ResourceContext,
+  type RoleDefinition,
+} from "@website/permissions";
 import { safeId } from "@website/security/validation";
+import { toPrincipal } from "../users";
+import { getDocumentsByIds } from "./batch";
+import { createSqlRoleStore } from "./users";
 
 /** Document id = sha256(key): keys may contain ":" and stay unique per message. */
 export const messageId = (key: string) => createHash("sha256").update(key).digest("hex");
@@ -96,3 +107,61 @@ export function createSqlMessageLog(db: Database) {
 }
 
 export type SqlMessageLog = ReturnType<typeof createSqlMessageLog>;
+
+/**
+ * Who to notify (J1, J2), read by the system only to deliver a message: the account e-mail and
+ * the profile's WhatsApp number (restricted personal data: never shown, never logged), and the
+ * accounts whose custom roles hold a desk permission (superadmins are not desk holders).
+ */
+export function createSqlContactReader(db: Database) {
+  const roles = createSqlRoleStore(db);
+  return {
+    async contacts(uids: readonly string[]): Promise<Map<string, Contact>> {
+      const [users, profiles] = await Promise.all([
+        getDocumentsByIds<Record<string, unknown>>(db, "users", uids),
+        getDocumentsByIds<Record<string, unknown>>(db, "memberProfiles", uids),
+      ]);
+      const text = (value: unknown) => (typeof value === "string" && value ? value : null);
+      return new Map(
+        [...users].map(([uid, user]) => [
+          uid,
+          { email: text(user?.["email"]), phone: text(profiles.get(uid)?.["whatsappNumber"]) },
+        ]),
+      );
+    },
+
+    /** Active accounts that hold `permission` on `resource` through a custom role. */
+    async holders(permission: PagePermission, resource: ResourceContext): Promise<string[]> {
+      const holding = (await roles.list()).filter(
+        (role) =>
+          !isSystemRoleId(role.id) && normalizePermissions(role.permissions).includes(permission),
+      );
+      if (holding.length === 0) return [];
+      const ids = holding.map((role) => role.id);
+      // array-contains-any takes at most 30 values per query.
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+      const [period, ...snapshots] = await Promise.all([
+        db.collection("settings").doc("activePeriod").get(),
+        ...chunks.map((chunk) =>
+          db.collection("users").where("roleIds", "array-contains-any", chunk).get(),
+        ),
+      ]);
+      const periodId = period.get("periodId");
+      const map = new Map<string, RoleDefinition>(holding.map((role) => [role.id, role]));
+      const found = new Set<string>();
+      for (const doc of snapshots.flatMap((snapshot) => snapshot.docs)) {
+        const principal = toPrincipal(
+          doc.id,
+          doc.data(),
+          map,
+          typeof periodId === "string" ? periodId : null,
+        );
+        if (can(principal, permission, resource)) found.add(doc.id);
+      }
+      return [...found];
+    },
+  };
+}
+
+export type SqlContactReader = ReturnType<typeof createSqlContactReader>;

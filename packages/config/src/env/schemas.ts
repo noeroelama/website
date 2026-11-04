@@ -97,7 +97,15 @@ export const messagingEnv = z.object({
         .map((item) => item.trim().toLowerCase())
         .filter(Boolean),
     )
-    .pipe(z.array(z.email())),
+    // E-mail addresses or E.164 WhatsApp numbers (+6281234567890).
+    .pipe(z.array(z.union([z.email(), z.string().regex(/^\+[1-9]\d{6,14}$/)]))),
+});
+
+/** WAHA (WhatsApp HTTP API) for proactive WhatsApp messages (J1); unset = not configured. */
+export const wahaEnv = z.object({
+  WAHA_BASE_URL: optionalUrl,
+  WAHA_API_KEY: z.string().min(1).optional(),
+  WAHA_SESSION: z.string().min(1).default("default"),
 });
 
 export const resendEnv = z.object({

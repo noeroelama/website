@@ -34,6 +34,8 @@ export interface ApplicationDeps {
   readonly afterRoleChange: (actor: Principal, uid: string, details: object) => Promise<void>;
   /** 15-minute signed read URL of a private Storage file. */
   readonly signedUrl: (path: string) => Promise<string>;
+  /** After a decision committed: tells the applicant (J2; never throws). */
+  readonly notify: (application: Application, recruitmentTitle: string) => Promise<void>;
   readonly now: () => Date;
 }
 
@@ -83,13 +85,18 @@ export function createApplicationActions(deps: ApplicationDeps) {
       input,
       handler: async (parsed: z.infer<S>, principal, audit) => {
         const now = deps.now();
+        let title = "";
         const next = await deps.applications.decide(
           parsed.id,
           parsed.version,
-          decide(parsed, principal.userId, now),
+          (application, recruitment) => {
+            title = recruitment.title;
+            return decide(parsed, principal.userId, now)(application, recruitment);
+          },
           decisionAudit(audit),
           now,
         );
+        await deps.notify(next, title);
         return { status: next.status, version: next.version };
       },
     });
@@ -201,14 +208,22 @@ export function createApplicationActions(deps: ApplicationDeps) {
             revertible: false,
           }),
         ];
+        let recruitmentTitle = "";
         const result = await deps.applications.ratify(
           id,
           version,
           { title },
           derived,
-          { appointment: appointmentAudit, application: decisionAudit(audit) },
+          {
+            appointment: appointmentAudit,
+            application: (...args) => {
+              recruitmentTitle = args[4];
+              return decisionAudit(audit)(...args);
+            },
+          },
           deps.now(),
         );
+        await deps.notify(result.application, recruitmentTitle);
         await deps.afterRoleChange(principal, application.userId, {
           appointment: result.appointment.id,
           application: id,
