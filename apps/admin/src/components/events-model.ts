@@ -9,6 +9,7 @@ import {
 } from "@website/domain/events";
 import { EVENT_TYPE_LABELS, label } from "../labels";
 import type { Author } from "./authors";
+import { esc } from "./format";
 
 /**
  * What the Event page shows and edits, mapped on the server from `events/{id}`. The page lists,
@@ -82,4 +83,31 @@ export function toEventItem(e: EventEntity, author: Author | null): EventItem {
     speakers: [...e.speakers],
     sponsors: sortedSponsors(e.sponsors),
   };
+}
+
+/** Export CSV of the listed events (cells already quoted for `downloadCsv`), dates in UTC. */
+export function eventsCsv(rows: readonly EventItem[]): string[][] {
+  const header = [
+    "Title",
+    "Type",
+    "Start (UTC)",
+    "Location",
+    "Status",
+    "Modified (UTC)",
+    "Modified by",
+  ];
+  return [
+    header.map(esc),
+    ...rows.map((e) =>
+      [
+        e.title,
+        e.typeLabel,
+        e.startsAt.slice(0, 16).replace("T", " "),
+        e.location,
+        e.status === "published" ? "Public" : "Draft",
+        e.modifiedAt.slice(0, 16).replace("T", " "),
+        e.author?.name ?? "",
+      ].map(esc),
+    ),
+  ];
 }

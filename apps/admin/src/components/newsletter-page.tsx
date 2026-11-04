@@ -32,6 +32,7 @@ import {
   Tabs,
   useBulkActions,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -1205,6 +1206,7 @@ function NewsletterList({
                   </div>
                 ) : null}
               </div>
+              <SortMenu columns={columns} />
               {searchBox("Search by title...", "Search campaigns")}
             </>
           ) : (
@@ -1254,6 +1256,7 @@ function NewsletterList({
                 open={subFiltersOpen}
                 onToggle={() => setSubFiltersOpen((v) => !v)}
               />
+              <SortMenu columns={subscriberColumns} />
               {searchBox("Search by name or e-mail...", "Search subscribers")}
             </>
           )}

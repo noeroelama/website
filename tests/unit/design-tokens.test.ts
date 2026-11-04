@@ -260,6 +260,24 @@ describe("admin tables on a phone", () => {
     }
   });
 
+  it("phone-only parts are hidden on a wide screen and shown in the phone block", () => {
+    for (const selector of [".admin-sort-menu", ".admin-row-menu__item--phone"]) {
+      const wide = adminRules.filter((rule) => rule.selector.split(/,\s*/).includes(selector));
+      expect(wide.map((rule) => rule.body).join(""), selector).toMatch(/display:\s*none/);
+      expect(bodyOf(selector), selector).toMatch(/display:/);
+    }
+    // Long button words ("Delete Event", "Copy Link") shrink to the design's "Delete", "Copy".
+    expect(bodyOf(".admin-long")).toMatch(/display:\s*none/);
+  });
+
+  it("an event card follows the design: pills side by side, one 'last modified' line, no labels", () => {
+    expect(bodyOf(".admin-dark-page .admin-table .admin-event-meta")).toMatch(/row-reverse/);
+    const status = bodyOf(
+      ".admin-dark-page .admin-table tr:has(.admin-event-title) td:has(> .admin-status-badge)",
+    );
+    expect(status).toMatch(/grid-row:\s*2/);
+  });
+
   it("the Add / Export buttons float at the bottom right and the bulk bar sticks to the bottom", () => {
     expect(bodyOf(".admin-fab")).toMatch(/position:\s*fixed/);
     expect(bodyOf(".admin-dark-page .admin-list-card .admin-bulkbar")).toMatch(/position:\s*fixed/);

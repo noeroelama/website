@@ -34,6 +34,7 @@ import {
   Tabs,
   useBulkActions,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
@@ -576,6 +577,7 @@ function FormsList({
               </Button>
             ) : null}
           </div>
+          <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
             placeholder="Search by title..."

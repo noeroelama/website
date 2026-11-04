@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SortHeader, type Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
-import { ListCard, SearchBox, Tabs, useListTable } from "@/components/ui/list-controls";
+import { ListCard, SortMenu, SearchBox, Tabs, useListTable } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { AUDIT_ACTION_LABELS, label } from "@/labels";
 import {
@@ -438,6 +438,7 @@ export function AuditPage({
               ))}
             </Select>
           </label>
+          <SortMenu columns={columns} />
           <SearchBox
             placeholder="Search by title..."
             label="Search entries by title"

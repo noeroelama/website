@@ -28,6 +28,7 @@ import {
   SearchBox,
   Tabs,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -799,6 +800,7 @@ function LettersList(props: Props) {
               </Button>
             ) : null}
           </div>
+          <SortMenu columns={columns} />
           <SearchBox
             placeholder="Search subject, number or recipient..."
             label="Search letters"

@@ -37,6 +37,7 @@ import {
   Tabs,
   useBulkActions,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -917,6 +918,7 @@ function ArticleList({
               open={filtersOpen}
               onToggle={() => setFiltersOpen((v) => !v)}
             />
+            <SortMenu columns={columns} />
             <SearchBox
               key={searchKey}
               placeholder="Search by title..."

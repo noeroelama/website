@@ -31,18 +31,21 @@ import {
   Tabs,
   useBulkActions,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { EVENT_TYPE_LABELS, label } from "@/labels";
 import { matchesDate, moveItem, type DateFilter } from "./list-model";
 import {
   countdownLabel,
+  eventsCsv,
   matchesTab,
   type EventItem,
   type EventStatus,
   type EventTab,
 } from "./events-model";
 import { Select } from "@/components/ui/select";
+import { downloadCsv } from "@/components/csv";
 
 /* ==================================================================
    Event — list (tabs, search, filters, bulk actions) + create/edit form.
@@ -468,7 +471,12 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
       width: "14%",
       render: (r) => (
         <span className="admin-event-date">
-          <span className="admin-table__title">{formatInZone(r.startsAt, r.timezone, false)}</span>
+          <span className="admin-event-date__line">
+            <Icon name="calendar" size={13} className="admin-event-date__icon" />
+            <span className="admin-table__title">
+              {formatInZone(r.startsAt, r.timezone, false)}
+            </span>
+          </span>
           {countdown(r.startsAt)}
         </span>
       ),
@@ -531,6 +539,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                 {/* Both always listed (as in the design); the current state is disabled. */}
                 <MenuItem
                   icon="globe"
+                  className="admin-row-menu__item--wide"
                   disabled={busy || r.status === "published"}
                   onClick={() => setPublishedFor([r.id], true)}
                 >
@@ -538,15 +547,25 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                 </MenuItem>
                 <MenuItem
                   icon="lock"
+                  className="admin-row-menu__item--wide"
                   disabled={busy || r.status === "draft"}
                   onClick={() => setPublishedFor([r.id], false)}
                 >
                   Make Private
                 </MenuItem>
+                {/* The phone card has one Visibility button instead of the two above. */}
+                <MenuItem
+                  icon="lock"
+                  className="admin-row-menu__item--phone"
+                  disabled={busy}
+                  onClick={() => setPublishedFor([r.id], r.status !== "published")}
+                >
+                  Visibility
+                </MenuItem>
               </>
             ) : null}
             <MenuItem icon="copy" onClick={() => copyLink(r)}>
-              Copy Link
+              Copy<span className="admin-long"> Link</span>
             </MenuItem>
             {canEdit ? (
               <>
@@ -556,7 +575,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                   danger
                   onClick={() => setDeleteConfirm({ kind: "one", event: r })}
                 >
-                  Delete Event
+                  Delete<span className="admin-long"> Event</span>
                 </MenuItem>
               </>
             ) : null}
@@ -1033,11 +1052,20 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
         <div>
           <h1 className="admin-page-header__title">Event</h1>
           <p className="admin-page-header__desc">
-            Manage all upcoming and past events shown on the public Event page.
+            Browse, search, and manage all upcoming and past events shown on the public Event page.
           </p>
         </div>
         <div className="admin-page-header__actions">
           <div className="admin-fab">
+            <Button
+              variant="outline"
+              size="sm"
+              icon="download"
+              disabled={filtered.length === 0}
+              onClick={() => downloadCsv("events", eventsCsv(filtered))}
+            >
+              Export CSV
+            </Button>
             {canEdit ? (
               <Button variant="outline" size="sm" icon="plus" onClick={() => toForm("create")}>
                 Add New Event
@@ -1049,6 +1077,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
             open={filtersOpen}
             onToggle={() => setFiltersOpen((v) => !v)}
           />
+          <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
             placeholder="Search by title..."

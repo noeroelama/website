@@ -4628,7 +4628,10 @@ form.admin-toolbar::before {
   display: none;
 }
 
-.admin-row-menu__panel--closed {
+.admin-row-menu__panel--closed,
+.admin-sort-menu,
+.admin-row-menu__item--phone,
+.admin-event-date__icon {
   display: none;
 }
 
@@ -4702,13 +4705,27 @@ form.admin-toolbar::before {
   }
 
   .admin-dark-page .admin-filters-btn {
-    order: 2;
+    order: 3;
     height: var(--size-control);
     border-radius: var(--radius-lg);
   }
 
   .admin-filters-btn__label {
     display: none;
+  }
+
+  /* Sort: a cream square like Filters. */
+  .admin-sort-menu {
+    display: block;
+    order: 2;
+  }
+
+  .admin-dark-page .admin-sort-menu > .admin-btn {
+    width: var(--size-control);
+    height: var(--size-control);
+    border-radius: var(--radius-lg);
+    background: var(--color-brand-50);
+    color: var(--color-brand-950);
   }
 
   /* Add New … / Export CSV float bottom right; they step aside while rows are selected. */
@@ -4793,7 +4810,7 @@ form.admin-toolbar::before {
     --admin-ok: var(--color-success);
     --admin-error: var(--color-danger);
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: auto auto auto minmax(0, 1fr);
     align-items: start;
     row-gap: var(--space-1);
     margin-bottom: var(--space-3);
@@ -4809,7 +4826,7 @@ form.admin-toolbar::before {
 
   .admin-dark-page .admin-table td {
     display: block;
-    grid-column: 3;
+    grid-column: 3 / -1;
     padding: 0;
     border: 0;
     background: transparent;
@@ -4878,7 +4895,7 @@ form.admin-toolbar::before {
   }
 
   .admin-dark-page .admin-table .admin-event-title .admin-table__title {
-    grid-column: 3;
+    grid-column: 3 / -1;
   }
 
   .admin-dark-page .admin-table .admin-event-title .admin-table__sub {
@@ -4894,6 +4911,68 @@ form.admin-toolbar::before {
   .admin-dark-page .admin-table .admin-status-badge {
     background: var(--color-brand-950);
     color: var(--color-success-bright);
+  }
+
+  .admin-dark-page .admin-table .admin-event-avatar {
+    background: color-mix(in srgb, var(--color-brand-800) 50%, var(--color-brand-200));
+  }
+
+  /* The status pill sits beside the type pill, on the same line. */
+  .admin-dark-page .admin-table tr:has(.admin-event-title) td:has(> .admin-status-badge) {
+    grid-column: 4;
+    grid-row: 2;
+    margin-left: var(--space-2);
+  }
+
+  /* Event detail lines have no labels: a calendar and a pin say what they are. */
+  .admin-dark-page
+    .admin-table
+    tr:has(.admin-event-title)
+    td[data-card="meta"][data-label]::before {
+    display: none;
+  }
+
+  .admin-event-date__icon {
+    display: inline;
+  }
+
+  .admin-event-date__line {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .admin-event-date__count {
+    display: none;
+  }
+
+  /* "Last modified by Nevyllo K." on the left, "2h ago" on the right. */
+  .admin-dark-page .admin-table .admin-event-meta {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+  }
+
+  .admin-dark-page .admin-table .admin-event-meta .admin-table__title {
+    color: var(--color-text-muted);
+    font-size: var(--text-2xs);
+    font-weight: var(--font-regular);
+  }
+
+  .admin-dark-page .admin-table .admin-event-meta .admin-table__sub::before {
+    content: "Last modified by ";
+  }
+
+  /* One Visibility button replaces Publish and Make Private; "Delete Event" reads "Delete". */
+  .admin-row-menu__item--wide,
+  .admin-long {
+    display: none;
+  }
+
+  .admin-row-menu__item--phone {
+    display: flex;
   }
 
   /* The checkbox box shows on the cream card. */
@@ -4924,8 +5003,20 @@ form.admin-toolbar::before {
     display: none;
   }
 
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu__item {
+    order: 4;
+  }
+
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-btn--icon {
+    order: 3;
+  }
+
+  .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu__item--phone {
+    order: 2;
+  }
+
   .admin-dark-page .admin-table td[data-card="actions"] .admin-row-menu__item--danger {
-    order: -1;
+    order: 1;
   }
 
   .admin-dark-page
@@ -4939,6 +5030,7 @@ form.admin-toolbar::before {
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-2xs);
     font-weight: var(--font-regular);
+    line-height: var(--leading-2xs);
   }
 
   .admin-dark-page .admin-table td[data-card="actions"] .admin-btn--icon::after {
@@ -4981,6 +5073,13 @@ form.admin-toolbar::before {
   .admin-bulkbar__actions .admin-btn {
     flex: 1;
     justify-content: center;
+  }
+
+  /* "Clear Filters" is outlined, "Add New …" solid. */
+  .admin-dark-page .admin-empty__actions .admin-btn--outline {
+    border-color: var(--color-brand-50);
+    background: transparent;
+    color: var(--color-brand-50);
   }
 
   /* Pagination: ‹ Prev · 1 of 10 · Next ›. */

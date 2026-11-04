@@ -153,6 +153,15 @@ export function cardRoles(keys: readonly string[]): CardRole[] {
   });
 }
 
+/** Header labels of date columns: their order reads "Newest first". */
+const DATE_LABEL = /date|modified|created|sent|submitted|opens|subscribed/i;
+
+/** How the list is ordered, for the phone summary line ("112 events · Newest first"). */
+export function sortSummary(label: string, dir: SortDir): string {
+  if (DATE_LABEL.test(label)) return dir === "desc" ? "Newest first" : "Oldest first";
+  return dir === "asc" ? "A–Z" : "Z–A";
+}
+
 /** A copy of `items` with the item at `from` moved to `to` (drag & drop); out of range = same. */
 export function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
   const next = [...items];

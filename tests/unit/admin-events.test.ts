@@ -3,6 +3,7 @@ import type { EventEntity } from "@website/domain/events";
 import { authorsById, lastEditors } from "../../apps/admin/src/components/authors";
 import {
   countdownLabel,
+  eventsCsv,
   matchesTab,
   toEventItem,
 } from "../../apps/admin/src/components/events-model";
@@ -105,5 +106,25 @@ describe("Event page list cells", () => {
     expect(countdownLabel("2026-10-01T12:00:00Z", today)).toBe("In 1 day");
     expect(countdownLabel("2026-09-30T00:00:00Z", today)).toBeNull();
     expect(countdownLabel("2026-10-01T00:00:00Z", today)).toBeNull();
+  });
+});
+
+describe("Event page CSV export", () => {
+  it("lists the shown events with quoted cells, in UTC", () => {
+    const item = toEventItem(entity, {
+      name: "Nevyllo K.",
+      email: "nk@example.org",
+      initials: "NK",
+    });
+    const [header, row] = eventsCsv([{ ...item, title: "=cmd", status: "draft" }]);
+    expect(header?.[0]).toBe('"Title"');
+    expect(row?.slice(0, 5)).toEqual([
+      '"\'=cmd"',
+      '"Webinar"',
+      '"2026-11-01 00:00"',
+      '""',
+      '"Draft"',
+    ]);
+    expect(row?.at(-1)).toBe('"Nevyllo K."');
   });
 });

@@ -9,6 +9,7 @@ import {
   pageSlice,
   runEach,
   sortRows,
+  sortSummary,
   toggled,
   withIds,
 } from "../../apps/admin/src/components/list-model";
@@ -136,5 +137,12 @@ describe("admin list pages: phone card layout", () => {
       "meta",
       "actions",
     ]);
+  });
+
+  it("the summary line says how the list is ordered: dates by age, the rest A–Z", () => {
+    expect(sortSummary("Event Date", "desc")).toBe("Newest first");
+    expect(sortSummary("Last Modified", "asc")).toBe("Oldest first");
+    expect(sortSummary("Event", "asc")).toBe("A–Z");
+    expect(sortSummary("Status", "desc")).toBe("Z–A");
   });
 });

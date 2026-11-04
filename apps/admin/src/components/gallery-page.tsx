@@ -28,6 +28,7 @@ import {
   SelectCheckbox,
   useBulkActions,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { matchesDate, type DateFilter } from "./list-model";
@@ -658,6 +659,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
             open={filtersOpen}
             onToggle={() => setFiltersOpen((v) => !v)}
           />
+          <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
             placeholder="Search by title..."

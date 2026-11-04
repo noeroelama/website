@@ -10,6 +10,7 @@ import {
   pageSlice,
   runEach,
   sortRows,
+  sortSummary,
   toggled,
   withIds,
   type SortState,
@@ -338,10 +339,13 @@ export function MenuItem({
   danger = false,
   disabled = false,
   title,
+  className = "",
   onClick,
   children,
 }: {
   icon: IconName;
+  /** Extra class (e.g. `admin-row-menu__item--phone`, shown on a phone only). */
+  className?: string;
   danger?: boolean;
   disabled?: boolean;
   /** Tooltip, e.g. why the entry is disabled. */
@@ -353,7 +357,7 @@ export function MenuItem({
     <button
       type="button"
       role="menuitem"
-      className={`admin-row-menu__item${danger ? " admin-row-menu__item--danger" : ""}`}
+      className={`admin-row-menu__item${danger ? " admin-row-menu__item--danger" : ""} ${className}`.trim()}
       disabled={disabled}
       title={title}
       onClick={onClick}
@@ -448,8 +452,30 @@ export function ListEmpty({
 }
 
 /**
- * Phone only (`globals.css` "Mobile list cards"; hidden on a wide screen): "112 events · sorted by
- * Date", the sort menu, and "Select" (this page) / "Unselect" + "Select all" while rows are selected.
+ * Sort button of the phone's search row (`globals.css` "Mobile list cards"; hidden on a wide
+ * screen, where the column headers sort). Put it in the page header, next to the search box.
+ */
+export function SortMenu<T>({ columns }: { columns: Column<T>[] }) {
+  const choices = sortChoices(columns);
+  if (choices.length === 0) return null;
+  return (
+    <RowMenu icon="sort" label="Sort by" className="admin-sort-menu">
+      {choices.map((choice) => (
+        <MenuItem
+          key={choice.label}
+          icon={choice.active ? (choice.dir === "asc" ? "arrowUp" : "arrowDown") : "sort"}
+          onClick={choice.onClick}
+        >
+          {choice.label}
+        </MenuItem>
+      ))}
+    </RowMenu>
+  );
+}
+
+/**
+ * Phone only (hidden on a wide screen): "112 events · Newest first", and "Select" (this page) /
+ * "Unselect" + "Select all" while rows are selected ("3 of 5 selected").
  */
 function ListSummary<T extends { id: string }>({
   table,
@@ -460,36 +486,22 @@ function ListSummary<T extends { id: string }>({
 }: {
   table: Pick<
     ReturnType<typeof useListTable<T, string>>,
-    "sort" | "selected" | "allSelected" | "togglePage" | "toggleAll" | "clearSelection"
+    "pageRows" | "selected" | "allSelected" | "togglePage" | "toggleAll" | "clearSelection"
   >;
   total: number;
   noun: string;
   columns: Column<T>[];
   selectable: boolean;
 }) {
-  const choices = sortChoices(columns);
-  const active = choices.find((choice) => choice.active);
+  const active = sortChoices(columns).find((choice) => choice.active);
   const picked = table.selected.size;
   return (
     <div className="admin-list-summary">
       <span className="admin-list-summary__count">
         {picked > 0
-          ? `${picked} of ${total} selected`
-          : `${countText(total, noun)}${active ? ` · ${active.label} ${active.dir === "asc" ? "↑" : "↓"}` : ""}`}
+          ? `${picked} of ${Math.max(picked, table.pageRows.length)} selected`
+          : `${countText(total, noun)}${active ? ` · ${sortSummary(active.label, active.dir)}` : ""}`}
       </span>
-      {choices.length > 0 ? (
-        <RowMenu icon="sort" label="Sort by" className="admin-sort-menu">
-          {choices.map((choice) => (
-            <MenuItem
-              key={choice.label}
-              icon={choice.active ? (choice.dir === "asc" ? "arrowUp" : "arrowDown") : "sort"}
-              onClick={choice.onClick}
-            >
-              {choice.label}
-            </MenuItem>
-          ))}
-        </RowMenu>
-      ) : null}
       {selectable && total > 0 ? (
         <>
           <button
@@ -536,7 +548,6 @@ export function ListCard<T extends { id: string }>({
     | "selected"
     | "allSelected"
     | "toggleAll"
-    | "sort"
     | "togglePage"
     | "clearSelection"
   >;

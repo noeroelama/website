@@ -32,7 +32,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SortHeader, type Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
-import { ListCard, ListEmpty, SearchBox, Tabs, useListTable } from "@/components/ui/list-controls";
+import {
+  ListCard,
+  SortMenu,
+  ListEmpty,
+  SearchBox,
+  Tabs,
+  useListTable,
+} from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import { Select, useDropdown } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
@@ -248,6 +255,7 @@ export function RoleManagerPeople({
               </Button>
             ) : null}
           </div>
+          <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
             placeholder="Search by name or e-mail..."
@@ -943,6 +951,7 @@ export function RoleManagerRoles({
               </Button>
             ) : null}
           </div>
+          <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
             placeholder="Search by role..."

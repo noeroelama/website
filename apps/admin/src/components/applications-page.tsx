@@ -19,7 +19,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SortHeader, type Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
-import { ListCard, ListEmpty, SearchBox, Tabs, useListTable } from "@/components/ui/list-controls";
+import {
+  ListCard,
+  SortMenu,
+  ListEmpty,
+  SearchBox,
+  Tabs,
+  useListTable,
+} from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
@@ -620,6 +627,7 @@ export function ApplicationsPage(props: {
           >
             Back
           </Button>
+          <SortMenu columns={columns} />
           <SearchBox
             placeholder="Search by name or e-mail..."
             label="Search applications"

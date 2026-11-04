@@ -23,6 +23,7 @@ import {
   RowMenu,
   useBulkActions,
   useListTable,
+  SortMenu,
 } from "@/components/ui/list-controls";
 import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
@@ -536,6 +537,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
               </Button>
             ) : null}
           </div>
+          <SortMenu columns={columns} />
         </div>
       </div>
       <ListCard

@@ -124,11 +124,16 @@ router.push("/things"); router.refresh();
   / `expand` lead, `aksi` / `actions` / `edit` / `open` / `revert` are the action row, the first
   other column is the title, the rest are detail lines) and `data-label` (the header text) so a
   detail line reads "Label value". The header row is hidden: `ListCard` adds a summary line
-  (count, sort menu from the `SortHeader` columns, **Select** / **Unselect** / **Select all**).
+  ("112 events · Newest first", **Select** / **Unselect** / **Select all**), and `SortMenu`
+  (page header, next to the search box; its entries come from the `SortHeader` columns) is the
+  sort button.
   Wrap the header's Add / Export buttons in `<div className="admin-fab">` (a plain wrapper on a
   wide screen, floating bottom right on a phone). Row menus (`RowMenu`) stay in the page, so on a
   phone their entries are the card's labelled buttons (Delete first); an icon button gets its
-  label from its `title`. The bulk bar is fixed at the bottom; `Pagination` shows Prev / page /
+  label from its `title`. A menu entry with `admin-row-menu__item--wide` / `--phone` shows only
+  on a wide screen / a phone (Event: Publish + Make Private vs one Visibility), and a
+  `<span className="admin-long">` part of a label is dropped on a phone ("Delete Event" → "Delete").
+  The bulk bar is fixed at the bottom; `Pagination` shows Prev / page /
   Next. Adding a page: use `ListCard` or `DataTable`, give columns these keys, and wrap its header
   buttons.
 - **Dark list pages** (Event, Gallery, Article, Newsletter, Audit Log) share one set of parts —
