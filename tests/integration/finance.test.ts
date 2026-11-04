@@ -53,6 +53,10 @@ const actions = () =>
       steps.push(request.status);
       return Promise.resolve();
     },
+    programPeriod: (id) => {
+      const program = fake.docs.get(`programs/${id}`) as { periodId: string } | undefined;
+      return Promise.resolve(program?.periodId ?? null);
+    },
     period: () => {
       const active = fake.docs.get("settings/activePeriod") as { periodId: string } | undefined;
       return Promise.resolve(active ? { id: active.periodId, name: "2026/2027" } : null);
@@ -91,6 +95,8 @@ beforeEach(() => {
   });
   fake.docs.set("orgUnits/sekjen", { periodId: "p1", path: [], name: "Sekjen", deletedAt: null });
   fake.docs.set("orgUnits/old", { periodId: "p0", path: [], name: "Old", deletedAt: null });
+  fake.docs.set("programs/prog-1", { periodId: "p1" });
+  fake.docs.set("programs/prog-old", { periodId: "p0" });
 });
 
 async function created(input: Record<string, unknown> = draft) {
@@ -121,6 +127,15 @@ describe("finance requests: drafts (I1)", () => {
     );
     expect(await store().list({ periodId: "p1", orgUnitIds: ["sekjen"], limit: 10 })).toEqual([]);
     expect(await store().list({ periodId: "p1", orgUnitIds: [], limit: 10 })).toEqual([]);
+  });
+
+  it("links only a programme of the active period", async () => {
+    for (const programId of ["prog-old", "nope"]) {
+      expect(
+        await actions().save(...as(director))({ ...draft, programId, version: null }),
+      ).toMatchObject({ ok: false });
+    }
+    expect(await created({ ...draft, programId: null })).toMatchObject({ version: 1 });
   });
 
   it("checks the unit scope, the period and the active period", async () => {

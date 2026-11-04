@@ -315,6 +315,8 @@ describe("notification sources (J2)", () => {
     expect(sent[0]?.text).toContain("Add receipts");
     expect(await run({ status: "returned", version: 7 })).toEqual(["lpj:pr1:returned:7:pic"]);
     expect(await run({ status: "approved", version: 8 })).toEqual(["lpj:pr1:approved:8:pic"]);
+  });
+
   const finance = (fields: Partial<FinanceRequest>) =>
     ({
       id: "f1",

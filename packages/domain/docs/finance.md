@@ -31,17 +31,17 @@ added or converted (PPIDK DECISIONS §27).
 
 ## Fields
 
-| Field                     | Rule                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------- |
-| `category`                | `receipt`, `disbursement`, `reimbursement`, `budget` (a plan, no money moves)      |
-| `orgUnitId`               | a unit of the active period; gives `orgUnitPath` (scope)                           |
-| `title`                   | activity or purpose, ≤ 200                                                         |
-| `amountMinor`, `currency` | integer ≥ 0; one of `FINANCE_CURRENCIES` (IDR and the region's currencies)         |
-| `date`                    | plain date or null                                                                 |
-| `account`                 | destination account "Bank - number - name", ≤ 150                                  |
-| `fundSource`              | ≤ 100                                                                              |
-| `programId`               | optional work-programme budget line; a plain id, NOT checked yet (see Assumptions) |
-| `documents[]`             | private PDFs (proposal, RAB, receipts), ≤ 10 MB each, at most 10                   |
+| Field                     | Rule                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| `category`                | `receipt`, `disbursement`, `reimbursement`, `budget` (a plan, no money moves) |
+| `orgUnitId`               | a unit of the active period; gives `orgUnitPath` (scope)                      |
+| `title`                   | activity or purpose, ≤ 200                                                    |
+| `amountMinor`, `currency` | integer ≥ 0; one of `FINANCE_CURRENCIES` (IDR and the region's currencies)    |
+| `date`                    | plain date or null                                                            |
+| `account`                 | destination account "Bank - number - name", ≤ 150                             |
+| `fundSource`              | ≤ 100                                                                         |
+| `programId`               | optional work programme; must belong to the active period (admin save)        |
+| `documents[]`             | private PDFs (proposal, RAB, receipts), ≤ 10 MB each, at most 10              |
 
 Required before submit (`REQUIRED_FIELDS`, PPIDK `WAJIB`; checked at submit, drafts may be
 incomplete):
@@ -140,8 +140,7 @@ requester** = `finance.edit` scoped to their unit.
 
 ## Assumptions
 
-- `programId` is stored as a reference only: programmes (step 6.2) were built in parallel; it is
-  validated against `programs` when the two are merged.
+- `programId` (optional) must be a programme of the active period; the admin save checks it.
 - The cash book is per board period (as PPIDK); a new period starts with a manual opening
   balance line.
 - Documents and proof are PDFs only (the private-file block); a phone screenshot must be saved as

@@ -179,7 +179,6 @@ export function createNotices(deps: NoticeDeps) {
       }
     });
 
-  return { application, letter, lpj };
   /** Finance requests (I1): the next desk's holders in the request's unit, or the requester. */
   const finance = (saved: FinanceRequest) =>
     safely("finance", saved.id, async () => {
@@ -233,7 +232,7 @@ export function createNotices(deps: NoticeDeps) {
       }
     });
 
-  return { application, letter, finance };
+  return { application, letter, lpj, finance };
 }
 
 export type Notices = ReturnType<typeof createNotices>;

@@ -68,7 +68,7 @@ export const FinanceRequestInputSchema = z
     /** "Bank - number - name". */
     account: safeText(150, { allowEmpty: true }).default(""),
     fundSource: safeText(100, { allowEmpty: true }).default(""),
-    /** Optional budget line of a work programme (a reference only until programmes are wired). */
+    /** Optional work programme of the same period (checked by the admin action). */
     programId: safeId.nullable().default(null),
   })
   .strict();

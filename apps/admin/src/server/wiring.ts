@@ -509,6 +509,7 @@ export const lpjFile = lazyEnv(() =>
 export const financeActions = lazyEnv(() =>
   createFinanceActions({
     requests: adminStores().finance,
+    programPeriod: async (id) => (await adminStores().programs.get(id))?.periodId ?? null,
     unitPath: async (id) => {
       const unit = await adminStores().orgUnits.get(id);
       return unit ? orgUnitPath(unit) : null;

@@ -46,6 +46,8 @@ export interface FinanceDeps {
   readonly period: () => Promise<{ readonly id: string; readonly name: string } | null>;
   /** Exports are security events (who took the report, which range). */
   readonly logExport: (actorId: string, details: Record<string, unknown>) => void;
+  /** Period of a work programme, null when it does not exist (a budget line is optional). */
+  readonly programPeriod: (programId: string) => Promise<string | null>;
   /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   readonly storage: {
@@ -216,6 +218,11 @@ export function createFinanceActions(deps: FinanceDeps) {
     resource: (input) => (input.id ? scopeOf({ id: input.id }) : unitScope(input.orgUnitId)),
     handler: async ({ id, version, ...input }, principal, audit) => {
       const now = deps.now();
+      const period = await deps.period();
+      // Without an active period the store refuses the save with its own message.
+      if (input.programId && period && (await deps.programPeriod(input.programId)) !== period.id) {
+        throw new RuleViolationError("The programme is not one of the active period.");
+      }
       if (id) {
         if (!can(principal, "finance.edit", await unitScope(input.orgUnitId))) {
           throw new RuleViolationError("You can only make requests for your own unit.");
