@@ -121,6 +121,31 @@ draft ──→ submitted ──┬─ secretariat review ─┐
   `roles.edit`, LPJ desks and programme approvers).
 - Audit: module `lpj`, resource `lpj`; not revertible. LPJs are never deleted.
 
+## Period report card (E5)
+
+Code: `src/programs/report.ts` (pure maths), `packages/db/src/sql/programs.ts`
+(`createSqlPeriodReport().card(periodId, now)`), admin page `/programs/report?period=`
+(`programs.read`; linked from the Programmes header). Tests: `tests/unit/report-card.test.ts`,
+`tests/integration/lpj.test.ts` (report card).
+
+- **Computed on every request, nothing stored** (a stored report goes stale and is then read as
+  the truth).
+- Programme numbers are COUNT queries: per status, "at risk" (approved or running with health
+  at risk / off track), and **completion** = finished ÷ (approved + running + finished) —
+  proposals and cancelled programmes were never promises and are left out.
+- LPJ numbers are COUNT queries: waiting for review (submitted), approved, **overdue** (not
+  approved and `dueOn` before today, UTC — the same read-time rule as `isOverdue`).
+- **OKR achievement** = average of the objectives' achievement (each the plain average of its
+  key results).
+- **Budget absorption per currency, never converted**: planned = budget lines of approved,
+  running and finished programmes; spent = money spent of **approved** LPJs only (checked by
+  the treasurer); absorption = spent ÷ planned (none when nothing was planned in that
+  currency). Totals use `addMoney`, which refuses to add two currencies.
+- Shortcut: the budget totals read the documents (the store has COUNT, not SUM); fine for a few
+  hundred programmes per period.
+- The card shows the whole period's totals to anyone with `programs.read` (programmes are open
+  to every officer, DECISIONS §24).
+
 ## Suggested roles (data, Role Manager)
 
 Roles are data (DEC-11): create these in Role Manager → Edit Role (nothing is seeded in code).

@@ -1,13 +1,16 @@
-import type { Database, Transaction } from "./store";
+import type { Database, Query, Transaction } from "./store";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import { orgUnitPath, type OrgUnit, type Period } from "@website/domain/organizations";
 import {
   assertCanCheckIn,
   assertOkrWritable,
   assertPlanEditable,
+  addDaysUtc,
   checkinId,
   DEFAULT_LPJ_DEADLINE_DAYS,
   openLpj,
+  periodReportCard,
+  PROGRAM_STATUSES,
   type Checkin,
   type CheckinInput,
   type Health,
@@ -18,6 +21,7 @@ import {
   type Milestone,
   type Objective,
   type ObjectiveInput,
+  type PeriodReportCard,
   type Program,
   type ProgramInput,
   type ProgramStatus,
@@ -671,3 +675,58 @@ export function createSqlLpjStore(db: Database) {
 }
 
 export type SqlLpjStore = ReturnType<typeof createSqlLpjStore>;
+
+/* ---- Period report card (E5) ---- */
+
+/**
+ * The report card of a period, computed on request (E5): programme and LPJ numbers are COUNT
+ * queries (overdue too: `dueOn` before today and not approved); OKR achievement and budget
+ * totals read the documents they average or add.
+ * shortcut: budgets are added in code (the store has COUNT, no SUM, and amounts are per
+ * currency in arrays); a period has a few hundred programmes — add a SUM query if that grows.
+ */
+export function createSqlPeriodReport(db: Database) {
+  const programs = db.collection("programs");
+  const lpj = db.collection("lpjReports");
+  const count = async (query: Query) => (await query.count().get()).data().count;
+  const objectives = createSqlObjectiveStore(db);
+  return {
+    async card(periodId: string, now: Date): Promise<PeriodReportCard> {
+      const live = programs.where("periodId", "==", periodId).where("deletedAt", "==", null);
+      const reports = lpj.where("periodId", "==", periodId);
+      // Overdue = due before today (UTC), i.e. due on yesterday or earlier.
+      const yesterday = addDaysUtc(now, -1);
+      const [okr, statusCounts, troubled, promised, approvedLpj, submitted, overdue] =
+        await Promise.all([
+          objectives.listForPeriod(periodId),
+          Promise.all(PROGRAM_STATUSES.map((s) => count(live.where("status", "==", s)))),
+          count(
+            live
+              .where("status", "in", ["approved", "running"])
+              .where("health.status", "in", ["at_risk", "off_track"]),
+          ),
+          live.where("status", "in", ["approved", "running", "finished"]).get(),
+          reports.where("status", "==", "approved").get(),
+          count(reports.where("status", "==", "submitted")),
+          count(
+            reports
+              .where("status", "in", ["draft", "submitted", "returned"])
+              .where("dueOn", "<=", yesterday),
+          ),
+        ]);
+      return periodReportCard({
+        objectives: okr,
+        counts: Object.fromEntries(
+          PROGRAM_STATUSES.map((s, i) => [s, statusCounts[i] as number]),
+        ) as Record<ProgramStatus, number>,
+        troubled,
+        plannedBudgets: promised.docs.map((d) => d.data()["budgets"] as Program["budgets"]),
+        // An approved LPJ always has money spent (the treasurer refuses one without).
+        realized: approvedLpj.docs.map((d) => d.data()["realized"] as Program["budgets"]),
+        lpj: { submitted, approved: approvedLpj.docs.length, overdue },
+      });
+    },
+  };
+}
+
+export type SqlPeriodReport = ReturnType<typeof createSqlPeriodReport>;

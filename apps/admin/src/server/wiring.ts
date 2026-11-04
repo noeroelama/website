@@ -569,4 +569,5 @@ export const adminReads = {
   listCheckins: (programId: string) => adminStores().programs.listCheckins(programId),
   listLpj: (periodId: string) => adminStores().lpj.listForPeriod(periodId),
   getLpj: (id: string) => adminStores().lpj.get(id),
+  periodReportCard: (periodId: string) => adminStores().periodReport.card(periodId, new Date()),
 };

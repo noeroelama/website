@@ -198,6 +198,8 @@ export {
   createSqlObjectiveStore,
   createSqlProgramStore,
   createSqlLpjStore,
+  createSqlPeriodReport,
+  type SqlPeriodReport,
   lpjSnapshot,
   type LpjAudit,
   type SqlLpjStore,

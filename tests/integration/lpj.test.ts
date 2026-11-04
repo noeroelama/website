@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createSqlLpjStore, createSqlProgramStore } from "@website/db/sql";
+import { createSqlLpjStore, createSqlPeriodReport, createSqlProgramStore } from "@website/db/sql";
 import type { LpjReport } from "@website/domain/programs";
 import { pdfText, renderReportPdf } from "@website/pdf";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
@@ -355,5 +355,98 @@ describe("LPJ PDF, rendered at download time", () => {
     expect((await route()(id, staff("d", ["lpj.read"]))).status).toBe(200);
     const broken = await route(() => Promise.reject(new Error("boom")))(id, pic);
     expect(broken.status).toBe(500);
+  });
+});
+
+describe("period report card, computed on request (E5)", () => {
+  it("counts programmes and LPJs, totals budgets per currency, never stores anything", async () => {
+    // 1: finished with an approved LPJ (JPY 50,000 planned, 42,000 spent).
+    const { id } = await finished();
+    let v = await submittedLpj(id);
+    v = (await ok(lpjActions().reviewSecretariat(...as(sekre))({ id, version: v }))).version;
+    v = (await ok(lpjActions().reviewTreasurer(...as(bendahara))({ id, version: v }))).version;
+    await ok(lpjActions().approve(...as(sekjen))({ id, version: v }));
+    // 2: finished, its LPJ still a draft (overdue on 1 December); 3: approved, at risk (AUD).
+    await finished();
+    const running = await ok<{ id: string }>(
+      programActions().save(...as(director))({
+        version: null,
+        periodId: "p1",
+        plan: {
+          name: "Mentoring",
+          orgUnitId: "media",
+          budgets: [{ amountMinor: 10000, currency: "AUD" }],
+        },
+        picEmails: ["pic@example.org"],
+      }),
+    );
+    const rv = (await ok(programActions().approve(...as(sekjen))({ id: running.id, version: 1 })))
+      .version;
+    await ok(
+      programActions().health(...as(pic))({
+        id: running.id,
+        version: rv,
+        health: "at_risk",
+        reason: "No mentors yet",
+      }),
+    );
+    // 4: a proposal with an IDR budget: not a promise, not in the planned totals.
+    await ok(
+      programActions().save(...as(director))({
+        version: null,
+        periodId: "p1",
+        plan: { name: "Idea", orgUnitId: "media", budgets: [{ amountMinor: 5, currency: "IDR" }] },
+        picEmails: [],
+      }),
+    );
+    fake.docs.set("objectives/o1", {
+      periodId: "p1",
+      orgUnitId: null,
+      orgUnitPath: [],
+      title: "Grow",
+      description: "",
+      sort: 0,
+      keyResults: [
+        {
+          id: "k",
+          title: "K",
+          unit: "",
+          baseline: 0,
+          target: 10,
+          current: 5,
+          direction: "up",
+          sort: 0,
+        },
+      ],
+      deletedAt: null,
+      version: 1,
+      createdAt: clock,
+      updatedAt: clock,
+    });
+    const before = JSON.stringify([...fake.docs.keys()]);
+    const card = await createSqlPeriodReport(db()).card("p1", new Date("2026-12-01T00:00:00Z"));
+    expect(JSON.stringify([...fake.docs.keys()])).toBe(before);
+    expect(card.programmes).toMatchObject({
+      counts: { proposed: 1, approved: 1, running: 0, finished: 2, cancelled: 0 },
+      total: 4,
+      troubled: 1,
+      completionPercent: 67,
+    });
+    expect(card.lpj).toEqual({ submitted: 0, approved: 1, overdue: 1 });
+    expect(card.okr).toMatchObject({ achievementPercent: 50, objectives: [{ percent: 50 }] });
+    expect(card.budget).toEqual([
+      {
+        currency: "AUD",
+        planned: { amountMinor: 10000, currency: "AUD" },
+        realized: { amountMinor: 0, currency: "AUD" },
+        absorptionPercent: 0,
+      },
+      {
+        currency: "JPY",
+        planned: { amountMinor: 100000, currency: "JPY" },
+        realized: { amountMinor: 42000, currency: "JPY" },
+        absorptionPercent: 42,
+      },
+    ]);
   });
 });

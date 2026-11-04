@@ -39,6 +39,7 @@ import {
   createSqlObjectiveStore,
   createSqlProgramStore,
   createSqlLpjStore,
+  createSqlPeriodReport,
 } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { getAdminEnv } from "./env";
@@ -113,5 +114,6 @@ export const adminStores = lazyEnv(() => {
     objectives: createSqlObjectiveStore(db),
     programs: createSqlProgramStore(db),
     lpj: createSqlLpjStore(db),
+    periodReport: createSqlPeriodReport(db),
   };
 });

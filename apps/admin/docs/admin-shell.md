@@ -181,6 +181,8 @@ router.push("/things"); router.refresh();
   health and weekly check-ins. **LPJ** (`/lpj`, `/lpj/[id]`, `src/components/lpj-page.tsx`): the
   period's LPJs (overdue in red), one LPJ with the frozen plan, the PICs' form, the desks and the
   PDF link (`/api/lpj/[id]/pdf`). The dashboard warns when nobody holds the LPJ secretariat desk.
+  **Report card** (`/programs/report?period=`, server-rendered): OKR achievement, programme
+  completion, LPJ counts and budget absorption per currency, computed on request.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

@@ -237,6 +237,14 @@ export function ProgramsPage({
         </div>
         <div className="admin-page-header__actions">
           <PeriodSwitch path="/programs" current={period.id} periods={periods} />
+          <Button
+            variant="outline"
+            size="sm"
+            icon="chart"
+            href={`/programs/report?period=${period.id}`}
+          >
+            Report card
+          </Button>
           <div className="admin-fab">
             {plan ? (
               <Button variant="outline" size="sm" icon="plus" onClick={() => setAdding(true)}>
