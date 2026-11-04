@@ -237,6 +237,12 @@ file (they live in the cPanel app screens and the password manager).
       `infrastructure/scripts/import-ppidk-recruitment.mjs --dir <folder> --files <storage>`
       (dry run, read `import-recruitment-report.json`, then `--apply`; see
       `packages/domain/docs/recruitment.md` → Import from PPIDK).
+- [ ] Letters, certificates and the agenda book imported from PPIDK after the people import:
+      freeze the PPIDK letter screens, export the tables as TSV, download the archived PDFs from
+      R2, run `infrastructure/scripts/import-ppidk-documents.mjs --dir <folder> --files <pdfs>`
+      (dry run, read `import-documents-report.json`, then `--apply`; see
+      `packages/domain/docs/documents.md` → Import from PPIDK). Open a few PPIDK codes on the
+      verification host before switching it over.
 - [ ] Before the first letter is issued: add `verif.ppiasiania.id` as an extra domain of the web
       app (cPanel → Domains + AutoSSL, DNS record), set `VERIFICATION_HOST` to it on web AND admin.
 - [ ] Personal signatures: generate `FIELD_ENCRYPTION_KEY` once (`docs/environment.md`), set the

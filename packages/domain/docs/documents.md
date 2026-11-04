@@ -255,6 +255,38 @@ px. The optional centre logo goes only on PNGs, on an opaque plate in the code's
 covering 22% of the width (`qrLogoPlate`, under 5% of the area); SVGs never carry it. PDFs embed
 the QR without a logo (the letterhead already shows the emblem).
 
+## Import from PPIDK (block J, step 4.10, DEC-10)
+
+- Mapping: `packages/db/src/ppidk/documents.ts` (pure, tested in
+  `tests/unit/ppidk-documents-import.test.ts`, which also opens every imported code on the
+  verification page); script: `infrastructure/scripts/import-ppidk-documents.mjs --dir <tsv
+folder> [--files <downloaded PPIDK PDFs>] [--apply]` (dry run by default, writes
+  `import-documents-report.json`). Run it after the people import (it refuses otherwise) and after
+  freezing the PPIDK letter screens. Tables: `users`, `org_units`, `letter_types`,
+  `letter_sequences`, `letters`, `certificates`, `incoming_letters`, `incoming_letter_sequences`,
+  `letter_dispositions`. Ids come from PPIDK (`ppidk-letter-<id>`, `ppidk-lettertype-<id>`,
+  `ppidk-incoming-<id>`, `ppidk-disposition-<id>`; sheets `<batch>_<seq>`).
+- Numbers and verification codes are kept as printed (PPIDK kept codes on `letters` and
+  `certificates`; each becomes `verificationCodes/{code}`). Counters (`letterCounters`,
+  `certificateCounters`, `incomingCounters`) are set to the highest of the PPIDK sequence row and
+  the numbers actually used, and the script never lowers a counter already further on the
+  platform. A type code or verification code already used by a platform document stops the import.
+- Statuses: `terkoreksi` → corrected, `menunggu_berkas` → awaiting_file; sources `unggah` →
+  upload, `sertifikat` → certificate. Verification answers exactly as in PPIDK: issued and cancelled
+  letters and the sheets of numbered batches resolve, everything else does not.
+- Content digest: when the PPIDK digest still matches the PPIDK text it is frozen again in the
+  platform's form (`letterCanonical`); one that no longer matched stays, so the content is shown to
+  nobody (as in PPIDK); letters issued before digests keep none. Bodies are sanitized on import.
+- Signers: PPIDK's frozen `signature_snapshot`; letters issued before it get the desks rebuilt from
+  the accounts (as PPIDK's page did, without the seat). Letterheads are not imported (the current
+  one is used if a letter without archive is rendered).
+- Files: archived letter PDFs (`pdf_path`) and incoming scans, only real PDFs found under `--files`;
+  an upload-path PDF whose sha256 differs from PPIDK's `berkas_sha256` is not imported (reported).
+  Non-PDF scans (JPG/PNG) are reported, not imported.
+- Not imported: personal signatures (encrypted with PPIDK's key; people upload them again), the
+  certificate pickup e-mail (PPIDK kept none, so imported sheets are not on the pickup page), and
+  letter types whose code the platform refuses keep no code pointer (rename them; reported).
+
 ## Tests
 
 `tests/unit/documents.test.ts`, `tests/integration/numbering.test.ts`,
@@ -265,4 +297,4 @@ the QR without a logo (the letterhead already shows the emblem).
 `tests/unit/admin-incoming.test.ts`, `tests/integration/incoming.test.ts`,
 `tests/integration/signatures.test.ts`, `tests/unit/pdf-stamp.test.ts`,
 `tests/unit/certificates.test.ts`, `tests/unit/certificate-pdf.test.ts`,
-`tests/integration/certificates.test.ts`.
+`tests/integration/certificates.test.ts`, `tests/unit/ppidk-documents-import.test.ts`.
