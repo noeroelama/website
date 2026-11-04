@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { FinanceRequest } from "@website/domain/finance";
-import { amountText, inTab, toFinanceItem } from "../../apps/admin/src/components/finance-model";
+import { cashReport, type CashEntry, type FinanceRequest } from "@website/domain/finance";
+import {
+  amountText,
+  inTab,
+  toCashSections,
+  toFinanceItem,
+} from "../../apps/admin/src/components/finance-model";
 
 const at = new Date("2026-11-04T03:00:00Z");
 
@@ -67,5 +72,61 @@ describe("Finance page model", () => {
         "ari",
       ),
     ).toMatchObject({ mine: true, treasurer: null, paid: null, rejectionNote: "No" });
+  });
+
+  it("formats the cash report per currency for the cash book page", () => {
+    const line = (fields: Partial<CashEntry>) =>
+      ({
+        id: "c1",
+        date: "2026-11-01",
+        kind: "in",
+        category: "dues",
+        description: "Iuran",
+        amountMinor: 5000,
+        currency: "JPY",
+        source: "manual",
+        createdAt: at,
+        ...fields,
+      }) as CashEntry;
+    const sections = toCashSections(
+      cashReport(
+        [line({}), line({ id: "c2", kind: "out", category: "activity", source: "request" })],
+        {
+          from: null,
+          to: null,
+        },
+      ),
+    );
+    expect(sections).toEqual([
+      {
+        currency: "JPY",
+        opening: "JPY 0",
+        totalIn: "JPY 5,000",
+        totalOut: "JPY 5,000",
+        closing: "JPY 0",
+        rows: [
+          {
+            id: "c1",
+            date: "2026-11-01",
+            category: "Member dues",
+            description: "Iuran",
+            amountIn: "JPY 5,000",
+            amountOut: "",
+            balance: "JPY 5,000",
+            fromRequest: false,
+          },
+          {
+            id: "c2",
+            date: "2026-11-01",
+            category: "Activity / programme",
+            description: "Iuran",
+            amountIn: "",
+            amountOut: "JPY 5,000",
+            balance: "JPY 0",
+            fromRequest: true,
+          },
+        ],
+      },
+    ]);
   });
 });

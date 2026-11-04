@@ -56,8 +56,10 @@ export {
   type SqlCertificateStore,
 } from "./certificates";
 export {
+  cashEntrySnapshot,
   createSqlFinanceStore,
   financeSnapshot,
+  type CashAudit,
   type FinanceAudit,
   type FinanceListQuery,
   type SqlFinanceStore,

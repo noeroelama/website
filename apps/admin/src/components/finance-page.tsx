@@ -51,7 +51,14 @@ interface Props {
   initial: FinanceItem[];
   /** Units the viewer may make requests for. */
   units: { id: string; name: string }[];
-  desks: { edit: boolean; review: boolean; authorize: boolean; pay: boolean };
+  desks: {
+    edit: boolean;
+    review: boolean;
+    authorize: boolean;
+    pay: boolean;
+    /** Global finance.cashbook or finance.export: the cash book page. */
+    cashbook: boolean;
+  };
 }
 
 interface Draft {
@@ -744,6 +751,11 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
         </div>
         <div className="admin-page-header__actions">
           <div className="admin-fab">
+            {desks.cashbook ? (
+              <Button variant="outline" size="sm" icon="eye" href="/finance/cashbook">
+                Cash book
+              </Button>
+            ) : null}
             {desks.edit ? (
               <Button
                 variant="outline"

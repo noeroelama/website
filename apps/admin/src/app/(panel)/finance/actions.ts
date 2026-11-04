@@ -43,3 +43,8 @@ export async function completeFinanceAction(input: unknown) {
 export async function removeFinanceFileAction(input: unknown) {
   return done(await financeActions().removeFile(getPrincipal, getAuditContext)(input));
 }
+export async function addCashEntryAction(input: unknown) {
+  const result = await financeActions().addCashEntry(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/finance/cashbook");
+  return result;
+}

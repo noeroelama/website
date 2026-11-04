@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createSqlFinanceStore } from "@website/db/sql";
-import type { FinanceRequest } from "@website/domain/finance";
+import type { CashEntry, FinanceRequest } from "@website/domain/finance";
+import { pdfText } from "@website/pdf";
 import { normalizePermissions, type Principal, type Scope } from "@website/permissions";
 import { createFinanceActions } from "../../apps/admin/src/server/finance";
 import { fakeDb } from "../support/fake-db";
@@ -31,6 +32,7 @@ const pdf = new TextEncoder().encode("%PDF-1.7 rab");
 let fake: ReturnType<typeof fakeDb>;
 let files: Map<string, Uint8Array>;
 let steps: string[];
+let exports: Record<string, unknown>[];
 let uuid = 0;
 const store = () => createSqlFinanceStore(fake.db as unknown as Db);
 const actions = () =>
@@ -50,6 +52,13 @@ const actions = () =>
     afterStep: (request) => {
       steps.push(request.status);
       return Promise.resolve();
+    },
+    period: () => {
+      const active = fake.docs.get("settings/activePeriod") as { periodId: string } | undefined;
+      return Promise.resolve(active ? { id: active.periodId, name: "2026/2027" } : null);
+    },
+    logExport: (actorId, details) => {
+      exports.push({ actorId, ...details });
     },
     now: () => clock,
     uuid: () => `0000000${(uuid += 1)}-aaaa`,
@@ -71,6 +80,7 @@ beforeEach(() => {
   fake = fakeDb();
   files = new Map();
   steps = [];
+  exports = [];
   uuid = 0;
   fake.docs.set("settings/activePeriod", { periodId: "p1" });
   fake.docs.set("orgUnits/media", {
@@ -360,5 +370,222 @@ describe("documents and the proof of transfer (private PDFs, checksum on read)",
       data: { status: "done" },
     });
     expect(steps.at(-2)).toBe("paid");
+  });
+});
+
+describe("cash book (I2) and cash report (I3)", () => {
+  const paidRequest = async (input: Record<string, unknown>, amount: number) => {
+    const { id } = await created({ ...draft, ...input });
+    const run = actions();
+    if (input["category"] === "reimbursement" || input["category"] === "budget") {
+      await actions().uploadFile(...as(director))(
+        id,
+        new Request(`https://admin.test/api/finance/${id}/files?kind=doc&version=1`, {
+          method: "POST",
+          body: pdf,
+        }),
+      );
+    }
+    let version = (await get(id)).version;
+    await run.submit(...as(director))({ id, version });
+    await run.review(...as(treasurer))({ id, version: version + 1, note: "" });
+    await run.authorize(...as(coordinator))({ id, version: version + 2, note: "" });
+    version += 3;
+    const response = await run.uploadFile(...as(treasurer))(
+      id,
+      new Request(
+        `https://admin.test/api/finance/${id}/files?kind=proof&version=${version}&amount=${amount}`,
+        { method: "POST", body: pdf },
+      ),
+    );
+    expect(response.status).toBe(201);
+    return id;
+  };
+  const entries = () =>
+    [...fake.docs.entries()]
+      .filter(([key]) => key.startsWith("cashEntries/"))
+      .map(([key, value]) => ({ key, ...(value as Omit<CashEntry, "id">) }));
+  const cashier = staff("tina", ["finance.cashbook", "finance.export"]);
+
+  it("mark paid writes cashEntries/{requestId} in the same transaction, exactly once", async () => {
+    const id = await paidRequest({}, 149_000_000);
+    expect(entries()).toMatchObject([
+      {
+        key: `cashEntries/${id}`,
+        kind: "out",
+        category: "disbursement",
+        amountMinor: 149_000_000,
+        currency: "IDR",
+        source: "request",
+        requestId: id,
+        date: "2026-11-04",
+      },
+    ]);
+    const audit = [...fake.docs.values()].filter(
+      (v) => (v as { resourceType?: string }).resourceType === "cashEntry",
+    );
+    expect(audit).toHaveLength(1);
+    // A second payment of the same request is refused: the line is never written twice.
+    const again = await actions().uploadFile(...as(treasurer))(
+      id,
+      new Request(`https://admin.test/api/finance/${id}/files?kind=proof&version=5&amount=1`, {
+        method: "POST",
+        body: pdf,
+      }),
+    );
+    expect(again.status).toBe(400);
+    expect(entries()).toHaveLength(1);
+  });
+
+  it("a stale version or an existing line refuses the payment as a whole", async () => {
+    const id = await paidRequest({}, 1);
+    const request = await get(id);
+    // Simulate a line already present (e.g. imported) for a request being paid now.
+    fake.docs.set(`financeRequests/${id}`, {
+      ...(fake.docs.get(`financeRequests/${id}`) as object),
+      status: "authorized",
+      payment: null,
+    });
+    const run = actions();
+    expect(
+      await (
+        await run.uploadFile(...as(treasurer))(
+          id,
+          new Request(
+            `https://admin.test/api/finance/${id}/files?kind=proof&version=${request.version}&amount=5`,
+            { method: "POST", body: pdf },
+          ),
+        )
+      ).json(),
+    ).toMatchObject({ message: "This request is already in the cash book." });
+    expect(
+      (
+        await run.uploadFile(...as(treasurer))(
+          id,
+          new Request(`https://admin.test/api/finance/${id}/files?kind=proof&version=1&amount=5`, {
+            method: "POST",
+            body: pdf,
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(entries()).toHaveLength(1);
+  });
+
+  it("the store refuses to pay a request that does not exist", async () => {
+    const never = () => {
+      throw new Error("not called");
+    };
+    await expect(store().pay("missing", 1, (r) => r, never, never, clock)).rejects.toThrow(
+      "This item does not exist.",
+    );
+  });
+
+  it("budget requests are paid without any cash book line", async () => {
+    await paidRequest({ category: "budget" }, 10);
+    expect(entries()).toEqual([]);
+  });
+
+  it("manual entries need finance.cashbook (global) and a unit of the period", async () => {
+    const input = {
+      date: "2026-11-01",
+      kind: "in",
+      category: "opening_balance",
+      description: "Saldo awal",
+      amountMinor: 500_000_000,
+      currency: "IDR",
+    };
+    expect(await actions().addCashEntry(...as(cashier))(input)).toMatchObject({ ok: true });
+    expect(entries()).toMatchObject([{ source: "manual", createdBy: "tina", requestId: null }]);
+    const unitScoped = staff("u", ["finance.cashbook"], { type: "orgUnit", orgUnitId: "media" });
+    expect(await actions().addCashEntry(...as(unitScoped))(input)).toMatchObject({
+      error: "forbidden",
+    });
+    expect(
+      await actions().addCashEntry(...as(cashier))({ ...input, orgUnitId: "old" }),
+    ).toMatchObject({ issues: ["Choose a unit of this board period."] });
+    expect(
+      await actions().addCashEntry(...as(cashier))({ ...input, orgUnitId: "media" }),
+    ).toMatchObject({ ok: true });
+    fake.docs.delete("settings/activePeriod");
+    expect(await actions().addCashEntry(...as(cashier))(input)).toMatchObject({
+      issues: ["Activate a board period first."],
+    });
+  });
+
+  const report = (query: string, principal: Principal | null = cashier) =>
+    actions().reportFile(new URL(`https://admin.test/api/finance/report?${query}`), principal);
+
+  it("recomputes the report on the server: balance per currency, range filtering, CSV", async () => {
+    await actions().addCashEntry(...as(cashier))({
+      date: "2026-10-30",
+      kind: "in",
+      category: "opening_balance",
+      description: "=HYPERLINK(1)",
+      amountMinor: 200_000_000,
+      currency: "IDR",
+    });
+    await actions().addCashEntry(...as(cashier))({
+      date: "2026-11-01",
+      kind: "in",
+      category: "dues",
+      description: 'Iuran "Jepang"',
+      amountMinor: 30000,
+      currency: "JPY",
+    });
+    await paidRequest({}, 50_000_000);
+    const csv = await report("from=2026-11-01&to=2026-11-30&format=csv");
+    expect(csv.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(csv.headers.get("content-disposition")).toBe(
+      'attachment; filename="cash-report-2026-11-01-2026-11-30.csv"',
+    );
+    const lines = (await csv.text())
+      .replace(/^\ufeff/, "")
+      .trim()
+      .split("\r\n");
+    expect(lines).toEqual([
+      "currency,date,kind,category,description,in,out,balance,source",
+      'IDR,2026-11-01,opening,,"Opening balance",,,2000000.00,',
+      'IDR,2026-11-04,out,disbursement,"Webinar AI",,500000.00,1500000.00,request',
+      'IDR,2026-11-30,closing,,"Closing balance",0.00,500000.00,1500000.00,',
+      'JPY,2026-11-01,opening,,"Opening balance",,,0,',
+      'JPY,2026-11-01,in,dues,"Iuran ""Jepang""",30000,,30000,manual',
+      'JPY,2026-11-30,closing,,"Closing balance",30000,0,30000,',
+    ]);
+    const all = await (await report("format=csv")).text();
+    expect(all).toContain(`"'=HYPERLINK(1)"`);
+    expect(exports).toMatchObject([
+      { actorId: "tina", dataset: "cash_report", format: "csv", from: "2026-11-01" },
+      { format: "csv", from: null, to: null },
+    ]);
+  });
+
+  it("renders the same report as PDF, and refuses bad ranges, strangers and no period", async () => {
+    await paidRequest({}, 50_000_000);
+    await actions().addCashEntry(...as(cashier))({
+      date: "2026-11-02",
+      kind: "in",
+      category: "donation",
+      description: "Donasi alumni",
+      amountMinor: 10_000_000,
+      currency: "IDR",
+    });
+    const whole = await pdfText(new Uint8Array(await (await report("format=pdf")).arrayBuffer()));
+    expect(whole).toContain("start – today");
+    expect(whole).toContain("Donation / sponsor");
+    const pdfResponse = await report("from=2026-11-01&to=2026-11-04&format=pdf");
+    expect(pdfResponse.headers.get("content-type")).toBe("application/pdf");
+    const text = await pdfText(new Uint8Array(await pdfResponse.arrayBuffer()));
+    expect(text).toContain("Webinar AI");
+    expect(text).toContain("IDR -400,000.00");
+    expect(text).toContain("2026-11-01 – 2026-11-04");
+    expect((await report("from=2026-12-01&to=2026-11-01")).status).toBe(400);
+    expect((await report("from=yesterday")).status).toBe(400);
+    expect((await report("format=csv", null)).status).toBe(401);
+    expect((await report("format=csv", staff("x", ["finance.read"]))).status).toBe(403);
+    const unitScoped = staff("u", ["finance.export"], { type: "orgUnit", orgUnitId: "media" });
+    expect((await report("format=csv", unitScoped)).status).toBe(403);
+    fake.docs.delete("settings/activePeriod");
+    expect((await report("format=pdf")).status).toBe(404);
   });
 });

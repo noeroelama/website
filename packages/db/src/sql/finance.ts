@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
 import type { Database, Query, Transaction } from "./store";
 import type { AuditEvent, Snapshot } from "@website/audit";
 import {
+  cashEntryFromRequest,
   isEditable,
+  type CashEntry,
+  type CashEntryInput,
   type DeskStamp,
   type FinanceFile,
   type FinancePayment,
@@ -9,8 +13,9 @@ import {
   type FinanceRequestInput,
 } from "@website/domain/finance";
 import { orgUnitPath, type OrgUnit } from "@website/domain/organizations";
-import { RuleViolationError } from "@website/domain/shared";
+import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
+import { createSqlAuditWriter } from "./audit";
 import { createSluggedStore, toDate } from "./slugged";
 
 type Meta = "id" | "version" | "createdAt" | "updatedAt";
@@ -109,6 +114,38 @@ const stored = (r: FinanceFields) => ({
   doneAt: r.doneAt,
 });
 
+const toCashEntry = (id: string, data: Record<string, unknown>): CashEntry => ({
+  ...(data as unknown as Omit<CashEntry, "id" | "createdAt">),
+  id,
+  createdAt: toDate(data["createdAt"]) as Date,
+});
+
+/** Audit snapshot of a cash book line (its proof by name only). */
+export const cashEntrySnapshot = (e: CashEntry): Snapshot => ({
+  periodId: e.periodId,
+  orgUnitId: e.orgUnitId,
+  date: e.date,
+  kind: e.kind,
+  category: e.category,
+  description: e.description,
+  amountMinor: e.amountMinor,
+  currency: e.currency,
+  source: e.source,
+  requestId: e.requestId,
+  proof: e.proof?.name ?? null,
+});
+
+/** Everything stored for a cash book line (the id is the document id). */
+const storedEntry = (e: CashEntry) => ({
+  ...cashEntrySnapshot(e),
+  proof: e.proof,
+  createdBy: e.createdBy,
+  createdAt: e.createdAt,
+});
+
+/** One audit entry for a new cash book line (lines are never edited or deleted here). */
+export type CashAudit = (after: Snapshot, entry: CashEntry) => AuditEvent;
+
 export type FinanceAudit = (
   before: Snapshot | null,
   after: Snapshot | null,
@@ -128,9 +165,12 @@ const MAX_SCOPE_UNITS = 30;
 
 /**
  * `financeRequests/{id}` (I1): drafts and the desk workflow, each change one versioned write
- * with its audit entry (slugged-store transaction, no slug).
+ * with its audit entry (slugged-store transaction, no slug). `cashEntries/{id}` (I2): the cash
+ * book; a paid request writes its line (id = request id) in the payment's transaction.
  */
 export function createSqlFinanceStore(db: Database) {
+  const cash = db.collection("cashEntries");
+  const audit = createSqlAuditWriter(db);
   const store = createSluggedStore<FinanceRequest>(db, {
     collection: "financeRequests",
     slug: null,
@@ -245,6 +285,83 @@ export function createSqlFinanceStore(db: Database) {
 
     /** A workflow step decided by a pure domain function. */
     change,
+
+    /**
+     * authorized → paid AND its cash book line, in ONE transaction: a "paid" status without the
+     * line (or a line twice) would make the report lie. Budget requests write no line.
+     */
+    pay(
+      id: string,
+      version: number,
+      step: (request: FinanceRequest) => FinanceRequest,
+      auditFor: FinanceAudit,
+      cashAuditFor: CashAudit,
+      now: Date,
+    ): Promise<FinanceRequest> {
+      const ref = store.docs.doc(safeId.parse(id));
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        if (!snapshot.exists) throw new RuleViolationError("This item does not exist.");
+        const current = store.read(id, snapshot.data());
+        if (current.version !== version) {
+          throw new ConcurrencyConflictError("financeRequests version changed");
+        }
+        if ((await tx.get(cash.doc(ref.id))).exists) {
+          throw new RuleViolationError("This request is already in the cash book.");
+        }
+        const log = await audit.begin(tx);
+        const next = { ...step(current), version: version + 1, updatedAt: now };
+        tx.set(ref, {
+          ...financeSnapshot(next),
+          ...stored(next),
+          version: next.version,
+          createdAt: next.createdAt,
+          updatedAt: now,
+          deletedAt: next.deletedAt,
+        });
+        log.append(auditFor(financeSnapshot(current), financeSnapshot(next), current, next));
+        const line = cashEntryFromRequest(next);
+        if (line) {
+          tx.create(cash.doc(ref.id), storedEntry(line));
+          log.append(cashAuditFor(cashEntrySnapshot(line), line));
+        }
+        return next;
+      });
+    },
+
+    /** A manual line (opening balance, dues, donations, interest ...) in the active period. */
+    addEntry(input: CashEntryInput, createdBy: string, cashAuditFor: CashAudit, now: Date) {
+      return db.runTransaction(async (tx) => {
+        const active = await tx.get(db.collection("settings").doc("activePeriod"));
+        const periodId = active.get("periodId") as string | undefined;
+        if (!periodId) throw new RuleViolationError("Activate a board period first.");
+        if (input.orgUnitId) await readUnit(tx, input.orgUnitId, periodId);
+        const log = await audit.begin(tx);
+        const entry: CashEntry = {
+          ...input,
+          id: randomUUID(),
+          periodId,
+          source: "manual",
+          requestId: null,
+          proof: null,
+          createdBy,
+          createdAt: now,
+        };
+        tx.create(cash.doc(entry.id), storedEntry(entry));
+        log.append(cashAuditFor(cashEntrySnapshot(entry), entry));
+        return entry;
+      });
+    },
+
+    /**
+     * The period's whole cash book (the report is recomputed from it).
+     * shortcut: reads every line of the period (hundreds per board year); page by date if a
+     * period ever holds tens of thousands.
+     */
+    async listEntries(periodId: string): Promise<CashEntry[]> {
+      const snapshot = await cash.where("periodId", "==", periodId).get();
+      return snapshot.docs.map((d) => toCashEntry(d.id, d.data()));
+    },
   };
 }
 

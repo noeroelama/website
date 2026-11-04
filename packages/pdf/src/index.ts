@@ -17,3 +17,4 @@ export {
 } from "./stamp";
 export { renderCertificatePdf, type CertificatePdfInput } from "./certificate";
 export { renderReportPdf, type ReportPdfInput } from "./report";
+export { renderTablePdf, type TableColumn, type TablePdfInput, type TableSection } from "./table";

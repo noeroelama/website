@@ -1,10 +1,13 @@
 import "server-only";
 import { z } from "zod";
 import type { AuditAction } from "@website/audit";
-import type { FinanceAudit, SqlFinanceStore } from "@website/db/sql";
+import type { CashAudit, FinanceAudit, SqlFinanceStore } from "@website/db/sql";
 import {
   attachDocument,
   authorizeRequest,
+  CASH_CATEGORY_LABELS,
+  CashEntryInputSchema,
+  cashReport,
   completeRequest,
   financeFilePath,
   FinanceRequestInputSchema,
@@ -12,14 +15,17 @@ import {
   MAX_FINANCE_FILE_BYTES,
   rejectRequest,
   removeDocument,
+  ReportRangeSchema,
   returnRequest,
   reviewRequest,
   submitRequest,
   type FinanceDesk,
   type FinanceFile,
   type FinanceRequest,
+  type CurrencyReport,
 } from "@website/domain/finance";
-import { isPdf, RuleViolationError } from "@website/domain/shared";
+import { formatMoney, isPdf, majorText, RuleViolationError } from "@website/domain/shared";
+import { renderTablePdf } from "@website/pdf";
 import {
   can,
   canAccessAdmin,
@@ -32,7 +38,14 @@ import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder, type AuditContext } from "./guarded-action";
 
 export interface FinanceDeps {
-  readonly requests: Pick<SqlFinanceStore, "get" | "create" | "update" | "remove" | "change">;
+  readonly requests: Pick<
+    SqlFinanceStore,
+    "get" | "create" | "update" | "remove" | "change" | "pay" | "addEntry" | "listEntries"
+  >;
+  /** The active board period (the cash book is per period), null when none. */
+  readonly period: () => Promise<{ readonly id: string; readonly name: string } | null>;
+  /** Exports are security events (who took the report, which range). */
+  readonly logExport: (actorId: string, details: Record<string, unknown>) => void;
   /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   readonly storage: {
@@ -55,6 +68,106 @@ const SaveRequest = FinanceRequestInputSchema.and(
   z.object({ id: safeId.optional(), version: z.number().int().min(1).nullable() }).strict(),
 );
 const noStore = { "Cache-Control": "no-store" };
+
+const cashAudit =
+  (audit: AuditBuilder): CashAudit =>
+  (after, entry) =>
+    audit({
+      module: "finance",
+      action: "CREATE",
+      resourceType: "cashEntry",
+      resourceId: entry.id,
+      title: `${entry.description} (${formatMoney(entry)})`,
+      before: null,
+      after,
+      versionBefore: null,
+      versionAfter: 1,
+      // A cash book line is corrected by a new line, never removed by a revert.
+      revertible: false,
+    });
+
+/** A quoted CSV text cell; one starting like a formula gets a ' (spreadsheet injection). */
+const cell = (value: string) =>
+  `"${(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value).replace(/"/g, '""')}"`;
+
+const CSV_HEADER = "currency,date,kind,category,description,in,out,balance,source";
+
+/** The report as CSV (standard library only): opening, lines, closing per currency. */
+function reportCsv(report: readonly CurrencyReport[], from: string | null, to: string | null) {
+  const lines = [CSV_HEADER];
+  for (const r of report) {
+    const m = (amount: number) => majorText(amount, r.currency);
+    lines.push(
+      `${r.currency},${from ?? ""},opening,,${cell("Opening balance")},,,${m(r.opening)},`,
+    );
+    for (const { entry, balance } of r.rows) {
+      const amount = m(entry.amountMinor);
+      lines.push(
+        [
+          r.currency,
+          entry.date,
+          entry.kind,
+          entry.category,
+          cell(entry.description),
+          entry.kind === "in" ? amount : "",
+          entry.kind === "out" ? amount : "",
+          m(balance),
+          entry.source,
+        ].join(","),
+      );
+    }
+    lines.push(
+      `${r.currency},${to ?? ""},closing,,${cell("Closing balance")},${m(r.totalIn)},${m(r.totalOut)},${m(r.closing)},`,
+    );
+  }
+  return "\ufeff" + lines.join("\r\n") + "\r\n";
+}
+
+/** The report as PDF (the shared renderer): one table per currency, totals under it. */
+function reportPdf(
+  report: readonly CurrencyReport[],
+  period: string,
+  from: string | null,
+  to: string | null,
+  now: Date,
+) {
+  return renderTablePdf({
+    title: "Laporan Kas / Cash report",
+    lines: [
+      `PPIDK Asia-Oseania · ${period}`,
+      `${from ?? "start"} – ${to ?? "today"} · made ${now.toISOString().slice(0, 16).replace("T", " ")} UTC`,
+    ],
+    columns: [
+      { header: "Date", width: 0.13 },
+      { header: "Category", width: 0.15 },
+      { header: "Description", width: 0.3 },
+      { header: "In", width: 0.14, align: "right" },
+      { header: "Out", width: 0.14, align: "right" },
+      { header: "Balance", width: 0.14, align: "right" },
+    ],
+    sections: report.map((r) => {
+      const m = (amount: number) => majorText(amount, r.currency);
+      const money = (amountMinor: number) => formatMoney({ amountMinor, currency: r.currency });
+      return {
+        heading: r.currency,
+        rows: r.rows.map(({ entry, balance }) => [
+          entry.date,
+          CASH_CATEGORY_LABELS[entry.category],
+          entry.description,
+          entry.kind === "in" ? m(entry.amountMinor) : "",
+          entry.kind === "out" ? m(entry.amountMinor) : "",
+          m(balance),
+        ]),
+        summary: [
+          `Opening balance: ${money(r.opening)}`,
+          `In: ${money(r.totalIn)} · Out: ${money(r.totalOut)}`,
+          `Closing balance: ${money(r.closing)}`,
+        ],
+      };
+    }),
+    empty: "No cash book entries in this range.",
+  });
+}
 
 const financeAudit =
   (audit: AuditBuilder, action: AuditAction): FinanceAudit =>
@@ -231,11 +344,13 @@ export function createFinanceActions(deps: FinanceDeps) {
       );
       const proof = await storePdf(request, current, "proof", name);
       const now = deps.now();
-      const saved = await deps.requests.change(
+      // The cash book line (if any) is written in the same transaction (I2).
+      const saved = await deps.requests.pay(
         id,
         version,
         (r) => markPaid(r, principal.userId, amountMinor, proof, now),
         financeAudit(audit, "UPDATE"),
+        cashAudit(audit),
         now,
       );
       await deps.afterStep(saved);
@@ -307,7 +422,67 @@ export function createFinanceActions(deps: FinanceDeps) {
     });
   }
 
+  /** A manual cash book line (finance.cashbook, global: the book is the organisation's). */
+  const addCashEntry = createGuardedAction({
+    permission: "finance.cashbook",
+    input: CashEntryInputSchema,
+    handler: async (input, principal, audit) => {
+      const entry = await deps.requests.addEntry(
+        input,
+        principal.userId,
+        cashAudit(audit),
+        deps.now(),
+      );
+      return { id: entry.id };
+    },
+  });
+
+  /**
+   * GET /api/finance/report?from=&to=&format=csv|pdf (finance.export, global): the report of the
+   * active period's cash book for the range, recomputed here; the query chooses the range only.
+   */
+  async function reportFile(url: URL, principal: Principal | null): Promise<Response> {
+    if (principal === null || !principal.active) return jsonError("unauthenticated");
+    if (!canAccessAdmin(principal) || !can(principal, "finance.export")) {
+      return jsonError("forbidden");
+    }
+    const query = url.searchParams;
+    const range = ReportRangeSchema.safeParse({
+      from: query.get("from") || null,
+      to: query.get("to") || null,
+    });
+    if (!range.success) {
+      return Response.json(
+        { error: "invalid_input", message: range.error.issues[0]?.message },
+        { status: 400, headers: noStore },
+      );
+    }
+    const period = await deps.period();
+    if (!period) return Response.json({ error: "not_found" }, { status: 404, headers: noStore });
+    const { from, to } = range.data;
+    const report = cashReport(await deps.requests.listEntries(period.id), range.data);
+    const format = query.get("format") === "pdf" ? "pdf" : "csv";
+    deps.logExport(principal.userId, { dataset: "cash_report", format, from, to });
+    const name = `cash-report-${from ?? "start"}-${to ?? "now"}.${format}`;
+    const headers = {
+      "Content-Disposition": `attachment; filename="${name}"`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    };
+    if (format === "csv") {
+      return new Response(reportCsv(report, from, to), {
+        headers: { ...headers, "Content-Type": "text/csv; charset=utf-8" },
+      });
+    }
+    const bytes = await reportPdf(report, period.name, from, to, deps.now());
+    return new Response(new Uint8Array(bytes), {
+      headers: { ...headers, "Content-Type": "application/pdf" },
+    });
+  }
+
   return {
+    addCashEntry,
+    reportFile,
     save,
     remove,
     submit: step("finance.edit", Ref, (r, _input, _uid, now) => submitRequest(r, now)),

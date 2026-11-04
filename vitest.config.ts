@@ -103,7 +103,7 @@ export default defineConfig({
         "apps/admin/src/server/programs.ts",
         "apps/admin/src/server/lpj.ts",
         "packages/domain/src/shared/money.ts",
-        "packages/domain/src/finance/index.ts",
+        "packages/domain/src/finance/*.ts",
         "packages/db/src/sql/finance.ts",
         "apps/admin/src/server/finance.ts",
       ],

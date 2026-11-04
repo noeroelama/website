@@ -1,5 +1,11 @@
-import type { FinanceCategory, FinanceRequest, FinanceStatus } from "@website/domain/finance";
-import { formatMoney, minorDigits } from "@website/domain/shared";
+import {
+  CASH_CATEGORY_LABELS,
+  type CurrencyReport,
+  type FinanceCategory,
+  type FinanceRequest,
+  type FinanceStatus,
+} from "@website/domain/finance";
+import { formatMoney, majorText } from "@website/domain/shared";
 import { FINANCE_CATEGORY_LABELS, FINANCE_STATUS_LABELS, label } from "../labels";
 
 export const FINANCE_TABS = [
@@ -23,10 +29,7 @@ export const inTab = (tab: FinanceTab, status: FinanceStatus) =>
   tab === "all" || TAB_STATUSES[tab].includes(status);
 
 /** The amount as typed in the form ("1500000.00"), from minor units. */
-export const amountText = (amountMinor: number, currency: string) => {
-  const digits = minorDigits(currency);
-  return (amountMinor / 10 ** digits).toFixed(digits);
-};
+export const amountText = majorText;
 
 export interface FinanceItem {
   id: string;
@@ -99,4 +102,46 @@ export function toFinanceItem(
       proofName: request.payment.proof.name,
     },
   };
+}
+
+export interface CashSection {
+  currency: string;
+  opening: string;
+  totalIn: string;
+  totalOut: string;
+  closing: string;
+  rows: {
+    id: string;
+    date: string;
+    category: string;
+    description: string;
+    amountIn: string;
+    amountOut: string;
+    balance: string;
+    fromRequest: boolean;
+  }[];
+}
+
+/** The report, formatted for the cash book page (one section per currency). */
+export function toCashSections(report: readonly CurrencyReport[]): CashSection[] {
+  return report.map((r) => {
+    const money = (amountMinor: number) => formatMoney({ amountMinor, currency: r.currency });
+    return {
+      currency: r.currency,
+      opening: money(r.opening),
+      totalIn: money(r.totalIn),
+      totalOut: money(r.totalOut),
+      closing: money(r.closing),
+      rows: r.rows.map(({ entry, balance }) => ({
+        id: entry.id,
+        date: entry.date,
+        category: CASH_CATEGORY_LABELS[entry.category],
+        description: entry.description,
+        amountIn: entry.kind === "in" ? money(entry.amountMinor) : "",
+        amountOut: entry.kind === "out" ? money(entry.amountMinor) : "",
+        balance: money(balance),
+        fromRequest: entry.source === "request",
+      })),
+    };
+  });
 }

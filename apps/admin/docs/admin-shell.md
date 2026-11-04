@@ -186,7 +186,9 @@ router.push("/things"); router.refresh();
 - **Finance** (`/finance`, `finance-page.tsx`, model `finance-model.ts`): requests of the active
   period with tabs (Drafts, At a desk, To pay, Paid and done, Rejected), the form, documents and
   proof uploads (`/api/finance/[id]/files`), and only the desk buttons the viewer holds on other
-  people's requests (`financeActions`). Rules: `packages/domain/docs/finance.md`.
+  people's requests (`financeActions`); **Cash book** at `/finance/cashbook` (report per currency
+  for a date range, manual lines, CSV/PDF from `/api/finance/report`). Rules:
+  `packages/domain/docs/finance.md`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

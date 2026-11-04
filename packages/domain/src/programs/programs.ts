@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
-import { RuleViolationError, type EntityMeta } from "../shared";
-import type { Money } from "../shared";
+import { RuleViolationError, type EntityMeta, type Money } from "../shared";
 
 /**
  * Work programmes (E2) and weekly check-ins (E3), ported from PPIDK `ProkerService`,

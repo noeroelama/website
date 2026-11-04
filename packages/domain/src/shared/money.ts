@@ -39,6 +39,12 @@ export const formatMoney = ({ amountMinor, currency }: Money): string => {
   return `${currency} ${number}`;
 };
 
+/** Minor units as a plain decimal ("1500000.00", "5000"): forms and CSV. */
+export const majorText = (amountMinor: number, currency: CurrencyCode): string => {
+  const digits = minorDigits(currency);
+  return (amountMinor / 10 ** digits).toFixed(digits);
+};
+
 /**
  * A typed amount ("1,500,000.50") in minor units, or null when it is not a plain non-negative
  * number with at most the currency's digits after the point.

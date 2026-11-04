@@ -515,6 +515,14 @@ export const financeActions = lazyEnv(() =>
     },
     storage: imageStorage(),
     afterStep: (request) => notices().finance(request),
+    period: async () => {
+      const active = (await adminStores().periods.listForAdmin()).find(
+        (p) => p.status === "active",
+      );
+      return active ? { id: active.id, name: active.name } : null;
+    },
+    logExport: (actorId, details) =>
+      logSecurityEvent(adminStores().logger, { type: "data.export", actorId, details }),
     now: () => new Date(),
     uuid: randomUUID,
   }),
@@ -588,4 +596,5 @@ export const adminReads = {
   getLpj: (id: string) => adminStores().lpj.get(id),
   periodReportCard: (periodId: string) => adminStores().periodReport.card(periodId, new Date()),
   listFinance: (query: FinanceListQuery) => adminStores().finance.list(query),
+  listCashEntries: (periodId: string) => adminStores().finance.listEntries(periodId),
 };

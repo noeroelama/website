@@ -105,6 +105,8 @@ export const ADMIN_PAGES = {
       review: "Review requests (treasurer)",
       authorize: "Authorise requests (coordinator)",
       pay: "Mark requests paid with proof of transfer",
+      cashbook: "Write manual cash book entries (treasurer)",
+      export: "Export the cash report (CSV, PDF)",
     },
   },
 } as const satisfies Record<string, AdminPageDefinition>;
