@@ -49,6 +49,7 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "Email", href: "/emails", permission: "messages.read" },
   { label: "OKR", href: "/okr", permission: "okr.read" },
   { label: "Programmes", href: "/programs", permission: "programs.read" },
+  { label: "LPJ", href: "/lpj", permission: "lpj.read" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {

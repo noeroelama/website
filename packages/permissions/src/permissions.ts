@@ -91,6 +91,14 @@ export const ADMIN_PAGES = {
     label: "Work programmes",
     extras: { approve: "Approve, return and cancel programmes; extend LPJ due dates" },
   },
+  lpj: {
+    label: "LPJ (accountability reports)",
+    extras: {
+      review_secretariat: "Review LPJ narratives (Secretariat bureau)",
+      review_treasurer: "Review LPJ figures (Treasurer)",
+      approve: "Approve LPJ (final)",
+    },
+  },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

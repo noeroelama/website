@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSqlContactReader, createSqlMessageLog } from "@website/db/sql";
 import type { Letter } from "@website/domain/documents";
 import { createMessenger, deliveryDecision, messageTo } from "@website/domain/messaging";
+import type { LpjReport } from "@website/domain/programs";
 import type { Application } from "@website/domain/recruitment";
 import { normalizePermissions } from "@website/permissions";
 import { createNotices } from "../../apps/admin/src/server/notices";
@@ -258,6 +259,57 @@ describe("notification sources (J2)", () => {
     await notices().letter(letter({ status: "draft" }));
     await notices().letter(letter({ status: "cancelled" }));
     expect(sent).toHaveLength(1);
+  });
+
+  it("LPJ: opened → PICs, submitted → both reviewers, reviewed → approver, back → PICs", async () => {
+    const desks: Record<string, string[]> = {
+      "lpj.review_secretariat": ["sekre"],
+      "lpj.review_treasurer": ["bendahara"],
+      "lpj.approve": ["sekjen"],
+    };
+    const contacts = {
+      contacts: (uids: readonly string[]) =>
+        Promise.resolve(new Map(uids.map((uid) => [uid, { email: `${uid}@x.org`, phone: null }]))),
+      holders: (permission: string) => Promise.resolve(desks[permission] ?? []),
+    };
+    const signed = { uid: "u", at: now };
+    const lpj = (fields: Partial<LpjReport>) =>
+      ({
+        id: "pr1",
+        plan: { name: "Webinar" },
+        pics: ["pic"],
+        orgUnitPath: ["media"],
+        dueOn: "2026-11-18",
+        status: "draft",
+        version: 1,
+        secretariat: null,
+        treasurer: null,
+        approval: null,
+        returnNote: null,
+        ...fields,
+      }) as LpjReport;
+    const run = async (fields: Partial<LpjReport>) => {
+      sent.length = 0;
+      await notices(contacts).lpj(lpj(fields));
+      return sent.map((s) => s.key);
+    };
+    expect(await run({})).toEqual(["lpj:pr1:draft:1:pic"]);
+    expect(sent[0]?.text).toContain("2026-11-18");
+    expect(await run({ version: 2 })).toEqual([]);
+    expect(await run({ status: "submitted", version: 3 })).toEqual([
+      "lpj:pr1:submitted:3:sekre",
+      "lpj:pr1:submitted:3:bendahara",
+    ]);
+    expect(await run({ status: "submitted", version: 4, secretariat: signed })).toEqual([]);
+    expect(
+      await run({ status: "submitted", version: 5, secretariat: signed, treasurer: signed }),
+    ).toEqual(["lpj:pr1:submitted:5:sekjen"]);
+    expect(await run({ status: "returned", version: 6, returnNote: "Add receipts" })).toEqual([
+      "lpj:pr1:returned:6:pic",
+    ]);
+    expect(sent[0]?.text).toContain("Add receipts");
+    expect(await run({ status: "returned", version: 7 })).toEqual(["lpj:pr1:returned:7:pic"]);
+    expect(await run({ status: "approved", version: 8 })).toEqual(["lpj:pr1:approved:8:pic"]);
   });
 
   it("never throws: a failed lookup is logged and the decision stands", async () => {

@@ -206,6 +206,11 @@ export function ProgramPage({ program, plan, options, checkins, can }: Props) {
               Cancel programme
             </Button>
           ) : null}
+          {status === "finished" ? (
+            <Button variant="outline" size="sm" icon="note" href={`/lpj/${program.id}`}>
+              LPJ
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             size="sm"

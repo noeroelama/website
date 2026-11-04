@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { AuditAction } from "@website/audit";
-import type { ProgramAudit, SqlProgramStore } from "@website/db/sql";
+import type { LpjAudit, ProgramAudit, SqlProgramStore } from "@website/db/sql";
 import {
   approveProgram,
   cancelProgram,
@@ -18,6 +18,7 @@ import {
   startProgram,
   upsertMilestone,
   weekStartUtc,
+  type LpjReport,
   type Program,
 } from "@website/domain/programs";
 import { RuleViolationError } from "@website/domain/shared";
@@ -26,11 +27,16 @@ import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface ProgramDeps {
-  readonly programs: Pick<SqlProgramStore, "get" | "create" | "update" | "transition" | "checkIn">;
+  readonly programs: Pick<
+    SqlProgramStore,
+    "get" | "create" | "update" | "transition" | "checkIn" | "finish"
+  >;
   /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   /** The account uid of an e-mail (PICs are named by e-mail), null when there is none. */
   readonly findUserId: (email: string) => Promise<string | null>;
+  /** After finishing: tells the PICs their LPJ is open and when it is due (never throws). */
+  readonly afterLpj: (lpj: LpjReport) => Promise<void>;
   readonly now: () => Date;
   readonly uuid: () => string;
 }
@@ -88,6 +94,24 @@ const programAudit =
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
       // Workflow steps and computed progress are never undone by a revert.
+      revertible: false,
+    });
+
+/** Audit entry builder for LPJ changes (also used by the programme's finish, which opens it). */
+export const lpjAudit =
+  (audit: AuditBuilder, action: "CREATE" | "UPDATE"): LpjAudit =>
+  (before, after, current, next) =>
+    audit({
+      module: "lpj",
+      action,
+      resourceType: "lpj",
+      resourceId: next.id,
+      title: next.plan.name,
+      before,
+      after,
+      versionBefore: current?.version ?? null,
+      versionAfter: next.version,
+      // Desks and submissions are never undone by a revert: return the LPJ instead.
       revertible: false,
     });
 
@@ -187,7 +211,29 @@ export function createProgramActions(deps: ProgramDeps) {
     cancelProgram(p, i.note, now),
   );
   const start = step("programs.read", Ref, (p, _i, _principal, now) => startProgram(p, now));
-  const finish = step("programs.read", Ref, (p, _i, _principal, now) => finishProgram(p, now));
+  /** running → finished, and the LPJ opens in the same transaction (frozen plan, due date). */
+  const finish = createGuardedAction({
+    permission: "programs.read",
+    input: Ref,
+    resource: scopeOf,
+    handler: async ({ id, version }, principal, audit) => {
+      const now = deps.now();
+      const { program, lpj } = await deps.programs.finish(
+        id,
+        version,
+        managed(principal, (p) => finishProgram(p, now)),
+        programAudit(audit, "UPDATE"),
+        lpjAudit(audit, "CREATE"),
+        now,
+      );
+      await deps.afterLpj(lpj);
+      return {
+        version: program.version,
+        status: program.status,
+        progress: program.progressPercent,
+      };
+    },
+  });
   const health = step("programs.read", SetHealth, (p, i, principal, now) =>
     setHealth(p, i.health, i.reason, principal.userId, now),
   );

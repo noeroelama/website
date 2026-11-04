@@ -9,6 +9,7 @@ module), so it runs on the DomaiNesia host. Server-side only (apps call it from 
 
 - `renderLetterPdf(input)` — an A4 letter laid out like PPIDK's letter template.
 - `renderCertificatePdf(input)` — one A4 landscape certificate sheet (PPIDK's template).
+- `renderReportPdf(input)` — a plain A4 report: title, headed sections of text (the LPJ, step 6.3).
 - `htmlToBlocks(html)` — the sanitized letter body as printable blocks.
 - `qrPng(text, size)` — a QR PNG with the shared rules of `@website/domain/documents` (qr.ts).
 - `stampPdf(bytes, input)` — signatures and the QR stamped on an uploaded PDF (upload path);
@@ -24,6 +25,7 @@ module), so it runs on the DomaiNesia host. Server-side only (apps call it from 
 | `src/letter.ts`      | The letter: letterhead (images or text), meta, body, desks, QR, stamp       |
 | `src/qr.ts`          | QR PNG                                                                      |
 | `src/certificate.ts` | A certificate sheet: frame, emblem, holder, citation, desks, QR             |
+| `src/report.ts`      | A plain report (LPJ): title, subtitle, headed sections, footer              |
 | `src/stamp.ts`       | Upload path: open, read the text of, and stamp the author's own PDF         |
 
 ## Rules

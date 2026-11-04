@@ -78,6 +78,49 @@ cancelled ← from proposed, approved or running, with a reason
   programmes only.
 - Audit: module `programs`, resources `program` and `checkin`; not revertible.
 
+## LPJ (E4) and its PDF (D9)
+
+Code: `src/programs/lpj.ts` (rules), `packages/db/src/sql/programs.ts`
+(`createSqlProgramStore().finish`, `createSqlLpjStore`), `apps/admin/src/server/lpj.ts`
+(guarded actions, `lpjSheet`, `createLpjFileRoute`), `packages/pdf/src/report.ts`
+(`renderReportPdf`), admin pages `/lpj` (`lpj.read`, list per period) and `/lpj/[id]`
+(`lpj.read`, or `programs.read` of the programme's unit), PDF `GET /api/lpj/<id>/pdf`. Tests:
+`tests/unit/lpj.test.ts`, `tests/integration/lpj.test.ts`.
+
+```text
+draft ──→ submitted ──┬─ secretariat review ─┐
+  ↑                   └─ treasurer review  ──┴─→ approval ─→ approved
+  └── returned (note; every desk cleared) ←─ any desk
+```
+
+- **Opened by finishing the programme**, in the same transaction: `lpjReports/{programId}`
+  (one LPJ per programme; a second `create` fails the transaction) with a **frozen plan**
+  (name, goal, background, unit name, dates, budgets, PICs, progress, milestones with their
+  final state, started/finished) and `dueOn` = the finish day (UTC) + `period.lpjDeadlineDays`
+  (14 when the period has none). The plan is a copy: nothing later changes it.
+- **PICs write and submit** (`canManageProgram`): realization, participants, money spent per
+  currency (`realized`, `null` = not filled in, `[]` = nothing spent), obstacles,
+  recommendations. Completeness is checked at submit, not at save.
+- **Three desks** (named extras of the `lpj` page): `lpj.review_secretariat` (the Secretariat
+  bureau, global — not a directorate secretary, who writes LPJs), `lpj.review_treasurer` and
+  `lpj.approve`. The two reviews come in any order; the approval needs both. **Three different
+  people**, and **the submitter never signs** any desk. The treasurer refuses an LPJ without
+  money spent.
+- **Return** (any desk holder, with a note) clears all three desks and counts the revision
+  round; the PICs edit and submit again.
+- **Overdue** is a read-time rule (`isOverdue`: not approved and today (UTC) > `dueOn`). The due
+  date is extended with `programs.approve` (a deadline the PIC can move is no deadline), never
+  after approval.
+- **PDF** rendered at download time from the record (`lpjSheet` → `renderReportPdf`, never
+  stored): the frozen plan, the PICs' report, budgets per currency, and the desks with name and
+  date — a desk that has not signed prints "Belum diperiksa / not yet reviewed".
+- **Notices** (J2, `notices.lpj`, `apps/admin/docs/messaging.md`): opened → PICs (with the due
+  date); submitted → both review desks; both reviews in → the approval desk; returned /
+  approved → PICs.
+- **Dashboard**: a warning when no account holds `lpj.review_secretariat` globally (shown to
+  `roles.edit`, LPJ desks and programme approvers).
+- Audit: module `lpj`, resource `lpj`; not revertible. LPJs are never deleted.
+
 ## Suggested roles (data, Role Manager)
 
 Roles are data (DEC-11): create these in Role Manager → Edit Role (nothing is seeded in code).
@@ -88,3 +131,8 @@ Roles are data (DEC-11): create these in Role Manager → Edit Role (nothing is 
 | `director` (unit head, unit) | `okr.edit`, `programs.edit` (scoped to the unit by appointment)    |
 | `secretary_general`          | `okr.edit`, `programs.approve` (global: region objectives, vision) |
 | `coordinator`                | `programs.approve`                                                 |
+| `secretariat` (bureau)       | `lpj.review_secretariat` (global), `programs.read`                 |
+| `treasurer`                  | `lpj.review_treasurer`, `programs.read`                            |
+
+`secretary_general` and `coordinator` also get `lpj.approve`. No suggested role holds two LPJ
+desks (separation of duties; the rule in code holds anyway, also for a superadmin).

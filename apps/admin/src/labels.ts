@@ -33,8 +33,12 @@ import {
 import { ACCOUNT_STATUSES, type AccountStatus } from "@website/permissions";
 import {
   HEALTH_STATUSES,
+  LPJ_DESKS,
+  LPJ_STATUSES,
   PROGRAM_STATUSES,
   type HealthStatus,
+  type LpjDesk,
+  type LpjStatus,
   type ProgramStatus,
 } from "@website/domain/programs";
 
@@ -206,6 +210,19 @@ export const HEALTH_STATUS_LABELS = {
   off_track: { id: "Melenceng", en: "Off track" },
 } as const satisfies Record<HealthStatus, Label>;
 
+export const LPJ_STATUS_LABELS = {
+  draft: { id: "Draf", en: "Draft" },
+  submitted: { id: "Diajukan", en: "Submitted" },
+  returned: { id: "Dikembalikan", en: "Returned" },
+  approved: { id: "Disetujui", en: "Approved" },
+} as const satisfies Record<LpjStatus, Label>;
+
+export const LPJ_DESK_LABELS = {
+  secretariat: { id: "Sekretariat", en: "Secretariat review" },
+  treasurer: { id: "Bendahara", en: "Treasurer review" },
+  approval: { id: "Persetujuan", en: "Approval" },
+} as const satisfies Record<LpjDesk, Label>;
+
 /** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
@@ -229,6 +246,8 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "disposition status", keys: DISPOSITION_STATUSES, labels: DISPOSITION_STATUS_LABELS },
   { name: "programme status", keys: PROGRAM_STATUSES, labels: PROGRAM_STATUS_LABELS },
   { name: "health status", keys: HEALTH_STATUSES, labels: HEALTH_STATUS_LABELS },
+  { name: "lpj status", keys: LPJ_STATUSES, labels: LPJ_STATUS_LABELS },
+  { name: "lpj desk", keys: LPJ_DESKS, labels: LPJ_DESK_LABELS },
 ];
 
 /** The admin is in English for now; pass "id" once the language switch exists. */

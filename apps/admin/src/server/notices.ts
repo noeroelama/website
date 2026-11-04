@@ -2,6 +2,7 @@ import "server-only";
 import type { SqlContactReader } from "@website/db/sql";
 import { desksOf, type Letter, type LetterType } from "@website/domain/documents";
 import { messageTo, type Messenger } from "@website/domain/messaging";
+import type { LpjReport } from "@website/domain/programs";
 import type { Application, ApplicationStatus } from "@website/domain/recruitment";
 import type { PagePermission } from "@website/permissions";
 
@@ -133,7 +134,51 @@ export function createNotices(deps: NoticeDeps) {
       }
     });
 
-  return { application, letter };
+  /**
+   * LPJ (E4, J2): opened → its PICs (with the due date); submitted → both review desks; both
+   * reviews in → the approval desk; returned or approved → the PICs. One key per LPJ version
+   * and person, so a re-submission is a new message and a retry is not.
+   */
+  const lpj = (saved: LpjReport) =>
+    safely("lpj", saved.id, async () => {
+      const link = `${deps.adminUrl}/lpj/${saved.id}`;
+      const key = (uid: string) => `lpj:${saved.id}:${saved.status}:${saved.version}:${uid}`;
+      const to = (uids: readonly string[], id: string, en: string, extra = "") =>
+        tell(
+          uids,
+          { subject: `LPJ: ${saved.plan.name}`, text: `${both(id, en)}${extra}\n\n${link}` },
+          key,
+        );
+      const desk = async (permission: PagePermission, id: string, en: string) =>
+        to(await deps.contacts.holders(permission, { orgUnitPath: saved.orgUnitPath }), id, en);
+      if (saved.status === "draft" && saved.version === 1) {
+        await to(
+          saved.pics,
+          `Program selesai: tulis LPJ-nya paling lambat ${saved.dueOn}.`,
+          `The programme is finished: write its LPJ by ${saved.dueOn}.`,
+        );
+      } else if (saved.status === "submitted" && !saved.secretariat && !saved.treasurer) {
+        await desk(
+          "lpj.review_secretariat",
+          "LPJ menunggu pemeriksaan.",
+          "An LPJ waits for review.",
+        );
+        await desk("lpj.review_treasurer", "LPJ menunggu pemeriksaan.", "An LPJ waits for review.");
+      } else if (saved.status === "submitted" && saved.secretariat && saved.treasurer) {
+        await desk("lpj.approve", "LPJ menunggu persetujuan.", "An LPJ waits for your approval.");
+      } else if (saved.status === "returned") {
+        await to(
+          saved.pics,
+          "LPJ dikembalikan untuk diperbaiki.",
+          "Your LPJ was returned for changes.",
+          `\n\n${saved.returnNote ?? ""}`,
+        );
+      } else if (saved.status === "approved") {
+        await to(saved.pics, "LPJ disetujui.", "Your LPJ is approved.");
+      }
+    });
+
+  return { application, letter, lpj };
 }
 
 export type Notices = ReturnType<typeof createNotices>;

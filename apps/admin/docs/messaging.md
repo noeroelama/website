@@ -65,7 +65,10 @@ undoes the decision. Texts are Indonesian then English, with a link.
 
 Desk holders = active accounts whose CUSTOM role holds the permission and whose assignment
 covers the letter's unit (scope, active period, not revoked); superadmins are not desk holders.
-LPJ and finance desks (Phase 6) add their rows when they are built.
+LPJ desks (`notices.lpj`, key `lpj:{id}:{status}:{version}:{uid}`): programme finished → its
+PICs with the due date; submitted → holders of `lpj.review_secretariat` and
+`lpj.review_treasurer`; both reviews in → holders of `lpj.approve`; returned (with the note) or
+approved → the PICs. Finance desks add their rows when they are built.
 
 ## Rules and assumptions
 

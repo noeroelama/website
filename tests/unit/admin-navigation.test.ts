@@ -66,6 +66,7 @@ describe("admin side panel navigation", () => {
       "Email",
       "OKR",
       "Programmes",
+      "LPJ",
     ]);
   });
 

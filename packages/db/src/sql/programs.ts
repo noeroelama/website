@@ -6,10 +6,15 @@ import {
   assertOkrWritable,
   assertPlanEditable,
   checkinId,
+  DEFAULT_LPJ_DEADLINE_DAYS,
+  openLpj,
   type Checkin,
   type CheckinInput,
   type Health,
   type KeyResult,
+  type LpjDeskSignature,
+  type LpjReport,
+  type LpjStatus,
   type Milestone,
   type Objective,
   type ObjectiveInput,
@@ -17,7 +22,7 @@ import {
   type ProgramInput,
   type ProgramStatus,
 } from "@website/domain/programs";
-import { RuleViolationError } from "@website/domain/shared";
+import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import { safeId } from "@website/security/validation";
 import { createSqlAuditWriter } from "./audit";
 import { createSluggedStore, toDate } from "./slugged";
@@ -474,6 +479,66 @@ export function createSqlProgramStore(db: Database) {
       });
     },
 
+    /**
+     * running → finished AND `lpjReports/{programId}` opened, in ONE transaction: the plan is
+     * frozen into the LPJ and its due date comes from the period's `lpjDeadlineDays`. Both writes
+     * are audited; a failure leaves neither.
+     */
+    finish(
+      id: string,
+      version: number,
+      decide: (program: Program) => Program,
+      auditProgram: ProgramAudit,
+      auditLpj: LpjAudit,
+      now: Date,
+    ): Promise<{ program: Program; lpj: LpjReport }> {
+      const ref = store.docs.doc(safeId.parse(id));
+      const lpjRef = db.collection("lpjReports").doc(ref.id);
+      return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        if (!snapshot.exists) throw new RuleViolationError("This item does not exist.");
+        const current = store.read(ref.id, snapshot.data());
+        if (current.version !== version)
+          throw new ConcurrencyConflictError("programs version changed");
+        if (current.deletedAt) throw new RuleViolationError("This item is in the trash.");
+        const program: Program = { ...decide(current), version: version + 1, updatedAt: now };
+        const [period, unit] = await Promise.all([
+          tx.get(db.collection("periods").doc(program.periodId)),
+          tx.get(db.collection("orgUnits").doc(program.orgUnitId)),
+        ]);
+        const days = period.get("lpjDeadlineDays");
+        const fields = openLpj(
+          program,
+          (unit.get("name") as string | undefined) ?? "",
+          typeof days === "number" ? days : DEFAULT_LPJ_DEADLINE_DAYS,
+          now,
+        );
+        const lpj: LpjReport = {
+          ...fields,
+          id: ref.id,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+        };
+        const log = await audit.begin(tx);
+        tx.set(ref, {
+          ...programSnapshot(program),
+          ...stored(program),
+          version: program.version,
+          createdAt: program.createdAt,
+          updatedAt: now,
+          deletedAt: null,
+        });
+        // `create`: a second LPJ for the same programme fails the whole transaction.
+        tx.create(lpjRef, { ...lpjStored(lpj), version: 1, createdAt: now, updatedAt: now });
+        log.append(
+          auditProgram(programSnapshot(current), programSnapshot(program), current, program),
+        );
+        log.append(auditLpj(null, lpjSnapshot(lpj), null, lpj));
+        return { program, lpj };
+      });
+    },
+
     /** A programme's check-ins, newest week first. */
     async listCheckins(programId: string): Promise<Checkin[]> {
       const snapshot = await checkins.where("programId", "==", programId).get();
@@ -485,3 +550,124 @@ export function createSqlProgramStore(db: Database) {
 }
 
 export type SqlProgramStore = ReturnType<typeof createSqlProgramStore>;
+
+/* ---- LPJ (E4) ---- */
+
+export type LpjAudit = (
+  before: Snapshot | null,
+  after: Snapshot | null,
+  current: LpjReport | null,
+  next: LpjReport,
+) => AuditEvent;
+
+const deskOf = (value: unknown): LpjDeskSignature | null => {
+  const desk = value as { uid: string; at: unknown } | null;
+  return desk ? { uid: desk.uid, at: toDate(desk.at) as Date } : null;
+};
+
+export function toLpj(id: string, data: Record<string, unknown>): LpjReport {
+  const plan = data["plan"] as LpjReport["plan"] & { startedAt: unknown; finishedAt: unknown };
+  return {
+    id,
+    programId: data["programId"] as string,
+    periodId: data["periodId"] as string,
+    orgUnitPath: data["orgUnitPath"] as string[],
+    pics: data["pics"] as string[],
+    plan: {
+      ...plan,
+      startedAt: toDate(plan.startedAt),
+      finishedAt: toDate(plan.finishedAt) as Date,
+    },
+    dueOn: data["dueOn"] as string,
+    status: data["status"] as LpjStatus,
+    realization: data["realization"] as string,
+    obstacles: data["obstacles"] as string,
+    recommendations: data["recommendations"] as string,
+    participantCount: data["participantCount"] as number | null,
+    realized: data["realized"] as LpjReport["realized"],
+    submittedBy: data["submittedBy"] as string | null,
+    submittedAt: toDate(data["submittedAt"]),
+    returnNote: data["returnNote"] as string | null,
+    revisionRound: data["revisionRound"] as number,
+    secretariat: deskOf(data["secretariat"]),
+    treasurer: deskOf(data["treasurer"]),
+    approval: deskOf(data["approval"]),
+    version: data["version"] as number,
+    createdAt: toDate(data["createdAt"]) as Date,
+    updatedAt: toDate(data["updatedAt"]) as Date,
+    deletedAt: toDate(data["deletedAt"]),
+  };
+}
+
+/** Audit snapshot: the PICs' part and the workflow (the frozen plan never changes). */
+export function lpjSnapshot(l: Omit<LpjReport, Meta>): Snapshot {
+  return {
+    status: l.status,
+    dueOn: l.dueOn,
+    realization: l.realization,
+    obstacles: l.obstacles,
+    recommendations: l.recommendations,
+    participantCount: l.participantCount,
+    realized: l.realized && l.realized.map((m) => `${m.currency} ${m.amountMinor}`),
+    returnNote: l.returnNote,
+    revisionRound: l.revisionRound,
+    secretariat: l.secretariat?.uid ?? null,
+    treasurer: l.treasurer?.uid ?? null,
+    approval: l.approval?.uid ?? null,
+  };
+}
+
+const lpjStored = (l: LpjReport) => ({
+  ...lpjSnapshot(l),
+  programId: l.programId,
+  periodId: l.periodId,
+  orgUnitPath: l.orgUnitPath,
+  pics: l.pics,
+  plan: l.plan,
+  realized: l.realized,
+  submittedBy: l.submittedBy,
+  submittedAt: l.submittedAt,
+  secretariat: l.secretariat,
+  treasurer: l.treasurer,
+  approval: l.approval,
+  deletedAt: l.deletedAt,
+});
+
+/**
+ * `lpjReports/{programId}` (E4): created only by `createSqlProgramStore().finish`; every later
+ * change (the PICs' text, submit, desks, return, due date) is one versioned transaction with its
+ * audit entry. Never deleted.
+ */
+export function createSqlLpjStore(db: Database) {
+  const store = createSluggedStore<LpjReport>(db, {
+    collection: "lpjReports",
+    slug: null,
+    fromDoc: toLpj,
+    snapshot: lpjSnapshot,
+    fixed: lpjStored,
+  });
+  return {
+    get: store.get,
+
+    /** The LPJs of a period, by due date. */
+    async listForPeriod(periodId: string): Promise<LpjReport[]> {
+      const snapshot = await store.docs.where("periodId", "==", periodId).get();
+      return snapshot.docs
+        .map((doc) => store.read(doc.id, doc.data()))
+        .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+    },
+
+    /** A change decided by a pure domain function. */
+    transition(
+      id: string,
+      version: number,
+      step: (lpj: LpjReport) => LpjReport,
+      auditFor: LpjAudit,
+      now: Date,
+    ): Promise<LpjReport> {
+      return store.write(id, version, (current) => step(current as LpjReport), auditFor, now);
+    },
+  };
+}
+
+export type SqlLpjStore = ReturnType<typeof createSqlLpjStore>;

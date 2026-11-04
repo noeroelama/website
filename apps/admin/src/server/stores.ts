@@ -38,6 +38,7 @@ import {
   getDatabaseForRole,
   createSqlObjectiveStore,
   createSqlProgramStore,
+  createSqlLpjStore,
 } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { getAdminEnv } from "./env";
@@ -111,5 +112,6 @@ export const adminStores = lazyEnv(() => {
     logger: createLogger({ service: "admin", level: env.LOG_LEVEL }),
     objectives: createSqlObjectiveStore(db),
     programs: createSqlProgramStore(db),
+    lpj: createSqlLpjStore(db),
   };
 });

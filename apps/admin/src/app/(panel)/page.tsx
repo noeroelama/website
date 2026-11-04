@@ -20,7 +20,9 @@ export const instant = false;
 export default async function AdminDashboardPage() {
   const viewer = await requireAdminViewer("/");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  const { counters, audit, graduatedOfficers } = await dashboard()(viewer.principal);
+  const { counters, audit, graduatedOfficers, noLpjSecretariat } = await dashboard()(
+    viewer.principal,
+  );
   return (
     <DashboardPage
       name={viewer.name ?? viewer.email ?? "Admin"}
@@ -43,6 +45,18 @@ export default async function AdminDashboardPage() {
         })
       }
     >
+      {noLpjSecretariat ? (
+        <Card>
+          <CardHeader title="Nobody can review LPJs" />
+          <CardBody>
+            <p>
+              No account holds the LPJ secretariat desk (<code>lpj.review_secretariat</code>,
+              global). Give it to the Secretariat bureau in Role Manager, otherwise no LPJ can be
+              approved.
+            </p>
+          </CardBody>
+        </Card>
+      ) : null}
       {graduatedOfficers && graduatedOfficers.length > 0 ? (
         <Card>
           <CardHeader title="Graduated officers still in office" />

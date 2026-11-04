@@ -36,18 +36,28 @@ export function createDashboard(deps: {
   listAudit: (query: AuditListQuery) => Promise<{ items: AuditEvent[] }>;
   /** Officers of the active period who graduated (B5): for whoever may end appointments. */
   graduatedOfficers: () => Promise<GraduatedOfficer[]>;
+  /** Accounts holding the LPJ secretariat desk globally (none = LPJs cannot be reviewed). */
+  lpjSecretariatHolders: () => Promise<number>;
 }) {
   return async (principal: Principal) => {
     const visible = DASHBOARD_COUNTERS.filter((c) => canInSomeScope(principal, c.permission));
-    const [values, audit, graduated] = await Promise.all([
+    // Whoever can fix it (roles) or depends on it (LPJ desks, programme approvers).
+    const watchesLpj =
+      can(principal, "roles.edit") ||
+      canInSomeScope(principal, "lpj.read") ||
+      canInSomeScope(principal, "programs.approve");
+    const [values, audit, graduated, secretariat] = await Promise.all([
       Promise.all(visible.map((c) => deps.counts.count(c.key))),
       can(principal, "audit.read") ? deps.listAudit({ limit: 10 }) : null,
       can(principal, "appointments.edit") ? deps.graduatedOfficers() : null,
+      watchesLpj ? deps.lpjSecretariatHolders() : null,
     ]);
     return {
       counters: visible.map((c, i) => ({ ...c, value: values[i] as number })),
       audit: audit ? audit.items : null,
       graduatedOfficers: graduated,
+      /** True when nobody holds the LPJ secretariat desk (shown as a warning). */
+      noLpjSecretariat: secretariat === 0,
     };
   };
 }

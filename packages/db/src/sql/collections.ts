@@ -57,4 +57,5 @@ export const COLLECTIONS = [
   "objectives",
   "programs",
   "programCheckins",
+  "lpjReports",
 ] as const;

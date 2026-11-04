@@ -45,7 +45,9 @@ describe("admin dashboard overview", () => {
       Promise.resolve([
         { name: "Siti", title: "Staf", graduatedOn: "2026-09-30", periodId: "p2026" },
       ]),
+    lpjSecretariatHolders: () => Promise.resolve(secretariatHolders),
   });
+  let secretariatHolders = 0;
 
   it("counts live records, and only for pages the viewer can read", async () => {
     const everything = await dashboard(
@@ -67,9 +69,19 @@ describe("admin dashboard overview", () => {
       counters: [],
       audit: null,
       graduatedOfficers: null,
+      noLpjSecretariat: false,
     });
     expect((await dashboard(staff(["appointments.edit"]))).graduatedOfficers).toEqual([
       { name: "Siti", title: "Staf", graduatedOn: "2026-09-30", periodId: "p2026" },
     ]);
+  });
+
+  it("warns LPJ desks, approvers and role editors when nobody holds the secretariat desk", async () => {
+    for (const permissions of [["lpj.read"], ["programs.approve"], ["roles.edit"]]) {
+      expect((await dashboard(staff(permissions))).noLpjSecretariat).toBe(true);
+    }
+    expect((await dashboard(staff(["events.read"]))).noLpjSecretariat).toBe(false);
+    secretariatHolders = 1;
+    expect((await dashboard(staff(["lpj.read"]))).noLpjSecretariat).toBe(false);
   });
 });

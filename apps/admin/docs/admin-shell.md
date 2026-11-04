@@ -178,7 +178,9 @@ router.push("/things"); router.refresh();
 - **Programmes** (`/programs`, `src/components/programs-page.tsx`; one programme at
   `/programs/[id]`, `program-page.tsx`): list per period, the plan form (budget lines typed as
   "JPY 50000", PICs by e-mail), workflow buttons the viewer may use, milestones (tick = done),
-  health and weekly check-ins.
+  health and weekly check-ins. **LPJ** (`/lpj`, `/lpj/[id]`, `src/components/lpj-page.tsx`): the
+  period's LPJs (overdue in red), one LPJ with the frozen plan, the PICs' form, the desks and the
+  PDF link (`/api/lpj/[id]/pdf`). The dashboard warns when nobody holds the LPJ secretariat desk.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

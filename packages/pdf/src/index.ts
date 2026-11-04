@@ -16,3 +16,4 @@ export {
   type StampInput,
 } from "./stamp";
 export { renderCertificatePdf, type CertificatePdfInput } from "./certificate";
+export { renderReportPdf, type ReportPdfInput } from "./report";

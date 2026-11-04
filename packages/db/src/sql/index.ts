@@ -197,6 +197,10 @@ export {
 export {
   createSqlObjectiveStore,
   createSqlProgramStore,
+  createSqlLpjStore,
+  lpjSnapshot,
+  type LpjAudit,
+  type SqlLpjStore,
   objectiveSnapshot,
   programSnapshot,
   type CheckinAudit,

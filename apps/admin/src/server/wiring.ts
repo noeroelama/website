@@ -51,6 +51,8 @@ import { createUniversityActions } from "./universities";
 import { adminDb, adminStores, imageStorage } from "./stores";
 import { createOkrActions } from "./okr";
 import { createProgramActions } from "./programs";
+import { createLpjActions, createLpjFileRoute } from "./lpj";
+import { renderReportPdf } from "@website/pdf";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -444,6 +446,8 @@ export const dashboard = lazyEnv(() =>
     listAudit: (query) => adminStores().auditLog.list(query),
     graduatedOfficers: () =>
       adminStores().appointments.graduatedOfficers(new Date().toISOString().slice(0, 10)),
+    lpjSecretariatHolders: async () =>
+      (await adminStores().contacts.holders("lpj.review_secretariat", { orgUnitPath: [] })).length,
   }),
 );
 
@@ -470,8 +474,32 @@ export const programActions = lazyEnv(() =>
       return unit ? orgUnitPath(unit) : null;
     },
     findUserId: async (email) => (await adminStores().accounts.findByEmail(email))?.uid ?? null,
+    afterLpj: (lpj) => notices().lpj(lpj),
     now: () => new Date(),
     uuid: randomUUID,
+  }),
+);
+
+/** LPJ (E4): the PICs' part, submit, three desks, return, due date. */
+export const lpjActions = lazyEnv(() =>
+  createLpjActions({
+    lpj: adminStores().lpj,
+    afterStep: (lpj) => notices().lpj(lpj),
+    now: () => new Date(),
+  }),
+);
+
+/** GET /api/lpj/<id>/pdf (src/app/api/lpj/[id]/pdf/route.ts), rendered at download time. */
+export const lpjFile = lazyEnv(() =>
+  createLpjFileRoute({
+    getLpj: (id) => adminStores().lpj.get(id),
+    names: async (uids) => {
+      const people = await adminStores().accounts.getMany(uids);
+      return new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
+    },
+    render: renderReportPdf,
+    now: () => new Date(),
+    logError: (message, fields) => adminStores().logger.error(message, fields),
   }),
 );
 
@@ -539,4 +567,6 @@ export const adminReads = {
   listPrograms: (periodId: string) => adminStores().programs.listForPeriod(periodId),
   getProgram: (id: string) => adminStores().programs.get(id),
   listCheckins: (programId: string) => adminStores().programs.listCheckins(programId),
+  listLpj: (periodId: string) => adminStores().lpj.listForPeriod(periodId),
+  getLpj: (id: string) => adminStores().lpj.get(id),
 };

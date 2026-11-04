@@ -28,6 +28,7 @@ const officer = staff("officer", ["programs.read"]);
 
 let fake: ReturnType<typeof fakeDb>;
 let uuids = 0;
+const opened: string[] = [];
 const db = () => fake.db as unknown as Db;
 const store = () => createSqlProgramStore(db());
 const actions = () =>
@@ -39,6 +40,10 @@ const actions = () =>
     },
     findUserId: (email) =>
       Promise.resolve({ "pic@example.org": "pic", "rina@example.org": "rina" }[email] ?? null),
+    afterLpj: (lpj) => {
+      opened.push(lpj.id);
+      return Promise.resolve();
+    },
     now: () => clock,
     uuid: () => `m${(uuids += 1)}`,
   });
@@ -74,6 +79,7 @@ async function proposal(extra: Record<string, unknown> = {}) {
 beforeEach(() => {
   fake = fakeDb();
   uuids = 0;
+  opened.length = 0;
   clock = new Date("2026-11-04T03:00:00Z");
   fake.docs.set("periods/p1", { status: "active", deletedAt: null });
   fake.docs.set("periods/p0", { status: "archived", deletedAt: null });
@@ -237,6 +243,7 @@ describe("running a programme: the PIC rule", () => {
     expect(noReason).toMatchObject({ ok: false, error: "invalid_input" });
     step = await ok<Step>(actions().finish(...as(pic))({ id, version: step.version }));
     expect(step.status).toBe("finished");
+    expect(opened).toEqual([id]);
     const audit = [...fake.docs.entries()].filter(([path]) => path.startsWith("auditLogs/"));
     expect(audit.length).toBeGreaterThanOrEqual(8);
   });
