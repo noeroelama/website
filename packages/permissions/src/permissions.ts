@@ -86,6 +86,7 @@ export const ADMIN_PAGES = {
   apikeys: { label: "API keys" },
   shop_products: { label: "Shop products" },
   shop_orders: { label: "Shop orders", extras: { refund: "Refund" } },
+  okr: { label: "OKR (vision, mission, objectives, key results)" },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

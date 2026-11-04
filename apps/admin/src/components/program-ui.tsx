@@ -1,0 +1,179 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { createContext, useContext, useState, type FormEvent, type ReactNode } from "react";
+import { ActionError } from "@/components/action-error";
+import { actionMessage, type ActionFailure } from "@/components/action-message";
+import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field-error";
+import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+
+const FieldMessages = createContext<Readonly<Record<string, string>>>({});
+
+/** What a server action returns (GuardedResult, as seen by the browser). */
+export type ActionResult = { ok: true } | ActionFailure;
+
+/**
+ * The popup form of the OKR, Programmes and LPJ pages: plain fields read with FormData, one
+ * server action on submit, its refusal shown at the bottom; success closes and refreshes.
+ */
+export function FormModal({
+  open,
+  title,
+  submitLabel = "Save",
+  onClose,
+  onSubmit,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  submitLabel?: string;
+  onClose: () => void;
+  onSubmit: (form: FormData) => Promise<ActionResult>;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Readonly<Record<string, string>>>({});
+  const close = () => {
+    setError(null);
+    setFields({});
+    onClose();
+  };
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    const result = await onSubmit(new FormData(event.currentTarget));
+    setBusy(false);
+    if (!result.ok) {
+      setFields(result.fields ?? {});
+      return setError(actionMessage(result));
+    }
+    close();
+    router.refresh();
+  };
+  return (
+    <Modal open={open} title={title} onClose={close}>
+      <form onSubmit={(e) => void submit(e)}>
+        <FieldMessages.Provider value={fields}>{children}</FieldMessages.Provider>
+        <ActionError text={error} />
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={close}>
+            Back
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {submitLabel}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** One labelled control with its requirements (`FieldError`); `rows` makes a textarea. */
+export function Field({
+  label,
+  name,
+  rows,
+  hint,
+  ...input
+}: {
+  label: string;
+  name: string;
+  rows?: number;
+  hint?: string;
+  type?: string;
+  required?: boolean;
+  defaultValue?: string | number;
+  min?: number;
+  max?: number;
+  step?: number | "any";
+  minLength?: number;
+  maxLength?: number;
+}) {
+  const message = useContext(FieldMessages)[name];
+  const id = `field-${name}`;
+  return (
+    <div className="admin-field">
+      <label className="admin-field__label" htmlFor={id}>
+        {label}
+        {input.required ? " *" : ""}
+      </label>
+      {rows ? (
+        <textarea id={id} name={name} rows={rows} className="admin-textarea" {...input} />
+      ) : (
+        <input id={id} name={name} className="admin-input" {...input} />
+      )}
+      <FieldError id={`${id}-error`} message={message} hint={hint} />
+    </div>
+  );
+}
+
+/** A dropdown field (`Select`) with a label. */
+export function ChoiceField({
+  label,
+  name,
+  defaultValue,
+  options,
+}: {
+  label: string;
+  name: string;
+  defaultValue: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+}) {
+  const id = `field-${name}`;
+  return (
+    <div className="admin-field">
+      <label className="admin-field__label" htmlFor={id}>
+        {label}
+      </label>
+      <Select id={id} name={name} className="admin-select" defaultValue={defaultValue}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
+}
+
+/** The board period shown (`?period=<id>`), as a dropdown in the page header. */
+export function PeriodSwitch({
+  path,
+  current,
+  periods,
+}: {
+  path: string;
+  current: string;
+  periods: ReadonlyArray<{ id: string; name: string }>;
+}) {
+  const router = useRouter();
+  return (
+    <Select
+      aria-label="Period"
+      className="admin-select"
+      value={current}
+      onChange={(e) => router.push(`${path}?period=${e.target.value}`)}
+    >
+      {periods.map((p) => (
+        <option key={p.id} value={p.id}>
+          Period {p.name}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+/** FormData text (trimmed, "" when missing). */
+export const text = (form: FormData, name: string): string => {
+  const value = form.get(name);
+  return typeof value === "string" ? value.trim() : "";
+};
+/** FormData number (NaN when empty: the server refuses it with a message). */
+export const num = (form: FormData, name: string): number => {
+  const value = text(form, name);
+  return value === "" ? Number.NaN : Number(value);
+};

@@ -36,6 +36,7 @@ import {
   createSqlSubscriberReader,
   createSqlSubscriberStore,
   getDatabaseForRole,
+  createSqlObjectiveStore,
 } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { getAdminEnv } from "./env";
@@ -107,5 +108,6 @@ export const adminStores = lazyEnv(() => {
       privateKey: env.FIREBASE_PRIVATE_KEY,
     }),
     logger: createLogger({ service: "admin", level: env.LOG_LEVEL }),
+    objectives: createSqlObjectiveStore(db),
   };
 });

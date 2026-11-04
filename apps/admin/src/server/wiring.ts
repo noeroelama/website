@@ -49,6 +49,7 @@ import { createRecruitmentActions } from "./recruitment";
 import { createRoleActions } from "./roles";
 import { createUniversityActions } from "./universities";
 import { adminDb, adminStores, imageStorage } from "./stores";
+import { createOkrActions } from "./okr";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -445,6 +446,20 @@ export const dashboard = lazyEnv(() =>
   }),
 );
 
+/** OKR page (E1): objectives, key results, the period's vision and mission. */
+export const okrActions = lazyEnv(() =>
+  createOkrActions({
+    objectives: adminStores().objectives,
+    periods: adminStores().periods,
+    unitPath: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit ? orgUnitPath(unit) : null;
+    },
+    now: () => new Date(),
+    uuid: randomUUID,
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -505,4 +520,5 @@ export const adminReads = {
     ]);
     return { ...methods, passkeys: keys.length };
   },
+  listObjectives: (periodId: string) => adminStores().objectives.listForPeriod(periodId),
 };

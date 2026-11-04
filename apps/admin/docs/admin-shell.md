@@ -171,6 +171,10 @@ router.push("/things"); router.refresh();
   at `/letters/types`. **Incoming letters** (`/incoming`, `incoming-page.tsx`, model
   `incoming-model.ts`): agenda book, scan, disposition chain. Rules:
   `packages/domain/docs/documents.md`.
+- **OKR** (`/okr`, `src/components/okr-page.tsx`): one period (`?period=`), its vision and
+  mission, objectives with key results and achievement; popup forms share
+  `src/components/program-ui.tsx` (`FormModal`, `Field`, `ChoiceField`, `PeriodSwitch`). Rules:
+  `packages/domain/docs/programs.md`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

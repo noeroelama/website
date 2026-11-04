@@ -16,7 +16,8 @@
     "./gallery": "./src/gallery/index.ts",
     "./forms": "./src/forms/index.ts",
     "./recruitment": "./src/recruitment/index.ts",
-    "./documents": "./src/documents/index.ts"
+    "./documents": "./src/documents/index.ts",
+    "./programs": "./src/programs/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

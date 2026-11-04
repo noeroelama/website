@@ -53,4 +53,6 @@ export const COLLECTIONS = [
   "verificationCodes",
   "webauthnChallenges",
   "webhookEvents",
+  // Phase 6: programmes (E1-E5)
+  "objectives",
 ] as const;

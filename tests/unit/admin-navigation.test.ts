@@ -64,6 +64,7 @@ describe("admin side panel navigation", () => {
       "Role Manager",
       "Audit Log",
       "Email",
+      "OKR",
     ]);
   });
 

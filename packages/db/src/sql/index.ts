@@ -194,6 +194,13 @@ export {
   type SqlAccountStore,
   type SqlRoleStore,
 } from "./users";
+export {
+  createSqlObjectiveStore,
+  objectiveSnapshot,
+  type ObjectiveAudit,
+  type ObjectiveFields,
+  type SqlObjectiveStore,
+} from "./programs";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");
