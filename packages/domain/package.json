@@ -19,7 +19,8 @@
     "./documents": "./src/documents/index.ts",
     "./programs": "./src/programs/index.ts",
     "./finance": "./src/finance/index.ts",
-    "./meetings": "./src/meetings/index.ts"
+    "./meetings": "./src/meetings/index.ts",
+    "./links": "./src/links/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

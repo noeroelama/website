@@ -13,6 +13,7 @@
 | [programs.md](programs.md)         | OKR, work programmes, LPJ, period report card                |
 | [finance.md](finance.md)           | Money (DEC-8), finance requests, cash book and cash report   |
 | [meetings.md](meetings.md)         | Meetings, attendance codes, reminders, minutes               |
+| [links.md](links.md)               | Short links: goppi.id first, s.id fallback, archive          |
 
 Add one Markdown file per feature (`<feature>.md`) using the
 [feature doc template](../../../docs/README.md#feature-doc-template), then list it in the table above

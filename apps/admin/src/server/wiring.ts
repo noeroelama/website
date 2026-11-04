@@ -58,6 +58,8 @@ import { renderReportPdf } from "@website/pdf";
 import { createMeetingActions } from "./meetings";
 import { createMinutesActions, createMinutesFileRoute } from "./minutes";
 import { createAnthropicDrafter, DEFAULT_ANTHROPIC_MODEL } from "./anthropic";
+import { createLinkActions } from "./links";
+import { goppiShortener, sidShortener } from "./shorteners";
 
 /** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
@@ -587,6 +589,25 @@ export const minutesFile = lazyEnv(() =>
   }),
 );
 
+/** Short links (K1): Tools page (interactive) and `shorten` for automatic links (silent). */
+export const linkActions = lazyEnv(() => {
+  const env = getAdminEnv();
+  return createLinkActions({
+    shorteners: [
+      goppiShortener(
+        env.GOPPI_BASE_URL && env.GOPPI_API_KEY
+          ? { baseUrl: env.GOPPI_BASE_URL, apiKey: env.GOPPI_API_KEY }
+          : null,
+        fetch,
+      ),
+      sidShortener(env.SHORTLINK_API_KEY ?? null, fetch),
+    ],
+    links: adminStores().shortLinks,
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  });
+});
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -659,5 +680,6 @@ export const adminReads = {
   listMeetings: (periodId: string) => adminStores().meetings.listForPeriod(periodId),
   listMyMeetings: (uid: string) => adminStores().meetings.listForUser(uid),
   getMeeting: (id: string) => adminStores().meetings.get(id),
+  listShortLinks: () => adminStores().shortLinks.list(),
   listActionItems: (meetingId: string) => adminStores().actionItems.listForMeeting(meetingId),
 };

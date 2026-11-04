@@ -34,6 +34,7 @@ and link to it from the others.
 | Programmes (OKR, work programmes, LPJ, report card)                    | [packages/domain/docs/programs.md](../packages/domain/docs/programs.md)                     |
 | Finance (money, requests and desks, cash book, cash report)            | [packages/domain/docs/finance.md](../packages/domain/docs/finance.md)                       |
 | Meetings (attendance codes, reminders, minutes)                        | [packages/domain/docs/meetings.md](../packages/domain/docs/meetings.md)                     |
+| Short links (goppi.id, s.id, silent and interactive modes)             | [packages/domain/docs/links.md](../packages/domain/docs/links.md)                           |
 | Image uploads (5 MB, WebP, thumbnail, cPanel disk)                     | [packages/db/docs/files.md](../packages/db/docs/files.md)                                   |
 | Database                                                               | [packages/db/docs/database.md](../packages/db/docs/database.md)                             |
 | Authentication (Google, email/password, passkeys, reset)               | [packages/auth/docs/authentication.md](../packages/auth/docs/authentication.md)             |

@@ -19,13 +19,14 @@ import {
   qrTextProblem,
 } from "@website/domain/documents";
 import { withoutScheme } from "@/components/format";
+import { PREFIX, PAGE_SIZE_OPTIONS, formatDate, type ShortLink } from "@/components/links-model";
+import { actionMessage } from "@/components/action-message";
 import {
-  INITIAL_LINKS,
-  PREFIX,
-  PAGE_SIZE_OPTIONS,
-  formatDate,
-  type ShortLink,
-} from "@/data/mock/short-links";
+  createLinkAction,
+  linkClicksAction,
+  renameLinkAction,
+  setLinkArchivedAction,
+} from "@/app/(panel)/tools/actions";
 import { Select } from "@/components/ui/select";
 
 /* ==================================================================
@@ -276,10 +277,7 @@ function LinkResultBanner({
           <Icon name="check" size={14} />
           {title}
         </div>
-        <div className="admin-link-result__link">
-          {PREFIX}
-          {link.slug}
-        </div>
+        <div className="admin-link-result__link">{withoutScheme(link.shortUrl)}</div>
         <div className="admin-link-result__meta">Redirects to {withoutScheme(link.original)}</div>
       </div>
       <div className="admin-link-result__actions">
@@ -304,17 +302,23 @@ const QR_SIZE_OPTIONS: { value: QrSize; label: string; hint: string; px: number 
   { value: "large", label: "Large", hint: "For posters", px: 230 },
 ];
 
-export function ToolsPage() {
+interface ToolsProps {
+  initialLinks: ShortLink[];
+  /** tools.edit: create, rename, archive. */
+  canEdit: boolean;
+}
+
+export function ToolsPage(props: ToolsProps) {
   const pathname = usePathname();
   // key={pathname} remounts the page when the tools route is (re)entered, so
   // the searchbox and filters start empty on every visit (same pattern as
   // Articles & Gallery).
-  return <ToolsList key={pathname} />;
+  return <ToolsList key={pathname} {...props} />;
 }
 
 /** Tools screen (all state lives here; remounted by ToolsPage on navigation
  *  so it starts clean). */
-function ToolsList() {
+function ToolsList({ initialLinks, canEdit }: ToolsProps) {
   const toast = useToastMessage();
 
   /* ---- QR Generator ---- */
@@ -393,7 +397,7 @@ function ToolsList() {
   const [longUrl, setLongUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
   const [slug, setSlug] = useState("");
-  const [links, setLinks] = useState<ShortLink[]>(INITIAL_LINKS);
+  const [links, setLinks] = useState<ShortLink[]>(initialLinks);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [editingLink, setEditingLink] = useState<ShortLink | null>(null);
@@ -407,6 +411,8 @@ function ToolsList() {
 
   /* --- edit modal form --- */
   const [editForm, setEditForm] = useState({ original: "", title: "", slug: "" });
+  const [editClicks, setEditClicks] = useState<string>("…");
+  const [busy, setBusy] = useState(false);
 
   /* Result container auto-hides after a few seconds */
   useEffect(() => {
@@ -421,30 +427,30 @@ function ToolsList() {
     return () => clearTimeout(t);
   }, [editSaved]);
 
-  const generateLink = () => {
+  const generateLink = async () => {
     const raw = longUrl.trim();
     if (!raw) {
       toast.show("Paste a long URL first");
       return;
     }
+    if (busy) return;
     const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     const finalSlug = slug.trim().replace(/\s+/g, "-");
-    if (!finalSlug) {
-      toast.show("URL is required — enter a short slug");
+    setBusy(true);
+    const result = await createLinkAction({
+      longUrl: normalized,
+      title: linkTitle.trim(),
+      slug: finalSlug || null,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      toast.show(actionMessage(result));
       return;
     }
-
-    const newLink: ShortLink = {
-      id: `l-${Date.now()}`,
-      title: linkTitle.trim() || "Untitled link",
-      original: normalized,
-      slug: finalSlug,
-      clicks: 0,
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
+    const newLink = result.data;
     setLinks((prev) => [newLink, ...prev]);
     setCreatedLink(newLink);
-    toast.show(`Short link created: ${PREFIX}${finalSlug}`);
+    toast.show(`Short link created: ${withoutScheme(newLink.shortUrl)}`);
     setLongUrl("");
     setLinkTitle("");
     setSlug("");
@@ -456,72 +462,72 @@ function ToolsList() {
     setEditForm({ original: link.original, title: link.title, slug: link.slug });
     setEditSaved(false);
     setEditOpen(true);
+    setEditClicks("…");
+    void linkClicksAction({ id: link.id }).then((r) =>
+      setEditClicks(r.ok ? (r.data.clicks === null ? "not reported" : String(r.data.clicks)) : "—"),
+    );
   };
 
-  const saveEdit = () => {
+  /** Only the title is ours to change; the provider's link keeps its address and slug. */
+  const saveEdit = async () => {
     if (!editingLink) return;
-    const normalized = /^https?:\/\//i.test(editForm.original.trim())
-      ? editForm.original.trim()
-      : `https://${editForm.original.trim()}`;
-    const finalSlug = editForm.slug.trim().replace(/\s+/g, "-") || editingLink.slug;
-    const updated: ShortLink = {
-      ...editingLink,
-      title: editForm.title.trim() || editingLink.title,
-      original: normalized,
-      slug: finalSlug,
-    };
+    const result = await renameLinkAction({
+      id: editingLink.id,
+      version: editingLink.version,
+      title: editForm.title.trim(),
+    });
+    if (!result.ok) {
+      toast.show(actionMessage(result));
+      return;
+    }
+    const updated = result.data;
     setLinks((prev) => prev.map((l) => (l.id === editingLink.id ? updated : l)));
     setEditingLink(updated);
     setCreatedLink(updated);
     setEditSaved(true);
-    toast.show(`Link ${PREFIX}${finalSlug} updated`);
+    toast.show(`Link ${withoutScheme(updated.shortUrl)} updated`);
   };
 
   const generateQrFromLink = (link: ShortLink) => {
     setQrType("link");
-    setQrLink(`https://${PREFIX}${link.slug}`);
+    setQrLink(link.shortUrl);
     setQrCreated(true);
     toast.show("QR ready — review the QR Generator panel");
   };
 
   const copyShort = (link: ShortLink) => {
-    void navigator.clipboard?.writeText(`https://${PREFIX}${link.slug}`);
-    toast.show(`Link ${PREFIX}${link.slug} copied`);
+    void navigator.clipboard?.writeText(link.shortUrl);
+    toast.show(`Link ${withoutScheme(link.shortUrl)} copied`);
   };
 
   const goToLink = (link: ShortLink) => {
-    window.open(`https://${PREFIX}${link.slug}`, "_blank", "noopener,noreferrer");
+    window.open(link.shortUrl, "_blank", "noopener,noreferrer");
   };
 
-  /* Deletes are confirmed in the dark modal (like Edit Link) instead of
-     window.confirm. The modal only stores *what* would be deleted; doDelete
-     applies the change once the user confirms. */
-  const doDelete = () => {
+  /* Archive (the providers' soft delete: the slug stays taken) is confirmed in the dark modal;
+     an archived link can be restored the same way. */
+  const archiveOne = async (link: ShortLink, archived: boolean) => {
+    const result = await setLinkArchivedAction({ id: link.id, version: link.version, archived });
+    if (!result.ok) {
+      toast.show(actionMessage(result));
+      return false;
+    }
+    setLinks((prev) => prev.map((l) => (l.id === link.id ? result.data : l)));
+    return true;
+  };
+  const doDelete = async () => {
     if (!deleteConfirm) return;
-    if (deleteConfirm.kind === "one") {
-      const link = deleteConfirm.link;
-      setLinks((prev) => prev.filter((l) => l.id !== link.id));
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(link.id);
-        return next;
-      });
-      if (editingLink?.id === link.id) {
-        setEditOpen(false);
-        setEditingLink(null);
-      }
-      setDeleteConfirm(null);
-      toast.show("Link deleted");
-    } else {
-      const ids = new Set(Array.from(selected).filter((id) => links.some((l) => l.id === id)));
-      setLinks((prev) => prev.filter((l) => !ids.has(l.id)));
-      setSelected(new Set());
-      if (editingLink && ids.has(editingLink.id)) {
-        setEditOpen(false);
-        setEditingLink(null);
-      }
-      setDeleteConfirm(null);
-      toast.show(`${deleteConfirm.count} link${deleteConfirm.count === 1 ? "" : "s"} deleted`);
+    const targets =
+      deleteConfirm.kind === "one"
+        ? [deleteConfirm.link]
+        : links.filter((l) => selected.has(l.id) && !l.archived);
+    const archived = deleteConfirm.kind === "many" || !deleteConfirm.link.archived;
+    setDeleteConfirm(null);
+    let done = 0;
+    for (const link of targets) if (await archiveOne(link, archived)) done += 1;
+    setSelected(new Set());
+    if (done > 0) {
+      toast.show(archived ? `${done} link${done === 1 ? "" : "s"} archived` : "Link restored");
     }
   };
 
@@ -614,8 +620,8 @@ function ToolsList() {
       render: (r) => (
         <div>
           <div className="admin-table__title">
-            {PREFIX}
-            {r.slug}
+            {withoutScheme(r.shortUrl)}
+            {r.archived ? " · Archived" : ""}
           </div>
           <div className="admin-table__sub admin-table__sub--redirect">
             <Icon name="cornerDownRight" size={16} />
@@ -637,15 +643,17 @@ function ToolsList() {
       width: "30%",
       render: (r) => (
         <div className="admin-table__actions">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="admin-table__delete"
-            icon="trash"
-            aria-label="Delete"
-            onClick={() => deleteLink(r)}
-            title="Delete"
-          />
+          {canEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="admin-table__delete"
+              icon={r.archived ? "undo" : "trash"}
+              aria-label={r.archived ? "Restore" : "Archive"}
+              onClick={() => deleteLink(r)}
+              title={r.archived ? "Restore" : "Archive"}
+            />
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
@@ -924,14 +932,15 @@ function ToolsList() {
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") generateLink();
+                      if (e.key === "Enter") void generateLink();
                     }}
                   />
                 </div>
                 <Button
                   variant="primary"
                   icon="link"
-                  onClick={generateLink}
+                  onClick={() => void generateLink()}
+                  disabled={!canEdit || busy}
                   style={{ whiteSpace: "nowrap" }}
                 >
                   Generate Link
@@ -972,8 +981,8 @@ function ToolsList() {
                   Search
                 </button>
               </form>
-              <Button variant="danger" icon="trash" onClick={deleteSelected}>
-                Delete
+              <Button variant="danger" icon="trash" onClick={deleteSelected} disabled={!canEdit}>
+                Archive
               </Button>
             </div>
 
@@ -1100,7 +1109,12 @@ function ToolsList() {
             >
               Back
             </Button>
-            <Button variant="outline" icon="cloud" onClick={saveEdit} disabled={editSaved}>
+            <Button
+              variant="outline"
+              icon="cloud"
+              onClick={() => void saveEdit()}
+              disabled={editSaved}
+            >
               {editSaved ? "Saved" : "Save draft"}
             </Button>
           </div>
@@ -1117,7 +1131,7 @@ function ToolsList() {
               type="url"
               placeholder="https://example.com/register"
               value={editForm.original}
-              onChange={(e) => setEditForm({ ...editForm, original: e.target.value })}
+              readOnly
             />
           </div>
           <div className="admin-field admin-form-grid__full">
@@ -1134,33 +1148,14 @@ function ToolsList() {
             />
           </div>
           <div className="admin-field admin-form-grid__full">
-            <label className="admin-field__label" htmlFor="edit-slug">
-              URL *
-            </label>
-            <div className="admin-field__row">
-              <div className="admin-url-slug">
-                <span className="admin-url-slug__prefix" aria-label="Short URL prefix">
-                  {PREFIX}
-                </span>
-                <input
-                  id="edit-slug"
-                  className="admin-url-slug__slug"
-                  type="text"
-                  aria-label="Short URL slug"
-                  placeholder="simkongresppidkasiania"
-                  value={editForm.slug}
-                  onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
-                />
-              </div>
-              <Button
-                variant="outline"
-                icon="link"
-                onClick={saveEdit}
-                style={{ whiteSpace: "nowrap" }}
-              >
-                Generate Link
-              </Button>
-            </div>
+            <span className="admin-field__label">Short URL</span>
+            <p>
+              {editingLink ? withoutScheme(editingLink.shortUrl) : ""} · Clicks: {editClicks}
+            </p>
+            <p className="admin-field__hint">
+              The address and the short URL cannot change at the provider; archive this link and
+              make a new one instead.
+            </p>
           </div>
 
           {/* Result container appears above the Save button after saving */}
@@ -1183,7 +1178,11 @@ function ToolsList() {
           sized to the text; the two actions sit flush right. */}
       <Modal
         open={deleteConfirm !== null}
-        title="Delete link"
+        title={
+          deleteConfirm?.kind === "one" && deleteConfirm.link.archived
+            ? "Restore link"
+            : "Archive link"
+        }
         width={420}
         hideClose
         onClose={() => setDeleteConfirm(null)}
@@ -1192,17 +1191,17 @@ function ToolsList() {
             <Button variant="outline" icon="chevronLeft" onClick={() => setDeleteConfirm(null)}>
               Back
             </Button>
-            <Button variant="danger" icon="trash" onClick={doDelete}>
-              Delete
+            <Button variant="danger" icon="trash" onClick={() => void doDelete()}>
+              {deleteConfirm?.kind === "one" && deleteConfirm.link.archived ? "Restore" : "Archive"}
             </Button>
           </div>
         }
       >
         <p className="admin-delete-confirm__message">
           {deleteConfirm?.kind === "many"
-            ? `Delete ${deleteConfirm.count} selected link${deleteConfirm.count === 1 ? "" : "s"}? This cannot be undone.`
+            ? `Archive ${deleteConfirm.count} selected link${deleteConfirm.count === 1 ? "" : "s"}? They stop working; their short URLs stay reserved.`
             : deleteConfirm
-              ? `Delete "${PREFIX}${deleteConfirm.link.slug}"? This cannot be undone.`
+              ? `${deleteConfirm.link.archived ? "Restore" : "Archive"} "${withoutScheme(deleteConfirm.link.shortUrl)}"?`
               : ""}
         </p>
       </Modal>

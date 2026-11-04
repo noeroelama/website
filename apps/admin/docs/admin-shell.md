@@ -158,10 +158,8 @@ router.push("/things"); router.refresh();
   confirmed subscribers — each only when the viewer can read that page (`COUNT` queries,
   `src/server/dashboard.ts`, `packages/db/src/sql/dashboard.ts`) — and the 10 newest
   audit entries with `audit.read`. Tests: `tests/integration/dashboard.test.ts`.
-- **UI-only pages.** The Tools short-link list is a design port that runs on `src/data/mock/*` in the
-  browser: nothing is saved and nothing is audited. When a feature gets its backend, replace
-  its mock import with a server read and its buttons with guarded actions (pattern above), then
-  delete the mock file. Articles (`packages/domain/docs/content.md`), Events
+- **Data-backed pages.** No page runs on mock data any more (the Tools short-link list was the
+  last, step 7.5). Articles (`packages/domain/docs/content.md`), Events
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
   (`packages/domain/docs/newsletter.md`), Forms (`packages/domain/docs/forms.md`), Audit Log and
   Role Manager are the real, data-backed pages.
@@ -202,7 +200,7 @@ router.push("/things"); router.refresh();
   rules (`@website/domain/documents` → `qr.ts`, see `packages/domain/docs/documents.md`): at
   most 800 characters, high error correction, 4-module quiet zone, downloads at 300 / 600 /
   1000 px, the logo only on the PNG on an opaque plate, never in the SVG. It runs in the
-  browser (nothing is stored). The short links still use mock data (step 7.5). Tests:
+  browser (nothing is stored). The URL Shortener uses goppi.id first and s.id as fallback (`packages/domain/docs/links.md`): create with an optional slug, rename the title, archive/restore, clicks on open. Tests:
   `tests/unit/admin-tools.test.ts`.
 
 ## Configuration

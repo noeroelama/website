@@ -65,4 +65,7 @@ export const COLLECTIONS = [
   "meetings",
   "attendanceCodes",
   "actionItems",
+  // Short links (K1)
+  "shortLinks",
+  "shortLinkSlugs",
 ] as const;

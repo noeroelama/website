@@ -108,6 +108,13 @@ export const wahaEnv = z.object({
   WAHA_SESSION: z.string().min(1).default("default"),
 });
 
+/** Short links (K1): goppi.id first, s.id as fallback; a provider without its key is skipped. */
+export const shortLinkEnv = z.object({
+  GOPPI_BASE_URL: optionalUrl,
+  GOPPI_API_KEY: z.string().min(1).optional(),
+  SHORTLINK_API_KEY: z.string().min(1).optional(),
+});
+
 /** Anthropic for machine-drafted minutes (F6); no key = the feature is off. */
 export const anthropicEnv = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),

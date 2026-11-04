@@ -232,6 +232,12 @@ export {
   type MeetingFields,
   type SqlMeetingStore,
 } from "./meetings";
+export {
+  createSqlShortLinkStore,
+  type ShortLinkAudit,
+  type ShortLinkFields,
+  type SqlShortLinkStore,
+} from "./links";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");
