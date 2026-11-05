@@ -56,6 +56,7 @@ export function AdminSidebar(props: {
   const drawerId = useId();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const drawerVisible = isDesktop || drawerOpen;
   // unoptimized: the Next dev image optimizer returns 500 for this webp; the plain <img> path is
   // proven to work (see tools-page QR logo). The logo image already contains the organisation name.
@@ -69,6 +70,25 @@ export function AdminSidebar(props: {
       unoptimized
     />
   );
+
+  // "/" jumps to the search box (G4) unless the person is already typing somewhere.
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        event.key !== "/" ||
+        target.isContentEditable ||
+        /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setDrawerOpen(true);
+      searchRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     if (isDesktop || !drawerOpen) return;
@@ -135,6 +155,20 @@ export function AdminSidebar(props: {
             logo
           )}
         </div>
+
+        <form action="/search" role="search" className="admin-nav">
+          <input
+            ref={searchRef}
+            className="admin-input"
+            type="search"
+            name="q"
+            placeholder="Search (/)"
+            aria-label="Search"
+            aria-keyshortcuts="/"
+            minLength={2}
+            maxLength={100}
+          />
+        </form>
 
         <nav className="admin-nav" aria-labelledby={`${drawerId}-menu`}>
           <p id={`${drawerId}-menu`} className="admin-menu-label">
