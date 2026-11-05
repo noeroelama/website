@@ -18,6 +18,7 @@ import {
   anthropicEnv,
   shortLinkEnv,
   driveEnv,
+  whatsappCloudEnv,
   zoomEnv,
 } from "@website/config/env";
 
@@ -32,6 +33,7 @@ const adminEnvSchema = baseEnv
   .extend(anthropicEnv.shape)
   .extend(shortLinkEnv.shape)
   .extend(driveEnv.shape)
+  .extend(whatsappCloudEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(newsletterEnv.partial().shape)
   .extend(zoomEnv.partial().shape)

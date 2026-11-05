@@ -246,6 +246,11 @@ export {
   type ZoomRequestFields,
 } from "./zoom";
 export { createSqlSurveyStore, type SqlSurveyStore } from "./surveys";
+export {
+  createSqlConversationStore,
+  type Conversation,
+  type SqlConversationStore,
+} from "./conversations";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");

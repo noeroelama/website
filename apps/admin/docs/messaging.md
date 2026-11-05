@@ -85,6 +85,28 @@ stored by the poll's message id. The Email page shows asked / answered / average
 per source for the last 12 months. [OWNER] WAHA dashboard → webhook URL
 `https://<admin domain>/webhooks/waha`, event `poll.vote`, HMAC key = `WAHA_WEBHOOK_SECRET`.
 
+## WhatsApp chatbot (C4)
+
+`/webhooks/whatsapp` (`src/server/chatbot.ts`): GET answers Meta's verify-token handshake
+(`WHATSAPP_CLOUD_VERIFY_TOKEN`); POST checks `X-Hub-Signature-256` (HMAC-SHA256 of the body with
+`WHATSAPP_CLOUD_APP_SECRET`), de-duplicates each message by its id (`webhookEvents`) and replies
+through the Meta Cloud API (`WHATSAPP_CLOUD_PHONE_NUMBER_ID`, `WHATSAPP_CLOUD_TOKEN`; replies only,
+inside the free 24-hour window; anything proactive stays on WAHA).
+
+- Keywords: `menu` (also halo/hai), `bantuan`, `batal`, `daftar` (sign-up), `oprec`.
+- Sign-up: name → e-mail → chapter (numbered list) → campus (approved universities of the
+  chapter's country, matched on the normalised name; the optional Gemini matcher
+  (`GEMINI_API_KEY`, X4) only when nothing matched) → pick → confirm `ya` → the Firebase account
+  is found or created (unverified, no password; `createFirebaseAccountCreator`) and its
+  `users/{uid}` record made as on a first sign-in; the reply links `/login` (Google or "forgot
+  password") to complete the profile on the website.
+- Oprec: numbered open recruitments → the website's apply link (signed-in apply; the
+  personality test link is on the application page).
+- State: `whatsappConversations/{keyedHash(phone)}` (SUBSCRIBER_HASH_SECRET) with a 30-minute
+  life (`expiresAt`, deleted by the `expire` job); the number itself is never stored.
+- Not built: WhatsApp Flows for the Oprec questions (X5). Applying stays on the website until the
+  Meta Flow set-up exists; the chatbot sends the link instead.
+
 ## Rules and assumptions
 
 - The key is claimed in a transaction (create-if-absent); a second call with the same key

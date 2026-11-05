@@ -6,6 +6,7 @@ export const EXPIRING_COLLECTIONS = [
   "webauthnChallenges",
   "webhookEvents",
   "attendanceCodes",
+  "whatsappConversations",
 ] as const;
 
 /**
@@ -17,7 +18,13 @@ export async function deleteExpired(
   now: Date,
   limit = 500,
 ): Promise<Record<(typeof EXPIRING_COLLECTIONS)[number], number>> {
-  const deleted = { rateLimits: 0, webauthnChallenges: 0, webhookEvents: 0, attendanceCodes: 0 };
+  const deleted = {
+    rateLimits: 0,
+    webauthnChallenges: 0,
+    webhookEvents: 0,
+    attendanceCodes: 0,
+    whatsappConversations: 0,
+  };
   for (const name of EXPIRING_COLLECTIONS) {
     deleted[name] = await db.runTransaction(async (tx) => {
       const found = await tx.get(db.collection(name).where("expiresAt", "<=", now).limit(limit));

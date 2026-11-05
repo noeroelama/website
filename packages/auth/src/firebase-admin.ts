@@ -101,3 +101,20 @@ export function createFirebaseAccountAdmin(config: FirebaseAdminConfig): Account
     },
   };
 }
+
+/**
+ * The uid of the account with this e-mail, created (unverified, no password: the person signs in
+ * with Google or sets a password via "forgot password") when there is none. WhatsApp sign-up
+ * (C4) only.
+ */
+export function createFirebaseAccountCreator(config: FirebaseAdminConfig) {
+  const auth = () => getAuth(adminApp(config));
+  return async (email: string, displayName: string): Promise<string> => {
+    try {
+      return (await auth().getUserByEmail(email)).uid;
+    } catch (error) {
+      if ((error as { code?: string }).code !== "auth/user-not-found") throw error;
+      return (await auth().createUser({ email, displayName, emailVerified: false })).uid;
+    }
+  };
+}

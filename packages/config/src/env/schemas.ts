@@ -128,6 +128,19 @@ export const driveEnv = z.object({
   GOOGLE_DRIVE_FOLDER_ID: z.string().min(1).optional(),
 });
 
+/**
+ * Meta WhatsApp Cloud API for chatbot replies (C4): phone number id, system-user token, app
+ * secret (webhook signatures), verify token (webhook handshake). Optional Gemini key for the
+ * free-text campus matcher. Unset = the chatbot is off.
+ */
+export const whatsappCloudEnv = z.object({
+  WHATSAPP_CLOUD_PHONE_NUMBER_ID: z.string().min(1).optional(),
+  WHATSAPP_CLOUD_TOKEN: z.string().min(1).optional(),
+  WHATSAPP_CLOUD_APP_SECRET: z.string().min(1).optional(),
+  WHATSAPP_CLOUD_VERIFY_TOKEN: z.string().min(16).optional(),
+  GEMINI_API_KEY: z.string().min(1).optional(),
+});
+
 /** Anthropic for machine-drafted minutes (F6); no key = the feature is off. */
 export const anthropicEnv = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),

@@ -75,4 +75,6 @@ export const COLLECTIONS = [
   "recordingFiles",
   // Satisfaction polls (J3)
   "surveys",
+  // WhatsApp chatbot (C4)
+  "whatsappConversations",
 ] as const;

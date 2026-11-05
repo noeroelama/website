@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import {
+  createSqlUserStore,
   createSqlWebhookEventStore,
   deleteExpired,
   inviteId,
@@ -46,6 +47,10 @@ import { createMessageActions } from "./messaging";
 import { createNotices } from "./notices";
 import { wahaChannel, wahaPoll } from "./whatsapp";
 import { createPolls, createWahaWebhookRoute } from "./polls";
+import { cloudApiReply, createChatbot, createWhatsappWebhook } from "./chatbot";
+import { geminiCampusMatcher } from "./gemini";
+import { createFirebaseAccountCreator } from "@website/auth/firebase-admin";
+import { isRecruitmentOpen } from "@website/domain/recruitment";
 import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
 import { createOrgUnitActions } from "./org-units";
@@ -467,6 +472,63 @@ export const wahaWebhook = lazyEnv(() =>
     now: () => new Date(),
   }),
 );
+
+const userDirectoryStore = lazyEnv(() => createSqlUserStore(adminDb()));
+
+/** /webhooks/whatsapp (C4): the chatbot, replies via the Cloud API. */
+export const whatsappWebhook = lazyEnv(() => {
+  const env = getAdminEnv();
+  const hashSecret = env.SUBSCRIBER_HASH_SECRET;
+  const handle = createChatbot({
+    conversations: adminStores().conversations,
+    phoneId: (phone) => {
+      if (!hashSecret) throw new Error("SUBSCRIBER_HASH_SECRET is required for the chatbot.");
+      return keyedHash("whatsapp-conversation", phone, hashSecret);
+    },
+    chapters: async () =>
+      (await adminStores().chapters.listForAdmin())
+        .filter((c) => c.active && !c.deletedAt)
+        .map((c) => ({ id: c.id, name: c.name, countryCode: c.countryCode })),
+    universities: (countryCode) => adminStores().universities.listApproved(countryCode),
+    matchCampus: env.GEMINI_API_KEY ? geminiCampusMatcher(env.GEMINI_API_KEY, fetch) : null,
+    ensureAccount: createFirebaseAccountCreator({
+      appEnv: env.APP_ENV,
+      projectId: env.FIREBASE_PROJECT_ID,
+      clientEmail: env.FIREBASE_CLIENT_EMAIL,
+      privateKey: env.FIREBASE_PRIVATE_KEY,
+    }),
+    recordUser: async (uid, email, name) => {
+      await userDirectoryStore().recordSignIn(
+        { uid, email, name, emailVerified: false },
+        new Date(),
+      );
+    },
+    openRecruitments: async () => {
+      const now = new Date();
+      return (await adminStores().recruitments.listForAdmin())
+        .filter((r) => isRecruitmentOpen(r, now))
+        .map((r) => ({ id: r.id, title: r.title }));
+    },
+    webUrl: getAppUrls().WEB_URL ?? "",
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  });
+  return createWhatsappWebhook({
+    verifyToken: env.WHATSAPP_CLOUD_VERIFY_TOKEN,
+    appSecret: env.WHATSAPP_CLOUD_APP_SECRET,
+    record: (provider, eventId, now) =>
+      createSqlWebhookEventStore(adminDb()).record(provider, eventId, now),
+    handle,
+    send: cloudApiReply(
+      env.WHATSAPP_CLOUD_PHONE_NUMBER_ID && env.WHATSAPP_CLOUD_TOKEN
+        ? { phoneNumberId: env.WHATSAPP_CLOUD_PHONE_NUMBER_ID, token: env.WHATSAPP_CLOUD_TOKEN }
+        : null,
+      fetch,
+    ),
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  });
+});
 
 /** A signed link on the website (newsletter pages); needs LINK_SIGNING_SECRET and WEB_URL. */
 function webLink(path: string, data: Record<string, string>): string {

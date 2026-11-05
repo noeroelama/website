@@ -123,12 +123,14 @@ describe("expired rows (rate limits, challenges, webhook ids): cron job `expire`
       webauthnChallenges: 1,
       webhookEvents: 0,
       attendanceCodes: 0,
+      whatsappConversations: 0,
     });
     expect(await deleteExpired(db, now)).toEqual({
       rateLimits: 1,
       webauthnChallenges: 0,
       webhookEvents: 0,
       attendanceCodes: 0,
+      whatsappConversations: 0,
     });
     expect([...docs.keys()].sort()).toEqual(["rateLimits/new", "webhookEvents/w"]);
   });
