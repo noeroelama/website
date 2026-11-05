@@ -2,3 +2,4 @@ export { AppShell, StatusBadge } from "./app-shell";
 export { ArticleView } from "./article-view";
 export { ErrorPage, type ErrorStatus } from "./error-page";
 export { initials, shortName } from "./user-name";
+export { WorkflowGuide, type WorkflowStage } from "./workflow-guide";

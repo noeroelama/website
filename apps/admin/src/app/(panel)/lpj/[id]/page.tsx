@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { notFound } from "next/navigation";
 import { formatMoney, isOverdue, LPJ_DESKS } from "@website/domain/programs";
 import { can, canAccessAdmin } from "@website/permissions";
@@ -31,48 +33,51 @@ export default async function LpjRoute({ params }: { params: Promise<{ id: strin
   const name = (uid: string) => people.get(uid)?.name ?? people.get(uid)?.email ?? uid;
   const writable = lpj.status === "draft" || lpj.status === "returned";
   return (
-    <LpjReportPage
-      lpj={{
-        id: lpj.id,
-        version: lpj.version,
-        status: lpj.status,
-        dueOn: lpj.dueOn,
-        overdue: isOverdue(lpj, new Date()),
-        revisionRound: lpj.revisionRound,
-        returnNote: lpj.returnNote,
-        plan: {
-          name: lpj.plan.name,
-          unitName: lpj.plan.unitName,
-          goal: lpj.plan.goal,
-          planned: [lpj.plan.plannedStart, lpj.plan.plannedEnd].filter(Boolean).join(" – "),
-          budgets: lpj.plan.budgets.map(formatMoney),
-          pics: lpj.plan.pics.map(name),
-          progressPercent: lpj.plan.progressPercent,
-          milestones: lpj.plan.milestones.map((m) => ({ title: m.title, done: m.done })),
-        },
-        input: {
-          realization: lpj.realization,
-          obstacles: lpj.obstacles,
-          recommendations: lpj.recommendations,
-          participantCount: lpj.participantCount,
-          realized: lpj.realized ? [...lpj.realized] : null,
-        },
-        realizedText: lpj.realized ? lpj.realized.map(formatMoney).join(", ") || "0" : null,
-        desks: LPJ_DESKS.map((d) => ({
-          desk: d,
-          signedBy: lpj[d] ? name(lpj[d].uid) : null,
-          at: lpj[d] ? lpj[d].at.toISOString().slice(0, 10) : null,
-          canSign:
-            lpj.status === "submitted" && !lpj[d] && can(principal, deskPermission(d), scope),
-        })),
-      }}
-      can={{
-        write: writable && canManageProgram(principal, lpj),
-        return:
-          lpj.status === "submitted" &&
-          LPJ_DESKS.some((d) => can(principal, deskPermission(d), scope)),
-        extend: lpj.status !== "approved" && can(principal, "programs.approve", scope),
-      }}
-    />
+    <>
+      <WorkflowGuide id="lpj" flow={WORKFLOWS.lpj} current={lpj.status} />
+      <LpjReportPage
+        lpj={{
+          id: lpj.id,
+          version: lpj.version,
+          status: lpj.status,
+          dueOn: lpj.dueOn,
+          overdue: isOverdue(lpj, new Date()),
+          revisionRound: lpj.revisionRound,
+          returnNote: lpj.returnNote,
+          plan: {
+            name: lpj.plan.name,
+            unitName: lpj.plan.unitName,
+            goal: lpj.plan.goal,
+            planned: [lpj.plan.plannedStart, lpj.plan.plannedEnd].filter(Boolean).join(" – "),
+            budgets: lpj.plan.budgets.map(formatMoney),
+            pics: lpj.plan.pics.map(name),
+            progressPercent: lpj.plan.progressPercent,
+            milestones: lpj.plan.milestones.map((m) => ({ title: m.title, done: m.done })),
+          },
+          input: {
+            realization: lpj.realization,
+            obstacles: lpj.obstacles,
+            recommendations: lpj.recommendations,
+            participantCount: lpj.participantCount,
+            realized: lpj.realized ? [...lpj.realized] : null,
+          },
+          realizedText: lpj.realized ? lpj.realized.map(formatMoney).join(", ") || "0" : null,
+          desks: LPJ_DESKS.map((d) => ({
+            desk: d,
+            signedBy: lpj[d] ? name(lpj[d].uid) : null,
+            at: lpj[d] ? lpj[d].at.toISOString().slice(0, 10) : null,
+            canSign:
+              lpj.status === "submitted" && !lpj[d] && can(principal, deskPermission(d), scope),
+          })),
+        }}
+        can={{
+          write: writable && canManageProgram(principal, lpj),
+          return:
+            lpj.status === "submitted" &&
+            LPJ_DESKS.some((d) => can(principal, deskPermission(d), scope)),
+          extend: lpj.status !== "approved" && can(principal, "programs.approve", scope),
+        }}
+      />
+    </>
   );
 }

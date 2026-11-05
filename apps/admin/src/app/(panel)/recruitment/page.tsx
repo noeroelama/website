@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { can } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { toRecruitmentItem } from "@/components/recruitment-model";
@@ -24,21 +26,24 @@ export default async function AdminRecruitmentPage() {
   const periodName = new Map(periods.map((p) => [p.id, p.name]));
   const now = new Date();
   return (
-    <RecruitmentPage
-      initial={recruitments.map((r) =>
-        toRecruitmentItem(r, periodName.get(r.periodId) ?? "", seats.get(r.id) ?? new Map(), now),
-      )}
-      periods={changeable.map((p) => ({ id: p.id, name: p.name }))}
-      unitsByPeriod={Object.fromEntries(
-        changeable.map((p, i) => [
-          p.id,
-          (units[i] ?? []).map((u) => ({ id: u.id, name: u.name, path: [...u.path] })),
-        ]),
-      )}
-      forms={forms
-        .filter((f) => f.usage === "recruitment")
-        .map((f) => ({ id: f.id, title: f.title, currentVersion: f.currentVersion }))}
-      canEdit={can(viewer.principal, "recruitment.edit")}
-    />
+    <>
+      <WorkflowGuide id="recruitment" flow={WORKFLOWS.recruitment} />
+      <RecruitmentPage
+        initial={recruitments.map((r) =>
+          toRecruitmentItem(r, periodName.get(r.periodId) ?? "", seats.get(r.id) ?? new Map(), now),
+        )}
+        periods={changeable.map((p) => ({ id: p.id, name: p.name }))}
+        unitsByPeriod={Object.fromEntries(
+          changeable.map((p, i) => [
+            p.id,
+            (units[i] ?? []).map((u) => ({ id: u.id, name: u.name, path: [...u.path] })),
+          ]),
+        )}
+        forms={forms
+          .filter((f) => f.usage === "recruitment")
+          .map((f) => ({ id: f.id, title: f.title, currentVersion: f.currentVersion }))}
+        canEdit={can(viewer.principal, "recruitment.edit")}
+      />
+    </>
   );
 }

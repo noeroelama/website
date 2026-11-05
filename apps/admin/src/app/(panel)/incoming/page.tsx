@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { canInSomeScope } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { toIncomingItem } from "@/components/incoming-model";
@@ -40,13 +42,16 @@ export default async function AdminIncomingPage() {
     ...units.map((u) => [u.id, u.name] as [string, string]),
   ]);
   return (
-    <IncomingPage
-      periodName={period?.name ?? null}
-      initial={letters.map((l) => toIncomingItem(l, names))}
-      units={units.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
-      officers={officers.map(([id, name]) => ({ id, name }))}
-      canEdit={canInSomeScope(viewer.principal, "incoming.edit")}
-      canDispose={canInSomeScope(viewer.principal, "incoming.dispose")}
-    />
+    <>
+      <WorkflowGuide id="incoming" flow={WORKFLOWS.incoming} />
+      <IncomingPage
+        periodName={period?.name ?? null}
+        initial={letters.map((l) => toIncomingItem(l, names))}
+        units={units.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+        officers={officers.map(([id, name]) => ({ id, name }))}
+        canEdit={canInSomeScope(viewer.principal, "incoming.edit")}
+        canDispose={canInSomeScope(viewer.principal, "incoming.dispose")}
+      />
+    </>
   );
 }

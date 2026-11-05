@@ -251,6 +251,37 @@ a {
   color: var(--color-warning);
 }
 
+.ui-workflow {
+  margin-bottom: var(--space-4);
+}
+.ui-workflow > summary {
+  cursor: pointer;
+  font-weight: var(--font-semibold);
+}
+.ui-workflow-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.ui-workflow-steps > li {
+  padding: var(--space-1) var(--space-2-5);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+  opacity: 0.7;
+}
+.ui-workflow-steps > li[aria-current="step"] {
+  opacity: 1;
+  font-weight: var(--font-semibold);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.ui-workflow-steps > li[data-branch] {
+  border-style: dashed;
+}
+
 .ui-form {
   display: grid;
   gap: var(--space-3);

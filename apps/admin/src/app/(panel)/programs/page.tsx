@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { canChangePeriod, inTreeOrder, orgUnitPath } from "@website/domain/organizations";
 import { can, canInSomeScope } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
@@ -34,33 +36,36 @@ export default async function AdminProgramsPage({
       )
     : [];
   return (
-    <ProgramsPage
-      period={{ id: period.id, name: period.name, status: period.status }}
-      periods={periods.map((p) => ({ id: p.id, name: p.name }))}
-      rows={programs
-        .filter((p) => can(principal, "programs.read", { orgUnitPath: p.orgUnitPath }))
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          unitName: unitName.get(p.orgUnitId) ?? "",
-          status: p.status,
-          progress: p.progressPercent,
-          health: p.health?.status ?? null,
-          mine: p.pics.includes(principal.userId),
-        }))}
-      plan={
-        editable.length > 0 && canInSomeScope(principal, "programs.edit")
-          ? {
-              units: editable.map((u) => ({ id: u.id, name: u.name })),
-              keyResults: objectives.flatMap((o) =>
-                o.keyResults.map((kr) => ({
-                  value: `${o.id}:${kr.id}`,
-                  label: `${o.title} → ${kr.title}`,
-                })),
-              ),
-            }
-          : null
-      }
-    />
+    <>
+      <WorkflowGuide id="programs" flow={WORKFLOWS.programs} />
+      <ProgramsPage
+        period={{ id: period.id, name: period.name, status: period.status }}
+        periods={periods.map((p) => ({ id: p.id, name: p.name }))}
+        rows={programs
+          .filter((p) => can(principal, "programs.read", { orgUnitPath: p.orgUnitPath }))
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            unitName: unitName.get(p.orgUnitId) ?? "",
+            status: p.status,
+            progress: p.progressPercent,
+            health: p.health?.status ?? null,
+            mine: p.pics.includes(principal.userId),
+          }))}
+        plan={
+          editable.length > 0 && canInSomeScope(principal, "programs.edit")
+            ? {
+                units: editable.map((u) => ({ id: u.id, name: u.name })),
+                keyResults: objectives.flatMap((o) =>
+                  o.keyResults.map((kr) => ({
+                    value: `${o.id}:${kr.id}`,
+                    label: `${o.title} → ${kr.title}`,
+                  })),
+                ),
+              }
+            : null
+        }
+      />
+    </>
   );
 }

@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { orgUnitPath } from "@website/domain/organizations";
 import { can, canInSomeScope, scopedOrgUnitIds } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
@@ -40,40 +42,45 @@ export default async function AdminLettersPage() {
   const typeById = new Map(types.map((t) => [t.id, t]));
   const unitName = new Map(units.map((u) => [u.id, u.name]));
   return (
-    <LettersPage
-      periodName={period?.name ?? null}
-      truncated={page.nextCursor !== null}
-      initial={page.items.map((l) =>
-        toLetterItem(
-          l,
-          typeById.get(l.typeId),
-          unitName.get(l.orgUnitId) ?? "",
-          names,
-          can(principal, "letters.edit", { orgUnitPath: l.orgUnitPath }),
-        ),
-      )}
-      types={types
-        .filter((t) => t.active)
-        .map((t) => ({
-          id: t.id,
-          name: t.name,
-          code: t.code,
-          requiresRecipient: t.requiresRecipient,
-          requiresCoordinator: t.requiresCoordinator,
-        }))}
-      units={units
-        .filter((u) => u.active && can(principal, "letters.edit", { orgUnitPath: orgUnitPath(u) }))
-        .map((u) => ({ id: u.id, name: u.name }))}
-      viewerId={principal.userId}
-      desks={{
-        review: canInSomeScope(principal, "letters.review"),
-        sign: canInSomeScope(principal, "letters.sign"),
-        signCoordinator: canInSomeScope(principal, "letters.sign_coordinator"),
-        issue: canInSomeScope(principal, "letters.issue"),
-        cancel: canInSomeScope(principal, "letters.cancel"),
-      }}
-      canWrite={canInSomeScope(principal, "letters.edit")}
-      canManageTypes={canInSomeScope(principal, "letter_types.read")}
-    />
+    <>
+      <WorkflowGuide id="letters" flow={WORKFLOWS.letters} />
+      <LettersPage
+        periodName={period?.name ?? null}
+        truncated={page.nextCursor !== null}
+        initial={page.items.map((l) =>
+          toLetterItem(
+            l,
+            typeById.get(l.typeId),
+            unitName.get(l.orgUnitId) ?? "",
+            names,
+            can(principal, "letters.edit", { orgUnitPath: l.orgUnitPath }),
+          ),
+        )}
+        types={types
+          .filter((t) => t.active)
+          .map((t) => ({
+            id: t.id,
+            name: t.name,
+            code: t.code,
+            requiresRecipient: t.requiresRecipient,
+            requiresCoordinator: t.requiresCoordinator,
+          }))}
+        units={units
+          .filter(
+            (u) => u.active && can(principal, "letters.edit", { orgUnitPath: orgUnitPath(u) }),
+          )
+          .map((u) => ({ id: u.id, name: u.name }))}
+        viewerId={principal.userId}
+        desks={{
+          review: canInSomeScope(principal, "letters.review"),
+          sign: canInSomeScope(principal, "letters.sign"),
+          signCoordinator: canInSomeScope(principal, "letters.sign_coordinator"),
+          issue: canInSomeScope(principal, "letters.issue"),
+          cancel: canInSomeScope(principal, "letters.cancel"),
+        }}
+        canWrite={canInSomeScope(principal, "letters.edit")}
+        canManageTypes={canInSomeScope(principal, "letter_types.read")}
+      />
+    </>
   );
 }

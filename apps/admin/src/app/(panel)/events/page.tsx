@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { can } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { authorsById, lastEditors } from "@/components/authors";
@@ -25,10 +27,13 @@ export default async function AdminEventsPage() {
   const users = await adminReads.getUsers([...new Set([...editors.values()].map((a) => a.id))]);
   const authors = authorsById(editors, users);
   return (
-    <EventsPage
-      initial={events.map((e) => toEventItem(e, authors.get(e.id) ?? null))}
-      canEdit={can(viewer.principal, "events.edit")}
-      publicBase={getAppUrls().WEB_URL ?? ""}
-    />
+    <>
+      <WorkflowGuide id="events" flow={WORKFLOWS.events} />
+      <EventsPage
+        initial={events.map((e) => toEventItem(e, authors.get(e.id) ?? null))}
+        canEdit={can(viewer.principal, "events.edit")}
+        publicBase={getAppUrls().WEB_URL ?? ""}
+      />
+    </>
   );
 }

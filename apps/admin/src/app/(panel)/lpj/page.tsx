@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { isOverdue } from "@website/domain/programs";
 import { can } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
@@ -23,20 +25,23 @@ export default async function AdminLpjPage({
   const reports = period ? await adminReads.listLpj(period.id) : [];
   const now = new Date();
   return (
-    <LpjListPage
-      period={period ? { id: period.id, name: period.name } : null}
-      periods={periods.map((p) => ({ id: p.id, name: p.name }))}
-      rows={reports
-        .filter((l) => can(viewer.principal, "lpj.read", { orgUnitPath: l.orgUnitPath }))
-        .map((l) => ({
-          id: l.id,
-          name: l.plan.name,
-          unitName: l.plan.unitName,
-          status: l.status,
-          dueOn: l.dueOn,
-          overdue: isOverdue(l, now),
-          desks: [l.secretariat, l.treasurer, l.approval].filter(Boolean).length,
-        }))}
-    />
+    <>
+      <WorkflowGuide id="lpj" flow={WORKFLOWS.lpj} />
+      <LpjListPage
+        period={period ? { id: period.id, name: period.name } : null}
+        periods={periods.map((p) => ({ id: p.id, name: p.name }))}
+        rows={reports
+          .filter((l) => can(viewer.principal, "lpj.read", { orgUnitPath: l.orgUnitPath }))
+          .map((l) => ({
+            id: l.id,
+            name: l.plan.name,
+            unitName: l.plan.unitName,
+            status: l.status,
+            dueOn: l.dueOn,
+            overdue: isOverdue(l, now),
+            desks: [l.secretariat, l.treasurer, l.approval].filter(Boolean).length,
+          }))}
+      />
+    </>
   );
 }

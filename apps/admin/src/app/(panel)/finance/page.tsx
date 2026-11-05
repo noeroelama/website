@@ -1,3 +1,5 @@
+import { WorkflowGuide } from "@website/ui";
+import { WORKFLOWS } from "@/components/workflow-guides";
 import { orgUnitPath } from "@website/domain/organizations";
 import { can, canInSomeScope, scopedOrgUnitIds } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
@@ -40,21 +42,26 @@ export default async function AdminFinancePage() {
   const names = new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
   const unitName = new Map(units.map((u) => [u.id, u.name]));
   return (
-    <FinancePage
-      periodName={period?.name ?? null}
-      initial={requests.map((r) =>
-        toFinanceItem(r, names, unitName.get(r.orgUnitId) ?? "", principal.userId),
-      )}
-      units={units
-        .filter((u) => u.active && can(principal, "finance.edit", { orgUnitPath: orgUnitPath(u) }))
-        .map((u) => ({ id: u.id, name: u.name }))}
-      desks={{
-        edit: canInSomeScope(principal, "finance.edit"),
-        review: canInSomeScope(principal, "finance.review"),
-        authorize: canInSomeScope(principal, "finance.authorize"),
-        pay: canInSomeScope(principal, "finance.pay"),
-        cashbook: can(principal, "finance.cashbook") || can(principal, "finance.export"),
-      }}
-    />
+    <>
+      <WorkflowGuide id="finance" flow={WORKFLOWS.finance} />
+      <FinancePage
+        periodName={period?.name ?? null}
+        initial={requests.map((r) =>
+          toFinanceItem(r, names, unitName.get(r.orgUnitId) ?? "", principal.userId),
+        )}
+        units={units
+          .filter(
+            (u) => u.active && can(principal, "finance.edit", { orgUnitPath: orgUnitPath(u) }),
+          )
+          .map((u) => ({ id: u.id, name: u.name }))}
+        desks={{
+          edit: canInSomeScope(principal, "finance.edit"),
+          review: canInSomeScope(principal, "finance.review"),
+          authorize: canInSomeScope(principal, "finance.authorize"),
+          pay: canInSomeScope(principal, "finance.pay"),
+          cashbook: can(principal, "finance.cashbook") || can(principal, "finance.export"),
+        }}
+      />
+    </>
   );
 }
