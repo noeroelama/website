@@ -81,6 +81,17 @@ export function createSqlMessageLog(db: Database) {
   return {
     ...store,
     /** Admin Email page: failed messages, newest first. */
+    /** Entries of these keys (missing keys are absent): progress views such as bulk sends. */
+    async byKeys(keys: readonly string[]): Promise<Map<string, MessageLogEntry>> {
+      const found = await getDocumentsByIds<Record<string, unknown>>(
+        db,
+        "messageLog",
+        keys.map(messageId),
+      );
+      const entries = [...found].flatMap(([id, data]) => (data ? [toEntry(id, data)] : []));
+      return new Map(entries.map((entry) => [entry.key, entry]));
+    },
+
     async listFailed({ cursor, limit }: { cursor?: string | undefined; limit: number }) {
       let query = collection
         .where("status", "==", "failed")

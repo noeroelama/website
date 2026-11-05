@@ -6,7 +6,8 @@ import { AccessMessage } from "@/components/access-message";
 import { ParticipantsPage } from "@/components/participants-page";
 import { LETTER_STATUS_LABELS, label } from "@/labels";
 import { requireAdminViewer } from "@/server/context";
-import { adminReads } from "@/server/wiring";
+import { adminReads, certificateSending } from "@/server/wiring";
+import { CertificateSendPanel } from "@/components/certificate-send-panel";
 
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
@@ -28,6 +29,8 @@ export default async function ParticipantsRoute({ params }: { params: Promise<{ 
     notFound();
   }
   const sheets = await adminReads.listCertificates(batch.id);
+  const canSend = batch.status === "issued" && can(viewer.principal, "letters.edit", scope);
+  const progress = canSend ? await certificateSending().progress(batch.id) : null;
   return (
     <ParticipantsPage
       batch={{
@@ -46,6 +49,7 @@ export default async function ParticipantsRoute({ params }: { params: Promise<{ 
         hasEmail: s.emailHash !== null,
       }))}
       canEdit={isEditable(batch) && can(viewer.principal, "letters.edit", scope)}
+      send={progress && <CertificateSendPanel batchId={batch.id} progress={progress} />}
     />
   );
 }

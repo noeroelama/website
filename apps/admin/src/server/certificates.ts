@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
-import type { CertificateAudit, SqlCertificateStore } from "@website/db/sql";
+import type { CertificateAudit, SqlCertificateStore, SqlMessageLog } from "@website/db/sql";
+import { messageTo, type Contact, type Messenger } from "@website/domain/messaging";
+import { RuleViolationError } from "@website/domain/shared";
 import {
   CERTIFICATE_PICKUP_PURPOSE,
   parseParticipants,
@@ -81,6 +83,118 @@ export function createCertificateActions(deps: CertificateDeps) {
   });
 
   return { add, remove };
+}
+
+/** Sends per call (each one a provider request; the page calls again for the rest). */
+export const SEND_BATCH = 50;
+
+export const certificateSendKey = (batchId: string, seq: number) => `cert:${batchId}:${seq}`;
+
+export interface CertificateSendDeps {
+  readonly getLetter: (id: string) => Promise<Letter | null>;
+  readonly list: (batchId: string) => Promise<Certificate[]>;
+  readonly hashEmail: (email: string) => string;
+  /** The account of an e-mail and its WhatsApp number, when there is one. */
+  readonly contactOf: (email: string) => Promise<Contact>;
+  readonly log: Pick<SqlMessageLog, "byKeys">;
+  readonly send: Messenger["send"];
+  readonly retry: Messenger["retry"];
+  /** The website's pickup page (/certificates). */
+  readonly pickupUrl: string;
+}
+
+/**
+ * Bulk sending (D5): each participant gets a LINK to the pickup page (never the PDF), on WhatsApp
+ * when their account has a number, else by e-mail, key `cert:{batchId}:{seq}` (never twice). The
+ * e-mails are not stored (only their hash), so staff paste the same list again; lines are matched
+ * to sheets by that hash. Only issued batches; a cancelled one cannot be sent.
+ */
+export function createCertificateSending(deps: CertificateSendDeps) {
+  const scopeOf = async ({ batchId }: { batchId: string }): Promise<ResourceContext> => ({
+    orgUnitPath: (await deps.getLetter(batchId))?.orgUnitPath ?? [],
+  });
+  const issued = async (batchId: string) => {
+    const batch = await deps.getLetter(batchId);
+    if (batch?.status !== "issued" || batch.deletedAt) {
+      throw new RuleViolationError("Only an issued certificate batch can be sent.");
+    }
+    return batch;
+  };
+
+  const send = createGuardedAction({
+    permission: "letters.edit",
+    input: z.object({ batchId: safeId, text: z.string().max(200_000) }).strict(),
+    resource: scopeOf,
+    handler: async ({ batchId, text }) => {
+      const batch = await issued(batchId);
+      const sheets = await deps.list(batchId);
+      const byHash = new Map(
+        sheets.flatMap((c) => (c.emailHash ? [[c.emailHash, c] as const] : [])),
+      );
+      const lines = parseParticipants(text).filter((p) => p.email !== null);
+      const matched = lines.flatMap((p) => {
+        const sheet = byHash.get(deps.hashEmail(p.email as string));
+        return sheet ? [{ sheet, email: p.email as string }] : [];
+      });
+      const done = await deps.log.byKeys(
+        matched.map((m) => certificateSendKey(batchId, m.sheet.seq)),
+      );
+      const todo = matched.filter((m) => !done.has(certificateSendKey(batchId, m.sheet.seq)));
+      let sent = 0;
+      for (const { sheet, email } of todo.slice(0, SEND_BATCH)) {
+        const body =
+          `Sertifikat "${batch.subject}" untuk ${sheet.name} sudah bisa diunduh. Buka tautan ini dan ` +
+          `ketik alamat e-mail ini.\n\nYour certificate "${batch.subject}" is ready. Open this link ` +
+          `and type this e-mail address.\n\n${deps.pickupUrl}`;
+        await deps.send(
+          messageTo(await deps.contactOf(email), {
+            subject: `Sertifikat / Certificate: ${batch.subject}`,
+            text: body,
+            html: `<p>${body.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\n/g, "<br>")}</p>`,
+          }),
+          certificateSendKey(batchId, sheet.seq),
+        );
+        sent += 1;
+      }
+      return {
+        sent,
+        remaining: todo.length - sent,
+        unmatched: lines.length - matched.length,
+        withoutEmail: sheets.filter((c) => !c.emailHash).length,
+      };
+    },
+  });
+
+  /** Sends the failed ones again (only those; the same key, so never twice once delivered). */
+  const retryFailed = createGuardedAction({
+    permission: "letters.edit",
+    input: z.object({ batchId: safeId }).strict(),
+    resource: scopeOf,
+    handler: async ({ batchId }) => {
+      await issued(batchId);
+      const sheets = await deps.list(batchId);
+      const entries = await deps.log.byKeys(sheets.map((c) => certificateSendKey(batchId, c.seq)));
+      const failed = [...entries.values()]
+        .filter((e) => e.status === "failed")
+        .slice(0, SEND_BATCH);
+      for (const entry of failed) await deps.retry(entry.id);
+      return { retried: failed.length };
+    },
+  });
+
+  /** Progress: per status how many sheets (not sent = no log entry yet). */
+  async function progress(batchId: string): Promise<Record<string, number>> {
+    const sheets = await deps.list(batchId);
+    const entries = await deps.log.byKeys(sheets.map((c) => certificateSendKey(batchId, c.seq)));
+    const counts: Record<string, number> = { not_sent: 0 };
+    for (const sheet of sheets) {
+      const status = entries.get(certificateSendKey(batchId, sheet.seq))?.status ?? "not_sent";
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  return { send, retryFailed, progress };
 }
 
 const notFound = () =>

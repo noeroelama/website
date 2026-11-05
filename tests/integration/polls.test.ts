@@ -119,9 +119,8 @@ describe("sending polls (J3)", () => {
     });
     const answer = (response: Response | Error) =>
       wahaPoll(config, () =>
-        response instanceof Error
-          ? Promise.reject(response)
-          : Promise.resolve(response))("+628111", "Q", ["a"]);
+        response instanceof Error ? Promise.reject(response) : Promise.resolve(response),
+      )("+628111", "Q", ["a"]);
     expect(await answer(Response.json({ id: "plain-id" }))).toEqual({
       ok: true,
       messageId: "plain-id",

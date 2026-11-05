@@ -169,6 +169,13 @@ Many sheets from one template, from PPIDK `SertifikatService` (the opposite of t
   token and that the batch is issued, then renders the sheet (`attachment`). Bad, expired or
   foreign tokens are 404. Sheets without an e-mail cannot be picked up (the participants page
   says so per sheet).
+- **Bulk sending (D5, step 7.10)**: on the participants page of an ISSUED batch (never a draft or
+  a cancelled one), staff with `letters.edit` paste the same list with e-mails again (e-mails
+  are never stored, so lines are matched to sheets by `emailHash`). Each matched sheet gets a
+  LINK to the pickup page (never the PDF): on WhatsApp when the e-mail belongs to an account
+  with a number, else by e-mail, key `cert:{batchId}:{seq}` (never twice), at most 50 per
+  click (the page says how many are left). Progress per status from the message log;
+  "Retry failed" sends only the failed ones again (`createCertificateSending`).
 - Code: `src/documents/certificates.ts`, `packages/db/src/sql/certificates.ts`,
   `apps/admin/src/server/certificates.ts`, `packages/pdf/src/certificate.ts`,
   `apps/web/src/server/verification.ts` (`createCertificatePickup`),

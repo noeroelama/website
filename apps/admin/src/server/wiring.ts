@@ -37,6 +37,7 @@ import { createInterviewActions } from "./interviews";
 import { createLetterActions } from "./letters";
 import {
   createCertificateActions,
+  createCertificateSending,
   createCertificateFileRoute,
   createCertificatePickupRoute,
 } from "./certificates";
@@ -223,6 +224,30 @@ export const certificateActions = lazyEnv(() =>
       return keyedHash(CERTIFICATE_EMAIL_PURPOSE, email, secret);
     },
     now: () => new Date(),
+  }),
+);
+
+/** Certificate bulk sending (D5): pickup-page links by WhatsApp or e-mail. */
+export const certificateSending = lazyEnv(() =>
+  createCertificateSending({
+    getLetter: (id) => adminStores().letters.get(id),
+    list: (batchId) => adminStores().certificates.list(batchId),
+    hashEmail: (email) => {
+      const secret = getAdminEnv().SUBSCRIBER_HASH_SECRET;
+      if (!secret) throw new Error("SUBSCRIBER_HASH_SECRET is required for e-mail columns.");
+      return keyedHash(CERTIFICATE_EMAIL_PURPOSE, email, secret);
+    },
+    contactOf: async (email) => {
+      const account = await adminStores().accounts.findByEmail(email);
+      const contact = account
+        ? (await adminStores().contacts.contacts([account.uid])).get(account.uid)
+        : null;
+      return { email, phone: contact?.phone ?? null };
+    },
+    log: adminStores().messageLog,
+    send: (message, key) => messenger().send(message, key),
+    retry: (id) => messenger().retry(id),
+    pickupUrl: `${getAppUrls().WEB_URL ?? ""}/certificates`,
   }),
 );
 

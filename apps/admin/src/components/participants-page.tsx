@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { addParticipantsAction, removeParticipantAction } from "@/app/(panel)/letters/actions";
 import { actionMessage } from "@/components/action-message";
@@ -35,9 +35,11 @@ interface Props {
   sheets: Sheet[];
   /** letters.edit in the batch's unit, and the batch is still a draft or under review. */
   canEdit: boolean;
+  /** Bulk sending (issued batches): the panel, or null. */
+  send: ReactNode;
 }
 
-export function ParticipantsPage({ batch, sheets, canEdit }: Props) {
+export function ParticipantsPage({ batch, sheets, canEdit, send }: Props) {
   const router = useRouter();
   const toast = useToastMessage();
   const [text, setText] = useState("");
@@ -147,6 +149,7 @@ export function ParticipantsPage({ batch, sheets, canEdit }: Props) {
           </Button>
         </div>
       </div>
+      {send}
       {canEdit ? (
         <div className="admin-dark-form">
           <label className="admin-field">

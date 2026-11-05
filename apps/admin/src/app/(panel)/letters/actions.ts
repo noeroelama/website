@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
-import { certificateActions, letterActions } from "@/server/wiring";
+import { certificateActions, certificateSending, letterActions } from "@/server/wiring";
 
 // Thin server-action wrappers: every rule lives in src/server/letters.ts (createGuardedAction).
 const done = <T extends { ok: boolean }>(result: T): T => {
@@ -48,6 +48,12 @@ export async function placeLetterStampsAction(input: unknown) {
 }
 export async function issueLetterFileAction(input: unknown) {
   return done(await letterActions().issueFile(getPrincipal, getAuditContext)(input));
+}
+export async function sendCertificatesAction(input: unknown) {
+  return done(await certificateSending().send(getPrincipal, getAuditContext)(input));
+}
+export async function retryCertificateSendsAction(input: unknown) {
+  return done(await certificateSending().retryFailed(getPrincipal, getAuditContext)(input));
 }
 export async function addParticipantsAction(input: unknown) {
   return done(await certificateActions().add(getPrincipal, getAuditContext)(input));
