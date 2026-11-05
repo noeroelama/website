@@ -21,7 +21,8 @@
     "./finance": "./src/finance/index.ts",
     "./meetings": "./src/meetings/index.ts",
     "./links": "./src/links/index.ts",
-    "./zoom": "./src/zoom/index.ts"
+    "./zoom": "./src/zoom/index.ts",
+    "./tasks": "./src/tasks/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",

@@ -121,6 +121,7 @@ export const ADMIN_PAGES = {
       settings: "Zoom settings (licences, approval, Host Key)",
     },
   },
+  tasks: { label: "Unit task boards", extras: { share: "Share unit boards with a person" } },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

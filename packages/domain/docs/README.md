@@ -15,6 +15,7 @@
 | [meetings.md](meetings.md)         | Meetings, attendance codes, reminders, minutes               |
 | [links.md](links.md)               | Short links: goppi.id first, s.id fallback, archive          |
 | [zoom.md](zoom.md)                 | Zoom bookings, capacity, rooms, settings                     |
+| [tasks.md](tasks.md)               | My Tasks, unit boards, calendar                              |
 
 Add one Markdown file per feature (`<feature>.md`) using the
 [feature doc template](../../../docs/README.md#feature-doc-template), then list it in the table above

@@ -26,6 +26,8 @@ interface NavEntry extends NavItem {
  */
 export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   { label: "Dashboard", href: "/", permission: null },
+  // Every staff member: their own follow-ups, dispositions and milestones (G1).
+  { label: "My Tasks", href: "/tasks", permission: null },
   { label: "Tools", href: "/tools", permission: "tools.read" },
   { label: "Event", href: "/events", permission: "events.read", also: ["registrants"] },
   { label: "Gallery", href: "/gallery", permission: "gallery.read" },

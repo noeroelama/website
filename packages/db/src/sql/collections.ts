@@ -77,4 +77,6 @@ export const COLLECTIONS = [
   "surveys",
   // WhatsApp chatbot (C4)
   "whatsappConversations",
+  // Phase 8: daily views
+  "taskBoardShares",
 ] as const;

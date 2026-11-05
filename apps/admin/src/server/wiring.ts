@@ -72,6 +72,7 @@ import { createZoomActions, createZoomTranscript } from "./zoom";
 import { createZoomWebhookRoute } from "./zoom-webhook";
 import { createDriveClient } from "./drive";
 import { createRecordingArchive } from "./recordings";
+import { createTasks } from "./tasks";
 import { createZoomClient } from "./zoom-client";
 import { encryptField } from "@website/security";
 
@@ -820,6 +821,32 @@ export const zoomWebhook = lazyEnv(() =>
   }),
 );
 
+/** The active board period, or null. */
+async function activePeriod(): Promise<{ id: string; name: string } | null> {
+  const active = (await adminStores().periods.listForAdmin()).find((p) => p.status === "active");
+  return active ? { id: active.id, name: active.name } : null;
+}
+
+/** My Tasks and unit task boards (G1). */
+export const tasks = lazyEnv(() =>
+  createTasks({
+    activePeriod,
+    actionItemsOf: (uid) => adminStores().actionItems.listForPic(uid),
+    actionItemsOfPeriod: (id) => adminStores().actionItems.listForPeriod(id),
+    incoming: (id) => adminStores().incoming.list(id, 300),
+    programs: (id) => adminStores().programs.listForPeriod(id),
+    unitsOf: async (uid) =>
+      (await adminStores().appointments.activeForUser(uid)).map((a) => a.orgUnitId),
+    unitPath: async (id) => {
+      const unit = await adminStores().orgUnits.get(id);
+      return unit ? orgUnitPath(unit) : null;
+    },
+    shares: adminStores().taskShares,
+    findUserId: async (email) => (await adminStores().accounts.findByEmail(email))?.uid ?? null,
+    now: () => new Date(),
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -896,6 +923,9 @@ export const adminReads = {
   listZoom: (from: Date, to: Date) => adminStores().zoom.listBetween(from, to),
   getZoom: (id: string) => adminStores().zoom.get(id),
   zoomSettings: () => adminStores().zoom.readSettings(),
+  activePeriod,
+  sharedBoards: (uid: string) => adminStores().taskShares.listForUser(uid),
+  boardShares: (orgUnitId: string) => adminStores().taskShares.listForUnit(orgUnitId),
   /** Satisfaction polls (J3) of the last 365 days. */
   surveysLastYear: () => adminStores().surveys.since(new Date(Date.now() - 365 * 86_400_000)),
   recordingFiles: (bookingIds: readonly string[]) =>

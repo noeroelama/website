@@ -50,6 +50,7 @@ describe("admin side panel navigation", () => {
   it("lists every page, in the designed order, for a superadmin", () => {
     expect(labels(staff(SUPERADMIN_ROLE_ID))).toEqual([
       "Dashboard",
+      "My Tasks",
       "Tools",
       "Event",
       "Gallery",
@@ -74,9 +75,16 @@ describe("admin side panel navigation", () => {
   });
 
   it("shows only the pages a role may open", () => {
-    expect(labels(staff("viewer"))).toEqual(["Dashboard", "Event", "Gallery", "Article"]);
+    expect(labels(staff("viewer"))).toEqual([
+      "Dashboard",
+      "My Tasks",
+      "Event",
+      "Gallery",
+      "Article",
+    ]);
     expect(labels(staff("editor"))).toEqual([
       "Dashboard",
+      "My Tasks",
       "Event",
       "Gallery",
       "Article",
@@ -85,12 +93,13 @@ describe("admin side panel navigation", () => {
   });
 
   it("opens Role Manager (people and roles in one page) with users.read", () => {
-    expect(labels(staff("user_reader"))).toEqual(["Dashboard", "Role Manager"]);
+    expect(labels(staff("user_reader"))).toEqual(["Dashboard", "My Tasks", "Role Manager"]);
   });
 
   it("counts chapter-scoped roles (their pages filter data to the chapter)", () => {
     expect(labels(staff("chapter_editor", { type: "chapter", chapterId: "jp" }))).toEqual([
       "Dashboard",
+      "My Tasks",
       "Event",
       "Gallery",
       "Article",
