@@ -157,7 +157,13 @@ router.push("/things"); router.refresh();
 - **Dashboard** (`/`, every staff member): counters for events, albums, news articles and
   confirmed subscribers — each only when the viewer can read that page (`COUNT` queries,
   `src/server/dashboard.ts`, `packages/db/src/sql/dashboard.ts`) — and the 10 newest
-  audit entries with `audit.read`. Tests: `tests/integration/dashboard.test.ts`.
+  audit entries with `audit.read`. G3 adds: **Waiting for my action** — one line per desk the
+  viewer holds (finance review/authorise/pay, the three LPJ desks, Zoom approval), counting items
+  of the active period in the units the desk covers that the module's own domain rule would let
+  this person act on (never their own request, never a second desk); **Next 7 days** (the
+  Calendar read model, `calendar.read`); **My deadlines** (My Tasks due within 2 weeks, overdue
+  included); and the period's programme numbers (`programs.read`, in scope). No new data.
+  Tests: `tests/integration/dashboard.test.ts`.
 - **Data-backed pages.** No page runs on mock data any more (the Tools short-link list was the
   last, step 7.5). Articles (`packages/domain/docs/content.md`), Events
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter

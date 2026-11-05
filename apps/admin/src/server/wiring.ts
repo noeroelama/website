@@ -588,6 +588,15 @@ export const dashboard = lazyEnv(() =>
       adminStores().appointments.graduatedOfficers(new Date().toISOString().slice(0, 10)),
     lpjSecretariatHolders: async () =>
       (await adminStores().contacts.holders("lpj.review_secretariat", { orgUnitPath: [] })).length,
+    activePeriod,
+    finance: (periodId) => adminStores().finance.list({ periodId, orgUnitIds: "all", limit: 300 }),
+    lpj: (periodId) => adminStores().lpj.listForPeriod(periodId),
+    programs: (periodId) => adminStores().programs.listForPeriod(periodId),
+    zoom: (from) =>
+      adminStores().zoom.listBetween(from, new Date(from.getTime() + 365 * 86_400_000)),
+    agenda: (principal, from, to) => calendar().items(principal, from, to),
+    myTasks: (uid) => tasks().mine(uid),
+    now: () => new Date(),
   }),
 );
 

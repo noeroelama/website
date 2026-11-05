@@ -18,7 +18,7 @@ export function DashboardPage(props: {
   name: string;
   counters: StatCardProps[];
   audit: DashboardAuditRow[] | null;
-  /** Later steps add "waiting for my action" queues here. */
+  /** Queues, agenda, deadlines, period numbers and warnings (src/server/dashboard.ts). */
   children?: ReactNode;
 }) {
   return (
