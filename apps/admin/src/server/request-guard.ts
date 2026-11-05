@@ -71,11 +71,13 @@ export function guardRequest(request: Request): Promise<GuardResult> {
 export function signInRedirect(request: Request): string | null {
   const { pathname, search } = new URL(request.url);
   // Machine endpoints authenticate themselves (cron secret, provider signature, signed pickup
-  // link), never a session.
+  // link, signed calendar feed), never a session.
   const machine = ["/api/", "/cron/", "/webhooks/", "/certificates/"].some((prefix) =>
     pathname.startsWith(prefix),
   );
-  if (machine || pathname === "/health") return null;
+  // The .ics feed (G2) is signed per person; calendar apps send no cookie.
+  const feed = pathname.startsWith("/calendar/") && pathname.endsWith(".ics");
+  if (machine || feed || pathname === "/health") return null;
   if (readCookie(request, SESSION_COOKIE)) return null;
   const { WEB_URL, ADMIN_URL } = getEnv();
   return WEB_URL && ADMIN_URL ? signInUrl(WEB_URL, `${ADMIN_URL}${pathname}${search}`) : null;

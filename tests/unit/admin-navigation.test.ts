@@ -51,6 +51,7 @@ describe("admin side panel navigation", () => {
     expect(labels(staff(SUPERADMIN_ROLE_ID))).toEqual([
       "Dashboard",
       "My Tasks",
+      "Calendar",
       "Tools",
       "Event",
       "Gallery",

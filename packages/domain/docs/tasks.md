@@ -30,3 +30,21 @@ tests `tests/integration/tasks.test.ts`.
 ## Permissions
 
 `tasks.read` (unit boards), `tasks.share` (share a unit's board). My Tasks needs none.
+
+## Calendar (G2)
+
+- `/calendar` (`calendar.read`): a month grid and list (UTC days) over the viewer's meetings
+  (participant or `meetings.read`), Zoom bookings (requester or `zoom.read`; pending ones marked),
+  milestones of approved/running programmes and LPJ due dates (PIC or the module's read
+  permission, active period) and holidays (`holidays`, managed with `calendar.holidays`).
+- Warnings: a holiday is judged on the item's own clock (the meeting's or booking's zone); a
+  meeting without a Zoom room at a time when every licence is booked gets "No Zoom licence is
+  free".
+- **Feed** `GET /calendar/<uid>.<signature>.ics` (outside `/api`, no session; the sign-in
+  redirect skips it): signature = HMAC-SHA256(`CALENDAR_FEED_SIGNING_SECRET`,
+  `calendar:{uid}:{version}`); "Revoke" bumps `calendarFeeds/{uid}.version`, so every older link
+  answers 404, as do unknown, inactive or no-longer-staff accounts. The feed uses the SAME read
+  model and filters as the screen, 30 days back to a year ahead.
+- ICS: CRLF lines, 75-octet folding that never splits a UTF-8 character, `\ ; , newline`
+  escaped, all-day items `VALUE=DATE` with an exclusive `DTEND`.
+- Not built: free calendar entries (`calendarEvents`); the calendar shows module records only.

@@ -4,6 +4,7 @@ import {
   cronEnv,
   documentsEnv,
   fieldEncryptionEnv,
+  calendarEnv,
   databaseEnv,
   filesEnv,
   firebaseAdminEnv,
@@ -39,6 +40,7 @@ const adminEnvSchema = baseEnv
   .extend(zoomEnv.partial().shape)
   .extend(documentsEnv.shape)
   .extend(fieldEncryptionEnv.shape)
+  .extend(calendarEnv.partial().shape)
   .extend(publicUrlsEnv.pick({ WEB_URL: true }).shape);
 
 export const getAdminEnv = lazyEnv(() => loadEnv(adminEnvSchema, process.env));

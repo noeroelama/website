@@ -73,6 +73,7 @@ import { createZoomWebhookRoute } from "./zoom-webhook";
 import { createDriveClient } from "./drive";
 import { createRecordingArchive } from "./recordings";
 import { createTasks } from "./tasks";
+import { createCalendar } from "./calendar";
 import { createZoomClient } from "./zoom-client";
 import { encryptField } from "@website/security";
 
@@ -847,6 +848,28 @@ export const tasks = lazyEnv(() =>
   }),
 );
 
+/** Calendar (G2): items per person, holidays, the signed .ics feed. */
+export const calendar = lazyEnv(() =>
+  createCalendar({
+    meetings: (from, to) => adminStores().meetings.listBetween(from, to),
+    zoom: (from, to) => adminStores().zoom.listBetween(from, to),
+    zoomSettings: async () => (await adminStores().zoom.readSettings()).settings,
+    programs: async () => {
+      const period = await activePeriod();
+      return period ? adminStores().programs.listForPeriod(period.id) : [];
+    },
+    lpj: async () => {
+      const period = await activePeriod();
+      return period ? adminStores().lpj.listForPeriod(period.id) : [];
+    },
+    store: adminStores().calendar,
+    principalOf: (uid) => userDirectoryStore().findPrincipalByUid(uid),
+    secret: getAdminEnv().CALENDAR_FEED_SIGNING_SECRET ?? null,
+    adminUrl: getAppUrls().ADMIN_URL ?? "",
+    now: () => new Date(),
+  }),
+);
+
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
@@ -924,6 +947,7 @@ export const adminReads = {
   getZoom: (id: string) => adminStores().zoom.get(id),
   zoomSettings: () => adminStores().zoom.readSettings(),
   activePeriod,
+  listHolidays: () => adminStores().calendar.listHolidays(),
   sharedBoards: (uid: string) => adminStores().taskShares.listForUser(uid),
   boardShares: (orgUnitId: string) => adminStores().taskShares.listForUnit(orgUnitId),
   /** Satisfaction polls (J3) of the last 365 days. */

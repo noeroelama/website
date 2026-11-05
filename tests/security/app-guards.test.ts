@@ -112,6 +112,10 @@ describe("sign-in redirect before the page renders (proxy)", () => {
     expect(signInRedirect(new Request("https://admin.example/cron/noop"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/webhooks/zoom"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/cronjobs"))).not.toBeNull();
+    // The signed calendar feed has no session; the calendar page itself does.
+    expect(signInRedirect(new Request("https://admin.example/calendar/uid.sig.ics"))).toBeNull();
+    expect(signInRedirect(new Request("https://admin.example/calendar"))).not.toBeNull();
+    expect(signInRedirect(new Request("https://admin.example/calendar/x"))).not.toBeNull();
   });
 
   it("admin leaves signed-out visitors to the page when WEB_URL/ADMIN_URL are not set", async () => {

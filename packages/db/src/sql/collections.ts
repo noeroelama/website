@@ -79,4 +79,6 @@ export const COLLECTIONS = [
   "whatsappConversations",
   // Phase 8: daily views
   "taskBoardShares",
+  "holidays",
+  "calendarFeeds",
 ] as const;

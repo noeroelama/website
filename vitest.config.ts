@@ -111,6 +111,8 @@ export default defineConfig({
         "packages/domain/src/tasks/*.ts",
         "packages/db/src/sql/task-shares.ts",
         "apps/admin/src/server/tasks.ts",
+        "packages/db/src/sql/calendar.ts",
+        "apps/admin/src/server/calendar.ts",
         "packages/domain/src/meetings/*.ts",
         "packages/db/src/sql/meetings.ts",
         "apps/admin/src/server/meetings.ts",

@@ -252,6 +252,7 @@ export {
   type SqlConversationStore,
 } from "./conversations";
 export { createSqlTaskShareStore, type SqlTaskShareStore } from "./task-shares";
+export { createSqlCalendarStore, type SqlCalendarStore } from "./calendar";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");
