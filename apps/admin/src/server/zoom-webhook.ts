@@ -14,7 +14,7 @@ export interface ZoomWebhookDeps {
   readonly secret: string | undefined;
   /** webhookEvents de-duplication: true the first time. */
   readonly record: (provider: string, eventId: string, now: Date) => Promise<boolean>;
-  readonly zoom: Pick<SqlZoomStore, "findByZoomMeetingId" | "write">;
+  readonly zoom: Pick<SqlZoomStore, "findByZoomMeetingId" | "write" | "addSession">;
   readonly client: Pick<ZoomClient, "updateMeeting"> | null;
   readonly contacts: (uids: readonly string[]) => Promise<Map<string, Contact>>;
   readonly send: Messenger["send"];
@@ -65,6 +65,8 @@ export function createZoomWebhookRoute(deps: ZoomWebhookDeps) {
 
   async function onRecording(booking: ZoomRequest, uuid: string | null, now: Date) {
     if (!uuid || booking.recordingUuids.includes(uuid)) return;
+    // The archive (F3) picks the session up from here.
+    await deps.zoom.addSession(uuid, booking.id, now);
     await deps.zoom.write(
       booking.id,
       booking.version,

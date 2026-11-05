@@ -376,6 +376,8 @@ describe("Zoom API client", () => {
       { status: 500, body: "<error><message>Server down</message></error>" },
       { status: 200, body: JSON.stringify({ meetings: [] }) },
       { status: 200, body: "file" },
+      { status: 206, body: "fi" },
+      { status: 204, body: "" },
     ];
     const client = createZoomClient(
       { accountId: "acc", clientId: "id", clientSecret: "secret", hostUser: "host@example.org" },
@@ -411,6 +413,10 @@ describe("Zoom API client", () => {
       meetings: [],
     });
     expect(await (await client.download("https://zoom.us/rec/file")).text()).toBe("file");
+    expect(
+      await (await client.download("https://zoom.us/rec/file", { start: 0, end: 1 })).text(),
+    ).toBe("fi");
+    await client.trashRecording("abc%3D%3D");
     expect(calls[0]).toMatchObject({
       url: "https://zoom.us/oauth/token?grant_type=account_credentials&account_id=acc",
       auth: `Basic ${Buffer.from("id:secret").toString("base64")}`,
@@ -426,6 +432,10 @@ describe("Zoom API client", () => {
       },
     });
     expect(calls.filter((c) => c.url.startsWith("https://zoom.us/oauth"))).toHaveLength(2);
+    expect(calls.at(-1)).toMatchObject({
+      url: "https://api.zoom.us/v2/meetings/abc%3D%3D/recordings?action=trash",
+      method: "DELETE",
+    });
     expect(calls[5]?.auth).toBe("Bearer t2");
     expect(zoomErrorMessage("")).toBe("no message");
     expect(zoomErrorMessage('{"code":1}')).toBe('{"code":1}');

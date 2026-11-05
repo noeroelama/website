@@ -63,6 +63,8 @@ import { createLinkActions } from "./links";
 import { goppiShortener, sidShortener } from "./shorteners";
 import { createZoomActions, createZoomTranscript } from "./zoom";
 import { createZoomWebhookRoute } from "./zoom-webhook";
+import { createDriveClient } from "./drive";
+import { createRecordingArchive } from "./recordings";
 import { createZoomClient } from "./zoom-client";
 import { encryptField } from "@website/security";
 
@@ -361,6 +363,7 @@ export const cronRoute = lazyEnv(() =>
       expire: () => deleteExpired(adminDb(), new Date()),
       "meeting-reminders": () => meetingActions().sendReminders(),
       "zoom-rooms": () => zoomActions().retryRooms(),
+      "recording-archive": () => recordingArchive()(),
     },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
@@ -654,6 +657,32 @@ export const zoomActions = lazyEnv(() => {
   });
 });
 
+/** cron "recording-archive" (F3): Zoom recordings → Google Drive, one chunk per call. */
+export const recordingArchive = lazyEnv(() => {
+  const env = getAdminEnv();
+  return createRecordingArchive({
+    zoom: adminStores().zoom,
+    client: zoomClient(),
+    drive:
+      env.GOOGLE_DRIVE_CLIENT_EMAIL &&
+      env.GOOGLE_DRIVE_PRIVATE_KEY &&
+      env.GOOGLE_DRIVE_IMPERSONATE &&
+      env.GOOGLE_DRIVE_FOLDER_ID
+        ? createDriveClient(
+            {
+              clientEmail: env.GOOGLE_DRIVE_CLIENT_EMAIL,
+              privateKey: env.GOOGLE_DRIVE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+              impersonate: env.GOOGLE_DRIVE_IMPERSONATE,
+              folderId: env.GOOGLE_DRIVE_FOLDER_ID,
+            },
+            fetch,
+          )
+        : null,
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  });
+});
+
 /** POST /webhooks/zoom (F2): signed Zoom events about OUR meetings. */
 export const zoomWebhook = lazyEnv(() =>
   createZoomWebhookRoute({
@@ -746,5 +775,7 @@ export const adminReads = {
   listZoom: (from: Date, to: Date) => adminStores().zoom.listBetween(from, to),
   getZoom: (id: string) => adminStores().zoom.get(id),
   zoomSettings: () => adminStores().zoom.readSettings(),
+  recordingFiles: (bookingIds: readonly string[]) =>
+    adminStores().zoom.filesForBookings(bookingIds),
   listActionItems: (meetingId: string) => adminStores().actionItems.listForMeeting(meetingId),
 };

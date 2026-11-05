@@ -1,4 +1,4 @@
-import { invitationText } from "@website/domain/zoom";
+import { invitationText, isArchived } from "@website/domain/zoom";
 import { can, canInSomeScope } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { ZoomPage } from "@/components/zoom-page";
@@ -26,7 +26,19 @@ export default async function AdminZoomPage() {
       b.requestedBy === principal.userId ||
       can(principal, "zoom.read", { orgUnitPath: b.orgUnitPath }),
   );
-  const people = await adminReads.getUsers([...new Set(visible.map((b) => b.requestedBy))]);
+  const recorded = visible.filter((b) => b.recordingUuids.length > 0);
+  const [people, files] = await Promise.all([
+    adminReads.getUsers([...new Set(visible.map((b) => b.requestedBy))]),
+    adminReads.recordingFiles(recorded.map((b) => b.id)),
+  ]);
+  const recordingOf = (b: (typeof visible)[number]) => {
+    if (b.recordingUuids.length === 0) return null;
+    const mine = files.filter((f) => f.bookingId === b.id);
+    if (isArchived(b.recordingUuids, mine)) return "Recording archived in Drive";
+    const clash = mine.filter((f) => f.status === "clash" || f.status === "failed").length;
+    const done = mine.filter((f) => f.status === "done").length;
+    return `Recording: ${done} of ${mine.length} files in Drive${clash ? `, ${clash} need a look` : ""}`;
+  };
   return (
     <ZoomPage
       canRequest={canInSomeScope(principal, "zoom.edit")}
@@ -39,6 +51,7 @@ export default async function AdminZoomPage() {
               approvalRequired: settings.approvalRequired,
               minNoticeHours: settings.minNoticeHours,
               maxDurationMinutes: settings.maxDurationMinutes,
+              autoDeleteRecordings: settings.autoDeleteRecordings,
               hostKeySet: settings.hostKeyEncrypted !== null,
             }
           : null
@@ -59,6 +72,7 @@ export default async function AdminZoomPage() {
         requester: people.get(b.requestedBy)?.name ?? people.get(b.requestedBy)?.email ?? "",
         joinUrl: b.shortUrl ?? b.joinUrl,
         roomError: b.roomError,
+        recording: recordingOf(b),
         decisionNote: b.decisionNote,
         invitation: b.joinUrl ? invitationText(b) : null,
         canDecide:

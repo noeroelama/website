@@ -71,4 +71,6 @@ export const COLLECTIONS = [
   // Zoom (F1-F3)
   "zoomRequests",
   "zoomCapacity",
+  "recordingSessions",
+  "recordingFiles",
 ] as const;

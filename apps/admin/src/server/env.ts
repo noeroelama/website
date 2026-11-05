@@ -17,6 +17,7 @@ import {
   wahaEnv,
   anthropicEnv,
   shortLinkEnv,
+  driveEnv,
   zoomEnv,
 } from "@website/config/env";
 
@@ -30,6 +31,7 @@ const adminEnvSchema = baseEnv
   .extend(wahaEnv.shape)
   .extend(anthropicEnv.shape)
   .extend(shortLinkEnv.shape)
+  .extend(driveEnv.shape)
   .extend(resendEnv.partial().shape)
   .extend(newsletterEnv.partial().shape)
   .extend(zoomEnv.partial().shape)

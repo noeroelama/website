@@ -43,6 +43,8 @@ interface Row {
   requester: string;
   joinUrl: string | null;
   roomError: string | null;
+  /** Archive state of the recording (F3), null = nothing recorded. */
+  recording: string | null;
   decisionNote: string | null;
   invitation: string | null;
   canDecide: boolean;
@@ -56,6 +58,7 @@ interface SettingsView {
   approvalRequired: boolean;
   minNoticeHours: number;
   maxDurationMinutes: number;
+  autoDeleteRecordings: boolean;
   hostKeySet: boolean;
 }
 
@@ -123,6 +126,7 @@ export function ZoomPage({
             {r.requester}
             {r.roomError ? " · Room not created yet (retried automatically)" : ""}
             {r.decisionNote ? ` · ${r.decisionNote}` : ""}
+            {r.recording ? ` · ${r.recording}` : ""}
           </div>
         </div>
       ),
@@ -304,6 +308,7 @@ export function ZoomPage({
               approvalRequired: text(form, "approvalRequired") === "yes",
               minNoticeHours: num(form, "minNoticeHours"),
               maxDurationMinutes: num(form, "maxDurationMinutes"),
+              autoDeleteRecordings: text(form, "autoDeleteRecordings") === "yes",
               hostKey: text(form, "removeHostKey") === "yes" ? "" : hostKey || null,
             });
           }}
@@ -344,6 +349,15 @@ export function ZoomPage({
             type="number"
             min={15}
             defaultValue={settings.maxDurationMinutes}
+          />
+          <ChoiceField
+            label="Move recordings to the Zoom trash once archived in Drive"
+            name="autoDeleteRecordings"
+            defaultValue={settings.autoDeleteRecordings ? "yes" : "no"}
+            options={[
+              { value: "no", label: "No (default)" },
+              { value: "yes", label: "Yes, after every file of the session is verified" },
+            ]}
           />
           <Field
             label={settings.hostKeySet ? "New Host Key (one is stored)" : "Host Key"}

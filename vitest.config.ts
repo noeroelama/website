@@ -121,6 +121,8 @@ export default defineConfig({
         "apps/admin/src/server/zoom.ts",
         "apps/admin/src/server/zoom-client.ts",
         "apps/admin/src/server/zoom-webhook.ts",
+        "apps/admin/src/server/drive.ts",
+        "apps/admin/src/server/recordings.ts",
         "apps/web/src/server/attendance.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },

@@ -75,6 +75,30 @@ always gets a short answer.
 (production only), events `meeting.ended`, `recording.completed`,
 `meeting.summary_completed`; copy the Secret Token into `ZOOM_WEBHOOK_SECRET_TOKEN`.
 
+## Recording archive (F3)
+
+- Sessions: `recording.completed` adds `recordingSessions/{hex(uuid)}` (bookingId, listedAt,
+  trashedAt). cron `recording-archive` lists up to 3 new sessions per call
+  (`GET /meetings/{uuid}/recordings`, a UUID starting with "/" or containing "//" encoded twice)
+  into `recordingFiles/{zoomFileId}` (files still "processing" are left for later), then moves
+  **one 8 MB chunk of one file** (an upload in progress first): Zoom download with a byte
+  `Range` → Drive resumable upload (`Content-Range`); progress (`uploaded`, session URL) is
+  stored, the next call continues.
+- Drive layout: `[YYYY-MM-DD] Topic/Topic - type.ext` (date in the booking's zone, names
+  cleaned of `\ / : * ? " < > |`), under `GOOGLE_DRIVE_FOLDER_ID`, as the impersonated
+  Workspace user (service account with domain-wide delegation; JWT signed with node:crypto).
+- Same name already in the folder: same size = done; a different size = **clash** (status
+  `clash`, logged, shown on the Zoom page, never overwritten, never skipped silently).
+- Failures count `attempts`; after 5 the file is `failed` (shown). A file Zoom no longer lists
+  fails at once.
+- "Archived" is computed at read time (`isArchived`): every listed session has files and all are
+  done; a new session or a clash clears it.
+- **Auto-delete** (`settings/zoom.autoDeleteRecordings`, default OFF): once every file of a
+  session is done, that session goes to the Zoom trash (`?action=trash`), once.
+- Block G: the job is built for shared hosting (one chunk per call, ~8 MB, 25 s Drive timeout).
+  [OWNER] measure one call on DomaiNesia; if a chunk cannot finish inside the request limit,
+  this one job moves to a small VPS (same code, same cron URL).
+
 ## Permissions
 
 `zoom.read`, `zoom.edit` (book), `zoom.approve`, `zoom.long_duration`, `zoom.settings`.

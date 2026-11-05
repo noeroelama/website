@@ -126,12 +126,20 @@ export function createZoomClient(
       return (await (await api(path, "GET")).json()) as T;
     },
 
-    /** A download URL with the access token (recording files), for streaming. */
-    async download(url: string): Promise<Response> {
+    /** A download URL with the access token (recording files); `range` = inclusive bytes. */
+    async download(url: string, range?: { start: number; end: number }): Promise<Response> {
       return send(url, {
         method: "GET",
-        headers: { Authorization: `Bearer ${await accessToken()}` },
+        headers: {
+          Authorization: `Bearer ${await accessToken()}`,
+          ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
+        },
       });
+    },
+
+    /** Moves one session's recording to the Zoom trash (F3 auto-delete). */
+    async trashRecording(uuidPath: string): Promise<void> {
+      await api(`/meetings/${uuidPath}/recordings?action=trash`, "DELETE");
     },
   };
 }

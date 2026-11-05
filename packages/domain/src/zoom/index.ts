@@ -2,6 +2,8 @@ import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, wallTimeToUtc, type EntityMeta } from "../shared";
 
+export * from "./recordings";
+
 /**
  * Zoom bookings (F1), ported from PPIDK `Zoom/*`: a unit asks for a room on the organisation's
  * Zoom licences; capacity is counted per UTC day (`zoomCapacity/{yyyy-mm-dd}`) so two bookings
@@ -31,6 +33,8 @@ export interface ZoomSettings {
   readonly maxDurationMinutes: number;
   /** The Host Key, encrypted with FIELD_ENCRYPTION_KEY (encryptField); null = none. */
   readonly hostKeyEncrypted: string | null;
+  /** F3: move a session's recording to the Zoom trash once every file is in Drive. */
+  readonly autoDeleteRecordings: boolean;
 }
 export const DEFAULT_ZOOM_SETTINGS: ZoomSettings = {
   licences: 1,
@@ -39,6 +43,7 @@ export const DEFAULT_ZOOM_SETTINGS: ZoomSettings = {
   minNoticeHours: 24,
   maxDurationMinutes: 240,
   hostKeyEncrypted: null,
+  autoDeleteRecordings: false,
 };
 
 export const ZoomSettingsInputSchema = z
@@ -56,6 +61,7 @@ export const ZoomSettingsInputSchema = z
       .int()
       .min(15)
       .max(24 * 60),
+    autoDeleteRecordings: z.boolean().default(false),
   })
   .strict();
 

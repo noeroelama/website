@@ -6,6 +6,7 @@ import {
   DEFAULT_ZOOM_SETTINGS,
   utcDays,
   type HeldSlot,
+  type RecordingFile,
   type ZoomRequest,
   type ZoomSettings,
   type ZoomStatus,
@@ -52,6 +53,15 @@ const toRequest = (id: string, data: Record<string, unknown>): ZoomRequest => ({
   deletedAt: toDate(data["deletedAt"]),
 });
 
+/** Zoom session UUIDs contain "/", "+" and "=": the document id is their hex. */
+const sessionId = (uuid: string) => Buffer.from(uuid).toString("hex");
+
+const toFile = (id: string, data: Record<string, unknown>): RecordingFile => ({
+  ...(data as unknown as RecordingFile),
+  id,
+  updatedAt: toDate(data["updatedAt"]) as Date,
+});
+
 export const zoomSnapshot = (r: ZoomRequestFields): Snapshot => ({
   topic: r.topic,
   startsAt: r.startsAt.toISOString(),
@@ -78,6 +88,8 @@ export function createSqlZoomStore(db: Database) {
   const requests = db.collection("zoomRequests");
   const capacity = db.collection("zoomCapacity");
   const settingsRef = db.collection("settings").doc("zoom");
+  const sessions = db.collection("recordingSessions");
+  const recordingFiles = db.collection("recordingFiles");
   const audit = createSqlAuditWriter(db);
   const read = (id: string, data: unknown) => toRequest(id, data as Record<string, unknown>);
 
@@ -132,6 +144,81 @@ export function createSqlZoomStore(db: Database) {
       return snapshot.docs
         .map((doc) => read(doc.id, doc.data()))
         .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+    },
+
+    /** A recorded session to archive (F3); kept once (webhook retries add nothing). */
+    async addSession(uuid: string, bookingId: string, now: Date): Promise<void> {
+      const ref = sessions.doc(sessionId(uuid));
+      await db.runTransaction(async (tx) => {
+        if ((await tx.get(ref)).exists) return;
+        tx.create(ref, { uuid, bookingId, listedAt: null, trashedAt: null, createdAt: now });
+      });
+    },
+
+    /** Sessions whose files are not listed yet (cron "recording-archive"). */
+    async unlistedSessions(limit: number): Promise<Array<{ uuid: string; bookingId: string }>> {
+      const snapshot = await sessions.where("listedAt", "==", null).limit(limit).get();
+      return snapshot.docs.map((d) => ({
+        uuid: d.get("uuid") as string,
+        bookingId: d.get("bookingId") as string,
+      }));
+    },
+
+    /** Records a session's files (new ones pending) and marks it listed, in one transaction. */
+    async listSession(uuid: string, files: readonly RecordingFile[], now: Date): Promise<void> {
+      const ref = sessions.doc(sessionId(uuid));
+      await db.runTransaction(async (tx) => {
+        const existing = await Promise.all(
+          files.map((f) => tx.get(recordingFiles.doc(safeId.parse(f.id)))),
+        );
+        files.forEach((file, i) => {
+          if (!existing[i]?.exists) tx.set(recordingFiles.doc(safeId.parse(file.id)), { ...file });
+        });
+        tx.update(ref, { listedAt: now });
+      });
+    },
+
+    async markSessionTrashed(uuid: string, now: Date): Promise<void> {
+      const ref = sessions.doc(sessionId(uuid));
+      await db.runTransaction(async (tx) => {
+        tx.update(ref, { trashedAt: now });
+        return Promise.resolve();
+      });
+    },
+
+    async sessionTrashed(uuid: string): Promise<boolean> {
+      return Boolean((await sessions.doc(sessionId(uuid)).get()).get("trashedAt"));
+    },
+
+    /** The next file to work on: one in progress first, else the oldest pending. */
+    async nextFile(): Promise<RecordingFile | null> {
+      for (const status of ["uploading", "pending"] as const) {
+        const snapshot = await recordingFiles
+          .where("status", "==", status)
+          .orderBy("updatedAt")
+          .limit(1)
+          .get();
+        const doc = snapshot.docs[0];
+        if (doc) return toFile(doc.id, doc.data());
+      }
+      return null;
+    },
+
+    async saveFile(file: RecordingFile): Promise<void> {
+      await recordingFiles.doc(safeId.parse(file.id)).set({ ...file });
+    },
+
+    async filesForBookings(bookingIds: readonly string[]): Promise<RecordingFile[]> {
+      if (bookingIds.length === 0) return [];
+      const found: RecordingFile[] = [];
+      // `in` takes at most 30 values per query.
+      for (let i = 0; i < bookingIds.length; i += 30) {
+        const snapshot = await recordingFiles
+          .where("bookingId", "in", bookingIds.slice(i, i + 30))
+          .get();
+        found.push(...snapshot.docs.map((d) => toFile(d.id, d.data())));
+      }
+      return found;
     },
 
     /** The booking whose Zoom meeting this is (webhooks match OUR meeting ids only). */

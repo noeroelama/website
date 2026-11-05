@@ -115,6 +115,17 @@ export const shortLinkEnv = z.object({
   SHORTLINK_API_KEY: z.string().min(1).optional(),
 });
 
+/**
+ * Google Drive for the Zoom recording archive (F3): a service account with domain-wide delegation
+ * (Drive scope) acting as one Workspace user, and the archive folder id. Unset = archive off.
+ */
+export const driveEnv = z.object({
+  GOOGLE_DRIVE_CLIENT_EMAIL: z.email().optional(),
+  GOOGLE_DRIVE_PRIVATE_KEY: z.string().min(1).optional(),
+  GOOGLE_DRIVE_IMPERSONATE: z.email().optional(),
+  GOOGLE_DRIVE_FOLDER_ID: z.string().min(1).optional(),
+});
+
 /** Anthropic for machine-drafted minutes (F6); no key = the feature is off. */
 export const anthropicEnv = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),

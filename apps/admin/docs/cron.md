@@ -38,6 +38,7 @@ curl -fsS --max-time 50 -H "Authorization: Bearer $(cat ~/.config/ppidk/cron-sec
 | `expire`            | once a day (e.g. 03:17)                                       | Deletes up to 500 expired rows each of `rateLimits`, `webauthnChallenges`, `webhookEvents` and `attendanceCodes` (`deleteExpired`, `packages/db/docs/database.md`).            |
 | `meeting-reminders` | every minute (or the shortest interval allowed, up to 15 min) | Start reminders in the 15 minutes before a meeting, end reminders in the hour after it, once per person (`meeting:{id}:start\|end:{uid}`); `packages/domain/docs/meetings.md`. |
 | `zoom-rooms`        | every 10 minutes                                              | Creates the Zoom meeting for up to 10 approved bookings that have no room yet (`packages/domain/docs/zoom.md`).                                                                |
+| `recording-archive` | every 5 minutes                                               | Lists new Zoom recording sessions and moves one 8 MB chunk of one file to Google Drive (`packages/domain/docs/zoom.md` → Recording archive).                                   |
 
 Adding a job: write it as `() => Promise<summary>` in `CRON_JOBS` (or, when it needs stores or
 the messenger, next to `newsletter-send` in the `cronRoute` jobs of `src/server/wiring.ts`), idempotent (use meaningful
