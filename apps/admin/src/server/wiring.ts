@@ -43,7 +43,8 @@ import {
 import { createLetterFileRoute, createLetterPdf, type LetterContext } from "./letter-pdf";
 import { createMessageActions } from "./messaging";
 import { createNotices } from "./notices";
-import { wahaChannel } from "./whatsapp";
+import { wahaChannel, wahaPoll } from "./whatsapp";
+import { createPolls, createWahaWebhookRoute } from "./polls";
 import { createNewsletterActions } from "./newsletter";
 import { createNewsActions } from "./news";
 import { createOrgUnitActions } from "./org-units";
@@ -406,6 +407,39 @@ export const notices = lazyEnv(() =>
     webUrl: getAppUrls().WEB_URL ?? "",
     adminUrl: getAppUrls().ADMIN_URL ?? "",
     logError: (message, fields) => adminStores().logger.error(message, fields),
+    poll: (uids, source, sourceId) => polls().ask(uids, source, sourceId),
+  }),
+);
+
+/** Satisfaction polls (J3) over WAHA. */
+export const polls = lazyEnv(() => {
+  const env = getAdminEnv();
+  return createPolls({
+    surveys: adminStores().surveys,
+    contacts: (uids) => adminStores().contacts.contacts(uids),
+    sendPoll: wahaPoll(
+      env.WAHA_BASE_URL && env.WAHA_API_KEY
+        ? { baseUrl: env.WAHA_BASE_URL, apiKey: env.WAHA_API_KEY, session: env.WAHA_SESSION }
+        : null,
+    ),
+    delivery: {
+      mode: env.MESSAGING_MODE,
+      appEnv: env.APP_ENV,
+      testRecipients: env.MESSAGING_TEST_RECIPIENTS,
+    },
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  });
+});
+
+/** POST /webhooks/waha (J3): poll votes. */
+export const wahaWebhook = lazyEnv(() =>
+  createWahaWebhookRoute({
+    secret: getAdminEnv().WAHA_WEBHOOK_SECRET,
+    record: (provider, eventId, now) =>
+      createSqlWebhookEventStore(adminDb()).record(provider, eventId, now),
+    surveys: adminStores().surveys,
+    now: () => new Date(),
   }),
 );
 
@@ -775,6 +809,8 @@ export const adminReads = {
   listZoom: (from: Date, to: Date) => adminStores().zoom.listBetween(from, to),
   getZoom: (id: string) => adminStores().zoom.get(id),
   zoomSettings: () => adminStores().zoom.readSettings(),
+  /** Satisfaction polls (J3) of the last 365 days. */
+  surveysLastYear: () => adminStores().surveys.since(new Date(Date.now() - 365 * 86_400_000)),
   recordingFiles: (bookingIds: readonly string[]) =>
     adminStores().zoom.filesForBookings(bookingIds),
   listActionItems: (meetingId: string) => adminStores().actionItems.listForMeeting(meetingId),

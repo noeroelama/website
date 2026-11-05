@@ -2,7 +2,7 @@ import "server-only";
 import type { SqlContactReader } from "@website/db/sql";
 import { desksOf, type Letter, type LetterType } from "@website/domain/documents";
 import type { FinanceRequest } from "@website/domain/finance";
-import { messageTo, type Messenger } from "@website/domain/messaging";
+import { messageTo, type Messenger, type SurveySource } from "@website/domain/messaging";
 import type { LpjReport } from "@website/domain/programs";
 import type { Application, ApplicationStatus } from "@website/domain/recruitment";
 import type { PagePermission } from "@website/permissions";
@@ -54,6 +54,12 @@ export interface NoticeDeps {
   readonly webUrl: string;
   readonly adminUrl: string;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
+  /** Satisfaction poll after selected notices (J3); never throws. */
+  readonly poll: (
+    uids: readonly string[],
+    source: SurveySource,
+    sourceId: string,
+  ) => Promise<unknown>;
 }
 
 /**
@@ -96,6 +102,7 @@ export function createNotices(deps: NoticeDeps) {
         },
         () => `recruitment:${next.id}:${next.status}:${next.version}`,
       );
+      if (next.status === "confirmed") await deps.poll([next.userId], "recruitment", next.id);
     });
 
   /** Whoever must act next on the letter (its desk holders in the letter's unit, or the author). */
@@ -176,6 +183,7 @@ export function createNotices(deps: NoticeDeps) {
         );
       } else if (saved.status === "approved") {
         await to(saved.pics, "LPJ disetujui.", "Your LPJ is approved.");
+        await deps.poll(saved.pics, "lpj", saved.id);
       }
     });
 
@@ -229,6 +237,7 @@ export function createNotices(deps: NoticeDeps) {
         );
       } else if (saved.status === "paid") {
         await requester("Dana telah dicairkan.", "The money has been paid.", null);
+        await deps.poll([saved.createdBy], "finance", saved.id);
       }
     });
 

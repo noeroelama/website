@@ -49,3 +49,37 @@ export function wahaChannel(
     },
   };
 }
+
+/**
+ * A single-answer WhatsApp poll over WAHA (`POST {base}/api/sendPoll`, J3). The WAHA message id
+ * comes back: votes refer to it. Never throws (same outcomes as `wahaChannel`).
+ */
+export function wahaPoll(config: WahaConfig | null, fetchImpl: typeof fetch = fetch) {
+  return async (
+    e164: string,
+    question: string,
+    options: readonly string[],
+  ): Promise<{ ok: true; messageId: string } | { ok: false; error: string }> => {
+    if (!config) return { ok: false, error: "not_configured" };
+    try {
+      const response = await fetchImpl(`${config.baseUrl.replace(/\/+$/, "")}/api/sendPoll`, {
+        method: "POST",
+        signal: AbortSignal.timeout(10_000),
+        headers: { "Content-Type": "application/json", "X-Api-Key": config.apiKey },
+        body: JSON.stringify({
+          session: config.session,
+          chatId: whatsappChatId(e164),
+          poll: { name: question, options, multipleAnswers: false },
+        }),
+      });
+      if (!response.ok) return { ok: false, error: `waha_${response.status}` };
+      const body = (await response.json().catch(() => ({}))) as {
+        id?: string | { _serialized?: string };
+      };
+      const id = typeof body.id === "string" ? body.id : (body.id?._serialized ?? "");
+      return id ? { ok: true, messageId: id } : { ok: false, error: "waha_no_id" };
+    } catch {
+      return { ok: false, error: "waha_unreachable" };
+    }
+  };
+}

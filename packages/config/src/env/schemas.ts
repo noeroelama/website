@@ -106,6 +106,8 @@ export const wahaEnv = z.object({
   WAHA_BASE_URL: optionalUrl,
   WAHA_API_KEY: z.string().min(1).optional(),
   WAHA_SESSION: z.string().min(1).default("default"),
+  /** WAHA webhook HMAC key (poll votes, J3); unset = /webhooks/waha refuses everything. */
+  WAHA_WEBHOOK_SECRET: z.string().min(16).optional(),
 });
 
 /** Short links (K1): goppi.id first, s.id as fallback; a provider without its key is skipped. */

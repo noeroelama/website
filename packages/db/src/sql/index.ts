@@ -245,6 +245,7 @@ export {
   type ZoomAudit,
   type ZoomRequestFields,
 } from "./zoom";
+export { createSqlSurveyStore, type SqlSurveyStore } from "./surveys";
 
 if ("window" in globalThis) {
   throw new Error("@website/db must never be bundled into browser code.");

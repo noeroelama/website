@@ -3,7 +3,8 @@ import { can } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { formatUtc } from "@/components/format";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody } from "@/components/ui/card";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { SURVEY_SOURCE_LABELS, surveySummary } from "@website/domain/messaging";
 import { DataTable } from "@/components/ui/data-table";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
@@ -24,7 +25,10 @@ export default async function EmailPage({
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
   if (!can(viewer.principal, "messages.read")) return <AccessMessage reason="no-access" />;
   const cursor = (await searchParams)["cursor"];
-  const page = await adminReads.listFailedMessages(typeof cursor === "string" ? cursor : undefined);
+  const [page, surveys] = await Promise.all([
+    adminReads.listFailedMessages(typeof cursor === "string" ? cursor : undefined),
+    adminReads.surveysLastYear(),
+  ]);
   const canRetry = can(viewer.principal, "messages.edit");
 
   return (
@@ -80,6 +84,38 @@ export default async function EmailPage({
           </Button>
         </p>
       ) : null}
+      <Card>
+        <CardHeader
+          title="Satisfaction (WhatsApp polls)"
+          subtitle="Last 12 months, per notification source; 1-5 stars"
+        />
+        <CardBody flush>
+          <DataTable
+            rowKey={(row) => row.source}
+            rows={surveySummary(surveys)}
+            columns={[
+              {
+                key: "source",
+                header: "Source",
+                render: (row) => SURVEY_SOURCE_LABELS[row.source],
+              },
+              { key: "sent", header: "Asked", align: "right" },
+              { key: "answered", header: "Answered", align: "right" },
+              {
+                key: "average",
+                header: "Average",
+                align: "right",
+                render: (row) => (row.average === null ? "—" : `${row.average} ★`),
+              },
+              {
+                key: "distribution",
+                header: "1★ … 5★",
+                render: (row) => row.distribution.join(" · "),
+              },
+            ]}
+          />
+        </CardBody>
+      </Card>
     </>
   );
 }

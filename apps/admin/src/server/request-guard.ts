@@ -13,7 +13,7 @@ import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 
 /** Incoming webhook paths that skip only the origin check (they check a provider signature). */
-export const ADMIN_WEBHOOK_PATHS: readonly string[] = ["/webhooks/zoom"];
+export const ADMIN_WEBHOOK_PATHS: readonly string[] = ["/webhooks/zoom", "/webhooks/waha"];
 
 // `next dev` without a .env.local runs as development; deployments must set APP_ENV.
 const getEnv = lazyEnv(() =>

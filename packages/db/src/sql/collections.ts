@@ -73,4 +73,6 @@ export const COLLECTIONS = [
   "zoomCapacity",
   "recordingSessions",
   "recordingFiles",
+  // Satisfaction polls (J3)
+  "surveys",
 ] as const;

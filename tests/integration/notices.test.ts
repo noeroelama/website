@@ -192,8 +192,14 @@ describe("notification sources (J2)", () => {
       webUrl: "https://ppi.example.org",
       adminUrl: "https://admin.ppi.example.org",
       logError,
+      poll: (uids, source, sourceId) => {
+        polled.push(`${source}:${sourceId}:${uids.join(",")}`);
+        return Promise.resolve();
+      },
     });
+  const polled: string[] = [];
   beforeEach(() => {
+    polled.length = 0;
     sent.length = 0;
     logError.mockClear();
   });
@@ -222,6 +228,8 @@ describe("notification sources (J2)", () => {
     expect(sent[1]?.text).toContain("Tanda tangani halaman 2.");
     await notices().application(application("accepted"), "Oprec 2026");
     expect(sent).toHaveLength(2);
+    await notices().application(application("confirmed"), "Oprec 2026");
+    expect(polled).toEqual(["recruitment:rec1_ari:ari"]);
   });
 
   const letter = (fields: Partial<Letter>) =>
@@ -315,6 +323,7 @@ describe("notification sources (J2)", () => {
     expect(sent[0]?.text).toContain("Add receipts");
     expect(await run({ status: "returned", version: 7 })).toEqual(["lpj:pr1:returned:7:pic"]);
     expect(await run({ status: "approved", version: 8 })).toEqual(["lpj:pr1:approved:8:pic"]);
+    expect(polled).toEqual(["lpj:pr1:pic"]);
   });
 
   const finance = (fields: Partial<FinanceRequest>) =>
@@ -357,6 +366,7 @@ describe("notification sources (J2)", () => {
       "finance:f1:rejected:2:ari",
       "finance:f1:paid:2:ari",
     ]);
+    expect(polled).toEqual(["finance:f1:ari"]);
     expect(sent[0]?.text).toContain("Add the RAB.");
     expect(sent[1]?.text).toContain("No budget.");
   });

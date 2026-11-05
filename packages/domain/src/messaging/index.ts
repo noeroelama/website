@@ -162,3 +162,68 @@ export function createMessenger(deps: {
 }
 
 export type Messenger = ReturnType<typeof createMessenger>;
+
+/* ---------------------------------------------------------------- satisfaction polls (J3) */
+
+/** What a WhatsApp poll asks after selected notifications (one per source event and person). */
+export const SURVEY_SOURCES = ["finance", "lpj", "recruitment"] as const;
+export type SurveySource = (typeof SURVEY_SOURCES)[number];
+export const SURVEY_SOURCE_LABELS: Record<SurveySource, string> = {
+  finance: "Finance requests (paid)",
+  lpj: "LPJ (approved)",
+  recruitment: "Recruitment (confirmed)",
+};
+
+/** The poll's options, frozen on every survey: label → stars. */
+export const STAR_OPTIONS: Readonly<Record<string, number>> = {
+  "⭐⭐⭐⭐⭐ Sangat puas / Very satisfied": 5,
+  "⭐⭐⭐⭐ Puas / Satisfied": 4,
+  "⭐⭐⭐ Cukup / Okay": 3,
+  "⭐⭐ Kurang / Unsatisfied": 2,
+  "⭐ Sangat kurang / Very unsatisfied": 1,
+};
+export const POLL_QUESTION =
+  "Seberapa puas kamu dengan layanan ini? / How satisfied are you with this service?";
+
+export interface Survey {
+  readonly id: string;
+  readonly source: SurveySource;
+  readonly sourceId: string;
+  readonly uid: string;
+  /** WAHA message id of the poll (votes refer to it); null until sent. */
+  readonly pollMessageId: string | null;
+  readonly options: Readonly<Record<string, number>>;
+  readonly stars: number | null;
+  readonly sentAt: Date;
+  readonly votedAt: Date | null;
+}
+
+/** Stars of a vote by the survey's FROZEN options (renamed options later change nothing). */
+export function starsOf(
+  survey: Pick<Survey, "options">,
+  selected: readonly string[],
+): number | null {
+  // Single-answer polls: no selection = the vote was withdrawn.
+  const label = selected[0];
+  return label !== undefined && Object.hasOwn(survey.options, label)
+    ? (survey.options[label] as number)
+    : null;
+}
+
+/** Per source: polls sent, answered, average stars (one decimal), stars → count. */
+export function surveySummary(surveys: ReadonlyArray<Pick<Survey, "source" | "stars">>) {
+  return SURVEY_SOURCES.map((source) => {
+    const mine = surveys.filter((s) => s.source === source);
+    const voted = mine.flatMap((s) => (s.stars === null ? [] : [s.stars]));
+    const distribution = [1, 2, 3, 4, 5].map((stars) => voted.filter((v) => v === stars).length);
+    return {
+      source,
+      sent: mine.length,
+      answered: voted.length,
+      average: voted.length
+        ? Math.round((voted.reduce((a, b) => a + b, 0) / voted.length) * 10) / 10
+        : null,
+      distribution,
+    };
+  });
+}

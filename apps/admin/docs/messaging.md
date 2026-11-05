@@ -72,6 +72,19 @@ PICs with the due date; submitted → holders of `lpj.review_secretariat` and
 `lpj.review_treasurer`; both reviews in → holders of `lpj.approve`; returned (with the note) or
 approved → the PICs. Finance desks: see the finance rows above.
 
+## Satisfaction polls (J3)
+
+After LPJ `approved` (the PICs), finance `paid` (the requester) and recruitment `confirmed`
+(the applicant), people with a WhatsApp number get a single-answer WAHA poll (1-5 stars,
+`src/server/polls.ts`): once per event and person (`surveys/{sha256(source:id:uid)}` claimed
+first), the options frozen on the survey (label → stars), the same delivery rules as messages
+(`log` never sends; outside production only to test recipients). Votes arrive at
+`POST /webhooks/waha` (HMAC-SHA512 of the body in `X-Webhook-Hmac` with `WAHA_WEBHOOK_SECRET`;
+de-duplicated per vote, choice and time, so a changed vote counts and a retry does not) and are
+stored by the poll's message id. The Email page shows asked / answered / average / 1-5 counts
+per source for the last 12 months. [OWNER] WAHA dashboard → webhook URL
+`https://<admin domain>/webhooks/waha`, event `poll.vote`, HMAC key = `WAHA_WEBHOOK_SECRET`.
+
 ## Rules and assumptions
 
 - The key is claimed in a transaction (create-if-absent); a second call with the same key
@@ -88,5 +101,5 @@ approved → the PICs. Finance desks: see the finance rows above.
 
 `MESSAGING_MODE` (`log` | `live`), `MESSAGING_TEST_RECIPIENTS` (comma-separated e-mails and/or
 E.164 numbers), `RESEND_API_KEY`, `EMAIL_FROM_TRANSACTIONAL`, `WAHA_BASE_URL`, `WAHA_API_KEY`,
-`WAHA_SESSION` (default `default`) — see `docs/environment.md`. Without a Resend key
+`WAHA_SESSION` (default `default`), `WAHA_WEBHOOK_SECRET` (poll votes) — see `docs/environment.md`. Without a Resend key
 or sender, live sends fail with `not_configured` (visible on the Email page).
