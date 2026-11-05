@@ -107,6 +107,7 @@ export default defineConfig({
         "packages/db/src/sql/finance.ts",
         "apps/admin/src/server/finance.ts",
         "packages/db/src/ppidk/programs.ts",
+        "packages/db/src/ppidk/meetings.ts",
         "packages/domain/src/meetings/*.ts",
         "packages/db/src/sql/meetings.ts",
         "apps/admin/src/server/meetings.ts",

@@ -92,6 +92,26 @@ scheduled ──(end time passes, read-time)──→ finished
   and a person adds each item, which re-checks the PIC on save.
 - A failure is logged (`minutes draft failed`) and nothing is written.
 
+## Import from PPIDK (step 7.12, block J)
+
+`infrastructure/scripts/import-ppidk-meetings.mjs` (dry run first, idempotent, ids `ppidk-…`)
+with the pure mapping `packages/db/src/ppidk/meetings.ts`, after the people import and after
+freezing the PPIDK meeting, Zoom and Tools screens:
+
+- `meetings` + `meeting_participants` (pemimpin → chair, notulis → secretary, peserta and
+  undangan → participant; a second leader becomes a participant; no leader → the creator, else
+  the first participant, chairs), attendance `hadir` (kode → code, else manual), agenda items
+  with discussion + decision as the notes, `minutes_status` disahkan → approved (snapshot =
+  those present), `minutes_assisted_source` → source; the Zoom room or `meeting_url`.
+- `meeting_action_items` (cancelled ones skipped; the PIC kept as history).
+- `zoom_meetings` (selesai → approved; `requested_passcode` cut to 10), capacity days rebuilt
+  from the approved bookings, `zoom_recording_sessions` (archived ones count as listed).
+- `shortlinks` (provider, external id as ref, archived), `outgoing_messages` as message log
+  history with key `ppidk:{idempotency_key}`: sent → sent, failed → failed, queued → blocked
+  ("not sent before the move", never sent late), channel log → logged.
+- Not imported: attendance codes (they rotate), satisfaction polls of PPIDK.
+- Report: `import-meetings-report.json` (counts and every skipped row).
+
 ## Permissions
 
 `meetings.read`, `meetings.edit`, `meetings.approve_minutes` (F5) — Role Manager → Meetings.
