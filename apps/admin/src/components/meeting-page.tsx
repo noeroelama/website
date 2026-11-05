@@ -250,6 +250,7 @@ export function MeetingPage({
               meetingId={m.id}
               version={m.version}
               names={new Map(m.participants.map((p) => [p.uid, p.name]))}
+              hasZoom={m.zoomRequestId !== null}
             />
           ) : null
         }

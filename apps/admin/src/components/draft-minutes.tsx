@@ -17,10 +17,13 @@ export function DraftMinutes({
   meetingId,
   version,
   names,
+  hasZoom,
 }: {
   meetingId: string;
   version: number;
   names: ReadonlyMap<string, string>;
+  /** The meeting's room is a Zoom booking: its transcript can be pulled (F2). */
+  hasZoom: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -29,16 +32,15 @@ export function DraftMinutes({
   const [transcript, setTranscript] = useState("");
   const [proposals, setProposals] = useState<Proposal[]>([]);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (event: FormEvent | null) => {
+    event?.preventDefault();
     setBusy(true);
     setMessage(null);
-    const result = await draftMinutesAction({
-      id: meetingId,
-      version,
-      transcript,
-      source: "ai_transcript",
-    });
+    const result = await draftMinutesAction(
+      event
+        ? { id: meetingId, version, transcript, source: "ai_transcript" }
+        : { id: meetingId, version, source: "ai_zoom" },
+    );
     setBusy(false);
     if (!result.ok) return setMessage(actionMessage(result));
     setProposals(result.data.proposals);
@@ -105,6 +107,16 @@ export function DraftMinutes({
             <Button variant="outline" icon="chevronLeft" onClick={() => setOpen(false)}>
               Back
             </Button>
+            {hasZoom ? (
+              <Button
+                variant="outline"
+                icon="download"
+                disabled={busy}
+                onClick={() => void submit(null)}
+              >
+                Pull Zoom transcript
+              </Button>
+            ) : null}
             <Button type="submit" disabled={busy || transcript.trim().length < 20}>
               {busy ? "Drafting…" : "Draft"}
             </Button>

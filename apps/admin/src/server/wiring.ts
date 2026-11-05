@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hasTwoSignInMethods } from "@website/auth";
 import { lazyEnv } from "@website/config/env";
 import {
+  createSqlWebhookEventStore,
   deleteExpired,
   inviteId,
   type AuditListQuery,
@@ -60,7 +61,8 @@ import { createMinutesActions, createMinutesFileRoute } from "./minutes";
 import { createAnthropicDrafter, DEFAULT_ANTHROPIC_MODEL } from "./anthropic";
 import { createLinkActions } from "./links";
 import { goppiShortener, sidShortener } from "./shorteners";
-import { createZoomActions } from "./zoom";
+import { createZoomActions, createZoomTranscript } from "./zoom";
+import { createZoomWebhookRoute } from "./zoom-webhook";
 import { createZoomClient } from "./zoom-client";
 import { encryptField } from "@website/security";
 
@@ -573,6 +575,10 @@ export const minutesActions = lazyEnv(() =>
       : null,
     names: accountNames,
     logError: (message, fields) => adminStores().logger.error(message, fields),
+    zoomTranscript: createZoomTranscript({
+      booking: (id) => adminStores().zoom.get(id),
+      client: zoomClient(),
+    }),
     now: () => new Date(),
   }),
 );
@@ -647,6 +653,22 @@ export const zoomActions = lazyEnv(() => {
     now: () => new Date(),
   });
 });
+
+/** POST /webhooks/zoom (F2): signed Zoom events about OUR meetings. */
+export const zoomWebhook = lazyEnv(() =>
+  createZoomWebhookRoute({
+    secret: getAdminEnv().ZOOM_WEBHOOK_SECRET_TOKEN,
+    record: (provider, eventId, now) =>
+      createSqlWebhookEventStore(adminDb()).record(provider, eventId, now),
+    zoom: adminStores().zoom,
+    client: zoomClient(),
+    contacts: (uids) => adminStores().contacts.contacts(uids),
+    send: (message, key) => messenger().send(message, key),
+    adminUrl: getAppUrls().ADMIN_URL ?? "",
+    logError: (message, fields) => adminStores().logger.error(message, fields),
+    now: () => new Date(),
+  }),
+);
 
 /** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {

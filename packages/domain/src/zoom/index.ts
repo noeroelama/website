@@ -106,6 +106,23 @@ export interface ZoomRequest extends EntityMeta {
   readonly joinUrl: string | null;
   readonly shortUrl: string | null;
   readonly roomError: string | null;
+  /** Set when Zoom said the meeting ended after its end time (waiting room on, F2). */
+  readonly closedAt: Date | null;
+  /** Every recorded session (Zoom meeting UUID) of this room (F2, F3). */
+  readonly recordingUuids: readonly string[];
+}
+
+/**
+ * The meeting a Zoom webhook is about, from both payload shapes: recordings and meeting events
+ * use `object.id` / `object.uuid`, AI summaries `object.meeting_id` / `object.meeting_uuid`.
+ * Matching is by OUR meeting ids only (never by host e-mail: the host is shared).
+ */
+export function zoomEventMeeting(payload: unknown): { id: string; uuid: string | null } | null {
+  const object = (payload as { object?: Record<string, unknown> } | null)?.object;
+  const id = object?.["id"] ?? object?.["meeting_id"];
+  const uuid = object?.["uuid"] ?? object?.["meeting_uuid"];
+  if (typeof id !== "number" && typeof id !== "string") return null;
+  return { id: String(id), uuid: typeof uuid === "string" ? uuid : null };
 }
 
 /** UTC start and end from the form; refuses the past, short notice and too long. */

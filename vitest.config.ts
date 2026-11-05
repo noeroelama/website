@@ -120,6 +120,7 @@ export default defineConfig({
         "packages/db/src/sql/zoom.ts",
         "apps/admin/src/server/zoom.ts",
         "apps/admin/src/server/zoom-client.ts",
+        "apps/admin/src/server/zoom-webhook.ts",
         "apps/web/src/server/attendance.ts",
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },

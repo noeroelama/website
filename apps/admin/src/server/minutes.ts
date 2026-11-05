@@ -36,6 +36,8 @@ export interface MinutesDeps {
   /** Display names of accounts (the machine matches speakers to participants). */
   readonly names: (uids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
+  /** The VTT transcript of the meeting's Zoom room (F2), or null when there is none. */
+  readonly zoomTranscript: (meeting: Meeting) => Promise<string | null>;
   readonly now: () => Date;
 }
 
@@ -47,16 +49,19 @@ const SaveItem = ActionItemInputSchema.extend({
   version: version.nullable(),
   meetingId: safeId,
 }).strict();
-const Draft = z
-  .object({
-    id: safeId,
-    version,
-    /** Pasted text or a Zoom .vtt file's content. */
-    transcript: z.string().min(20, "Paste the transcript.").max(MAX_TRANSCRIPT_CHARS),
-    /** Where the transcript came from (the Zoom pull is step 7.7). */
-    source: z.enum(["ai_transcript", "ai_zoom"]),
-  })
-  .strict();
+const Draft = z.discriminatedUnion("source", [
+  z
+    .object({
+      id: safeId,
+      version,
+      source: z.literal("ai_transcript"),
+      /** Pasted text or a Zoom .vtt file's content. */
+      transcript: z.string().min(20, "Paste the transcript.").max(MAX_TRANSCRIPT_CHARS),
+    })
+    .strict(),
+  /** F6 with F2: the transcript of the meeting's Zoom room, pulled from Zoom. */
+  z.object({ id: safeId, version, source: z.literal("ai_zoom") }).strict(),
+]);
 const ItemDone = z.object({ id: safeId, version, done: z.boolean() }).strict();
 
 /** Approving: the chair, or `meetings.approve_minutes` for the meeting's unit. */
@@ -267,13 +272,21 @@ export function createMinutesActions(deps: MinutesDeps) {
     permission: "meetings.read",
     inSomeScope: true,
     input: Draft,
-    handler: async ({ id, version: v, transcript, source }, principal, audit) => {
+    handler: async (input, principal, audit) => {
+      const { id, version: v, source } = input;
       if (!deps.drafter) throw new RuleViolationError("Machine drafts are not set up.");
       const meeting = await deps.meetings.get(id);
       if (!meeting || meeting.deletedAt)
         throw new RuleViolationError("This meeting does not exist.");
       if (!canRunMeeting(principal, meeting)) {
         throw new RuleViolationError("Only the meeting's chair or secretary can do this.");
+      }
+      const transcript =
+        input.source === "ai_transcript" ? input.transcript : await deps.zoomTranscript(meeting);
+      if (transcript === null) {
+        throw new RuleViolationError(
+          "Zoom has no transcript for this meeting's room yet (it comes with the cloud recording).",
+        );
       }
       const names = await deps.names(meeting.participantIds);
       let output: DraftOutput;

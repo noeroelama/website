@@ -51,6 +51,12 @@ const actions = () =>
     names: (uids) =>
       Promise.resolve(new Map(uids.filter((u) => u !== "member").map((u) => [u, u.toUpperCase()]))),
     logError: (message) => errors.push(message),
+    zoomTranscript: (m) =>
+      Promise.resolve(
+        m.room.zoomRequestId
+          ? "WEBVTT\n\n1\n00:00:01.000 --> 00:00:02.000\nRina: Zoom says hi.\nRina: Again."
+          : null,
+      ),
     now: () => clock,
   });
 
@@ -503,11 +509,26 @@ describe("machine-drafted minutes (F6)", () => {
     });
     expect((asked as unknown as DraftRequest).transcript).toBe("Rina said the budget is fine.");
 
+    expect(
+      await actions().draft(...as(secretary))({ id: "m1", version: 4, source: "ai_zoom" }),
+    ).toMatchObject({ issues: [expect.stringContaining("Zoom has no transcript")] as unknown });
+    fake.docs.set("meetings/m1", {
+      ...fake.docs.get("meetings/m1"),
+      room: { zoomRequestId: "z1", externalUrl: null },
+    });
+    const pulled = await actions().draft(...as(secretary))({
+      id: "m1",
+      version: 4,
+      source: "ai_zoom",
+    });
+    expect(pulled.ok).toBe(true);
+    expect((asked as unknown as DraftRequest).transcript).toBe("Rina: Zoom says hi. Again.");
+
     drafter = { draft: () => Promise.reject(new Error("anthropic_529")) };
     expect(
       await actions().draft(...as(secretary))({
         id: "m1",
-        version: 4,
+        version: 5,
         transcript: vtt,
         source: "ai_transcript",
       }),

@@ -14,7 +14,7 @@ import {
 import { can, type Principal, type ResourceContext } from "@website/permissions";
 import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
-import type { ZoomClient } from "./zoom-client";
+import { ZoomApiError, type ZoomClient } from "./zoom-client";
 
 export interface ZoomDeps {
   readonly zoom: Pick<
@@ -64,28 +64,30 @@ const zoomAudit =
       revertible: false,
     });
 
-/** The cron job's own entries (no staff actor). */
-const systemAudit: ZoomAudit = (before, after, current, next): AuditEvent => ({
-  id: randomUUID(),
-  occurredAt: next.updatedAt,
-  actor: { type: "system", id: "zoom-rooms" },
-  action: "UPDATE",
-  module: "zoom",
-  title: next.topic,
-  resourceType: "zoomRequest",
-  resourceId: next.id,
-  operationId: randomUUID(),
-  before,
-  after,
-  // The cron job only updates existing bookings.
-  versionBefore: (current as ZoomRequest).version,
-  versionAfter: next.version,
-  revertible: false,
-  revertOf: null,
-  request: { requestId: randomUUID() },
-  prevHash: null,
-  hash: null,
-});
+/** Entries of the system itself (cron job, webhooks): no staff actor. */
+export const systemZoomAudit =
+  (actor: string): ZoomAudit =>
+  (before, after, current, next): AuditEvent => ({
+    id: randomUUID(),
+    occurredAt: next.updatedAt,
+    actor: { type: "system", id: actor },
+    action: "UPDATE",
+    module: "zoom",
+    title: next.topic,
+    resourceType: "zoomRequest",
+    resourceId: next.id,
+    operationId: randomUUID(),
+    before,
+    after,
+    // The cron job only updates existing bookings.
+    versionBefore: (current as ZoomRequest).version,
+    versionAfter: next.version,
+    revertible: false,
+    revertOf: null,
+    request: { requestId: randomUUID() },
+    prevHash: null,
+    hash: null,
+  });
 
 /** Who may cancel: the requester, or whoever may approve bookings of that unit. */
 export const canCancelZoom = (
@@ -184,6 +186,8 @@ export function createZoomActions(deps: ZoomDeps) {
             joinUrl: null,
             shortUrl: null,
             roomError: null,
+            closedAt: null,
+            recordingUuids: [],
             deletedAt: null,
           };
         },
@@ -300,7 +304,7 @@ export function createZoomActions(deps: ZoomDeps) {
     const waiting = await deps.zoom.withoutRoom(10);
     let created = 0;
     for (const booking of waiting) {
-      if ((await ensureRoom(booking, systemAudit)).joinUrl) created += 1;
+      if ((await ensureRoom(booking, systemZoomAudit("zoom-rooms"))).joinUrl) created += 1;
     }
     return { tried: waiting.length, created };
   }
@@ -312,5 +316,33 @@ export function createZoomActions(deps: ZoomDeps) {
     cancel,
     saveSettings,
     retryRooms,
+  };
+}
+
+/**
+ * The VTT transcript of a meeting's Zoom room (F2 → F6 "Pull Zoom transcript"): the booking's
+ * cloud recording files, the TRANSCRIPT one downloaded with the API token. null when the meeting
+ * has no Zoom room, Zoom is not set up, or there is no transcript (yet).
+ */
+export function createZoomTranscript(deps: {
+  readonly booking: (id: string) => Promise<Pick<ZoomRequest, "zoomMeetingId"> | null>;
+  readonly client: Pick<ZoomClient, "get" | "download"> | null;
+}) {
+  return async (meeting: { room: { zoomRequestId: string | null } }): Promise<string | null> => {
+    const id = meeting.room.zoomRequestId;
+    const zoomMeetingId = id ? (await deps.booking(id))?.zoomMeetingId : null;
+    if (!zoomMeetingId || !deps.client) return null;
+    try {
+      const recordings = await deps.client.get<{
+        recording_files?: Array<{ file_type?: string; download_url?: string }>;
+      }>(`/meetings/${encodeURIComponent(zoomMeetingId)}/recordings`);
+      const file = recordings.recording_files?.find((f) => f.file_type === "TRANSCRIPT");
+      return file?.download_url
+        ? await (await deps.client.download(file.download_url)).text()
+        : null;
+    } catch (error) {
+      if (error instanceof ZoomApiError && error.status === 404) return null;
+      throw error;
+    }
   };
 }

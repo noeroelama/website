@@ -49,6 +49,32 @@ request ─(approval off, capacity free)─→ approved ─(room created)─→ 
 - **Client**: Server-to-Server OAuth token cached per process until a minute before it expires;
   15 s timeout; Zoom errors read from JSON (`message`) or XML (`<message>`).
 
+## Webhooks (F2)
+
+`POST /webhooks/zoom` (`apps/admin/src/server/zoom-webhook.ts`, listed in
+`ADMIN_WEBHOOK_PATHS`): body ≤ 256 KB → signature `x-zm-signature` = `v0=` + HMAC-SHA256 of
+`v0:{x-zm-request-timestamp}:{body}` with `ZOOM_WEBHOOK_SECRET_TOKEN`, 5-minute tolerance →
+`endpoint.url_validation` answered with `{ plainToken, encryptedToken }` → de-duplication
+(`webhookEvents`, key from event, meeting uuid and `event_ts`) → only OUR meetings (a booking
+with that `zoomMeetingId`; never matched by host e-mail) → the work. Failures are logged; Zoom
+always gets a short answer.
+
+- `zoomEventMeeting` reads the meeting from both payload shapes (`object.id/uuid` for meetings
+  and recordings, `object.meeting_id/meeting_uuid` for AI summaries).
+- `meeting.ended` after the booked end: one Zoom update turns the waiting room on and
+  join-before-host off, and the booking gets `closedAt` (once). An earlier "ended" (host left)
+  is ignored.
+- `recording.completed`: the session uuid is added to `recordingUuids` (the archive, F3, uses
+  them) and the requester is told; `meeting.summary_completed`: the requester is told. Keys
+  `zoom:{bookingId}:recording|summary:{uuid}`.
+- **Pull Zoom transcript** (minutes, F6): for a meeting whose room is a Zoom booking,
+  `GET /meetings/{zoomMeetingId}/recordings` → the `TRANSCRIPT` file downloaded with the API
+  token → the machine draft (`source = ai_zoom`). No recording yet (404 or no file) = a message.
+
+[OWNER] Zoom app → Feature → Event Subscriptions: endpoint `https://<admin domain>/webhooks/zoom`
+(production only), events `meeting.ended`, `recording.completed`,
+`meeting.summary_completed`; copy the Secret Token into `ZOOM_WEBHOOK_SECRET_TOKEN`.
+
 ## Permissions
 
 `zoom.read`, `zoom.edit` (book), `zoom.approve`, `zoom.long_duration`, `zoom.settings`.

@@ -81,7 +81,8 @@ scheduled ──(end time passes, read-time)──→ finished
   (Anthropic Messages API, `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, default
   `claude-sonnet-4-5`; forced tool output validated with `DraftOutputSchema`; 60 s timeout). No
   key = the "Draft from transcript" button is hidden and the action refuses.
-- Input: a pasted transcript or a Zoom `.vtt` file (step 7.7 adds the Zoom pull). `parseVtt`
+- Input: a pasted transcript, a Zoom `.vtt` file, or **Pull Zoom transcript** when the room is a
+  Zoom booking (`packages/domain/docs/zoom.md` → Webhooks). `parseVtt`
   drops the header, NOTE blocks, cue numbers and timings, keeps every spoken line, treats a
   "Name: " prefix as a speaker only when it occurs at least twice, joins a speaker's lines in a
   row.

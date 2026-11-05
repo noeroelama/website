@@ -145,6 +145,8 @@ export const zoomEnv = z.object({
   ZOOM_CLIENT_SECRET: nonEmpty,
   /** The licensed Zoom user the meetings are created for (e-mail or user id). */
   ZOOM_HOST_USER: nonEmpty,
+  /** Event Subscriptions → Secret Token (webhook signatures, F2). */
+  ZOOM_WEBHOOK_SECRET_TOKEN: nonEmpty,
 });
 
 /**

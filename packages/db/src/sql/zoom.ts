@@ -44,6 +44,8 @@ const toRequest = (id: string, data: Record<string, unknown>): ZoomRequest => ({
   joinUrl: (data["joinUrl"] as string | null) ?? null,
   shortUrl: (data["shortUrl"] as string | null) ?? null,
   roomError: (data["roomError"] as string | null) ?? null,
+  closedAt: toDate(data["closedAt"]),
+  recordingUuids: data["recordingUuids"] as string[],
   version: data["version"] as number,
   createdAt: toDate(data["createdAt"]) as Date,
   updatedAt: toDate(data["updatedAt"]) as Date,
@@ -130,6 +132,13 @@ export function createSqlZoomStore(db: Database) {
       return snapshot.docs
         .map((doc) => read(doc.id, doc.data()))
         .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+    },
+
+    /** The booking whose Zoom meeting this is (webhooks match OUR meeting ids only). */
+    async findByZoomMeetingId(zoomMeetingId: string): Promise<ZoomRequest | null> {
+      const snapshot = await requests.where("zoomMeetingId", "==", zoomMeetingId).limit(1).get();
+      const doc = snapshot.docs[0];
+      return doc ? read(doc.id, doc.data()) : null;
     },
 
     /** Approved bookings without a Zoom link yet (cron "zoom-rooms"), oldest first. */
