@@ -6,8 +6,12 @@ import {
   type Principal,
 } from "@website/permissions";
 
-/** What the side panel renders. Only label and link reach the browser. */
+/** Side-panel sections; each entry names its own, and a group's entries stay together. */
+type NavGroup = "Workspace" | "Content" | "Organization" | "Planning" | "Administration";
+
+/** What the side panel renders. Only group, label and link reach the browser. */
 export interface NavItem {
+  readonly group: NavGroup;
   readonly label: string;
   readonly href: string;
 }
@@ -25,43 +29,72 @@ interface NavEntry extends NavItem {
  * Hiding a link is a convenience, never the security boundary.
  */
 export const ADMIN_NAVIGATION: readonly NavEntry[] = [
-  { label: "Dashboard", href: "/", permission: null },
+  { group: "Workspace", label: "Dashboard", href: "/", permission: null },
   // Every staff member: their own follow-ups, dispositions and milestones (G1).
-  { label: "My Tasks", href: "/tasks", permission: null },
-  { label: "Calendar", href: "/calendar", permission: "calendar.read" },
-  { label: "Tools", href: "/tools", permission: "tools.read" },
-  { label: "Event", href: "/events", permission: "events.read", also: ["registrants"] },
-  { label: "Gallery", href: "/gallery", permission: "gallery.read" },
-  { label: "Article", href: "/articles", permission: "articles.read" },
-  { label: "Newsletter", href: "/newsletter", permission: "newsletter.read" },
-  { label: "Forms", href: "/forms", permission: "forms.read" },
-  { label: "Recruitment", href: "/recruitment", permission: "recruitment.read" },
-  { label: "Letters", href: "/letters", permission: "letters.read", also: ["letter_types"] },
-  { label: "Incoming letters", href: "/incoming", permission: "incoming.read" },
+  { group: "Workspace", label: "My Tasks", href: "/tasks", permission: null },
+  { group: "Workspace", label: "Calendar", href: "/calendar", permission: "calendar.read" },
+  { group: "Workspace", label: "Tools", href: "/tools", permission: "tools.read" },
   {
+    group: "Content",
+    label: "Event",
+    href: "/events",
+    permission: "events.read",
+    also: ["registrants"],
+  },
+  { group: "Content", label: "Gallery", href: "/gallery", permission: "gallery.read" },
+  { group: "Content", label: "Article", href: "/articles", permission: "articles.read" },
+  { group: "Content", label: "Newsletter", href: "/newsletter", permission: "newsletter.read" },
+  { group: "Content", label: "Forms", href: "/forms", permission: "forms.read" },
+  {
+    group: "Organization",
+    label: "Recruitment",
+    href: "/recruitment",
+    permission: "recruitment.read",
+  },
+  // Outgoing, incoming letters and letter types are tabs of one page.
+  {
+    group: "Organization",
+    label: "Letter",
+    href: "/letters",
+    permission: "letters.read",
+    also: ["letter_types", "incoming"],
+  },
+  {
+    group: "Organization",
     label: "Organizations",
     href: "/organizations",
     permission: "organizations.read",
     also: ["periods", "structure", "appointments"],
   },
-  { label: "Universities", href: "/universities", permission: "universities.read" },
+  {
+    group: "Organization",
+    label: "Universities",
+    href: "/universities",
+    permission: "universities.read",
+  },
+  { group: "Planning", label: "OKR", href: "/okr", permission: "okr.read" },
+  { group: "Planning", label: "Programmes", href: "/programs", permission: "programs.read" },
+  { group: "Planning", label: "LPJ", href: "/lpj", permission: "lpj.read" },
+  { group: "Planning", label: "Finance", href: "/finance", permission: "finance.read" },
+  { group: "Planning", label: "Meetings", href: "/meetings", permission: "meetings.read" },
+  { group: "Planning", label: "Zoom", href: "/zoom", permission: "zoom.read" },
   // People and their roles (users.read); the roles themselves are under "Edit Role" (roles.read).
-  { label: "Role Manager", href: "/roles", permission: "users.read", also: ["roles"] },
-  { label: "Audit Log", href: "/audit", permission: "audit.read" },
+  {
+    group: "Administration",
+    label: "Role Manager",
+    href: "/roles",
+    permission: "users.read",
+    also: ["roles"],
+  },
+  { group: "Administration", label: "Audit Log", href: "/audit", permission: "audit.read" },
   // E-mails sent by the system (failed ones can be retried). Profile and Account are on the web app.
-  { label: "Email", href: "/emails", permission: "messages.read" },
-  { label: "OKR", href: "/okr", permission: "okr.read" },
-  { label: "Programmes", href: "/programs", permission: "programs.read" },
-  { label: "LPJ", href: "/lpj", permission: "lpj.read" },
-  { label: "Finance", href: "/finance", permission: "finance.read" },
-  { label: "Meetings", href: "/meetings", permission: "meetings.read" },
-  { label: "Zoom", href: "/zoom", permission: "zoom.read" },
-  { label: "Settings", href: "/settings", permission: "settings.read" },
+  { group: "Administration", label: "Email", href: "/emails", permission: "messages.read" },
+  { group: "Administration", label: "Settings", href: "/settings", permission: "settings.read" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {
   if (!canAccessAdmin(principal)) return [];
   return ADMIN_NAVIGATION.filter(
     (entry) => entry.permission === null || canInSomeScope(principal, entry.permission),
-  ).map(({ label, href }) => ({ label, href }));
+  ).map(({ group, label, href }) => ({ group, label, href }));
 }

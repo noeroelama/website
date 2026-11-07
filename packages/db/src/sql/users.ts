@@ -4,6 +4,7 @@ import type { AuditEvent } from "@website/audit";
 import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import {
   DEFAULT_ROLE_ASSIGNMENTS,
+  isWebsiteRole,
   SYSTEM_ROLES,
   type RoleAssignment,
   type RoleDefinition,
@@ -102,7 +103,8 @@ export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory
           (id) => staffAllowed || (invited.get(id) as RoleDefinition).permissions.length === 0,
         );
         const after: RoleAssignment[] = [
-          ...before,
+          // One website role per account: an applied invite replaces it.
+          ...before.filter((a) => applied.length === 0 || !isWebsiteRole(a)),
           ...applied.map((roleId) => ({
             roleId,
             scope: { type: "global" } as const,
@@ -254,8 +256,8 @@ export function createSqlAccountStore(db: Database) {
 
     /**
      * Invites an e-mail into a role, with its audit entry, in one transaction: a new (or no
-     * longer pending) invite is created, a pending one gets the role added. Refuses a role the
-     * invite already has.
+     * longer pending) invite is created, a pending one gets this role instead of its old one (one
+     * website role per account). Refuses the role the invite already has.
      */
     invite(
       email: string,
@@ -278,7 +280,7 @@ export function createSqlAccountStore(db: Database) {
         }
         const next: Invite = {
           email: address,
-          roleIds: [...(pending?.roleIds ?? []), roleId],
+          roleIds: [roleId],
           status: "pending",
           invitedBy,
           createdAt: pending ? pending.createdAt : now,

@@ -6,15 +6,16 @@
  */
 :root {
   /* ---- Brand palette ---- */
-  --color-brand-950: #220709; /* darkest maroon */
-  --color-brand-800: #551d22; /* maroon */
-  --color-brand-600: #a63232; /* red */
-  --color-brand-200: #e8d8cb; /* sand */
-  --color-brand-50: #fbf3ec; /* cream */
+  --color-brand-950: #1f0006; /* darkest wine — text, site header/footer */
+  --color-brand-800: #3a000c; /* main brand colour — primary, side panel */
+  --color-brand-600: #a8173a; /* crimson — accent, danger, focus (6.8:1 on cream) */
+  --color-brand-400: #e6b15a; /* champagne gold — highlight on wine (9.1:1 on brand-800) */
+  --color-brand-200: #ecd7d6; /* rose sand — borders */
+  --color-brand-50: #fcf4f3; /* blush cream — page background */
   --color-white: #ffffff;
   --color-black: #000000;
-  --color-success: #166534;
-  --color-warning: #92400e;
+  --color-success: #1d6b47; /* deep emerald on cream (6:1) */
+  --color-warning: #8a4a0b; /* burnt amber on cream (6.3:1) */
 
   /* ---- Semantic colours (use these in components) ---- */
   --color-bg: var(--color-brand-50);
@@ -24,12 +25,14 @@
   --color-primary: var(--color-brand-800);
   --color-on-primary: var(--color-brand-50);
   --color-accent: var(--color-brand-600);
+  --color-highlight: var(--color-brand-400); /* admin pop: active nav, primary buttons, focus */
+  --color-on-highlight: var(--color-brand-950);
   --color-danger: var(--color-brand-600);
-  --color-danger-bright: #ef4444; /* vivid red — destructive emphasis (Delete selected) */
-  --color-gold: #e0b64e; /* soft gold — "… days left" countdown under Event Date */
-  --color-success-bright: #4ade80; /* light green on dark pages — "Sent", "+38 this month" */
-  --color-info: #60a5fa; /* soft blue on dark pages — "Scheduled", "Sends 3 Oct" */
-  --color-violet: #a78bfa; /* soft violet on dark pages — "Reverted" Audit Log entries */
+  --color-danger-bright: #e8445e; /* rose red — destructive emphasis (Delete selected) */
+  --color-gold: var(--color-brand-400); /* "… days left" countdown under Event Date */
+  --color-success-bright: #5fd39a; /* mint on dark pages — "Sent", "+38 this month" */
+  --color-info: #8bb4f2; /* periwinkle on dark pages — "Scheduled", "Sends 3 Oct" */
+  --color-violet: #c3a5f2; /* lavender on dark pages — "Reverted" Audit Log entries */
   --color-border: var(--color-brand-200);
   --color-border-subtle: color-mix(in srgb, var(--color-brand-800) 12%, transparent);
   --color-hover: color-mix(in srgb, var(--color-brand-800) 7%, transparent);
@@ -249,37 +252,6 @@ a {
 }
 .ui-status[data-status="warn"] {
   color: var(--color-warning);
-}
-
-.ui-workflow {
-  margin-bottom: var(--space-4);
-}
-.ui-workflow > summary {
-  cursor: pointer;
-  font-weight: var(--font-semibold);
-}
-.ui-workflow-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  padding: 0;
-  list-style: none;
-}
-.ui-workflow-steps > li {
-  padding: var(--space-1) var(--space-2-5);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-full);
-  opacity: 0.7;
-}
-.ui-workflow-steps > li[aria-current="step"] {
-  opacity: 1;
-  font-weight: var(--font-semibold);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-.ui-workflow-steps > li[data-branch] {
-  border-style: dashed;
 }
 
 .ui-form {

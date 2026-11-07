@@ -360,7 +360,7 @@ function FormsList({
             ) : null}
             {r.publicToken ? (
               <MenuItem icon="copy" onClick={() => copyLink(r)}>
-                Copy Link
+                Copy<span className="admin-long"> Link</span>
               </MenuItem>
             ) : null}
             {canSeeResponses ? (

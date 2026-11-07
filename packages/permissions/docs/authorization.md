@@ -21,6 +21,8 @@
   saved list (unknown entries dropped, edit/extras add read).
 - **Built-in roles** (`SYSTEM_ROLES`, code only, never editable): `superadmin` (every page) and
   `visitor` (every account, no admin pages). A stored role with one of these ids is ignored.
+  An account has one **website role** (`isWebsiteRole`: global, no period, not from an appointment;
+  a new one replaces it) plus any organizational roles (chapter / unit / period / appointment).
   Every account is a Visitor: `parseAssignments` adds the default role when it is missing and the
   next account change stores it.
 - **Assignments** in `users/{uid}.roleAssignments`:

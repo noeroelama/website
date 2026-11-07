@@ -95,7 +95,6 @@ interface Props {
   viewerId: string;
   desks: LetterDesks;
   canWrite: boolean;
-  canManageTypes: boolean;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -110,6 +109,27 @@ const ACTION_LABELS: Record<Exclude<LetterActionKey, "edit" | "delete">, string>
   issueFile: "Issue the stamped PDF",
   cancel: "Cancel letter",
 };
+
+/** The tabs of the Letter page (`/letters?tab=`); the server lists only those the viewer may read. */
+export type LetterSection = "outgoing" | "incoming" | "types";
+
+export function LetterSectionTabs({
+  sections,
+  active,
+}: {
+  sections: readonly { key: LetterSection; label: string }[];
+  active: LetterSection;
+}) {
+  const router = useRouter();
+  return (
+    <Tabs
+      label="Letter sections"
+      tabs={sections}
+      active={active}
+      onSelect={(key) => router.push(key === "outgoing" ? "/letters" : `/letters?tab=${key}`)}
+    />
+  );
+}
 
 export function LettersPage(props: Props) {
   const pathname = usePathname();
@@ -776,16 +796,6 @@ function LettersList(props: Props) {
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {props.canManageTypes ? (
-            <Button
-              variant="outline"
-              size="sm"
-              icon="settings"
-              onClick={() => router.push("/letters/types")}
-            >
-              Letter types
-            </Button>
-          ) : null}
           <div className="admin-fab">
             {canWrite ? (
               <Button

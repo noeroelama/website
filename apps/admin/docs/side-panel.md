@@ -2,10 +2,12 @@
 
 ## What it does
 
-The navigation column on every staff page: logo and organisation name, the MENU list, and the
-signed-in staff member with an account menu (Profile, Account, Log out). On screens
-narrower than 1024 px it becomes a drawer opened from a top bar, closed by the backdrop, Escape,
-or following a link.
+The navigation column on every staff page: logo and organisation name, the page menu in groups
+(Workspace, Content, Organization, Planning, Administration), and the signed-in staff member with
+an account menu (Profile, Account, Log out). Only the page menu scrolls (its scrollbar sits on the
+panel's right edge); the logo and the account stay in place. A click on a group's label collapses or
+opens that group (native `<details>`, open on load). Pages are 8 px apart, groups 12 px. On screens narrower than 1024 px it becomes a
+drawer opened from a top bar, closed by the backdrop, Escape, or following a link.
 
 ## Where it lives
 
@@ -23,7 +25,8 @@ or following a link.
 
 ## How to use it
 
-Add a page to the menu by adding one entry to `ADMIN_NAVIGATION` (label, href, permission). Put the
+Add a page to the menu by adding one entry to `ADMIN_NAVIGATION` (group, label, href, permission),
+next to the other entries of its group (a test checks that each group's entries stay together). Put the
 page under `src/app/(panel)/` so it gets the panel, and gate its content in the page itself:
 
 ```tsx

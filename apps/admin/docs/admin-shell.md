@@ -80,7 +80,8 @@ router.push("/things"); router.refresh();
   surface are CSS variables (`--admin-ink`, `--admin-field-bg`, `--admin-btn-bg`, `--admin-error`,
   …): cream fields and buttons on the dark canvas, dark ones on cream surfaces (cards, rows,
   menus — the list is at the top of "Dark admin pages"; add a new cream surface there).
-  Solid buttons (`primary`, `outline`) are cream, `danger` is red. Popups use `Modal` without a
+  `primary` buttons are champagne gold (`--color-highlight`, also the active nav item and
+  focus ring), `outline` is cream, `danger` is red. Popups use `Modal` without a
   theme class: big title, fields, then **Back** (`outline`, `chevronLeft`) and the action at the
   bottom right (`ConfirmDialog` does this for confirmations). Every popup is centred on the page;
   `className="admin-modal--side"` only makes it a cream surface (Article Settings, Role Manager).
@@ -109,6 +110,8 @@ router.push("/things"); router.refresh();
   (`.admin-table__sub`: links, e-mails) breaks anywhere, so a table is never wider than its card
   and never scrolls sideways. Do not add `white-space: nowrap`, ellipsis or a `min-width` to
   table rules (same test).
+- **No emoji.** Use `Icon` (`ui/icon.tsx`) or words instead (test "admin text" in
+  `tests/unit/design-tokens.test.ts`).
 - **Tabs.** Every tab row is `Tabs` (`ui/list-controls.tsx`). It scrolls sideways with no
   scrollbar (touch, trackpad, or mouse drag; a drag does not select a tab), its tabs stay inside
   its height, and its end fades into the background (`.admin-tabs`, test "admin tabs"). Page CSS
@@ -129,10 +132,13 @@ router.push("/things"); router.refresh();
   sort button.
   Wrap the header's Add / Export buttons in `<div className="admin-fab">` (a plain wrapper on a
   wide screen, floating bottom right on a phone). Row menus (`RowMenu`) stay in the page, so on a
-  phone their entries are the card's labelled buttons (Delete first); an icon button gets its
-  label from its `title`. A menu entry with `admin-row-menu__item--wide` / `--phone` shows only
+  phone their entries are the card's buttons, icon over label, in one row of equal 44 px
+  buttons: Delete (or `admin-table__delete`) far left, the row's own icon buttons (Edit) far
+  right in thumb reach; an icon button gets its label from its `title`. Card text is 12 px or
+  more (no `--text-2xs`), the title is 16 px semibold (two lines at most), the checkbox has a
+  44 px hit area, and a selected card gets a dark ring. A menu entry with `admin-row-menu__item--wide` / `--phone` shows only
   on a wide screen / a phone (Event: Publish + Make Private vs one Visibility), and a
-  `<span className="admin-long">` part of a label is dropped on a phone ("Delete Event" → "Delete").
+  `<span className="admin-long">` part of a label is dropped on a phone ("Delete Event" → "Delete"); keep phone labels to one or two short words.
   The bulk bar is fixed at the bottom; `Pagination` shows Prev / page /
   Next. Adding a page: use `ListCard` or `DataTable`, give columns these keys, and wrap its header
   buttons.
@@ -169,12 +175,13 @@ router.push("/things"); router.refresh();
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
   (`packages/domain/docs/newsletter.md`), Forms (`packages/domain/docs/forms.md`), Audit Log and
   Role Manager are the real, data-backed pages.
-- **Letters** (`/letters`, `src/components/letters-page.tsx`, model `letters-model.ts`): tabs
-  per desk (Drafts, To correct, To sign, To issue, Issued, Cancelled), the write/edit form and a
-  detail view with only the buttons the viewer's desks allow (`letterActions`); **Letter types**
-  at `/letters/types`. **Incoming letters** (`/incoming`, `incoming-page.tsx`, model
-  `incoming-model.ts`): agenda book, scan, disposition chain. Rules:
-  `packages/domain/docs/documents.md`.
+- **Letter** (`/letters`, `letters.read`): one page with the tabs Outgoing, Incoming
+  (`?tab=incoming`, needs `incoming.read`) and Letter types (`?tab=types`, needs
+  `letter_types.read`). **Outgoing** (`src/components/letters-page.tsx`, model
+  `letters-model.ts`): tabs per desk (Drafts, To correct, To sign, To issue, Issued, Cancelled),
+  the write/edit form and a detail view with only the buttons the viewer's desks allow
+  (`letterActions`). **Incoming** (`incoming-page.tsx`, model `incoming-model.ts`): agenda book,
+  scan, disposition chain. Rules: `packages/domain/docs/documents.md`.
 - **OKR** (`/okr`, `src/components/okr-page.tsx`): one period (`?period=`), its vision and
   mission, objectives with key results and achievement; popup forms share
   `src/components/program-ui.tsx` (`FormModal`, `Field`, `ChoiceField`, `PeriodSwitch`). Rules:
@@ -202,7 +209,7 @@ router.push("/things"); router.refresh();
   approve/reject, cancel, the invitation with its QR, and Settings (`zoom.settings`). Rules:
   `packages/domain/docs/zoom.md`.
 - **Settings** (`/settings`, `settings.read`; L3): sections Zoom, WhatsApp, other integrations and
-  Letters. Zoom settings stay on `/zoom` (`zoom.settings`) and the letterhead on `/letters/types`
+  Letters. Zoom settings stay on `/zoom` (`zoom.settings`) and the letterhead on `/letters?tab=types`
   (`letter_types.edit`); this page links to them. Integrations (WAHA, Cloud API, Zoom, Drive,
   Anthropic, short links, calendar feed, Resend) are configured only in the hosting app screen, so
   the page shows yes/no per integration and the messaging mode, never a value

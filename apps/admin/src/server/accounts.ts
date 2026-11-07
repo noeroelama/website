@@ -9,6 +9,7 @@ import { logSecurityEvent, type Logger } from "@website/observability";
 import {
   accountChangeRefusal,
   canAssignRole,
+  isWebsiteRole,
   sameScope,
   type AccountChangeRefusal,
   type Principal,
@@ -112,7 +113,11 @@ export function createAccountActions(deps: AccountDeps) {
     });
   };
 
-  /** Gives a role to an existing account (all checks; shared by the role popup and Add New People). */
+  /**
+   * Gives a role to an existing account (all checks; shared by the role popup and Add New People).
+   * A website role replaces the one the account has (one per account); removing it needs the
+   * same rights as giving it.
+   */
   const give = async (
     input: z.infer<typeof RoleChangeInput>,
     principal: Principal,
@@ -137,6 +142,16 @@ export function createAccountActions(deps: AccountDeps) {
       source: "manual",
       revokedAt: null,
     };
+    const website = isWebsiteRole(added);
+    // Read before the transaction (no network calls inside it); a newer account fails its version check.
+    const account = website ? await deps.accounts.get(input.uid) : null;
+    const replacedIds = (account?.roleAssignments ?? [])
+      .filter((a) => isWebsiteRole(a) && a.roleId !== role.id)
+      .map((a) => a.roleId);
+    // A deleted role grants nothing, so removing it needs no rights.
+    const replaced = (await Promise.all(replacedIds.map((id) => deps.roles.get(id)))).filter(
+      (r) => r !== null,
+    );
     const updated = await deps.accounts.change(
       input.uid,
       input.version,
@@ -149,14 +164,33 @@ export function createAccountActions(deps: AccountDeps) {
             superadminsAfter,
           }),
         );
+        for (const old of replaced) {
+          refuse(
+            accountChangeRefusal({
+              actor: principal,
+              targetUserId: input.uid,
+              role: old,
+              superadminsAfter,
+            }),
+          );
+        }
         if (current.roleAssignments.some((a) => sameAssignment(a, added))) {
           throw new RuleViolationError("The account already has this role in this scope.");
         }
       },
-      { roleAssignmentsFrom: (current) => [...current.roleAssignments, added] },
+      {
+        roleAssignmentsFrom: (current) => [
+          ...current.roleAssignments.filter((a) => !(website && isWebsiteRole(a))),
+          added,
+        ],
+      },
       accountAudit(audit),
     );
-    await afterChange(principal, updated, { added: role.id, scope: input.scope.type });
+    await afterChange(principal, updated, {
+      added: role.id,
+      scope: input.scope.type,
+      ...(replacedIds.length > 0 ? { replaced: replacedIds } : {}),
+    });
     return { version: updated.version };
   };
 

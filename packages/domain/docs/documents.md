@@ -29,7 +29,7 @@ with each step.
 
 `src/documents/letters.ts` (pure rules, from PPIDK `SuratService`), `packages/db/src/sql/letters.ts`
 (store), `apps/admin/src/server/letters.ts` (guarded actions), admin pages `/letters` and
-`/letters/types`.
+`/letters?tab=types`.
 
 ```text
 draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued ─→ cancelled
@@ -59,7 +59,7 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
 - **Audit**: module `letters` (CREATE / UPDATE per step / DELETE / PUBLISH = issue / UNPUBLISH =
   cancel), never revertible (a step is undone by returning or cancelling). The snapshot stores
   the body's length, not the body.
-- **Letter types** (`letter_types.edit`, `/letters/types`): name, code (unique case-insensitively,
+- **Letter types** (`letter_types.edit`, `/letters?tab=types`): name, code (unique case-insensitively,
   trimmed), number pattern (checked, with a live example), digits of `{nomor}`, Coordinator desk,
   recipient, whether the verification page shows the content to anyone, in use, order.
   Deactivated, never deleted. Give the permissions in the Role Manager, as in PPIDK: the
@@ -233,7 +233,7 @@ Anyone holding a letter checks it without signing in (PPIDK `VerifikasiControlle
 ## Incoming letters and dispositions (D6)
 
 `src/documents/incoming.ts` (rules, from PPIDK `AgendaService`), `packages/db/src/sql/incoming.ts`,
-`apps/admin/src/server/incoming.ts`, admin page `/incoming` (Admin page "Incoming letters":
+`apps/admin/src/server/incoming.ts`, admin page `/letters?tab=incoming` (Letter page, Incoming tab:
 read, edit, extra `dispose`).
 
 - **Record** (`incoming.edit`): sender, sender's number, subject, letter date, received date,

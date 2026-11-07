@@ -11,6 +11,7 @@ import { actionMessage, type ActionFailure } from "@/components/action-message";
 import { Field, FormModal, text } from "@/components/program-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { useState } from "react";
 
@@ -120,7 +121,7 @@ export function CalendarPage({
                           className="admin-table__sub"
                           title={item.warnings.join("; ")}
                         >
-                          {item.warnings.length ? "⚠ " : ""}
+                          {item.warnings.length ? <Icon name="warning" size={12} /> : null}
                           {item.href ? <a href={item.href}>{item.title}</a> : item.title}
                         </div>
                       ))}
@@ -141,7 +142,7 @@ export function CalendarPage({
               <li key={item.id}>
                 {item.day} {item.time ?? "(all day)"} · {CALENDAR_KIND_LABELS[item.kind]} ·{" "}
                 {item.href ? <a href={item.href}>{item.title}</a> : item.title}
-                {item.warnings.length ? ` · ⚠ ${item.warnings.join("; ")}` : ""}
+                {item.warnings.length ? ` · Warning: ${item.warnings.join("; ")}` : ""}
               </li>
             ))}
           </ul>

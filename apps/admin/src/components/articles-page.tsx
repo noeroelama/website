@@ -512,7 +512,7 @@ function ArticleList({
               </MenuItem>
             ) : null}
             <MenuItem icon="copy" onClick={() => copyLink(r)}>
-              Copy Link
+              Copy<span className="admin-long"> Link</span>
             </MenuItem>
             {canEdit ? (
               <>
@@ -525,7 +525,7 @@ function ArticleList({
                   danger
                   onClick={() => setDeleteConfirm({ kind: "one", article: r })}
                 >
-                  Delete Article
+                  Delete<span className="admin-long"> Article</span>
                 </MenuItem>
               </>
             ) : null}

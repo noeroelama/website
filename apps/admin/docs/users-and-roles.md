@@ -5,19 +5,25 @@
 One page, **Role Manager** in the side panel, for who holds which role and what each role may do.
 
 **People** (`/roles`, `users.read` / `users.edit`): everyone who holds a role other than the
-default role (Visitor: every account has it, so Visitors are never listed), plus pending invites (inactive and invited rows carry a badge). Tabs per role
-(with counts), search by name or e-mail, sort by name or role, 10/20/50 per page.
+default role (Visitor: every account has it, so Visitors are never listed), plus pending invites.
+Columns: Name, Role (the website role), Status (Active / Inactive / Invited) and Last login. Tabs
+per website role (with counts), search by name or e-mail, sort by any column, 10/20/50 per page.
+
+**Two kinds of roles.** The **website role** is given here by hand, everywhere and for any period:
+an account has **one** (besides Visitor); giving another replaces it (`isWebsiteRole` in
+`@website/permissions`; replacing needs the same rights as removing). **Organizational roles**
+come from one chapter, unit or board period, or from an appointment; they are kept apart, shown
+read-only in the popup and changed where they come from.
 
 - **Add New People**: "Email or Name" + a role. An e-mail or the exact name of an account gives
-  the role at once (all chapters, any period). An e-mail without an account becomes an
+  the role at once, replacing the account's website role. An e-mail without an account becomes an
   **invite**: stored, e-mailed, and applied when that e-mail signs in (see Invites below). A name
   that matches no account or several accounts is refused. While typing (2+ characters, 300 ms
   after the last key) up to 8 accounts whose e-mail or name starts with the text are suggested
   (`findPeople`, `users.edit`); arrow keys + Enter or a click picks one (its e-mail is used).
 - The **pencil** opens the person popup: status, last sign-in, sign-in methods (read on open),
-  the roles (remove with ×, add with "Add more roles", then Save) and Deactivate / Reactivate.
-  Roles given for one chapter, unit or period, or by an appointment, are shown without × (they
-  are changed where they come from). An invite's popup has "Cancel invite".
+  the website role (one dropdown; "Visitor (no role)" removes it, then Save), the organizational
+  roles (read-only) and Deactivate / Reactivate. An invite's popup has "Cancel invite".
 
 **Edit Role** (`/roles/edit`, `roles.read` / `roles.edit`): every role with its colour and
 permissions. **Add New Role** and the pencil open the role popup: name, preview, colour (10
@@ -61,16 +67,19 @@ that nobody holds (soft delete). Built-in roles (`superadmin`, Visitor) are read
   whose `chapterId` is one of them and no invites; the person popup opens only for such an
   account. Giving or removing roles, invites and (de)activating need `users.edit` globally.
 - Concurrent edits: each change sends the version it showed; a stale version → "changed by
-  someone else". The popup's Save runs one action per role change, in order.
+  someone else". The popup's Save runs one action: give the chosen role (it replaces the old one)
+  or, for Visitor, remove the role.
 
 ## Invites
 
-- `invites/{sha256(e-mail)}`: `email`, `roleIds` (still to give), `status`
+- `invites/{sha256(e-mail)}`: `email`, `roleIds` (the one role still to give; inviting again
+  replaces it), `status`
   (`pending` / `accepted` / `cancelled`), `invitedBy`, `version`, timestamps. Never deleted.
 - Applied in `recordSignIn` (website session, every sign-in) only for a **verified** e-mail.
   Roles without admin pages apply at once; staff roles only when the account has two sign-in
   methods (asked only then), otherwise they wait for a later sign-in. Each application is
-  audited (actor `system`, module `users`). A deleted role or one already held is dropped.
+  audited (actor `system`, module `users`) and replaces the account's website role. A deleted
+  role or one already held is dropped.
 - The e-mail (Indonesian / English) links to `WEB_URL/login`; key
   `invite:<id>:<version>` (one e-mail per invite change). Failed e-mails show on Messages.
 

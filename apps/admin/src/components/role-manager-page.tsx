@@ -52,7 +52,6 @@ import {
   joinPermissions,
   permissionGroups,
   personSortValue,
-  roleChanges,
   roleInk,
   roleTabs,
   splitPermissions,
@@ -78,6 +77,9 @@ type Result = { ok: true } | ActionFailure;
 const GLOBAL = { type: "global" } as const;
 const statusLabel = (status: PersonRow["status"]) =>
   status === "invited" ? "Invited" : label(USER_STATUS_LABELS, status);
+const STATUS_TONE = { active: "success", inactive: "danger", invited: "warn" } as const;
+const lastSignIn = (row: PersonRow) =>
+  formatUtc(row.lastSignInAt ? new Date(row.lastSignInAt) : null);
 
 /** A role badge in the role's colour (text colour picked for contrast). */
 export function RolePill({ name, color }: { name: string; color: string }) {
@@ -174,49 +176,50 @@ export function RoleManagerPeople({
     setSearchKey((k) => k + 1);
     table.setPage(1);
   };
-  const pills = (ids: readonly string[]) => (
-    <span className="admin-role-pills">
-      {ids.map((id) => (
-        <RolePill key={id} name={names.get(id) ?? id} color={roleById.get(id)?.color ?? ""} />
-      ))}
-    </span>
+  /** Role badge, or "Visitor" for an account with only organizational roles. */
+  const pill = (id: string | null) =>
+    id === null ? (
+      "Visitor"
+    ) : (
+      <RolePill name={names.get(id) ?? id} color={roleById.get(id)?.color ?? ""} />
+    );
+  const sortHeader = (key: PersonSortKey, text: string) => (
+    <SortHeader
+      label={text}
+      active={table.sort.key === key}
+      dir={table.sort.dir}
+      onClick={() => table.onSort(key)}
+    />
   );
 
   const columns: Column<PersonRow>[] = [
     {
       key: "name",
-      width: "45%",
-      header: (
-        <SortHeader
-          label="Name"
-          active={table.sort.key === "name"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("name")}
-        />
-      ),
+      width: "30%",
+      header: sortHeader("name", "Name"),
       render: (row) => (
         <span className="admin-role-person" title={row.email ?? undefined}>
           <span className="admin-table__title">{row.name}</span>
-          {row.status === "active" ? null : (
-            <Badge tone={row.status === "invited" ? "warn" : "danger"}>
-              {statusLabel(row.status)}
-            </Badge>
-          )}
         </span>
       ),
     },
     {
       key: "role",
-      width: "45%",
-      header: (
-        <SortHeader
-          label="Role"
-          active={table.sort.key === "role"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("role")}
-        />
-      ),
-      render: (row) => (row.roleIds.length > 0 ? pills(row.roleIds) : "-"),
+      width: "22%",
+      header: sortHeader("role", "Role"),
+      render: (row) => pill(row.roleId),
+    },
+    {
+      key: "status",
+      width: "16%",
+      header: sortHeader("status", "Status"),
+      render: (row) => <Badge tone={STATUS_TONE[row.status]}>{statusLabel(row.status)}</Badge>,
+    },
+    {
+      key: "lastSignIn",
+      width: "24%",
+      header: sortHeader("lastSignIn", "Last login"),
+      render: lastSignIn,
     },
     {
       key: "edit",
@@ -302,7 +305,7 @@ export function RoleManagerPeople({
           key={editing.id}
           row={editing}
           roles={roles.filter((r) => r.id !== DEFAULT_ROLE_ID)}
-          pills={pills}
+          pill={pill}
           canEdit={canEdit && editing.uid !== selfId}
           self={editing.uid === selfId}
           reauthUrl={reauthUrl}
@@ -537,11 +540,11 @@ function AddPeopleModal({
   );
 }
 
-/** The person popup: roles (give / remove), sign-in methods, deactivate; or an invite. */
+/** The person popup: the website role, sign-in methods, deactivate; or an invite. */
 function PersonModal({
   row,
   roles,
-  pills,
+  pill,
   canEdit,
   self,
   reauthUrl,
@@ -550,7 +553,7 @@ function PersonModal({
 }: {
   row: PersonRow;
   roles: RoleOption[];
-  pills: (ids: readonly string[]) => ReactNode;
+  pill: (id: string | null) => ReactNode;
   canEdit: boolean;
   self: boolean;
   reauthUrl: string | null;
@@ -558,15 +561,13 @@ function PersonModal({
   onDone: (message: string) => void;
 }) {
   const router = useRouter();
-  const [chosen, setChosen] = useState<string[]>(() => [...row.removable]);
+  const [chosen, setChosen] = useState(row.roleId ?? ""); // "" = Visitor (no website role)
   const [methods, setMethods] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const uid = row.uid;
   const names = new Map(roles.map((r) => [r.id, r]));
-  const fixed = row.roleIds.filter((id) => !row.removable.includes(id));
-  const addable = roles.filter((r) => !row.roleIds.includes(r.id) && !chosen.includes(r.id));
 
   // Sign-in methods are read on demand (one Firebase Auth call per opened popup).
   useEffect(() => {
@@ -595,28 +596,21 @@ function PersonModal({
     };
   }, [uid]);
 
-  /** Runs the actions one after the other; each returns the account's next version. */
+  /** A new role replaces the old one on the server; Visitor removes it. */
   const save = async () => {
-    if (uid === null) return;
-    const { add, remove } = roleChanges(row.removable, chosen);
+    const before = row.roleId ?? "";
+    if (uid === null || chosen === before) return onDone("Nothing changed");
     setBusy(true);
     setError(null);
-    let version = row.version;
-    for (const [run, roleId] of [
-      ...remove.map((id) => [revokeRoleAction, id] as const),
-      ...add.map((id) => [assignRoleAction, id] as const),
-    ]) {
-      const result = await run({ uid, version, roleId, scope: GLOBAL, periodId: null });
-      if (!result.ok) {
-        setBusy(false);
-        router.refresh();
-        return setError(actionMessage(result));
-      }
-      version = result.data.version;
-    }
+    const change = { uid, version: row.version, scope: GLOBAL, periodId: null };
+    const result =
+      chosen === ""
+        ? await revokeRoleAction({ ...change, roleId: before })
+        : await assignRoleAction({ ...change, roleId: chosen });
     setBusy(false);
     router.refresh();
-    onDone(add.length + remove.length > 0 ? `Roles of ${row.name} saved` : "Nothing changed");
+    if (!result.ok) return setError(actionMessage(result));
+    onDone(`Role of ${row.name} saved`);
   };
   const run = async (action: () => Promise<Result>, message: string) => {
     setBusy(true);
@@ -661,13 +655,13 @@ function PersonModal({
           <dt>Email</dt>
           <dd>{row.email}</dd>
           <dt>Role</dt>
-          <dd>{pills(row.roleIds)}</dd>
+          <dd>{pill(row.roleId)}</dd>
           <dt>Invited</dt>
           <dd>{formatUtc(row.createdAt ? new Date(row.createdAt) : null)}</dd>
         </dl>
         <p className="admin-role-note">
-          The roles are given when this e-mail signs in for the first time (verified e-mail). Staff
-          roles wait until the account has a second sign-in method.
+          The role is given when this e-mail signs in for the first time (verified e-mail). A staff
+          role waits until the account has a second sign-in method.
         </p>
         <ActionError text={error} reauthUrl={reauthUrl} />
       </Modal>
@@ -711,49 +705,42 @@ function PersonModal({
       </dl>
 
       <div className="admin-field">
-        <span className="admin-field__label">Role</span>
-        <span className="admin-role-pills">
-          {chosen.map((id) => (
-            <RemovableChip
-              key={id}
-              label={names.get(id)?.name ?? id}
-              onRemove={canEdit ? () => setChosen((c) => c.filter((x) => x !== id)) : null}
-            />
+        <label className="admin-field__label" htmlFor="person-role">
+          Website role
+        </label>
+        <Select
+          id="person-role"
+          className="admin-select"
+          disabled={!canEdit}
+          value={chosen}
+          onChange={(e) => setChosen(e.target.value)}
+        >
+          <option value="">Visitor (no role)</option>
+          {roles.map((role) => (
+            <option key={role.id} value={role.id}>
+              {role.name}
+            </option>
           ))}
-          {fixed.map((id) => (
-            <span
-              key={id}
-              title="Given for one chapter, unit or period, or by an appointment: changed there"
-            >
-              <RemovableChip label={names.get(id)?.name ?? id} onRemove={null} />
-            </span>
-          ))}
-          {chosen.length + fixed.length === 0 ? "-" : null}
-        </span>
-        {canEdit && addable.length > 0 ? (
-          <Select
-            className="admin-select"
-            aria-label="Add a role"
-            value=""
-            onChange={(e) => {
-              const id = e.target.value;
-              if (id) setChosen((c) => [...c, id]);
-            }}
-          >
-            <option value="">Add more roles</option>
-            {addable.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </Select>
-        ) : null}
+        </Select>
         <p className="admin-role-note">
           {self
             ? "You cannot change your own account."
-            : "Staff roles need two sign-in methods on the account. A change signs the person out."}
+            : "One role per account: a new one replaces it. Staff roles need two sign-in methods on the account. A change signs the person out."}
         </p>
       </div>
+      {row.orgRoleIds.length > 0 ? (
+        <div className="admin-field">
+          <span className="admin-field__label">Organizational roles</span>
+          <span
+            className="admin-role-pills"
+            title="Given for one chapter, unit or board period, or by an appointment: changed there"
+          >
+            {row.orgRoleIds.map((id) => (
+              <RemovableChip key={id} label={names.get(id)?.name ?? id} onRemove={null} />
+            ))}
+          </span>
+        </div>
+      ) : null}
 
       {canEdit ? (
         <div>

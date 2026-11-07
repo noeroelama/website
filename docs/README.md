@@ -50,7 +50,6 @@ and link to it from the others.
 | Role Manager: people, invites, roles (staff second sign-in method)     | [apps/admin/docs/users-and-roles.md](../apps/admin/docs/users-and-roles.md)                 |
 | Design tokens (colours, Poppins type scale, spacing)                   | [packages/ui/docs/design-tokens.md](../packages/ui/docs/design-tokens.md)                   |
 | Error pages (401, 403, 404, 500)                                       | [packages/ui/docs/error-pages.md](../packages/ui/docs/error-pages.md)                       |
-| In-page workflow guides (G5)                                           | [packages/ui/docs/workflow-guide.md](../packages/ui/docs/workflow-guide.md)                 |
 
 Add a row here when you add a feature doc.
 

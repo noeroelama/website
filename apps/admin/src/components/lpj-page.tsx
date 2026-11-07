@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { label, LPJ_DESK_LABELS, LPJ_STATUS_LABELS } from "@/labels";
 
@@ -215,7 +216,8 @@ export function LpjReportPage({ lpj, can }: ReportProps) {
           <ul>
             {plan.milestones.map((m) => (
               <li key={m.title}>
-                {m.done ? "✓" : "✗"} {m.title}
+                <Icon name={m.done ? "check" : "x"} size={14} /> {m.done ? "Done" : "Open"}:{" "}
+                {m.title}
               </li>
             ))}
           </ul>

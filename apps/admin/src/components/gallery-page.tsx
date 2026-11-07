@@ -393,7 +393,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               </>
             ) : null}
             <MenuItem icon="copy" onClick={() => copyLink(r)}>
-              Copy Link
+              Copy<span className="admin-long"> Link</span>
             </MenuItem>
             {canEdit ? (
               <>
@@ -403,7 +403,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                   danger
                   onClick={() => setDeleteConfirm({ kind: "one", album: r })}
                 >
-                  Delete Gallery
+                  Delete<span className="admin-long"> Gallery</span>
                 </MenuItem>
               </>
             ) : null}

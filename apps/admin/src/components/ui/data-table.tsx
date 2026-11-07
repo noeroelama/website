@@ -62,9 +62,7 @@ export interface DataTableProps<T> {
 function DefaultEmpty({ text }: { text?: string | undefined }) {
   return (
     <div className="admin-empty">
-      <span className="admin-empty__icon" aria-hidden="true">
-        🗂️
-      </span>
+      <Icon name="inbox" size={32} />
       <span className="admin-empty__title">{text ?? "No data"}</span>
       <span className="admin-empty__hint">No data available yet.</span>
     </div>

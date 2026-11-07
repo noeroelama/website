@@ -264,7 +264,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
                 </MenuItem>
                 <MenuDivider />
                 <MenuItem icon="trash" danger onClick={() => setDeleting(r)}>
-                  Delete Recruitment
+                  Delete<span className="admin-long"> Recruitment</span>
                 </MenuItem>
               </>
             ) : null}

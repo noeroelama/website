@@ -8,14 +8,13 @@ Shared presentational React components.
 
 ## Structure
 
-| Export                  | Purpose                                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `AppShell`              | Page layout with title                                                                           |
-| `StatusBadge`           | Small status label                                                                               |
-| `ErrorPage`             | Generic 401/403/404/500 page ([docs](docs/error-pages.md))                                       |
-| `WorkflowGuide`         | Collapsible status chain of a module, current stage highlighted ([docs](docs/workflow-guide.md)) |
-| `initials`, `shortName` | Avatar initials ("NK") and a name cut to 13 characters + "..." when over 16                      |
-| `./styles.css`          | Design tokens and base styles ([docs](docs/design-tokens.md))                                    |
+| Export                  | Purpose                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `AppShell`              | Page layout with title                                                      |
+| `StatusBadge`           | Small status label                                                          |
+| `ErrorPage`             | Generic 401/403/404/500 page ([docs](docs/error-pages.md))                  |
+| `initials`, `shortName` | Avatar initials ("NK") and a name cut to 13 characters + "..." when over 16 |
+| `./styles.css`          | Design tokens and base styles ([docs](docs/design-tokens.md))               |
 
 ## Rules
 

@@ -105,11 +105,11 @@ export default async function EmailPage({
                 key: "average",
                 header: "Average",
                 align: "right",
-                render: (row) => (row.average === null ? "—" : `${row.average} ★`),
+                render: (row) => (row.average === null ? "—" : `${row.average} / 5`),
               },
               {
                 key: "distribution",
-                header: "1★ … 5★",
+                header: "1 … 5 stars",
                 render: (row) => row.distribution.join(" · "),
               },
             ]}

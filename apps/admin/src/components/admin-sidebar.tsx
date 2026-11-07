@@ -57,6 +57,13 @@ export function AdminSidebar(props: {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const drawerVisible = isDesktop || drawerOpen;
+  // The server sends the pages in display order, each group's pages together.
+  const groups: { label: string; items: NavItem[] }[] = [];
+  for (const item of props.items) {
+    const last = groups.at(-1);
+    if (last?.label === item.group) last.items.push(item);
+    else groups.push({ label: item.group, items: [item] });
+  }
   // unoptimized: the Next dev image optimizer returns 500 for this webp; the plain <img> path is
   // proven to work (see tools-page QR logo). The logo image already contains the organisation name.
   const logo = (
@@ -136,27 +143,33 @@ export function AdminSidebar(props: {
           )}
         </div>
 
-        <nav className="admin-nav" aria-labelledby={`${drawerId}-menu`}>
-          <p id={`${drawerId}-menu`} className="admin-menu-label">
-            Menu
-          </p>
-          <ul className="admin-nav-list">
-            {props.items.map((item) => {
-              const active = isActive(pathname, item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="admin-nav-link"
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setDrawerOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        <nav className="admin-nav" aria-label="Menu">
+          {groups.map((group, i) => (
+            // A group collapses from its label (native <details>); every group starts open.
+            <details key={group.label} className="admin-nav-group" open>
+              <summary id={`${drawerId}-group-${i}`} className="admin-menu-label">
+                {group.label}
+                <ChevronIcon />
+              </summary>
+              <ul className="admin-nav-list" aria-labelledby={`${drawerId}-group-${i}`}>
+                {group.items.map((item) => {
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className="admin-nav-link"
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setDrawerOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          ))}
         </nav>
 
         <div className="admin-footer">
@@ -320,6 +333,14 @@ function MenuIcon() {
   return (
     <Svg>
       <path d="M4 6h16M4 12h16M4 18h16" />
+    </Svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <Svg>
+      <path d="m6 9 6 6 6-6" />
     </Svg>
   );
 }

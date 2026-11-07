@@ -6,7 +6,7 @@ import { incomingActions } from "@/server/wiring";
 
 // Thin server-action wrappers: every rule lives in src/server/incoming.ts (createGuardedAction).
 const done = <T extends { ok: boolean }>(result: T): T => {
-  if (result.ok) revalidatePath("/incoming");
+  if (result.ok) revalidatePath("/letters");
   return result;
 };
 

@@ -72,7 +72,7 @@ export default async function SettingsPage() {
           <p>
             The letterhead and letter types are edited on{" "}
             {can(principal, "letter_types.read") ? (
-              <a href="/letters/types">Letter types</a>
+              <a href="/letters?tab=types">Letter types</a>
             ) : (
               "the Letter types page"
             )}

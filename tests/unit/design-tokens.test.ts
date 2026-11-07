@@ -22,7 +22,7 @@ const styleSources = [
 
 describe("design tokens (one global stylesheet shared by every app)", () => {
   it("defines the brand palette", () => {
-    for (const hex of ["#220709", "#551d22", "#a63232", "#e8d8cb", "#fbf3ec"]) {
+    for (const hex of ["#1f0006", "#3a000c", "#a8173a", "#e6b15a", "#ecd7d6", "#fcf4f3"]) {
       expect(tokens.toLowerCase()).toContain(hex);
     }
   });
@@ -278,6 +278,32 @@ describe("admin tables on a phone", () => {
     expect(status).toMatch(/grid-row:\s*2/);
   });
 
+  it("a card is readable and thumb-friendly: no micro text, 44 px targets, selection shows", () => {
+    // 11 px is for dense desktop tables only; on a phone every card text is 12 px or more.
+    expect(block).not.toMatch(/--text-2xs/);
+    // Long selectors are wrapped over lines (prettier) and hold commas inside :is().
+    const button = rules
+      .filter((rule) =>
+        rule.selector
+          .replace(/\s+/g, " ")
+          .endsWith('td[data-card="actions"] :is(.admin-row-menu__item, .admin-btn--icon)'),
+      )
+      .map((rule) => rule.body)
+      .join("");
+    expect(button).toMatch(/min-height:\s*var\(--size-touch\)/);
+    expect(bodyOf('.admin-dark-page .admin-table td[data-card="lead"] .admin-checkbox')).toMatch(
+      /width:\s*var\(--size-touch\)/,
+    );
+    expect(bodyOf(".admin-list-summary__btn")).toMatch(/min-height:\s*var\(--size-touch\)/);
+    // The action row is one line of equal buttons (no orphan button on a second line).
+    expect(bodyOf('.admin-dark-page .admin-table td[data-card="actions"]')).toMatch(
+      /grid-auto-columns:\s*minmax\(0,\s*1fr\)/,
+    );
+    expect(
+      bodyOf(".admin-dark-page .admin-table tbody tr:has(.admin-table__checkbox:checked)"),
+    ).toMatch(/box-shadow:/);
+  });
+
   it("the Add / Export buttons float at the bottom right and the bulk bar sticks to the bottom", () => {
     expect(bodyOf(".admin-fab")).toMatch(/position:\s*fixed/);
     expect(bodyOf(".admin-dark-page .admin-list-card .admin-bulkbar")).toMatch(/position:\s*fixed/);
@@ -288,5 +314,61 @@ describe("admin tables on a phone", () => {
         .map((rule) => rule.body)
         .join(""),
     ).toMatch(/display:\s*contents/);
+  });
+});
+
+describe("admin side panel", () => {
+  const body = (selector: string) =>
+    adminRules
+      .filter((rule) => rule.selector.split(/,\s*/).includes(selector))
+      .map((rule) => rule.body)
+      .join("");
+
+  it("scrolls only the page menu; the logo and the account stay in place", () => {
+    expect(body(".admin-panel")).not.toMatch(/overflow(-y)?:\s*auto/);
+    expect(body(".admin-panel")).toMatch(/overflow:\s*hidden/);
+    expect(body(".admin-nav")).toMatch(/overflow-y:\s*auto/);
+    expect(body(".admin-nav")).toMatch(/min-height:\s*0/);
+    expect(body(".admin-nav")).toMatch(/flex:\s*1/);
+  });
+
+  it("puts 8px between pages and 12px between menu groups", () => {
+    expect(body(".admin-nav-list")).toMatch(/gap:\s*var\(--space-2\)/);
+    expect(body(".admin-nav")).toMatch(/gap:\s*var\(--space-3\)/);
+    const sidebar = readFileSync(join(ROOT, "apps/admin/src/components/admin-sidebar.tsx"), "utf8");
+    expect(sidebar).toMatch(/groups\.map\([\s\S]*className="admin-menu-label"/);
+  });
+
+  it("puts the menu's scrollbar on the very right edge of the panel", () => {
+    // The scroll box reaches both edges of the panel; its padding keeps the links where they were.
+    expect(body(".admin-nav")).toMatch(/margin-inline:\s*calc\(-1 \* var\(--space-3-5\)\)/);
+    expect(body(".admin-nav")).toMatch(/padding-inline:\s*var\(--space-3-5\)/);
+    expect(body(".admin-panel")).toMatch(/padding:[^;]*var\(--space-3-5\)/);
+  });
+
+  it("lets each menu group collapse (open by default)", () => {
+    const sidebar = readFileSync(join(ROOT, "apps/admin/src/components/admin-sidebar.tsx"), "utf8");
+    expect(sidebar).toMatch(
+      /<details[^>]*\bopen\b[\s\S]*?<summary[^>]*className="admin-menu-label"/,
+    );
+    expect(body(".admin-menu-label::-webkit-details-marker")).toMatch(/display:\s*none/);
+  });
+});
+
+describe("admin text", () => {
+  it("shows no workflow guides", () => {
+    for (const path of files("apps/admin/src", [".ts", ".tsx"])) {
+      expect(readFileSync(join(ROOT, path), "utf8"), path).not.toMatch(/WorkflowGuide|WORKFLOWS/);
+    }
+    expect(styleSources.some((path) => path.includes("workflow-guide"))).toBe(false);
+    expect(tokens).not.toContain("ui-workflow");
+  });
+
+  it("has no emoji (icons come from ui/icon.tsx)", () => {
+    const emoji = /\p{Extended_Pictographic}|[\u2605\u2713\u2714\u2717\u2718]/u;
+    for (const path of files("apps/admin/src", [".ts", ".tsx", ".css"])) {
+      const lines = readFileSync(join(ROOT, path), "utf8").split("\n");
+      lines.forEach((line, i) => expect(line, `${path}:${i + 1}`).not.toMatch(emoji));
+    }
   });
 });

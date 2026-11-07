@@ -47,33 +47,25 @@ const staff = (roleId: string, scope: Scope = { type: "global" }, active = true)
 const labels = (principal: Principal) => navigationFor(principal).map((item) => item.label);
 
 describe("admin side panel navigation", () => {
-  it("lists every page, in the designed order, for a superadmin", () => {
-    expect(labels(staff(SUPERADMIN_ROLE_ID))).toEqual([
-      "Dashboard",
-      "My Tasks",
-      "Calendar",
-      "Tools",
-      "Event",
-      "Gallery",
-      "Article",
-      "Newsletter",
-      "Forms",
-      "Recruitment",
-      "Letters",
-      "Incoming letters",
-      "Organizations",
-      "Universities",
-      "Role Manager",
-      "Audit Log",
-      "Email",
-      "OKR",
-      "Programmes",
-      "LPJ",
-      "Finance",
-      "Meetings",
-      "Zoom",
-      "Settings",
-    ]);
+  it("lists every page, in the designed order and groups, for a superadmin", () => {
+    const groups = new Map<string, string[]>();
+    for (const item of navigationFor(staff(SUPERADMIN_ROLE_ID))) {
+      groups.set(item.group, [...(groups.get(item.group) ?? []), item.label]);
+    }
+    expect(Object.fromEntries(groups)).toEqual({
+      Workspace: ["Dashboard", "My Tasks", "Calendar", "Tools"],
+      Content: ["Event", "Gallery", "Article", "Newsletter", "Forms"],
+      Organization: ["Recruitment", "Letter", "Organizations", "Universities"],
+      Planning: ["OKR", "Programmes", "LPJ", "Finance", "Meetings", "Zoom"],
+      Administration: ["Role Manager", "Audit Log", "Email", "Settings"],
+    });
+  });
+
+  it("keeps each group's pages together (the side panel starts a group when it changes)", () => {
+    const order = ADMIN_NAVIGATION.map((entry) => entry.group).filter(
+      (group, i, all) => group !== all[i - 1],
+    );
+    expect(new Set(order).size).toBe(order.length);
   });
 
   it("shows only the pages a role may open", () => {
@@ -113,9 +105,9 @@ describe("admin side panel navigation", () => {
     expect(navigationFor(staff(SUPERADMIN_ROLE_ID, { type: "global" }, false))).toEqual([]);
   });
 
-  it("never sends permission names to the browser, only label and href", () => {
+  it("never sends permission names to the browser, only group, label and href", () => {
     for (const item of navigationFor(staff(SUPERADMIN_ROLE_ID))) {
-      expect(Object.keys(item).sort()).toEqual(["href", "label"]);
+      expect(Object.keys(item).sort()).toEqual(["group", "href", "label"]);
     }
   });
 

@@ -204,6 +204,48 @@ describe("Role Manager: give and remove roles", () => {
     ).toEqual({ ok: false, error: "reauthenticate" });
   });
 
+  it("an account has one website role: a new one replaces it, organizational roles stay", async () => {
+    const actions = createAccountActions(deps);
+    fake.docs.set("users/eve", {
+      uid: "eve",
+      ...user(["editor"]),
+      roleAssignments: [
+        { roleId: "editor", scope: global },
+        {
+          roleId: "user_manager",
+          scope: { type: "orgUnit", orgUnitId: "media" },
+          periodId: "p2026",
+          source: "appointment",
+          appointmentId: "a1",
+        },
+      ],
+      roleIds: ["editor", "user_manager"],
+    });
+    expect(
+      await actions.assignRole(...as("boss"))({ ...giveEditor, uid: "eve", roleId: "alumni" }),
+    ).toMatchObject({ ok: true, data: { version: 2 } });
+    expect(fake.docs.get("users/eve")?.["roleIds"]).toEqual(["visitor", "user_manager", "alumni"]);
+    expect(logLines.join()).toContain('"replaced":["editor"]');
+
+    // Replacing a role is removing it: only by someone who could give it (anti-escalation).
+    await actions.assignRole(...as("boss"))(giveEditor);
+    expect(
+      await actions.assignRole(...as("manager"))({ ...giveEditor, version: 2, roleId: "alumni" }),
+    ).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("permissions you hold")],
+    });
+    expect(fake.docs.get("users/ana")?.["roleIds"]).toEqual(["visitor", "editor"]);
+
+    // The last active superadmin keeps the role.
+    fake.docs.set("users/boss2", { uid: "boss2", ...user(["superadmin"]) });
+    fake.docs.set("users/boss", { uid: "boss", ...user(["superadmin"]), status: "inactive" });
+    expect(
+      await actions.assignRole(...as("manager"))({ ...giveEditor, uid: "boss2", roleId: "alumni" }),
+    ).toMatchObject({ error: "refused" });
+    expect(fake.docs.get("users/boss2")?.["roleIds"]).toEqual(["superadmin"]);
+  });
+
   it("removes a role, refuses duplicates and unknown roles, and keeps chapter scopes apart", async () => {
     const actions = createAccountActions(deps);
     const jp = { type: "chapter", chapterId: "jp" } as const;
@@ -487,15 +529,16 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
       ok: true,
       data: { invited: false },
     });
+    // One website role: the second replaces the first.
     expect(fake.docs.get("users/ana")).toMatchObject({
-      roleIds: ["visitor", "editor", "user_manager"],
+      roleIds: ["visitor", "user_manager"],
       version: 3,
     });
     expect(revokeSessions).toHaveBeenCalledWith("ana");
     expect(invitesSent).toEqual([]);
 
     // The same rules as giving a role on the account itself.
-    expect(await add({ person: "ana@example.org", roleId: "editor" })).toMatchObject({
+    expect(await add({ person: "ana@example.org", roleId: "user_manager" })).toMatchObject({
       error: "refused",
       issues: [expect.stringContaining("already has")],
     });
@@ -567,7 +610,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     });
   });
 
-  it("invites an e-mail without an account: stored once per role, audited and e-mailed", async () => {
+  it("invites an e-mail without an account: one role (a new one replaces it), audited and e-mailed", async () => {
     const add = createAccountActions(deps).addPerson(...as("boss"));
     expect(await add({ person: "New.Person@Example.org", roleId: "editor" })).toEqual({
       ok: true,
@@ -590,13 +633,13 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     expect(await add({ person: "new.person@example.org", roleId: "alumni" })).toMatchObject({
       ok: true,
     });
-    expect(inviteDoc()[0]).toMatchObject({ roleIds: ["editor", "alumni"], version: 2 });
+    expect(inviteDoc()[0]).toMatchObject({ roleIds: ["alumni"], version: 2 });
     expect(auditOf("invite").map((d) => [d["action"], d["module"], d["revertible"]])).toEqual([
       ["CREATE", "users", false],
       ["UPDATE", "users", false],
     ]);
     expect(await deps.accounts.listInvites()).toEqual([
-      expect.objectContaining({ email: "new.person@example.org", roleIds: ["editor", "alumni"] }),
+      expect.objectContaining({ email: "new.person@example.org", roleIds: ["alumni"] }),
     ]);
 
     // Escalation: nobody invites into a role they could not give.
@@ -638,10 +681,6 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
       person: "neo@example.org",
       roleId: "editor",
     });
-    await createAccountActions(deps).addPerson(...as("boss"))({
-      person: "neo@example.org",
-      roleId: "alumni",
-    });
     const users = createSqlUserStore(fake.db as unknown as Db);
     const neo = { uid: "neo", email: "Neo@example.org", name: "Neo" };
     const two = vi.fn(() => Promise.resolve(false));
@@ -651,15 +690,21 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
       roleIds: ["visitor"],
     });
     expect(two).not.toHaveBeenCalled();
-    // Verified, one sign-in method: the role without admin pages applies, the staff role waits.
+    // Verified, one sign-in method: the staff role waits.
     expect(await users.recordSignIn({ ...neo, emailVerified: true }, at, two)).toEqual({
-      roleIds: ["visitor", "alumni"],
+      roleIds: ["visitor"],
     });
     expect(inviteDoc()[0]).toMatchObject({ status: "pending", roleIds: ["editor"] });
-    // After adding a passkey, the next sign-in applies the rest.
+    // Meanwhile neo gets a role in the Role Manager.
+    await createAccountActions(deps).assignRole(...as("boss"))({
+      ...giveEditor,
+      uid: "neo",
+      roleId: "alumni",
+    });
+    // After adding a passkey, the next sign-in applies the invite, replacing that role.
     two.mockResolvedValue(true);
     expect(await users.recordSignIn({ ...neo, emailVerified: true }, at, two)).toEqual({
-      roleIds: ["visitor", "alumni", "editor"],
+      roleIds: ["visitor", "editor"],
     });
     expect(inviteDoc()[0]).toMatchObject({ status: "accepted", roleIds: [] });
     expect(fake.docs.get("users/neo")?.["roleAssignments"]).toContainEqual(
@@ -668,7 +713,7 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     const bySystem = auditOf("user").filter(
       (d) => (d["actor"] as { type: string }).type === "system",
     );
-    expect(bySystem).toHaveLength(2);
+    expect(bySystem).toHaveLength(1);
     // No invite: the methods are never looked up.
     two.mockClear();
     await users.recordSignIn({ ...neo, emailVerified: true }, at, two);
@@ -680,9 +725,8 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
   it("applies on the first sign-in; drops invited roles that were deleted or are already held", async () => {
     const add = createAccountActions(deps).addPerson(...as("boss"));
     await add({ person: "kai@example.org", roleId: "alumni" });
-    await add({ person: "kai@example.org", roleId: "editor" });
     const users = createSqlUserStore(fake.db as unknown as Db);
-    // Without a way to check the sign-in methods, the staff role waits.
+    // A role without admin pages needs no check of the sign-in methods.
     expect(
       await users.recordSignIn({ uid: "kai", email: "kai@example.org", emailVerified: true }, at),
     ).toEqual({ roleIds: ["visitor", "alumni"] });
@@ -692,7 +736,12 @@ describe("Role Manager → Add New People: give a role, or invite by e-mail", ()
     });
     expect(
       [...fake.docs.values()].find((d) => d["email"] === "kai@example.org" && "invitedBy" in d),
-    ).toMatchObject({ status: "pending", roleIds: ["editor"] });
+    ).toMatchObject({ status: "accepted", roleIds: [] });
+    // Without a way to check the sign-in methods, a staff role waits.
+    await add({ person: "lia@example.org", roleId: "editor" });
+    expect(
+      await users.recordSignIn({ uid: "lia", email: "lia@example.org", emailVerified: true }, at),
+    ).toEqual({ roleIds: ["visitor"] });
 
     await add({ person: "zoe@example.org", roleId: "editor" });
     fake.docs.set("users/zoe", {

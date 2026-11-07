@@ -148,6 +148,7 @@ describe("Audit Log list (browser)", () => {
     expect(matchesTab({ ...row, module: "periods" }, "organizations")).toBe(true);
     expect(matchesTab({ ...row, module: "appointments" }, "organizations")).toBe(true);
     expect(matchesTab({ ...row, module: "letter_types" }, "letters")).toBe(true);
+    expect(matchesTab({ ...row, module: "incoming" }, "letters")).toBe(true);
     expect(matchesTab({ ...row, module: "roles" }, "users")).toBe(true);
   });
 

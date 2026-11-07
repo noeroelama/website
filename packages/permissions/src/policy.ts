@@ -68,6 +68,19 @@ export const DEFAULT_ROLE_ASSIGNMENTS: readonly RoleAssignment[] = [
 ];
 
 /**
+ * The account's website role: given by hand in the Role Manager, everywhere and for any period.
+ * An account has at most one besides the default role (a new one replaces it). Every other active
+ * assignment (one chapter or unit, one board period, or from an appointment) is an
+ * organizational role, changed where it comes from.
+ */
+export const isWebsiteRole = (a: RoleAssignment): boolean =>
+  a.scope.type === "global" &&
+  !a.periodId &&
+  a.source !== "appointment" &&
+  !a.revokedAt &&
+  a.roleId !== SYSTEM_ROLES.visitor.id;
+
+/**
  * Turns stored assignments into resolved ones. Built-in roles always come from code; an
  * assignment to a role that no longer exists is dropped (fail closed), and so is a revoked one
  * or one of another board period than `activePeriodId` (read from `settings/activePeriod`).

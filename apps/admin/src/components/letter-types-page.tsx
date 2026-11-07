@@ -348,21 +348,13 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
     <div>
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-header__title">Letters &gt; Letter types</h1>
+          <h1 className="admin-page-header__title">Letter types</h1>
           <p className="admin-page-header__desc">
             Review the pattern before the first letter of a type is issued: a printed number can
             never be corrected.
           </p>
         </div>
         <div className="admin-page-header__actions">
-          <Button
-            variant="outline"
-            size="sm"
-            icon="chevronLeft"
-            onClick={() => router.push("/letters")}
-          >
-            Letters
-          </Button>
           {canEdit ? (
             <>
               <Button

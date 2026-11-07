@@ -1,4 +1,9 @@
-import { ADMIN_PAGES, isPagePermission, type RoleAssignment } from "@website/permissions";
+import {
+  ADMIN_PAGES,
+  isPagePermission,
+  isWebsiteRole,
+  type RoleAssignment,
+} from "@website/permissions";
 
 /*
  * Pure rules of the Role Manager page (people and their roles; Edit Role). The React side is
@@ -23,10 +28,10 @@ export interface PersonRow {
   readonly version: number;
   readonly createdAt: string | null;
   readonly lastSignInAt: string | null;
-  /** Active roles (not ended), without the default role. */
-  readonly roleIds: readonly string[];
-  /** The roles of `roleIds` that can be removed here: all chapters, any period, given by hand. */
-  readonly removable: readonly string[];
+  /** The website role (one per account; changed here), null = Visitor only. */
+  readonly roleId: string | null;
+  /** Organizational roles (one chapter / unit / period, or an appointment): shown, changed there. */
+  readonly orgRoleIds: readonly string[];
 }
 
 interface AccountLike {
@@ -40,12 +45,6 @@ interface AccountLike {
   readonly roleAssignments: readonly RoleAssignment[];
 }
 
-const unique = (ids: string[]) => [...new Set(ids)];
-
-/** Given by hand for all chapters and any period: what Add New People and the popup change. */
-const isPlain = (a: RoleAssignment) =>
-  a.scope.type === "global" && !a.periodId && a.source !== "appointment";
-
 export function personRow(user: AccountLike): PersonRow {
   const active = user.roleAssignments.filter((a) => !a.revokedAt && a.roleId !== DEFAULT_ROLE_ID);
   return {
@@ -57,8 +56,8 @@ export function personRow(user: AccountLike): PersonRow {
     version: user.version,
     createdAt: user.createdAt?.toISOString() ?? null,
     lastSignInAt: user.lastSignInAt?.toISOString() ?? null,
-    roleIds: unique(active.map((a) => a.roleId)),
-    removable: unique(active.filter(isPlain).map((a) => a.roleId)),
+    roleId: active.find(isWebsiteRole)?.roleId ?? null,
+    orgRoleIds: [...new Set(active.filter((a) => !isWebsiteRole(a)).map((a) => a.roleId))],
   };
 }
 
@@ -76,28 +75,28 @@ export function inviteRow(invite: {
     version: 0,
     createdAt: invite.createdAt?.toISOString() ?? null,
     lastSignInAt: null,
-    roleIds: [...invite.roleIds],
-    removable: [],
+    roleId: invite.roleIds[0] ?? null,
+    orgRoleIds: [],
   };
 }
 
-/** Tab (`all` or a role id) and the search text (name or e-mail). */
+/** Tab (`all` or a website role id) and the search text (name or e-mail). */
 export function matchesPerson(row: PersonRow, filter: { tab: string; query: string }): boolean {
   const query = filter.query.trim().toLowerCase();
   return (
-    (filter.tab === "all" || row.roleIds.includes(filter.tab)) &&
+    (filter.tab === "all" || row.roleId === filter.tab) &&
     (query === "" ||
       row.name.toLowerCase().includes(query) ||
       (row.email ?? "").toLowerCase().includes(query))
   );
 }
 
-/** "All" plus one tab per role somebody holds, in the roles' order, with counts. */
+/** "All" plus one tab per website role somebody holds, in the roles' order, with counts. */
 export function roleTabs(
   rows: readonly PersonRow[],
   roles: readonly { id: string; name: string }[],
 ): { key: string; label: string; count: number }[] {
-  const count = (id: string) => rows.filter((r) => r.roleIds.includes(id)).length;
+  const count = (id: string) => rows.filter((r) => r.roleId === id).length;
   return [
     { key: "all", label: "All", count: rows.length },
     ...roles
@@ -106,27 +105,18 @@ export function roleTabs(
   ];
 }
 
-export type PersonSortKey = "name" | "role";
+export type PersonSortKey = "name" | "role" | "status" | "lastSignIn";
 
+/** ISO dates sort as text; never signed in ("") comes first. */
 export function personSortValue(
   row: PersonRow,
   key: PersonSortKey,
   roleNames: ReadonlyMap<string, string>,
 ): string {
   if (key === "name") return row.name.toLowerCase();
-  const first = row.roleIds[0];
-  return first === undefined ? "" : (roleNames.get(first) ?? first).toLowerCase();
-}
-
-/** Roles to give and to remove when the person popup is saved. */
-export function roleChanges(
-  before: readonly string[],
-  after: readonly string[],
-): { add: string[]; remove: string[] } {
-  return {
-    add: after.filter((id) => !before.includes(id)),
-    remove: before.filter((id) => !after.includes(id)),
-  };
+  if (key === "status") return row.status;
+  if (key === "lastSignIn") return row.lastSignInAt ?? "";
+  return row.roleId === null ? "" : (roleNames.get(row.roleId) ?? row.roleId).toLowerCase();
 }
 
 const channel = (hex: string, at: number) => {
