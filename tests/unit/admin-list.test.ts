@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   cardRoles,
+  columnValues,
   countText,
   emptyText,
+  filterRows,
   matchesDate,
   moveItem,
   nextSort,
+  PAGE_SIZE_OPTIONS,
   pageSlice,
   runEach,
   sortRows,
@@ -144,5 +147,43 @@ describe("admin list pages: phone card layout", () => {
     expect(sortSummary("Last Modified", "asc")).toBe("Oldest first");
     expect(sortSummary("Event", "asc")).toBe("A–Z");
     expect(sortSummary("Status", "desc")).toBe("Z–A");
+  });
+
+  it("offers 10, 25 or 50 rows per page", () => {
+    expect(PAGE_SIZE_OPTIONS).toEqual([10, 25, 50]);
+  });
+
+  it("a column's filter checklist lists its values once, in the column's sort order", () => {
+    const dated = [
+      { id: "a", day: "2 Nov 2026", at: 2 },
+      { id: "b", day: "10 Nov 2026", at: 10 },
+      { id: "c", day: "2 Nov 2026", at: 2 },
+    ];
+    expect(
+      columnValues(
+        dated,
+        (r) => r.day,
+        (r) => r.at,
+      ),
+    ).toEqual(["2 Nov 2026", "10 Nov 2026"]);
+  });
+
+  it("column filters hide the rows whose value was unticked, in every filtered column", () => {
+    const rows = [
+      { id: "a", title: "Beta", n: 2 },
+      { id: "b", title: "alpha", n: 10 },
+      { id: "c", title: "Gamma", n: 1 },
+    ];
+    const text = (r: (typeof rows)[number], key: "title" | "n") =>
+      key === "title" ? r.title : String(r.n);
+    expect(filterRows(rows, {}, text)).toEqual(rows);
+    expect(filterRows(rows, { title: new Set(["Beta"]) }, text).map((r) => r.id)).toEqual([
+      "b",
+      "c",
+    ]);
+    expect(
+      filterRows(rows, { title: new Set(["Beta"]), n: new Set(["1"]) }, text).map((r) => r.id),
+    ).toEqual(["b"]);
+    expect(filterRows(rows, { title: new Set<string>() }, text)).toEqual(rows);
   });
 });

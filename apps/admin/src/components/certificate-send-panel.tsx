@@ -54,7 +54,10 @@ export function CertificateSendPanel({
   };
 
   return (
-    <div className="admin-dark-form">
+    <form
+      className="admin-dark-form"
+      onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+    >
       <p className="admin-field__label">
         Send pickup links:{" "}
         {Object.entries(progress)
@@ -70,16 +73,22 @@ export function CertificateSendPanel({
         onChange={(e) => setText(e.target.value)}
       />
       <div className="admin-modal__footer-row">
-        <Button size="sm" icon="send" disabled={busy || !text.trim()} onClick={() => void send()}>
+        <Button
+          type="submit"
+          size="sm"
+          icon="send"
+          disabled={busy || !text.trim()}
+          onClick={() => send()}
+        >
           Send links
         </Button>
         {progress["failed"] ? (
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void retry()}>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => retry()}>
             Retry failed
           </Button>
         ) : null}
       </div>
       {message ? <p role="status">{message}</p> : null}
-    </div>
+    </form>
   );
 }

@@ -51,6 +51,70 @@ export function createSqlUniversityStore(db: Database) {
   const read = (id: string, data: unknown) => toUniversity(id, data as Record<string, unknown>);
   const byName = (a: University, b: University) => a.name.localeCompare(b.name);
 
+  function insert(
+    status: "pending" | "approved",
+    userId: string,
+    proposal: UniversityProposal,
+    now: Date,
+    audit: ((after: Snapshot, next: University) => AuditEvent) | null,
+  ): Promise<University> {
+    const name = tidyUniversityName(proposal.name);
+    const normalizedName = normalizeUniversityName(name);
+    const ref = docs.doc(randomUUID());
+    return db.runTransaction(async (tx) => {
+      const [sameName, sameAlias] = await Promise.all([
+        tx.get(
+          docs
+            .where("countryCode", "==", proposal.countryCode)
+            .where("normalizedName", "==", normalizedName),
+        ),
+        tx.get(
+          docs
+            .where("countryCode", "==", proposal.countryCode)
+            .where("aliasesNormalized", "array-contains", normalizedName),
+        ),
+      ]);
+      const existing = [...sameName.docs, ...sameAlias.docs]
+        .map((doc) => read(doc.id, doc.data()))
+        .filter((u) => u.status !== "rejected")
+        .sort((a, b) => Number(b.status === "approved") - Number(a.status === "approved"))[0];
+      if (existing) {
+        throw new RuleViolationError(
+          existing.status === "approved"
+            ? `This campus is already listed as "${existing.name}". Choose it from the list.`
+            : "This campus was already proposed and is waiting for review.",
+        );
+      }
+      const approved = status === "approved";
+      const fields: Omit<University, "id"> = {
+        name,
+        normalizedName,
+        countryCode: proposal.countryCode,
+        city: proposal.city || null,
+        website: null,
+        aliases: [],
+        aliasesNormalized: [],
+        rorId: null,
+        source: "manual",
+        status,
+        submittedBy: userId,
+        mergedInto: null,
+        reviewedBy: approved ? userId : null,
+        reviewedAt: approved ? now : null,
+        reviewNote: null,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      };
+      const next = { id: ref.id, ...fields };
+      const log = audit ? await auditLog.begin(tx) : null;
+      tx.set(ref, fields);
+      if (audit) log?.append(audit(reviewSnapshot(next), next));
+      return next;
+    });
+  }
+
   return {
     async get(id: string): Promise<University | null> {
       if (!safeId.safeParse(id).success) return null;
@@ -89,57 +153,17 @@ export function createSqlUniversityStore(db: Database) {
      * country (same normalised name, approved or pending, or an alias of an approved campus).
      */
     propose(userId: string, proposal: UniversityProposal, now: Date): Promise<University> {
-      const name = tidyUniversityName(proposal.name);
-      const normalizedName = normalizeUniversityName(name);
-      const ref = docs.doc(randomUUID());
-      return db.runTransaction(async (tx) => {
-        const [sameName, sameAlias] = await Promise.all([
-          tx.get(
-            docs
-              .where("countryCode", "==", proposal.countryCode)
-              .where("normalizedName", "==", normalizedName),
-          ),
-          tx.get(
-            docs
-              .where("countryCode", "==", proposal.countryCode)
-              .where("aliasesNormalized", "array-contains", normalizedName),
-          ),
-        ]);
-        const existing = [...sameName.docs, ...sameAlias.docs]
-          .map((doc) => read(doc.id, doc.data()))
-          .filter((u) => u.status !== "rejected")
-          .sort((a, b) => Number(b.status === "approved") - Number(a.status === "approved"))[0];
-        if (existing) {
-          throw new RuleViolationError(
-            existing.status === "approved"
-              ? `This campus is already listed as "${existing.name}". Choose it from the list.`
-              : "This campus was already proposed and is waiting for review.",
-          );
-        }
-        const fields: Omit<University, "id"> = {
-          name,
-          normalizedName,
-          countryCode: proposal.countryCode,
-          city: proposal.city || null,
-          website: null,
-          aliases: [],
-          aliasesNormalized: [],
-          rorId: null,
-          source: "manual",
-          status: "pending",
-          submittedBy: userId,
-          mergedInto: null,
-          reviewedBy: null,
-          reviewedAt: null,
-          reviewNote: null,
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        tx.set(ref, fields);
-        return { id: ref.id, ...fields };
-      });
+      return insert("pending", userId, proposal, now, null);
+    },
+
+    /** Staff add a campus that is listed right away (same duplicate check), audited in the transaction. */
+    add(
+      userId: string,
+      proposal: UniversityProposal,
+      audit: (after: Snapshot, next: University) => AuditEvent,
+      now: Date,
+    ): Promise<University> {
+      return insert("approved", userId, proposal, now, audit);
     },
 
     /**

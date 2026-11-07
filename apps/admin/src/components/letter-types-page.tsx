@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   formatNumber,
@@ -78,6 +78,8 @@ interface Props {
   letterhead: Letterhead;
   letterheadVersion: number | null;
   canEdit: boolean;
+  /** Outgoing / Incoming tabs, under the header (`LetterSectionTabs`). */
+  sectionTabs: ReactNode;
 }
 
 export function LetterTypesPage(props: Props) {
@@ -140,7 +142,10 @@ function LetterheadForm({
   };
 
   return (
-    <div className="admin-dark-form">
+    <form
+      className="admin-dark-form"
+      onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+    >
       <div className="admin-form-grid">
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="kop-parent">
@@ -222,21 +227,28 @@ function LetterheadForm({
         </Button>
         <div className="admin-form-actions__right">
           <Button
+            type="submit"
             variant="outline"
             size="sm"
             icon="cloud"
             disabled={busy || uploads.busy}
-            onClick={() => void save()}
+            onClick={() => save()}
           >
             Save letterhead
           </Button>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 
-function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdit }: Props) {
+function LetterTypesList({
+  initial: items,
+  letterhead,
+  letterheadVersion,
+  canEdit,
+  sectionTabs,
+}: Props) {
   const [editingLetterhead, setEditingLetterhead] = useState(false);
   const toast = useToastMessage();
   const router = useRouter();
@@ -346,9 +358,9 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
 
   return (
     <div>
-      <div className="admin-page-header">
+      <div className="admin-page-header admin-events-header">
         <div>
-          <h1 className="admin-page-header__title">Letter types</h1>
+          <h1 className="admin-page-header__title">Letter &gt; Letter types</h1>
           <p className="admin-page-header__desc">
             Review the pattern before the first letter of a type is issued: a printed number can
             never be corrected.
@@ -356,7 +368,7 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
         </div>
         <div className="admin-page-header__actions">
           {canEdit ? (
-            <>
+            <div className="admin-fab">
               <Button
                 variant="outline"
                 size="sm"
@@ -365,15 +377,14 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
               >
                 Letterhead
               </Button>
-              <div className="admin-fab">
-                <Button variant="outline" size="sm" icon="plus" onClick={() => open()}>
-                  Add type
-                </Button>
-              </div>
-            </>
+              <Button variant="outline" size="sm" icon="plus" onClick={() => open()}>
+                Add type
+              </Button>
+            </div>
           ) : null}
         </div>
       </div>
+      {sectionTabs}
       {editingLetterhead ? (
         <LetterheadForm
           initial={letterhead}
@@ -382,7 +393,10 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
           show={toast.show}
         />
       ) : draft ? (
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="type-name">
@@ -482,21 +496,21 @@ function LetterTypesList({ initial: items, letterhead, letterheadVersion, canEdi
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void save()}
+                onClick={() => save()}
               >
                 Save
               </Button>
             </div>
           </div>
-        </div>
+        </form>
       ) : (
         <ListCard
           table={table}
-          total={items.length}
           noun="letter type"
           columns={columns}
           empty={

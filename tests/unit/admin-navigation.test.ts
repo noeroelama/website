@@ -55,7 +55,7 @@ describe("admin side panel navigation", () => {
     expect(Object.fromEntries(groups)).toEqual({
       Workspace: ["Dashboard", "My Tasks", "Calendar", "Tools"],
       Content: ["Event", "Gallery", "Article", "Newsletter", "Forms"],
-      Organization: ["Recruitment", "Letter", "Organizations", "Universities"],
+      Organization: ["Recruitment", "Letter", "Organizations"],
       Planning: ["OKR", "Programmes", "LPJ", "Finance", "Meetings", "Zoom"],
       Administration: ["Role Manager", "Audit Log", "Email", "Settings"],
     });

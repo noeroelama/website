@@ -12,7 +12,7 @@ import { actionMessage } from "@/components/action-message";
 import { formatInZone } from "@/components/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -40,6 +40,9 @@ const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 type SortKey = "title" | "opens";
 const sortValue = (r: RecruitmentItem, key: SortKey) =>
   key === "title" ? r.title.toLowerCase() : r.opensAt;
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (r: RecruitmentItem, key: SortKey): string =>
+  key === "title" ? r.title : formatInZone(r.opensAt, "UTC", false);
 
 interface Draft {
   periodId: string;
@@ -80,7 +83,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
   const [draft, setDraft] = useState<Draft | null>(null);
   const [deleting, setDeleting] = useState<RecruitmentItem | null>(null);
 
-  const table = useListTable(items, sortValue);
+  const table = useListTable(items, sortValue, undefined, filterText);
   type Failure = Parameters<typeof actionMessage>[0];
   const fail = (result: Failure) => {
     setFieldErrors(result.fields ?? {});
@@ -162,14 +165,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
   const columns: Column<RecruitmentItem>[] = [
     {
       key: "title",
-      header: (
-        <SortHeader
-          label="Recruitment"
-          active={table.sort.key === "title"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("title")}
-        />
-      ),
+      header: table.header("title", "Recruitment"),
       width: "34%",
       render: (r) => (
         <div>
@@ -180,14 +176,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
     },
     {
       key: "opens",
-      header: (
-        <SortHeader
-          label="Window (UTC)"
-          active={table.sort.key === "opens"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("opens")}
-        />
-      ),
+      header: table.header("opens", "Window (UTC)"),
       width: "26%",
       render: (r) => (
         <span className="admin-event-meta">
@@ -249,7 +238,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
             {canEdit ? (
               <>
                 <MenuItem
-                  icon="globe"
+                  icon="globeSimple"
                   disabled={busy || r.published}
                   onClick={() => setPublished(r, true)}
                 >
@@ -288,7 +277,10 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
             </p>
           </div>
         </div>
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="rec-title">
@@ -492,17 +484,18 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void save()}
+                onClick={() => save()}
               >
                 Save
               </Button>
             </div>
           </div>
-        </div>
+        </form>
         <ToastBanner message={toast.message} />
       </div>
     );
@@ -542,7 +535,6 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
       </div>
       <ListCard
         table={table}
-        total={items.length}
         noun="recruitment"
         columns={columns}
         empty={

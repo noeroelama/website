@@ -32,7 +32,7 @@ import { formatUtc } from "@/components/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -160,10 +160,26 @@ export function RoleManagerPeople({
     () => rows.filter((row) => matchesPerson(row, { tab, query })),
     [rows, tab, query],
   );
-  const table = useListTable<PersonRow, PersonSortKey>(filtered, sortValue, {
-    key: "name",
-    dir: "asc",
-  });
+  // A cell's text in its column's filter checklist (last sign-in by day).
+  const filterText = useCallback(
+    (row: PersonRow, key: PersonSortKey) =>
+      key === "name"
+        ? row.name
+        : key === "status"
+          ? statusLabel(row.status)
+          : key === "lastSignIn"
+            ? (row.lastSignInAt?.slice(0, 10) ?? "Never")
+            : row.roleId === null
+              ? "Visitor"
+              : (names.get(row.roleId) ?? row.roleId),
+    [names],
+  );
+  const table = useListTable<PersonRow, PersonSortKey>(
+    filtered,
+    sortValue,
+    { key: "name", dir: "asc" },
+    filterText,
+  );
   const tabs = useMemo(() => roleTabs(rows, roles), [rows, roles]);
 
   /* Any filter change starts again on page 1. */
@@ -186,20 +202,12 @@ export function RoleManagerPeople({
     ) : (
       <RolePill name={names.get(id) ?? id} color={roleById.get(id)?.color ?? ""} />
     );
-  const sortHeader = (key: PersonSortKey, text: string) => (
-    <SortHeader
-      label={text}
-      active={table.sort.key === key}
-      dir={table.sort.dir}
-      onClick={() => table.onSort(key)}
-    />
-  );
 
   const columns: Column<PersonRow>[] = [
     {
       key: "name",
       width: "30%",
-      header: sortHeader("name", "Name"),
+      header: table.header("name", "Name"),
       render: (row) => (
         <span className="admin-role-person" title={row.email ?? undefined}>
           <span className="admin-table__title">{row.name}</span>
@@ -209,19 +217,19 @@ export function RoleManagerPeople({
     {
       key: "role",
       width: "22%",
-      header: sortHeader("role", "Role"),
+      header: table.header("role", "Role"),
       render: (row) => pill(row.roleId),
     },
     {
       key: "status",
       width: "16%",
-      header: sortHeader("status", "Status"),
+      header: table.header("status", "Status"),
       render: (row) => <Badge tone={STATUS_TONE[row.status]}>{statusLabel(row.status)}</Badge>,
     },
     {
       key: "lastSignIn",
       width: "24%",
-      header: sortHeader("lastSignIn", "Last login"),
+      header: table.header("lastSignIn", "Last login"),
       render: lastSignIn,
     },
     {
@@ -291,7 +299,6 @@ export function RoleManagerPeople({
 
       <ListCard
         table={table}
-        total={filtered.length}
         noun="account"
         columns={columns}
         empty={
@@ -512,6 +519,7 @@ function AddPeopleModal({
                     id={`${listId}-${i}`}
                     role="option"
                     aria-selected={i === active}
+                    style={{ "--i": i } as CSSProperties}
                     className={`admin-row-menu__item${i === active ? " admin-combo__option--active" : ""}`}
                     onMouseEnter={() => setActive(i)}
                     onMouseDown={(event) => event.preventDefault()}
@@ -696,7 +704,7 @@ function PersonModal({
       footer={
         <Footer onCancel={onClose}>
           {canEdit ? (
-            <Button variant="primary" disabled={busy} onClick={() => void save()}>
+            <Button variant="primary" disabled={busy} onClick={() => save()}>
               Save
             </Button>
           ) : null}
@@ -821,6 +829,9 @@ const PERMISSION_GROUPS = permissionGroups();
 type RoleSortKey = "role" | "permissions";
 const roleSortValue = (row: RoleRow, key: RoleSortKey): string | number =>
   key === "role" ? row.name.toLowerCase() : row.permissions.length;
+/** A cell's text in its column's filter checklist. */
+const roleFilterText = (row: RoleRow, key: RoleSortKey): string =>
+  key === "role" ? row.name : String(row.permissions.length);
 
 export function RoleManagerRoles({
   roles,
@@ -845,7 +856,12 @@ export function RoleManagerRoles({
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => roles.filter((role) => matchesRole(role, query)), [roles, query]);
-  const table = useListTable<RoleRow, RoleSortKey>(filtered, roleSortValue);
+  const table = useListTable<RoleRow, RoleSortKey>(
+    filtered,
+    roleSortValue,
+    undefined,
+    roleFilterText,
+  );
 
   const remove = async () => {
     if (!deleting || deleting.version === null) return;
@@ -869,26 +885,12 @@ export function RoleManagerRoles({
     {
       key: "role",
       width: "25%",
-      header: (
-        <SortHeader
-          label="Role"
-          active={table.sort.key === "role"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("role")}
-        />
-      ),
+      header: table.header("role", "Role"),
       render: (row) => <RolePill name={row.name} color={row.color} />,
     },
     {
       key: "permissions",
-      header: (
-        <SortHeader
-          label="Permissions"
-          active={table.sort.key === "permissions"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("permissions")}
-        />
-      ),
+      header: table.header("permissions", "Permissions"),
       render: (row) => (
         <span className="admin-role-perms">
           {row.permissions.length > 0 ? row.permissions.join(", ") : "-"}
@@ -970,7 +972,6 @@ export function RoleManagerRoles({
 
       <ListCard
         table={table}
-        total={filtered.length}
         noun="role"
         columns={columns}
         empty={
@@ -1086,7 +1087,7 @@ function RoleModal({
       onClose={onClose}
       footer={
         <Footer onCancel={onClose}>
-          <Button variant="primary" type="submit" form="role-form" disabled={busy}>
+          <Button variant="primary" type="submit" form="role-form" loading={busy}>
             {role ? "Save Role" : "Create Role"}
           </Button>
         </Footer>

@@ -192,7 +192,7 @@ export function CalendarPage({
                     size="sm"
                     variant="ghost"
                     icon="trash"
-                    onClick={() => void run(removeHolidayAction({ id: h.id }), "Holiday removed")}
+                    onClick={() => run(removeHolidayAction({ id: h.id }), "Holiday removed")}
                   >
                     Remove
                   </Button>

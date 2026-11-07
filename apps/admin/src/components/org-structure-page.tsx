@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { slugify } from "@website/domain/content";
 import { deleteOrgUnitAction } from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
@@ -136,11 +136,12 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
             </Button>
             {periodMenu ? (
               <div className="admin-row-menu__panel admin-org-period-menu" role="menu">
-                {periods.map((p) => (
+                {periods.map((p, i) => (
                   <button
                     key={p.id}
                     type="button"
                     role="menuitem"
+                    style={{ "--i": i } as CSSProperties}
                     className="admin-row-menu__item"
                     onClick={() => {
                       setPeriodMenu(false);

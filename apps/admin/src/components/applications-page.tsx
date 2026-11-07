@@ -20,7 +20,7 @@ import { applicantsCsv } from "@/components/exports-model";
 import { formatInZone } from "@/components/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import {
   ListCard,
@@ -49,6 +49,9 @@ import {
 type SortKey = "name" | "submitted";
 const sortValue = (a: ApplicationItem, key: SortKey) =>
   key === "name" ? a.name.toLowerCase() : (a.submittedAt ?? "");
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (a: ApplicationItem, key: SortKey): string =>
+  key === "name" ? a.name : a.submittedAt ? formatInZone(a.submittedAt, "UTC", false) : "";
 
 type Pending =
   | { kind: "revision" }
@@ -100,7 +103,7 @@ export function ApplicationsPage(props: {
       ) as Record<QueueTab, number>,
     [items],
   );
-  const table = useListTable(filtered, sortValue);
+  const table = useListTable(filtered, sortValue, undefined, filterText);
   const current = items.find((a) => a.id === openId) ?? null;
 
   const run = async (
@@ -133,14 +136,7 @@ export function ApplicationsPage(props: {
   const columns: Column<ApplicationItem>[] = [
     {
       key: "name",
-      header: (
-        <SortHeader
-          label="Applicant"
-          active={table.sort.key === "name"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("name")}
-        />
-      ),
+      header: table.header("name", "Applicant"),
       width: "30%",
       render: (a) => (
         <div>
@@ -172,14 +168,7 @@ export function ApplicationsPage(props: {
     },
     {
       key: "submitted",
-      header: (
-        <SortHeader
-          label="Submitted (UTC)"
-          active={table.sort.key === "submitted"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("submitted")}
-        />
-      ),
+      header: table.header("submitted", "Submitted (UTC)"),
       width: "16%",
       render: (a) => (
         <span className="admin-table__sub">
@@ -240,7 +229,7 @@ export function ApplicationsPage(props: {
                     variant="outline"
                     size="sm"
                     icon="download"
-                    onClick={() => void openFile(current.portfolio?.path ?? "")}
+                    onClick={() => openFile(current.portfolio?.path ?? "")}
                   >
                     {current.portfolio.name}
                   </Button>
@@ -256,7 +245,7 @@ export function ApplicationsPage(props: {
                       variant="outline"
                       size="sm"
                       icon="download"
-                      onClick={() => void openFile(a.file?.path ?? "")}
+                      onClick={() => openFile(a.file?.path ?? "")}
                     >
                       {a.file.name}
                     </Button>
@@ -282,7 +271,7 @@ export function ApplicationsPage(props: {
                       variant="outline"
                       size="sm"
                       icon="download"
-                      onClick={() => void openFile(p.path)}
+                      onClick={() => openFile(p.path)}
                     >
                       {i === current.pacts.length - 1 ? p.name : `${p.name} (earlier)`}
                     </Button>
@@ -411,6 +400,7 @@ export function ApplicationsPage(props: {
         </div>
 
         <Modal
+          asForm
           open={pending?.kind === "revision"}
           title="Request a revision"
           subtitle="The applicant sees this note, changes the application and submits it again."
@@ -426,11 +416,12 @@ export function ApplicationsPage(props: {
                 Back
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="send"
                 disabled={busy}
-                onClick={() => void run(requestRevisionAction, { request }, "Revision requested")}
+                onClick={() => run(requestRevisionAction, { request }, "Revision requested")}
               >
                 Send request
               </Button>
@@ -454,6 +445,7 @@ export function ApplicationsPage(props: {
         </Modal>
 
         <Modal
+          asForm
           open={pending?.kind === "offer"}
           title="Offer a seat"
           subtitle="The offer expires after the recruitment's offer days. The seat is taken when the applicant accepts."
@@ -469,6 +461,7 @@ export function ApplicationsPage(props: {
                 Back
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="send"
@@ -502,6 +495,7 @@ export function ApplicationsPage(props: {
         </Modal>
 
         <Modal
+          asForm
           open={pending?.kind === "returnPact"}
           title="Send the pact back"
           subtitle="The applicant sees this note and uploads the pact again; earlier files are kept."
@@ -517,11 +511,12 @@ export function ApplicationsPage(props: {
                 Back
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="send"
                 disabled={busy}
-                onClick={() => void run(returnPactAction, { note: request }, "Pact sent back")}
+                onClick={() => run(returnPactAction, { note: request }, "Pact sent back")}
               >
                 Send back
               </Button>
@@ -545,6 +540,7 @@ export function ApplicationsPage(props: {
         </Modal>
 
         <Modal
+          asForm
           open={pending?.kind === "ratify"}
           title="Ratify and appoint"
           subtitle={`${current.name} is confirmed and appointed to ${current.offer?.unitName ?? "the unit"} (member seat) of the active period, with the roles of that seat.`}
@@ -560,6 +556,7 @@ export function ApplicationsPage(props: {
                 Back
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="crown"
@@ -666,7 +663,6 @@ export function ApplicationsPage(props: {
       />
       <ListCard
         table={table}
-        total={filtered.length}
         noun="application"
         columns={columns}
         empty={

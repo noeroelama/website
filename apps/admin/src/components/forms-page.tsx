@@ -19,7 +19,7 @@ import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { EditableList } from "@/components/ui/editable-list";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
@@ -63,6 +63,13 @@ const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 type SortKey = "title" | "status" | "modified";
 const sortValue = (f: FormItem, key: SortKey): string =>
   key === "title" ? f.title.toLowerCase() : key === "status" ? f.status : f.modifiedAt;
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (f: FormItem, key: SortKey): string =>
+  key === "title"
+    ? f.title
+    : key === "status"
+      ? f.statusLabel
+      : formatInZone(f.modifiedAt, "UTC", false);
 
 const TABS = [
   { key: "all", label: "All" },
@@ -156,7 +163,7 @@ function FormsList({
     [forms],
   );
 
-  const table = useListTable(filtered, sortValue);
+  const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
   type Failure = Parameters<typeof actionMessage>[0];
@@ -243,15 +250,6 @@ function FormsList({
     <FieldError id={`form-${field}-error`} message={fieldErrors[field]} />
   );
 
-  const sortHeader = (key: SortKey, text: string) => (
-    <SortHeader
-      label={text}
-      active={table.sort.key === key}
-      dir={table.sort.dir}
-      onClick={() => table.onSort(key)}
-    />
-  );
-
   const columns: Column<FormItem>[] = [
     {
       key: "check",
@@ -275,7 +273,7 @@ function FormsList({
     },
     {
       key: "title",
-      header: sortHeader("title", "Form"),
+      header: table.header("title", "Form"),
       width: "40%",
       render: (r) => (
         <div>
@@ -300,7 +298,7 @@ function FormsList({
     },
     {
       key: "status",
-      header: sortHeader("status", "Status"),
+      header: table.header("status", "Status"),
       width: "14%",
       render: (r) => (
         <span className="admin-status-badge">
@@ -311,7 +309,7 @@ function FormsList({
     },
     {
       key: "modified",
-      header: sortHeader("modified", "Last Modified"),
+      header: table.header("modified", "Last Modified"),
       width: "16%",
       render: (r) => (
         <span className="admin-event-meta">
@@ -343,7 +341,7 @@ function FormsList({
             {canPublish && r.usage === "public" ? (
               <>
                 <MenuItem
-                  icon="globe"
+                  icon="globeSimple"
                   disabled={busy || r.status === "published"}
                   onClick={() => setPublished(r, true)}
                 >
@@ -411,7 +409,10 @@ function FormsList({
           </div>
         </div>
 
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="form-title">
@@ -543,17 +544,18 @@ function FormsList({
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void save()}
+                onClick={() => save()}
               >
                 Save
               </Button>
             </div>
           </div>
-        </div>
+        </form>
 
         <ToastBanner message={toast.message} />
       </div>
@@ -599,7 +601,6 @@ function FormsList({
 
       <ListCard
         table={table}
-        total={filtered.length}
         noun="form"
         columns={columns}
         empty={

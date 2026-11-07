@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Fragment, isValidElement } from "react";
+import { Fragment, isValidElement, type CSSProperties } from "react";
 import { cardRoles, PAGE_SIZE_OPTIONS } from "../list-model";
+import { ColumnMenu, type ColumnMenuProps } from "./column-menu";
 import { Icon } from "./icon";
 import { Select } from "./select";
 
@@ -15,12 +16,7 @@ function cellText(value: unknown): string {
  * lives in the caller. Styling via `admin-table*` classes in globals.css.
  */
 
-interface SortHeaderProps {
-  label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
-}
+type SortHeaderProps = ColumnMenuProps;
 
 /** The props of a header made with `SortHeader`, or null for any other header. */
 const sortHeaderProps = (header: ReactNode): SortHeaderProps | null =>
@@ -97,11 +93,11 @@ export function DataTable<T>({
           </thead>
         ) : null}
         <tbody>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const expanded = expandedRow?.(row);
             return (
               <Fragment key={rowKey(row)}>
-                <tr>
+                <tr style={{ "--i": index } as CSSProperties}>
                   {columns.map((col, i) => (
                     <td
                       key={col.key}
@@ -138,7 +134,7 @@ export interface PaginationProps {
   page: number;
   pageSize: number;
   totalItems: number;
-  /** Rows-per-page choices (default 10 / 20 / 50). */
+  /** Rows-per-page choices (default 10 / 25 / 50). */
   pageSizeOptions?: readonly number[];
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
@@ -220,16 +216,10 @@ export function Pagination({
   );
 }
 
-/** Sortable table header: label + arrow icon. Active column shows a filled arrow. */
-export function SortHeader({ label, active, dir, onClick }: SortHeaderProps) {
-  return (
-    <button
-      type="button"
-      className={`admin-th-sort${active ? " admin-th-sort--active" : ""}`}
-      onClick={onClick}
-    >
-      <span>{label}</span>
-      <Icon name={active ? (dir === "asc" ? "arrowUp" : "arrowDown") : "sort"} size={12} />
-    </button>
-  );
+/**
+ * Sortable column header: a menu to sort the column and filter it by its values (`ColumnMenu`).
+ * Make it with `useListTable().header(key, label)`, which wires both.
+ */
+export function SortHeader(props: SortHeaderProps) {
+  return <ColumnMenu {...props} />;
 }

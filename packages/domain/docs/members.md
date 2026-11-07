@@ -103,7 +103,11 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 - "My campus is not listed" proposes one. Obvious duplicates are refused in the same country:
   the same `normalizeUniversityName` (deliberately conservative, PPIDK §6) of a listed or
   proposed campus, or of an alias of a listed one. ALL CAPS / lower case names are tidied.
-- Review queue: admin **Universities** page (`universities.read` / `universities.edit`). Approve;
+- Admin: **Organizations → Universities** tab (`organizations.read` to open the page, then
+  `universities.read` / `universities.edit`). It lists the approved campuses of one PPI country
+  (`?view=universities&country=JP`). **Add University** lists a campus right away (`approved`,
+  `source: "manual"`, same duplicate check; audited `CREATE`, not revertible).
+- Review queue: the tab's **Requested** button opens it in a popup. Accept;
   merge into a listed campus of the same country (the proposal is kept as `rejected` with
   `mergedInto`, and every profile pointing at it moves to that campus); or reject with a reason
   (profiles lose the pick and choose again). Merge suggestions share a distinctive word

@@ -43,6 +43,16 @@ describe("rich text sanitiser (news body, campaigns): allowlist on write AND ren
     expect(clean).toContain("<p>x</p>");
   });
 
+  it("keeps plain-http images only from this machine (local development uploads)", () => {
+    const clean = sanitizeRichText(
+      '<img src="http://localhost:3000/files/a.webp"><img src="http://127.0.0.1/files/b.webp"><img src="http://evil.example/c.png"><img src="http://[bad">',
+    );
+    expect(clean).toContain('src="http://localhost:3000/files/a.webp"');
+    expect(clean).toContain('src="http://127.0.0.1/files/b.webp"');
+    expect(clean).not.toContain("evil.example");
+    expect(clean).not.toContain("[bad");
+  });
+
   it("keeps what the admin editor makes: H1, code, div lines and text alignment only", () => {
     const clean = sanitizeRichText(
       '<h1>A</h1><div style="text-align: center; color: red">b</div><p><code>c</code></p><pre>d</pre><p style="position:fixed">e</p>',

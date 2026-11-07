@@ -212,6 +212,33 @@ describe("universities master and campus proposals (A3)", () => {
     });
   });
 
+  it("staff add a listed campus directly (approved, audited); duplicates and readers are refused", async () => {
+    const editor = staff(["universities.edit"]);
+    const input = { name: "osaka metropolitan university", countryCode: "jp", city: "Osaka" };
+    expect(await review().add(...as(staff(["universities.read"])))(input)).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    const added = await review().add(...as(editor))(input);
+    expect(added).toMatchObject({ ok: true });
+    expect((await choices(null, "JP")).map((u) => u.name)).toContain(
+      "Osaka Metropolitan University",
+    );
+    expect(await universities.listPending()).toEqual([]);
+    const audit = [...fake.docs.entries()]
+      .filter(([p]) => p.startsWith("auditLogs/"))
+      .map(([, d]) => d);
+    expect(audit.at(-1)).toMatchObject({
+      module: "universities",
+      action: "CREATE",
+      resourceType: "university",
+      title: "Osaka Metropolitan University",
+    });
+    expect(
+      await review().add(...as(editor))({ name: "UTokyo", countryCode: "JP", city: "" }),
+    ).toMatchObject({ ok: false, error: "refused" });
+  });
+
   it("staff approve, merge (profiles follow, history kept) or reject (profiles must choose again)", async () => {
     const reviewer = staff(["universities.edit"]);
     const dup = await picker().propose(member("siti"), {

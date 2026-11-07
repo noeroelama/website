@@ -18,15 +18,14 @@ import {
   setNewsPublishedAction,
 } from "@/app/(panel)/articles/actions";
 import { actionMessage } from "@/components/action-message";
-import { formatUtc, timeAgo } from "@/components/format";
+import { formatInZone, formatUtc, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import {
-  FiltersButton,
   ListCard,
   ListEmpty,
   MenuDivider,
@@ -43,6 +42,7 @@ import { Modal } from "@/components/ui/modal";
 import {
   joinBlocks,
   newBlock,
+  splitBlocks,
   RichTextStack,
   type RichTextBlock,
 } from "@/components/ui/rich-text-box";
@@ -53,10 +53,8 @@ import {
   matchesArticleTab,
   needsSettings,
   type ArticleItem,
-  type ArticleStatus,
   type ArticleTab,
 } from "./articles-model";
-import { matchesDate, type DateFilter } from "./list-model";
 
 /* ==================================================================
    Article — list (tabs, search, filters, bulk actions), editor page
@@ -85,6 +83,18 @@ type SortKey = "title" | "status" | "date";
 
 const sortValue = (a: ArticleItem, key: SortKey): string =>
   key === "title" ? a.title.toLowerCase() : key === "status" ? a.status : a.modifiedAt;
+
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (a: ArticleItem, key: SortKey): string =>
+  key === "title"
+    ? a.title
+    : key === "status"
+      ? a.status === "published"
+        ? "Public"
+        : a.status === "scheduled"
+          ? "Scheduled"
+          : "Private"
+      : formatInZone(a.modifiedAt, "UTC", false);
 
 const TABS = [
   { key: "all", label: "All" },
@@ -120,9 +130,6 @@ const EMPTY_FORM: ArticleForm = {
   bodies: [newBlock()],
 };
 
-/** Filter choice for the status select: any status, or "all". */
-type StatusFilter = "all" | ArticleStatus;
-
 /** Pending delete action shown in the dark confirm modal (one article or many). */
 type DeleteConfirm = { kind: "one"; article: ArticleItem } | { kind: "many"; count: number };
 
@@ -151,7 +158,7 @@ function formFrom(a: ArticleItem): ArticleForm {
     banner: a.featuredImage,
     date: toLocalInput(a.publishAt),
     tags: a.tags,
-    bodies: [newBlock(a.body)],
+    bodies: splitBlocks(a.body),
   };
 }
 
@@ -169,14 +176,9 @@ function ArticleList({
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
   /* ---- list state (sorting, paging and selection: useListTable) ---- */
-  const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [tab, setTab] = useState<ArticleTab>("all");
   const [query, setQuery] = useState(""); // applied only on Search / Enter
   const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
   /* Settings panel: open with the intent its Save button uses (null = closed). */
   const [settingsIntent, setSettingsIntent] = useState<SaveIntent | null>(null);
@@ -188,24 +190,16 @@ function ArticleList({
   const [form, setForm] = useState<ArticleForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  const activeFilterCount =
-    (statusFilter !== "all" ? 1 : 0) +
-    (categoryFilter !== "all" ? 1 : 0) +
-    (dateFilter !== "all" ? 1 : 0);
-
   /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return articles.filter(
       (a) =>
         matchesArticleTab(a, tab) &&
-        (statusFilter === "all" || a.status === statusFilter) &&
-        (categoryFilter === "all" || a.categoryKey === categoryFilter) &&
-        matchesDate(a.modifiedAt, dateFilter, today) &&
         // Search by title, like the Event page.
         (!q || a.title.toLowerCase().includes(q)),
     );
-  }, [articles, tab, today, query, statusFilter, categoryFilter, dateFilter]);
+  }, [articles, tab, query]);
 
   const counts = useMemo(
     () => ({
@@ -216,7 +210,7 @@ function ArticleList({
     [articles],
   );
 
-  const table = useListTable(filtered, sortValue);
+  const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
   /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
@@ -387,14 +381,6 @@ function ArticleList({
     fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `${id}-error` } : {};
 
   /* ---- table columns ---- */
-  const sortHeader = (key: SortKey, text: string) => (
-    <SortHeader
-      label={text}
-      active={table.sort.key === key}
-      dir={table.sort.dir}
-      onClick={() => table.onSort(key)}
-    />
-  );
 
   const checkboxCol: Column<ArticleItem> = {
     key: "check",
@@ -421,7 +407,7 @@ function ArticleList({
     checkboxCol,
     {
       key: "title",
-      header: sortHeader("title", "Article"),
+      header: table.header("title", "Article"),
       width: "34%",
       render: (r) => (
         <div className="admin-event-title">
@@ -453,7 +439,7 @@ function ArticleList({
     },
     {
       key: "status",
-      header: sortHeader("status", "Status"),
+      header: table.header("status", "Status"),
       width: "12%",
       render: (r) =>
         r.status === "scheduled" && r.publishAt ? (
@@ -473,7 +459,7 @@ function ArticleList({
     },
     {
       key: "date",
-      header: sortHeader("date", "Last Modified"),
+      header: table.header("date", "Last Modified"),
       width: "16%",
       render: (r) => (
         <span className="admin-event-meta">
@@ -504,7 +490,7 @@ function ArticleList({
           <RowMenu>
             {canPublish ? (
               <MenuItem
-                icon={r.status === "draft" ? "globe" : "lock"}
+                icon={r.status === "draft" ? "globeSimple" : "lock"}
                 disabled={busy}
                 onClick={() => setPublishedFor([r.id], r.status === "draft")}
               >
@@ -556,16 +542,14 @@ function ArticleList({
   const clearFilters = () => {
     setQuery("");
     setSearchKey((k) => k + 1);
-    setStatusFilter("all");
-    setCategoryFilter("all");
-    setDateFilter("all");
-    setFiltersOpen(false);
+    table.clearFilters();
     table.setPage(1);
   };
 
   /* Settings panel — the shared centred popup as a cream surface. */
   const settingsPanel = (
     <Modal
+      asForm
       open={settingsIntent !== null}
       title="Settings"
       className="admin-modal--side"
@@ -578,6 +562,7 @@ function ArticleList({
             Back
           </Button>
           <Button
+            type="submit"
             variant="primary"
             icon="cloud"
             disabled={busy || settingsIntent === null}
@@ -758,24 +743,16 @@ function ArticleList({
             </div>
           </div>
 
-          <div className="admin-dark-form">
+          <form
+            className="admin-dark-form"
+            onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+          >
             {/* Featured Image + type boxes in one framed container, as in the design. */}
             <div className="admin-article-frame">
               <div className="admin-field">
                 <span className="admin-field__label">Featured Image *</span>
                 <div
                   className="admin-dropzone"
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload the featured image"
-                  aria-describedby="article-image-error"
-                  onClick={() => bannerInputRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      bannerInputRef.current?.click();
-                    }
-                  }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
@@ -783,6 +760,13 @@ function ArticleList({
                     if (file) void onBannerFile(file);
                   }}
                 >
+                  <button
+                    type="button"
+                    className="admin-pick"
+                    aria-label="Upload the featured image"
+                    aria-describedby="article-image-error"
+                    onClick={() => bannerInputRef.current?.click()}
+                  />
                   {uploader.busy ? (
                     <span className="admin-dropzone__title">Uploading…</span>
                   ) : form.banner ? (
@@ -864,28 +848,31 @@ function ArticleList({
                   Preview
                 </Button>
                 <Button
+                  type="submit"
+                  formNoValidate
                   variant="outline"
                   size="sm"
                   icon="cloud"
                   disabled={busy || uploader.busy}
-                  onClick={() => void save("draft")}
+                  onClick={() => save("draft")}
                 >
                   Save draft
                 </Button>
                 {canPublish ? (
                   <Button
+                    type="submit"
                     variant="outline"
                     size="sm"
-                    icon="globe"
+                    icon="globeSimple"
                     disabled={busy || uploader.busy}
-                    onClick={() => void save("publish")}
+                    onClick={() => save("publish")}
                   >
                     Publish
                   </Button>
                 ) : null}
               </div>
             </div>
-          </div>
+          </form>
 
           <ToastBanner message={toast.message} />
         </div>
@@ -913,11 +900,6 @@ function ArticleList({
                 </Button>
               ) : null}
             </div>
-            <FiltersButton
-              count={activeFilterCount}
-              open={filtersOpen}
-              onToggle={() => setFiltersOpen((v) => !v)}
-            />
             <SortMenu columns={columns} />
             <SearchBox
               key={searchKey}
@@ -938,69 +920,13 @@ function ArticleList({
 
         <ListCard
           table={table}
-          total={filtered.length}
           noun="article"
           columns={columns}
-          filters={
-            filtersOpen ? (
-              <div className="admin-filter-panel">
-                <div className="admin-field">
-                  <span className="admin-field__label">Category</span>
-                  <Select
-                    className="admin-select"
-                    aria-label="Category"
-                    value={categoryFilter}
-                    onChange={(e) => filterBy(setCategoryFilter)(e.target.value)}
-                  >
-                    <option value="all">All categories</option>
-                    {NEWS_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {label(NEWS_CATEGORY_LABELS, c)}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="admin-field">
-                  <span className="admin-field__label">Status</span>
-                  <Select
-                    className="admin-select"
-                    aria-label="Status"
-                    value={statusFilter}
-                    onChange={(e) => filterBy(setStatusFilter)(e.target.value as StatusFilter)}
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="published">Public</option>
-                    <option value="scheduled">Scheduled</option>
-                    <option value="draft">Private</option>
-                  </Select>
-                </div>
-                <div className="admin-field">
-                  <span className="admin-field__label">Last Modified</span>
-                  <Select
-                    className="admin-select"
-                    aria-label="Last Modified"
-                    value={dateFilter}
-                    onChange={(e) => filterBy(setDateFilter)(e.target.value as DateFilter)}
-                  >
-                    <option value="all">All dates</option>
-                    <option value="today">Today</option>
-                    <option value="month">This month</option>
-                    <option value="year">This year</option>
-                    <option value="past">Before today</option>
-                  </Select>
-                </div>
-                <button type="button" className="admin-filter-panel__clear" onClick={clearFilters}>
-                  <Icon name="x" size={12} />
-                  Clear filters
-                </button>
-              </div>
-            ) : null
-          }
           empty={
             <ListEmpty
               noun="article"
               query={query}
-              filters={activeFilterCount}
+              filters={table.filterCount}
               emptyHint="Add the first article."
               onClear={clearFilters}
               addLabel="Add New Article"
@@ -1014,7 +940,7 @@ function ArticleList({
                   <Button
                     variant="primary"
                     size="sm"
-                    icon="globe"
+                    icon="globeSimple"
                     disabled={busy}
                     onClick={() => setPublishedFor(Array.from(selected), true)}
                   >

@@ -78,7 +78,7 @@ entries of the chosen date range (`?range=` 1d / 7d (default) / 14d / 30d / all,
 browser then filters and pages them: one tab per side-panel page with counts, built from `ADMIN_NAVIGATION` (a new page gets a tab
 automatically; `also` on its entry lists the other modules shown under it, e.g. Organizations =
 Period, Structure, Appointments), User and Action pickers, title search, "Reversible only", sort by date
-or action, 10/20/50 rows per page, and Export CSV of the filtered rows. Each row shows the time
+or action, 10/25/50 rows per page, and Export CSV of the filtered rows. Each row shows the time
 (UTC), the user, the action badge, page and title, `#` + the record id, and either "N days left" +
 Revert or "Irreversible" (reason as tooltip). The chevron opens the changed fields (Field,
 Before · time of the record's previous change, After · time of this change): text changes with

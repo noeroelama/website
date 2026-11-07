@@ -6,6 +6,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -35,9 +36,86 @@ let BLOCK_SEQ = 0;
 /** A new box (ids are unique while the page lives). */
 export const newBlock = (text = ""): RichTextBlock => ({ id: `box-${++BLOCK_SEQ}`, text });
 
-/** The saved content: every box's HTML, in order. */
+/** The + menu (as in PPIT): each entry adds a box below, holding `html` or started with `command`. */
+interface BlockKind {
+  label: string;
+  tile: string;
+  html?: string;
+  command?: "image" | "link";
+}
+const BLOCK_MENU: readonly BlockKind[] = [
+  { label: "Paragraph", tile: "/Button-align-left.png" },
+  { label: "Image", tile: "/Button-1.png", command: "image" },
+  { label: "Quote", tile: "/Button-2.png", html: "<blockquote><br></blockquote>" },
+  { label: "Heading 1", tile: "/Button-3.png", html: "<h1><br></h1>" },
+  { label: "Heading 2", tile: "/Button-4.png", html: "<h2><br></h2>" },
+  { label: "Divider", tile: "/Button-5.png", html: "<hr>" },
+  { label: "Bullet list", tile: "/Button-6.png", html: "<ul><li><br></li></ul>" },
+  { label: "Numbered list", tile: "/Button-7.png", html: "<ol><li><br></li></ol>" },
+  { label: "Link", tile: "/Button-8.png", command: "link" },
+  { label: "Code", tile: "/Button-9.png", html: "<code><br></code>" },
+];
+
+/** Puts the caret at the end of a box's text (inside its last paragraph or item) and focuses it. */
+function focusEnd(el: HTMLElement) {
+  el.focus();
+  let target: Element = el;
+  while (target.lastElementChild && !["BR", "HR", "IMG"].includes(target.lastElementChild.tagName))
+    target = target.lastElementChild;
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  range.collapse(false);
+  document.getSelection()?.removeAllRanges();
+  document.getSelection()?.addRange(range);
+}
+
+/** The saved content: each box's HTML in its own <div>, in order, so `splitBlocks` gets the
+    same boxes back when the content is edited again. */
 export const joinBlocks = (blocks: readonly RichTextBlock[]): string =>
-  blocks.map((block) => block.text).join("");
+  blocks.map((block) => `<div>${block.text}</div>`).join("");
+
+/** Tags that start a new box in content saved before boxes were kept (see `splitBlocks`). */
+const BLOCK_TAGS = [
+  "P",
+  "DIV",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "BLOCKQUOTE",
+  "UL",
+  "OL",
+  "HR",
+  "PRE",
+  "FIGURE",
+];
+
+/**
+ * The boxes of saved content (browser only; the <template> parses without loading anything).
+ * Content from `joinBlocks` is a row of <div>s, one per box. Older content was one long HTML:
+ * each block element becomes a box, and text or inline tags next to each other share one.
+ */
+export function splitBlocks(html: string): RichTextBlock[] {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const nodes = [...template.content.childNodes].filter(
+    (n) => n.textContent?.trim() || n instanceof Element,
+  );
+  const outer = (n: Node) => (n instanceof Element ? n.outerHTML : (n.textContent ?? ""));
+  const isBlock = (n: Node) => n instanceof Element && BLOCK_TAGS.includes(n.tagName);
+  const texts: string[] = [];
+  if (nodes.every((n) => n instanceof Element && n.tagName === "DIV")) {
+    for (const n of nodes) texts.push((n as Element).innerHTML);
+  } else {
+    let inline = false; // the last box holds text or inline tags
+    for (const n of nodes) {
+      if (!isBlock(n) && inline) texts[texts.length - 1] += outer(n);
+      else texts.push(outer(n));
+      inline = !isBlock(n);
+    }
+  }
+  return texts.length > 0 ? texts.map((text) => newBlock(text)) : [newBlock()];
+}
 
 /** The stack of boxes. `label` names the content for screen readers ("Article content"). */
 export function RichTextStack({
@@ -56,24 +134,48 @@ export function RichTextStack({
 }) {
   const [dragSource, setDragSource] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  /* The box that takes the caret next (a new box from the + menu, or the one above a removed
+     box), and the menu command it starts with. */
+  const [focus, setFocus] = useState<{ id: string; command?: string | undefined } | null>(null);
   const endDrag = () => {
     setDragSource(null);
     setDragOver(null);
   };
   return (
-    <div className="admin-editor-list">
+    <div
+      className="admin-editor-list"
+      onMouseDown={(e) => {
+        // A click on the empty space below the content continues the last box.
+        const bodies = e.currentTarget.querySelectorAll<HTMLElement>(".admin-editor__body");
+        const last = bodies[bodies.length - 1];
+        if (e.target !== e.currentTarget || readOnly || !last) return;
+        e.preventDefault();
+        focusEnd(last);
+      }}
+    >
       {blocks.map((block, i) => (
         <RichTextBox
           key={block.id}
           value={block.text}
           label={label}
           readOnly={readOnly}
+          autoFocus={block.id === focus?.id}
+          startCommand={block.id === focus?.id ? focus.command : undefined}
+          onFocused={() => setFocus(null)}
           uploadImage={uploadImage}
           onChange={(text) => {
             if (text !== block.text) onChange(blocks.map((b, j) => (j === i ? { ...b, text } : b)));
           }}
-          onAdd={() => onChange([...blocks.slice(0, i + 1), newBlock(), ...blocks.slice(i + 1)])}
-          onDelete={() => onChange(blocks.filter((_, j) => j !== i))}
+          onAdd={(kind) => {
+            const added = newBlock(kind.html);
+            setFocus({ id: added.id, command: kind.command });
+            onChange([...blocks.slice(0, i + 1), added, ...blocks.slice(i + 1)]);
+          }}
+          onDelete={() => {
+            const above = blocks[i - 1];
+            setFocus(above ? { id: above.id } : null);
+            onChange(blocks.filter((_, j) => j !== i));
+          }}
           canDelete={blocks.length > 1}
           isDragOver={dragOver === i}
           onDragStart={() => setDragSource(i)}
@@ -96,31 +198,24 @@ export function RichTextStack({
   );
 }
 
-/** Rich-text toolbar chip (formatting button). */
+/** One entry of the + block menu. */
 function EditorButton({
   icon,
   label,
-  active = false,
-  disabled = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
-  active?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
+  onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={active ? "admin-editor__btn admin-editor__btn--active" : "admin-editor__btn"}
+      className="admin-editor__btn"
       aria-label={label}
-      aria-pressed={active}
-      disabled={disabled}
       title={label}
       onClick={onClick}
-      /* Keep focus in the editor: a toolbar mousedown normally moves focus and
-         clears the live selection, so the command would run on the wrong text. */
+      /* Keep focus in the editor until the new box takes it. */
       onMouseDown={(e) => e.preventDefault()}
     >
       {icon}
@@ -134,6 +229,9 @@ function RichTextBox({
   onChange,
   label,
   readOnly,
+  autoFocus,
+  startCommand,
+  onFocused,
   uploadImage,
   onAdd,
   onDelete,
@@ -149,8 +247,13 @@ function RichTextBox({
   onChange: (text: string) => void;
   label: string;
   readOnly: boolean;
+  /** Take the caret (end of the text) when this turns true, then run `startCommand`. */
+  autoFocus: boolean;
+  startCommand: string | undefined;
+  onFocused: () => void;
   uploadImage: (file: File) => Promise<string | null>;
-  onAdd: () => void;
+  /** Adds a box below: a paragraph, heading, list, image … picked in the + menu. */
+  onAdd: (kind: BlockKind) => void;
   onDelete: () => void;
   canDelete: boolean;
   isDragOver: boolean;
@@ -195,7 +298,6 @@ function RichTextBox({
   };
 
   const onEditorSelect = () => {
-    refreshActive();
     saveRange();
   };
 
@@ -239,249 +341,13 @@ function RichTextBox({
     }
     syncEditorText();
     editorRef.current?.focus();
-    setTimeout(refreshActive, 0);
   };
 
-  /* Nearest block element (div/p/li/...) walking up from a node — used to know
-   which heading/quote a caret or selection currently sits in. */
-  const BLOCK_TAGS = ["DIV", "P", "H1", "H2", "H3", "BLOCKQUOTE", "PRE", "LI"];
-  const nearestBlock = (node: Node | null): HTMLElement | null => {
-    const el = editorRef.current;
-    if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-    while (node && node !== el && node instanceof HTMLElement) {
-      if (BLOCK_TAGS.includes(node.tagName.toUpperCase())) return node;
-      node = node.parentNode;
-    }
-    return null;
-  };
-
-  /* Is the caret/selection already inside an element of this tag? */
-  const insideTag = (node: Node | null, tag: string): HTMLElement | null => {
-    const el = editorRef.current;
-    if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-    while (node && node !== el) {
-      if (node instanceof HTMLElement && node.tagName.toUpperCase() === tag) return node;
-      node = node.parentNode;
-    }
-    return null;
-  };
-
-  /** Which toolbar buttons describe the format at the current caret, so the
-    toolbar can show the active one (Gmail/Word style). Blocks and inline
-    formats are tracked independently so several buttons can be on at once.
-
-    Alignment is a single rotating button: it advances to the next alignment
-    on every press (left → center → right → justify → back to left), so the
-    toolbar keeps the *currently selected* alignment highlighted. */
-  const ALIGN_ORDER = ["alignLeft", "alignCenter", "alignRight", "alignJustify"] as const;
-  type AlignCmd = (typeof ALIGN_ORDER)[number];
-  const alignToCmd: Record<AlignCmd, string> = {
-    alignLeft: "justifyLeft",
-    alignCenter: "justifyCenter",
-    alignRight: "justifyRight",
-    alignJustify: "justifyFull",
-  };
-  /* One exported tile per alignment so the rotating Align button visibly
-   switches icon as it cycles left → center → right → justify. */
-  const alignToTile: Record<AlignCmd, string> = {
-    alignLeft: "/Button-align-left.png",
-    alignCenter: "/Button-align-center.png",
-    alignRight: "/Button-align-right.png",
-    alignJustify: "/Button-align-justify.png",
-  };
-  const [alignCycle, setAlignCycle] = useState<number>(0);
-  const activeAlign = (): AlignCmd | null => {
-    try {
-      if (document.queryCommandState("justifyLeft")) return "alignLeft";
-      if (document.queryCommandState("justifyCenter")) return "alignCenter";
-      if (document.queryCommandState("justifyRight")) return "alignRight";
-      if (document.queryCommandState("justifyFull")) return "alignJustify";
-    } catch {
-      /* keep null — default state */
-    }
-    return null;
-  };
-
-  const [activeCmds, setActiveCmds] = useState<string[]>([]);
-  const detectActive = (): string[] => {
-    const sel = document.getSelection();
-    const list: string[] = [];
-    try {
-      if (document.queryCommandState("insertUnorderedList")) list.push("bullet");
-      if (document.queryCommandState("insertOrderedList")) list.push("number");
-      const block = nearestBlock(sel?.anchorNode ?? null)?.tagName.toUpperCase();
-      if (block === "H1") list.push("h1");
-      else if (block === "H2") list.push("h2");
-      else if (block === "BLOCKQUOTE") list.push("comment");
-      if (insideTag(sel?.anchorNode ?? null, "CODE")) list.push("code");
-      if (insideTag(sel?.anchorNode ?? null, "A")) list.push("link");
-    } catch {
-      /* some browsers reject the query commands — keep everything inactive */
-    }
-    return list;
-  };
-  const refreshActive = () => {
-    const el = editorRef.current;
-    const sel = document.getSelection();
-    if (!el || !sel || sel.rangeCount === 0 || !el.contains(sel.anchorNode)) return;
-    setActiveCmds(detectActive());
-    /* keep the rotating align button pointing at whatever alignment the caret
-     actually sits in (after a command or when careting through the text) */
-    const align = activeAlign();
-    if (align) setAlignCycle(ALIGN_ORDER.indexOf(align));
-  };
-
-  /* Replace an element with its own children (the toggle-off path: text goes
-   back to plain, losing the wrapper but keeping the content). */
-  const unwrapElement = (node: HTMLElement) => {
-    while (node.firstChild) node.parentNode?.insertBefore(node.firstChild, node);
-    node.parentNode?.removeChild(node);
-  };
-
-  const placeCaret = (r: Range) => {
-    const sel = document.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(r);
-    savedRangeRef.current = r.cloneRange();
-    syncEditorText();
-    setTimeout(refreshActive, 0);
-  };
-
-  /* Nearest block wrapper among the heading/quote set above a node — block
-   formats are mutually exclusive, so swapping H1→H2 replaces, not nests. */
-  const BLOCK_WRAPS = ["H1", "H2", "BLOCKQUOTE"];
-  const insideBlockWrap = (node: Node | null): HTMLElement | null => {
-    const el = editorRef.current;
-    if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-    while (node && node !== el) {
-      if (node instanceof HTMLElement && BLOCK_WRAPS.includes(node.tagName.toUpperCase()))
-        return node;
-      node = node.parentNode;
-    }
-    return null;
-  };
-
-  /* Toggling wrap: if the selection is already inside `tag`, unwrap it (button
-   pressed twice → off); otherwise wrap exactly the selected text in it (block
-   heading/quote, or inline <code>). This scopes formatting to the selection
-   instead of re-formatting the whole paragraph, and lets formats stack (e.g.
-   H1 + code, list + link). Block tags swap rather than nest: H1 then H2
-   converts the heading level instead of embedding one inside the other. */
-  const applyWrapFormat = (tag: "H1" | "H2" | "BLOCKQUOTE" | "CODE") => {
-    const el = editorRef.current;
-    ensureCaret();
-    const sel = document.getSelection();
-    if (!el || !sel || sel.rangeCount === 0) return;
-    const anchor = sel.anchorNode ?? sel.getRangeAt(0).startContainer;
-    const existing = insideTag(anchor, tag);
-    if (existing) {
-      const r = document.createRange();
-      if (existing.previousSibling) r.setStartAfter(existing.previousSibling);
-      else r.setStart(existing.parentNode ?? el, 0);
-      r.collapse(true);
-      unwrapElement(existing);
-      placeCaret(r);
-      return;
-    }
-    /* A different block wrapper already owns this selection → retag it to the
-     new block format instead of nesting one block element inside another. */
-    const other = BLOCK_WRAPS.includes(tag) ? insideBlockWrap(anchor) : null;
-    if (other) {
-      const keep = Array.from(other.childNodes);
-      const wrap = document.createElement(tag);
-      keep.forEach((n) => wrap.appendChild(n));
-      other.parentNode?.replaceChild(wrap, other);
-      /* caret lands inside the newly tagged block so the toolbar shows it on */
-      const r = document.createRange();
-      r.selectNodeContents(wrap);
-      r.collapse(false);
-      placeCaret(r);
-      return;
-    }
-    const range = sel.getRangeAt(0);
-    if (range.collapsed) {
-      /* No selected text yet: put the caret inside a fresh wrapper so whatever
-       the user types next is formatted. */
-      const wrap = document.createElement(tag);
-      range.insertNode(wrap);
-      const r = document.createRange();
-      r.selectNodeContents(wrap);
-      r.collapse(false);
-      placeCaret(r);
-      return;
-    }
-    const contents = range.extractContents();
-    const wrap = document.createElement(tag);
-    wrap.appendChild(contents);
-    range.insertNode(wrap);
-    /* keep the formatted text selected so the user sees exactly what changed */
-    const r = document.createRange();
-    r.selectNodeContents(wrap);
-    placeCaret(r);
-  };
-
+  /* The + menu entries that need the new box itself: pick an image to upload, or open the
+   link popover. (Headings, lists, quotes, code and dividers arrive as the box's HTML.) */
   const runCommand = (cmd: string) => {
-    switch (cmd) {
-      /* The align button rotates: pressing it advances to the next alignment in
-       the cycle and applies it. The *current* alignment stays lit. */
-      case "alignCycle": {
-        const next = ALIGN_ORDER[(alignCycle + 1) % ALIGN_ORDER.length]!;
-        exec(alignToCmd[next]);
-        /* exec() re-runs refreshActive which re-reads the live alignment, so
-         alignCycle already tracks what was actually applied */
-        break;
-      }
-      case "image":
-        editorImageInputRef.current?.click();
-        break;
-      case "comment":
-        applyWrapFormat("BLOCKQUOTE");
-        break;
-      case "h1":
-        applyWrapFormat("H1");
-        break;
-      case "h2":
-        applyWrapFormat("H2");
-        break;
-      case "divider":
-        exec("insertHorizontalRule");
-        break;
-      case "bullet":
-        /* execCommand already toggles an unordered list on the block */
-        exec("insertUnorderedList");
-        break;
-      case "number":
-        /* ditto for an ordered list */
-        exec("insertOrderedList");
-        break;
-      case "link":
-        /* Toggle, like the other format buttons: when the caret is already
-         inside a link (button lit), clicking removes the hyperlink and keeps
-         the text; otherwise the insert-link popover opens. */
-        if (insideTag(document.getSelection()?.anchorNode ?? null, "A")) {
-          const el = editorRef.current;
-          ensureCaret();
-          const sel = document.getSelection();
-          if (!el || !sel || sel.rangeCount === 0) break;
-          const existing = insideTag(sel.anchorNode ?? sel.getRangeAt(0).startContainer, "A");
-          if (existing) {
-            const r = document.createRange();
-            if (existing.previousSibling) r.setStartAfter(existing.previousSibling);
-            else r.setStart(existing.parentNode ?? el, 0);
-            r.collapse(true);
-            unwrapElement(existing);
-            placeCaret(r);
-          }
-        } else {
-          openLinkModal();
-        }
-        break;
-      case "code":
-        applyWrapFormat("CODE");
-        break;
-      default:
-        break;
-    }
+    if (cmd === "image") editorImageInputRef.current?.click();
+    if (cmd === "link") openLinkModal();
   };
 
   /* ---- Link popup (Text + Hyperlink) ---- */
@@ -587,7 +453,6 @@ function RichTextBox({
     }
     setLinkOpen(false);
     syncEditorText();
-    refreshActive();
     el.focus();
   };
 
@@ -599,6 +464,30 @@ function RichTextBox({
    command acts on the right spot. The link popup relies on the same save. */
   const onEditorBlur = () => {
     saveRange();
+  };
+
+  /* A box added from the + menu mounts with the caret: it comes in with an animation. */
+  const [isNew] = useState(autoFocus);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const takeFocus = useEffectEvent(() => {
+    if (!editorRef.current) return;
+    focusEnd(editorRef.current);
+    if (startCommand) runCommand(startCommand);
+    onFocused();
+  });
+  useEffect(() => {
+    if (autoFocus) takeFocus();
+  }, [autoFocus]);
+
+  /* Backspace in an empty box removes it (the caret moves to the box above). */
+  const onEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const empty = !el.textContent?.trim() && !el.querySelector("img, hr");
+    if (e.key === "Backspace" && empty && canDelete) {
+      e.preventDefault();
+      onDelete();
+    }
   };
 
   /* The link popover is dismissed exactly like a small popup: Escape cancels it,
@@ -633,125 +522,93 @@ function RichTextBox({
   return (
     <>
       <div
-        className={isDragOver ? "admin-editor admin-editor--drag-over" : "admin-editor"}
+        className={[
+          "admin-editor",
+          isNew && "admin-editor--new",
+          isDragOver && "admin-editor--drag-over",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        {/* A strip above the format chips: a plus that adds a NEW box below this one, a drag
-            handle that reorders it, and — when more than one box exists — a trash button that
-            removes this box. Read-only content shows no strip. */}
+        {/* Under each box, a plus that opens the block menu; the chosen entry adds a box below. Left of the text, a drag handle that reorders the box; when more
+            than one box exists, a trash button at the end removes it. Read-only content shows
+            none of them. */}
         {!readOnly ? (
-          <div className="admin-editor__top">
+          <div
+            className="admin-editor__add"
+            /* The menu closes on Escape and when focus leaves the + and its menu. */
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setMenuOpen(false);
+            }}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) setMenuOpen(false);
+            }}
+          >
             <button
               type="button"
               className="admin-editor__top-btn"
-              aria-label="Add a type box"
-              title="Add a type box"
-              onClick={onAdd}
+              aria-label="Add a block below"
+              title="Add a block below"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+              onClick={(e) => {
+                e.currentTarget.focus(); // Safari does not focus buttons on click
+                setMenuOpen((open) => !open);
+              }}
             >
               <Icon name="plus" size={16} />
             </button>
+            {menuOpen ? (
+              <div className="admin-editor__toolbar" role="toolbar" aria-label="Add a block">
+                {BLOCK_MENU.map((kind) => (
+                  <EditorButton
+                    key={kind.label}
+                    icon={<img src={kind.tile} alt="" className="admin-editor__btn-img" />}
+                    label={kind.label}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAdd(kind);
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {!readOnly ? (
+          <div className="admin-editor__top">
             <span
               className="admin-editor__top-drag"
               draggable
               role="img"
               aria-label="Drag handle"
               title="Drag to reorder"
-              onDragStart={onDragStart}
+              onDragStart={(e) => {
+                // The drag preview is the box's text, not just the grip icon.
+                if (editorRef.current) e.dataTransfer.setDragImage(editorRef.current, 0, 0);
+                e.dataTransfer.setData("text/plain", ""); // Firefox only starts a drag with data
+                onDragStart();
+              }}
               onDragEnd={onDragEnd}
             >
               <Icon name="gripBold" size={16} />
             </span>
-            {canDelete && (
-              <button
-                type="button"
-                className="admin-editor__top-btn admin-editor__top-btn--danger"
-                aria-label="Delete this type box"
-                title="Delete this type box"
-                onClick={onDelete}
-              >
-                <Icon name="trash" size={16} />
-              </button>
-            )}
           </div>
         ) : null}
-        <div className="admin-editor__toolbar" role="toolbar" aria-label="Formatting">
-          <EditorButton
-            disabled={readOnly}
-            icon={
-              <img
-                src={alignToTile[ALIGN_ORDER[alignCycle]!]}
-                alt=""
-                className="admin-editor__btn-img"
-              />
-            }
-            label={`Align ${ALIGN_ORDER[alignCycle]!.replace("align", "").toLowerCase()}`}
-            active={alignCycle > 0}
-            onClick={() => runCommand("alignCycle")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-1.png" alt="" className="admin-editor__btn-img" />}
-            label="Insert image"
-            onClick={() => runCommand("image")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-2.png" alt="" className="admin-editor__btn-img" />}
-            label="Comment"
-            active={activeCmds.includes("comment")}
-            onClick={() => runCommand("comment")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-3.png" alt="" className="admin-editor__btn-img" />}
-            label="Heading 1"
-            active={activeCmds.includes("h1")}
-            onClick={() => runCommand("h1")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-4.png" alt="" className="admin-editor__btn-img" />}
-            label="Heading 2"
-            active={activeCmds.includes("h2")}
-            onClick={() => runCommand("h2")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-5.png" alt="" className="admin-editor__btn-img" />}
-            label="Divider"
-            onClick={() => runCommand("divider")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-6.png" alt="" className="admin-editor__btn-img" />}
-            label="Bullet list"
-            active={activeCmds.includes("bullet")}
-            onClick={() => runCommand("bullet")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-7.png" alt="" className="admin-editor__btn-img" />}
-            label="Numbered list"
-            active={activeCmds.includes("number")}
-            onClick={() => runCommand("number")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-8.png" alt="" className="admin-editor__btn-img" />}
-            label="Link"
-            active={activeCmds.includes("link")}
-            onClick={() => runCommand("link")}
-          />
-          <EditorButton
-            disabled={readOnly}
-            icon={<img src="/Button-9.png" alt="" className="admin-editor__btn-img" />}
-            label="Code"
-            active={activeCmds.includes("code")}
-            onClick={() => runCommand("code")}
-          />
-        </div>
+        {!readOnly && canDelete ? (
+          <button
+            type="button"
+            className="admin-editor__top-btn admin-editor__top-btn--danger"
+            aria-label="Delete this type box"
+            title="Delete this type box"
+            onClick={onDelete}
+          >
+            <Icon name="trash" size={16} />
+          </button>
+        ) : null}
         <input
           ref={editorImageInputRef}
           type="file"
@@ -777,6 +634,7 @@ function RichTextBox({
           aria-label={label}
           onInput={onEditorInput}
           onBlur={onEditorBlur}
+          onKeyDown={onEditorKeyDown}
           onKeyUp={onEditorSelect}
           onClick={onEditorSelect}
           onSelect={onEditorSelect}
@@ -813,7 +671,7 @@ function RichTextBox({
             <input
               id={`${id}-url`}
               className="admin-input"
-              type="text"
+              type="url"
               placeholder="https://example.com"
               value={linkUrl}
               autoFocus

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   archiveIncomingAction,
@@ -14,7 +14,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
-import { ListCard, ListEmpty, SearchBox, Tabs, useListTable } from "@/components/ui/list-controls";
+import {
+  ListCard,
+  ListEmpty,
+  SearchBox,
+  SortMenu,
+  StatusMenu,
+  useListTable,
+} from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
@@ -34,6 +41,10 @@ interface Props {
   officers: { id: string; name: string }[];
   canEdit: boolean;
   canDispose: boolean;
+  /** letter_types.read: shows the Letter types button. */
+  canManageTypes: boolean;
+  /** Outgoing / Incoming tabs, under the header (`LetterSectionTabs`). */
+  sectionTabs: ReactNode;
 }
 
 interface Draft {
@@ -60,7 +71,16 @@ export function IncomingPage(props: Props) {
   return <IncomingList key={pathname} {...props} />;
 }
 
-function IncomingList({ periodName, initial: items, units, officers, canEdit, canDispose }: Props) {
+function IncomingList({
+  periodName,
+  initial: items,
+  units,
+  officers,
+  canEdit,
+  canDispose,
+  canManageTypes,
+  sectionTabs,
+}: Props) {
   const toast = useToastMessage();
   const router = useRouter();
   const [tab, setTab] = useState<IncomingTab>("all");
@@ -252,7 +272,10 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
             </p>
           </div>
         </div>
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             {text("sender", "Sender *")}
             {text("originNumber", "Sender's number")}
@@ -282,17 +305,18 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void save()}
+                onClick={() => save()}
               >
                 {current ? "Save" : "Record"}
               </Button>
             </div>
           </div>
-        </div>
+        </form>
         <ToastBanner message={toast.message} />
       </div>
     );
@@ -446,11 +470,13 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
           </div>
         </div>
         <Modal
+          asForm
           open={disposing !== null}
           title={disposing?.parentId ? "Forward the disposition" : "Dispose the letter"}
           onClose={() => setDisposing(null)}
           footer={
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               disabled={busy || !disposing?.target || !disposing.instruction.trim()}
@@ -523,11 +549,13 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
           ) : null}
         </Modal>
         <Modal
+          asForm
           open={completing !== null}
           title="Mark the disposition done"
           onClose={() => setCompleting(null)}
           footer={
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               disabled={busy}
@@ -574,9 +602,9 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
 
   return (
     <div>
-      <div className="admin-page-header">
+      <div className="admin-page-header admin-events-header">
         <div>
-          <h1 className="admin-page-header__title">Incoming letters</h1>
+          <h1 className="admin-page-header__title">Letter &gt; Incoming</h1>
           <p className="admin-page-header__desc">
             {periodName
               ? `Agenda book of the ${periodName} board.`
@@ -585,6 +613,16 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
         </div>
         <div className="admin-page-header__actions">
           <div className="admin-fab">
+            {canManageTypes ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="settings"
+                onClick={() => router.push("/letters?tab=types")}
+              >
+                Letter types
+              </Button>
+            ) : null}
             {canEdit ? (
               <Button
                 variant="outline"
@@ -593,10 +631,22 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
                 disabled={!periodName}
                 onClick={() => openForm()}
               >
-                Record letter
+                Send Mail
               </Button>
             ) : null}
           </div>
+          <StatusMenu
+            options={INCOMING_TABS.map((t) => ({
+              key: t.key,
+              label: `${t.label} (${counts[t.key]})`,
+            }))}
+            value={tab}
+            onSelect={(key) => {
+              setTab(key);
+              table.setPage(1);
+            }}
+          />
+          <SortMenu columns={columns} />
           <SearchBox
             placeholder="Search agenda, sender or subject..."
             label="Search incoming letters"
@@ -607,18 +657,9 @@ function IncomingList({ periodName, initial: items, units, officers, canEdit, ca
           />
         </div>
       </div>
-      <Tabs
-        label="Incoming letter states"
-        tabs={INCOMING_TABS.map((t) => ({ ...t, count: counts[t.key] }))}
-        active={tab}
-        onSelect={(next) => {
-          setTab(next);
-          table.setPage(1);
-        }}
-      />
+      {sectionTabs}
       <ListCard
         table={table}
-        total={filtered.length}
         noun="letter"
         columns={columns}
         empty={

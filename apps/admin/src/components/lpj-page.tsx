@@ -170,11 +170,7 @@ export function LpjReportPage({ lpj, can }: ReportProps) {
               <Button variant="outline" size="sm" icon="edit" onClick={() => setDialog("edit")}>
                 Write LPJ
               </Button>
-              <Button
-                size="sm"
-                icon="send"
-                onClick={() => void run(submitLpjAction(ref), "Submitted")}
-              >
+              <Button size="sm" icon="send" onClick={() => run(submitLpjAction(ref), "Submitted")}>
                 Submit
               </Button>
             </>
@@ -242,11 +238,7 @@ export function LpjReportPage({ lpj, can }: ReportProps) {
                 {label(LPJ_DESK_LABELS, d.desk)}:{" "}
                 {d.signedBy ? `${d.signedBy}, ${d.at}` : "not yet reviewed"}{" "}
                 {d.canSign ? (
-                  <Button
-                    size="sm"
-                    icon="check"
-                    onClick={() => void run(SIGN[d.desk](ref), "Signed")}
-                  >
+                  <Button size="sm" icon="check" onClick={() => run(SIGN[d.desk](ref), "Signed")}>
                     Sign
                   </Button>
                 ) : null}

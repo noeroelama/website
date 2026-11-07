@@ -13,8 +13,27 @@
   --admin-leading-tight: 1.2; /* buttons / tight stacks */
   --admin-leading-label: 1.3; /* radio stack / dropzone / slug / meta */
   --admin-leading-badge: 1.6; /* badge rows */
+  /* One height for every button, field, dropdown and search box (34 px; 40 px on phones). */
+  --admin-control-height: calc(var(--size-control-sm) + var(--space-1-5));
+  /* Spring for presses, popups and growing note fields (overshoots a little, then settles). */
+  --admin-ease-spring: linear(0, 0.55 10%, 1.12 30%, 0.98 55%, 1.01 75%, 1);
   /* Dark page of the Gallery/Event designs (darker than brand-950, which the dialogs use). */
   --admin-page-dark: color-mix(in srgb, var(--color-brand-950) 60%, var(--color-black));
+}
+
+@media (max-width: 767px) {
+  :root {
+    --admin-control-height: var(--size-control);
+  }
+}
+
+/* Phones: a long word or link breaks anywhere instead of widening the page. */
+@media (max-width: 767px) {
+  body,
+  .admin-table th,
+  .admin-table td {
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ===================== Side panel (components/admin-sidebar.tsx) ===================== */
@@ -140,6 +159,7 @@
 .admin-nav {
   display: grid;
   flex: 1;
+  min-width: 0;
   align-content: start;
   gap: var(--space-3);
   min-height: 0;
@@ -614,7 +634,8 @@ a.admin-stat-card:hover {
   align-items: center;
   justify-content: center;
   gap: var(--space-1-5);
-  padding: var(--space-2) var(--space-3-5);
+  min-height: var(--admin-control-height);
+  padding: 0 var(--space-3-5);
   border: 0;
   border-radius: var(--radius-md);
   font-family: inherit;
@@ -626,7 +647,19 @@ a.admin-stat-card:hover {
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    scale 0.6s var(--admin-ease-spring);
+}
+
+/* Six states: default (above), hover (pointer devices only, per variant), focus, press,
+   loading and disabled. */
+.admin-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--admin-focus, var(--color-focus));
+  outline-offset: var(--focus-ring-offset);
+}
+
+.admin-btn:active:not(:disabled) {
+  scale: 0.96;
 }
 
 .admin-btn:disabled {
@@ -634,13 +667,37 @@ a.admin-stat-card:hover {
   cursor: not-allowed;
 }
 
+/* Loading: the action runs; the button stays readable and shows a spinner after its label. */
+.admin-btn[aria-busy="true"] {
+  opacity: 1;
+  cursor: progress;
+}
+
+.admin-btn[aria-busy="true"]::after {
+  content: "";
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: admin-spin 0.7s linear infinite;
+}
+
+@keyframes admin-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
 .admin-btn--primary {
   background: var(--color-highlight);
   color: var(--color-on-highlight);
 }
 
-.admin-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-highlight) 88%, var(--color-black));
+@media (hover: hover) {
+  .admin-btn--primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-highlight) 88%, var(--color-black));
+  }
 }
 
 .admin-btn--maroon {
@@ -648,8 +705,10 @@ a.admin-stat-card:hover {
   color: var(--color-white);
 }
 
-.admin-btn--maroon:hover:not(:disabled) {
-  background: var(--color-black);
+@media (hover: hover) {
+  .admin-btn--maroon:hover:not(:disabled) {
+    background: var(--color-black);
+  }
 }
 
 .admin-btn--ghost {
@@ -657,8 +716,10 @@ a.admin-stat-card:hover {
   color: var(--color-primary);
 }
 
-.admin-btn--ghost:hover:not(:disabled) {
-  background: var(--color-hover);
+@media (hover: hover) {
+  .admin-btn--ghost:hover:not(:disabled) {
+    background: var(--color-hover);
+  }
 }
 
 /* Row-action delete: always the danger colour, even in the ghost/icon look. */
@@ -672,8 +733,10 @@ a.admin-stat-card:hover {
   border: 1.5px solid var(--color-primary);
 }
 
-.admin-btn--outline:hover:not(:disabled) {
-  background: var(--color-hover);
+@media (hover: hover) {
+  .admin-btn--outline:hover:not(:disabled) {
+    background: var(--color-hover);
+  }
 }
 
 .admin-btn--success {
@@ -687,13 +750,12 @@ a.admin-stat-card:hover {
 }
 
 .admin-btn--sm {
-  min-height: var(--size-control-sm);
-  padding: var(--space-1) var(--space-2-5);
+  padding: 0 var(--space-2-5);
   font-size: var(--text-xs);
 }
 
 .admin-btn--lg {
-  padding: var(--space-2-5) var(--space-5);
+  padding: 0 var(--space-5);
   font-size: var(--text-sm);
 }
 
@@ -782,10 +844,8 @@ a.admin-stat-card:hover {
   align-items: center;
 }
 
-/* "Generate Link" sits flush against the slug box; flatten its inner corners.
-   Height matches the slug/textbox so the row reads as one control. */
+/* "Generate Link" sits flush against the slug box; flatten its inner corners. */
 .admin-field__row .admin-btn {
-  height: calc(var(--size-control-sm) + var(--space-1-5));
   font-size: var(--text-xs);
   font-weight: var(--font-regular);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
@@ -794,7 +854,7 @@ a.admin-stat-card:hover {
 .admin-input,
 .admin-select {
   width: 100%;
-  height: calc(var(--size-control-sm) + var(--space-1-5));
+  height: var(--admin-control-height);
   padding: 0 var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -822,7 +882,8 @@ a.admin-stat-card:hover {
   outline: none;
   transition:
     border-color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+    box-shadow var(--duration-fast) var(--ease-out),
+    height 0.6s var(--admin-ease-spring);
 }
 
 .admin-input:focus,
@@ -1092,6 +1153,17 @@ a.admin-stat-card:hover {
   color: var(--color-text);
 }
 
+/* The pick action of a drop area or photo tile: a real <button> over the whole area. A remove
+   button later in the same area sits above it. */
+.admin-pick {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
 .admin-dropzone__image {
   display: block;
   width: 100%;
@@ -1101,6 +1173,7 @@ a.admin-stat-card:hover {
 
 .admin-dropzone__badge {
   position: absolute;
+  pointer-events: none; /* a click on the badge reaches the pick button under it */
   bottom: var(--space-2);
   right: var(--space-2-5);
   color: var(--color-white);
@@ -1167,7 +1240,7 @@ a.admin-stat-card:hover {
   align-items: center;
   flex: 1;
   min-width: 0;
-  height: calc(var(--size-control-sm) + var(--space-1-5));
+  height: var(--admin-control-height);
   border-radius: var(--radius-md) 0 0 var(--radius-md);
   background: var(--color-black);
   border: 1px solid var(--color-border);
@@ -1243,6 +1316,7 @@ a.admin-stat-card:hover {
   flex: 1;
   min-width: 220px;
   max-width: 340px;
+  height: var(--admin-control-height);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-brand-50);
@@ -1256,7 +1330,7 @@ a.admin-stat-card:hover {
   outline: none;
   background: transparent;
   box-shadow: none;
-  height: var(--size-control-sm);
+  height: 100%;
   padding: 0 var(--space-2);
   color: var(--color-text);
   font: inherit;
@@ -1267,7 +1341,7 @@ a.admin-stat-card:hover {
   background: var(--color-black);
   color: var(--color-white);
   border: 0;
-  height: var(--size-control-sm);
+  height: 100%;
   padding: 0 var(--space-3);
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
@@ -1306,6 +1380,7 @@ a.admin-stat-card:hover {
 
 .admin-table__empty {
   flex: 1;
+  min-width: 0;
   display: grid;
   place-items: center;
   padding: var(--space-8) var(--space-4);
@@ -1513,6 +1588,7 @@ a.admin-stat-card:hover {
 
 .admin-darkbar__spacer {
   flex: 1;
+  min-width: 0;
 }
 
 /* Nudge the "Showing … of N" summary a little off the left edge. */
@@ -1623,7 +1699,6 @@ a.admin-stat-card:hover {
 }
 
 .admin-link-result__actions .admin-btn {
-  height: var(--size-control);
   font-weight: var(--font-regular);
 }
 
@@ -1643,6 +1718,7 @@ a.admin-stat-card:hover {
   width: 100%;
   max-height: min(90dvh, 100%);
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--color-brand-950);
   border: 1px solid var(--color-panel-line);
   border-radius: var(--radius-xl);
@@ -1687,6 +1763,11 @@ a.admin-stat-card:hover {
   background: var(--color-panel-hover);
 }
 
+/* A popup that is a form (Modal asForm): the form adds no box of its own. */
+.admin-modal__form {
+  display: contents;
+}
+
 .admin-modal__body {
   display: flex;
   flex-direction: column;
@@ -1710,7 +1791,6 @@ a.admin-stat-card:hover {
 }
 
 .admin-modal__footer-row .admin-btn {
-  height: calc(var(--size-control-sm) + var(--space-1-5));
   padding: 0 var(--space-3);
   font-size: var(--text-xs);
 }
@@ -2007,7 +2087,8 @@ a.admin-stat-card:hover {
   padding: var(--space-1);
   background: var(--color-brand-50);
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
+  /* Concentric corners: outer radius = item radius + the gap around the items. */
+  border-radius: calc(var(--radius-sm) + var(--space-1));
   box-shadow: var(--shadow-popover);
 }
 
@@ -2053,34 +2134,6 @@ a.admin-stat-card:hover {
   position: fixed;
   inset: 0;
   z-index: 40;
-}
-
-/* Toggle filter panel (below the toolbar) */
-.admin-filter-panel {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  padding: var(--space-3) var(--space-4) var(--space-1);
-}
-
-.admin-filter-panel .admin-field {
-  min-width: 180px;
-}
-
-.admin-filter-panel__clear {
-  border: 0;
-  background: transparent;
-  padding: var(--space-1) var(--space-0-5);
-  color: var(--color-primary);
-  font: inherit;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  cursor: pointer;
-}
-
-.admin-filter-panel__clear:hover {
-  text-decoration: underline;
 }
 
 /* Form footer actions (Back · Save draft · Publish) */
@@ -2211,6 +2264,23 @@ a.admin-stat-card:hover {
   cursor: not-allowed;
 }
 
+/* Dropdown buttons press like `.admin-btn`, and their arrow turns over while the menu is open. */
+:is(.admin-combo__trigger, .admin-newsletter-status, .admin-th-sort) {
+  transition: scale 0.6s var(--admin-ease-spring);
+}
+
+:is(.admin-combo__trigger, .admin-newsletter-status, .admin-th-sort):active:not(:disabled) {
+  scale: 0.96;
+}
+
+:is(.admin-combo__trigger, .admin-newsletter-status) > svg:last-child {
+  transition: rotate var(--duration-base) var(--ease-out);
+}
+
+:is(.admin-combo__trigger, .admin-newsletter-status)[aria-expanded="true"] > svg:last-child {
+  rotate: 180deg;
+}
+
 .admin-combo__value {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2220,6 +2290,7 @@ a.admin-stat-card:hover {
 .admin-combo__panel {
   position: fixed;
   z-index: 1100; /* above popups (.admin-modal-overlay) */
+  top: auto; /* useDropdown sets top (below the button) or bottom (above it) */
   right: auto;
   display: flex;
   flex-direction: column;
@@ -2233,6 +2304,7 @@ a.admin-stat-card:hover {
   margin: 0;
   padding: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
 }
 
@@ -2303,6 +2375,22 @@ html:has(.admin-dark-page) {
     scrollbar-width: thin;
     scrollbar-color: var(--color-panel-line) transparent;
   }
+
+  :is(.admin-row-menu__panel, .admin-row-menu__panel *) {
+    scrollbar-color: color-mix(in srgb, var(--color-brand-950) 30%, transparent) transparent;
+  }
+}
+
+/* Cream menus and dropdowns: a dark thumb (the light one above is for the dark page), on the menu
+   itself (column menus scroll as a whole) and on boxes inside it (Select's option list). */
+:is(.admin-row-menu__panel, .admin-row-menu__panel *)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-brand-950) 30%, transparent);
+  background-clip: padding-box;
+}
+
+:is(.admin-row-menu__panel, .admin-row-menu__panel *)::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-brand-950) 50%, transparent);
+  background-clip: padding-box;
 }
 
 /* Colours that depend on the surface. The dark canvas (and dark blocks inside cream cards): cream
@@ -2385,9 +2473,11 @@ html:has(.admin-dark-page) {
   border: 1px solid var(--admin-btn-bg);
 }
 
-.admin-dark-page :is(.admin-btn--outline, .admin-btn--maroon):hover:not(:disabled) {
-  background: var(--admin-btn-hover);
-  border-color: var(--admin-btn-hover);
+@media (hover: hover) {
+  .admin-dark-page :is(.admin-btn--outline, .admin-btn--maroon):hover:not(:disabled) {
+    background: var(--admin-btn-hover);
+    border-color: var(--admin-btn-hover);
+  }
 }
 
 /* Primary stays champagne gold on both the dark canvas and cream surfaces: the admin's one pop colour. */
@@ -2395,16 +2485,20 @@ html:has(.admin-dark-page) {
   border: 1px solid var(--color-highlight);
 }
 
-.admin-dark-page .admin-btn--primary:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--color-highlight) 88%, var(--color-black));
+@media (hover: hover) {
+  .admin-dark-page .admin-btn--primary:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-highlight) 88%, var(--color-black));
+  }
 }
 
 .admin-dark-page .admin-btn--ghost {
   color: var(--admin-ink);
 }
 
-.admin-dark-page .admin-btn--ghost:hover:not(:disabled) {
-  background: var(--admin-ghost-hover);
+@media (hover: hover) {
+  .admin-dark-page .admin-btn--ghost:hover:not(:disabled) {
+    background: var(--admin-ghost-hover);
+  }
 }
 
 /* Fields: cream wells with dark ink on the canvas (dark wells on cream surfaces). The border lights
@@ -2532,8 +2626,10 @@ html:has(.admin-dark-page) {
   text-decoration: none;
 }
 
-.admin-dark-page .admin-table a:not(.admin-btn):hover .admin-table__title {
-  text-decoration: underline;
+@media (hover: hover) {
+  .admin-dark-page .admin-table a:not(.admin-btn):hover .admin-table__title {
+    text-decoration: underline;
+  }
 }
 
 /* A row link with a title and a line under it (Users: name over e-mail). */
@@ -2556,21 +2652,6 @@ form.admin-toolbar::before {
 .admin-toolbar .admin-combo {
   width: auto;
   min-width: 12rem;
-}
-
-/* Header: number badge on "Filters", roomier search field without an icon. */
-.admin-filter-count {
-  display: inline-grid;
-  place-items: center;
-  min-width: var(--space-4-5);
-  height: var(--space-4-5);
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-full);
-  background: var(--color-brand-950);
-  color: var(--color-brand-50);
-  font-size: var(--text-2xs);
-  line-height: var(--admin-leading-tight);
-  font-weight: var(--font-bold);
 }
 
 .admin-dark-page .admin-searchbox {
@@ -2640,6 +2721,34 @@ form.admin-toolbar::before {
 
 .admin-dark-page .admin-th-sort--active {
   color: var(--color-brand-50);
+}
+
+/* Column menu (ui/column-menu.tsx): sort A–Z / Z–A, then the column's values as a checklist. */
+.admin-colmenu {
+  display: inline-block;
+}
+
+.admin-colmenu__panel {
+  max-height: min(24rem, 70dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-colmenu__panel .admin-row-menu__item[aria-pressed="true"] {
+  font-weight: var(--font-semibold);
+}
+
+.admin-colmenu__list {
+  display: grid;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.admin-colmenu__list input {
+  margin: 0;
+  accent-color: var(--color-brand-950);
 }
 
 /* Checkboxes: cream rounded squares; filled cream (with the black mark) when on.
@@ -2746,7 +2855,12 @@ form.admin-toolbar::before {
 .admin-dark-page .admin-darkbar {
   padding: var(--space-3) var(--space-4);
   background: transparent;
-  border-top: 0;
+  border-top: 1px solid var(--color-panel-line);
+}
+
+/* The paging bar draws the line under the last row, so the row does not draw a second one. */
+.admin-dark-page .admin-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .admin-dark-page .admin-darkbar__info {
@@ -2901,6 +3015,7 @@ form.admin-toolbar::before {
 .admin-dark-page .admin-list-card,
 .admin-dark-page .admin-list-card .admin-table-wrap {
   flex: 1 0 auto;
+  min-width: 0;
 }
 
 /* The pagination / bulk bar stay at the bottom of the card. */
@@ -2912,6 +3027,7 @@ form.admin-toolbar::before {
 .admin-dark-page .admin-list-card > * {
   display: flex;
   flex: 1;
+  min-width: 0;
   flex-direction: column;
 }
 
@@ -3153,6 +3269,10 @@ form.admin-toolbar::before {
 .admin-dark-page .admin-tabs__btn--active,
 .admin-dark-page .admin-tabs__btn:hover:not(.admin-tabs__btn--active) {
   color: var(--color-brand-50);
+}
+
+/* Only the active tab is bold; hover changes the colour, so no tab changes width (no wiggle). */
+.admin-dark-page .admin-tabs__btn--active {
   font-weight: var(--font-semibold);
 }
 
@@ -3218,10 +3338,12 @@ form.admin-toolbar::before {
   object-fit: cover;
 }
 
-/* Editor: Featured Image and the content boxes share one outlined frame, no line below it. */
+/* Content editor frame (Article: with the Featured Image; Newsletter: Content Blocks): one
+   outline around seamless content blocks. */
 .admin-article-frame {
   display: flex;
   flex: 1;
+  min-width: 0;
   flex-direction: column;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
@@ -3236,8 +3358,11 @@ form.admin-toolbar::before {
   border: 0;
 }
 
-.admin-dark-page .admin-article-frame + .admin-form-actions {
-  border-top: 0;
+/* The content items fill the frame down to the actions and follow each other seamlessly. */
+.admin-article-frame .admin-editor-list {
+  flex: 1;
+  min-width: 0;
+  gap: 0;
 }
 
 /* Settings → Tag/Keywords: input + Add, then removable chips in the field colours. */
@@ -3775,11 +3900,13 @@ form.admin-toolbar::before {
   gap: var(--space-3);
 }
 
+/* One line per item: + (on the item's bottom edge), drag handle, the text beside it, delete. */
 .admin-editor {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0 var(--space-2);
   min-height: 420px;
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--color-brand-50);
@@ -3791,6 +3918,7 @@ form.admin-toolbar::before {
 /* Composer page: the Content Blocks box fills the page down to the actions (no line above them). */
 .admin-newsletter-form > .admin-form-grid {
   flex: 1;
+  min-width: 0;
   grid-template-rows: auto 1fr;
 }
 
@@ -3799,24 +3927,27 @@ form.admin-toolbar::before {
   flex-direction: column;
 }
 
-.admin-newsletter-form .admin-editor-list,
-.admin-newsletter-form .admin-editor {
-  flex: 1;
-}
-
 .admin-dark-page .admin-newsletter-form > .admin-form-actions {
   border-top: 0;
 }
 
-.admin-editor--drag-over {
+/* Drop target while dragging: the dashed line wraps the content only, not the handles. */
+.admin-editor--drag-over .admin-editor__body {
   outline: 2px dashed var(--color-brand-50);
   outline-offset: var(--space-0-5);
 }
 
+/* A box added from the + menu comes in like a new list row. */
+.admin-editor--new {
+  animation: admin-row-in var(--duration-base) var(--ease-out) backwards;
+}
+
 .admin-editor__top {
+  grid-area: 1 / 2;
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  margin-top: var(--space-1-5); /* centres the icons on the first line of text */
 }
 
 .admin-editor__top-btn,
@@ -3843,14 +3974,36 @@ form.admin-toolbar::before {
 }
 
 .admin-editor__top-btn--danger {
+  grid-area: 1 / 4;
+  margin-top: var(--space-1-5);
   color: var(--color-danger-bright);
 }
 
 /* Toolbar: a cream strip of dark square tiles (the PNG tiles carry the glyphs). */
+/* The + sits on the item's bottom edge (between items, and under the last one), in its own
+   column so it never meets the next item's drag handle. Open, it stays above the next items. */
+.admin-editor__add {
+  position: relative;
+  z-index: 10;
+  grid-area: 1 / 1;
+  align-self: end;
+  transform: translateY(50%);
+}
+
+.admin-editor__add:has(.admin-editor__toolbar) {
+  z-index: 30;
+}
+
+/* The block menu: under the + once it is clicked (glides in like the other popups). */
 .admin-editor__toolbar {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  transform-origin: top left;
   display: inline-flex;
+  width: max-content; /* one row, though the + column is narrow */
   flex-wrap: wrap;
-  align-self: flex-start;
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-sm);
@@ -3869,14 +4022,8 @@ form.admin-toolbar::before {
   cursor: pointer;
 }
 
-.admin-editor__btn:hover:not(:disabled),
-.admin-editor__btn--active {
+.admin-editor__btn:hover {
   background: var(--color-brand-200);
-}
-
-.admin-editor__btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .admin-editor__btn:focus-visible {
@@ -3890,14 +4037,25 @@ form.admin-toolbar::before {
   height: var(--space-6);
 }
 
+/* One line high, so + adds the next box right below this one's drag handle. */
 .admin-editor__body {
-  flex: 1;
-  min-height: 300px;
+  grid-area: 1 / 3;
+  min-width: 0;
+  min-height: calc(var(--text-sm) * var(--leading-sm) + var(--space-4));
   padding: var(--space-2) 0;
   outline: 0;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   overflow-wrap: anywhere;
+}
+
+/* The first line sits level with the drag handle; the box ends with its content. */
+.admin-editor__body > :first-child {
+  margin-top: 0;
+}
+
+.admin-editor__body > :last-child {
+  margin-bottom: 0;
 }
 
 .admin-editor__body img {
@@ -3949,33 +4107,23 @@ form.admin-toolbar::before {
 /* ===================== Audit Log page (components/audit-page.tsx) ===================== */
 /* Dark list page like Event (`.admin-dark-page` + `.admin-events-header` header controls). */
 
-/* Header pickers: cream pill with a label and a `Select` (its button carries the chevron). */
+/* Header pickers: a `Select` whose button is the cream pill (`prefix` label, value, chevron). The
+   panel opens under the whole pill; the focus ring is the button's own (keyboard only). */
 .admin-audit-pick {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+  justify-content: flex-start;
   gap: var(--space-1-5);
-  height: var(--size-control-sm);
+  height: var(--admin-control-height);
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-brand-50);
   color: var(--color-brand-950);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
-  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.admin-audit-pick .admin-combo__trigger {
+.admin-audit-pick .admin-combo__value {
   font-weight: var(--font-semibold);
-}
-
-.admin-audit-pick:focus-within {
-  outline: var(--focus-ring-width) solid var(--color-focus);
-  outline-offset: var(--focus-ring-offset);
-}
-
-.admin-audit-pick .admin-combo__trigger:focus-visible {
-  outline: none;
 }
 
 /* Tabs on the left, "Reversible only" switch on the right, one line below both. */
@@ -4269,6 +4417,7 @@ form.admin-toolbar::before {
   margin: 0;
   padding: var(--space-3) var(--space-4);
   overflow: auto;
+  overscroll-behavior: contain;
   border-top: 1px solid var(--color-panel-line);
   color: var(--color-brand-50);
   font-size: var(--text-2xs);
@@ -4616,6 +4765,7 @@ form.admin-toolbar::before {
 .admin-role-tree__pages {
   max-height: 14rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
   gap: var(--space-3);
 }
 
@@ -4713,7 +4863,6 @@ form.admin-toolbar::before {
     flex: 1 1 var(--space-16);
     min-width: 0;
     max-width: none;
-    height: var(--size-control);
     border-radius: var(--radius-lg);
   }
 
@@ -4731,7 +4880,6 @@ form.admin-toolbar::before {
   }
 
   .admin-dark-page .admin-searchbox__input {
-    height: var(--size-control);
     padding-left: var(--space-2);
     color: var(--color-brand-950);
   }
@@ -4744,28 +4892,25 @@ form.admin-toolbar::before {
     display: none;
   }
 
-  .admin-dark-page .admin-filters-btn {
-    order: 3;
-    height: var(--size-control);
-    border-radius: var(--radius-lg);
-  }
-
-  .admin-filters-btn__label {
-    display: none;
-  }
-
-  /* Sort: a cream square like Filters. */
+  /* The sortable columns' sort-and-filter menus, as a row of cream chips under the search. */
   .admin-sort-menu {
-    display: block;
+    display: flex;
     order: 2;
+    flex-basis: 100%;
+    gap: var(--space-2);
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
   }
 
-  .admin-dark-page .admin-sort-menu > .admin-btn {
-    width: var(--size-control);
-    height: var(--size-control);
+  .admin-dark-page .admin-sort-menu .admin-th-sort {
+    min-height: var(--admin-control-height);
+    padding: 0 var(--space-3);
     border-radius: var(--radius-lg);
     background: var(--color-brand-50);
     color: var(--color-brand-950);
+    white-space: nowrap;
   }
 
   /* Add New … / Export CSV float bottom right; they step aside while rows are selected. */
@@ -4812,6 +4957,7 @@ form.admin-toolbar::before {
 
   .admin-list-summary__count {
     flex: 1;
+    min-width: 0;
   }
 
   /* A text button, but a full 44 px tall target. */
@@ -5186,11 +5332,13 @@ form.admin-toolbar::before {
   .admin-bulkbar__actions {
     display: flex;
     flex: 1;
+    min-width: 0;
     gap: var(--space-2);
   }
 
   .admin-bulkbar__actions .admin-btn {
     flex: 1;
+    min-width: 0;
     justify-content: center;
   }
 
@@ -5227,3 +5375,64 @@ form.admin-toolbar::before {
   }
 }
 /* Mobile list cards: end */
+
+/* ===================== Motion (popups, rows, note fields) ===================== */
+/* Page change: the old page fades into the new one (<ViewTransition> around <main> in
+   admin-sidebar.tsx; the browser's default crossfade). Off when the system asks for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
+
+/* Popups glide in: their first frame is see-through and a little smaller. */
+:is(
+  .admin-modal-overlay,
+  .admin-modal,
+  .admin-row-menu__panel,
+  .admin-popup,
+  .admin-link-pop,
+  .admin-editor__toolbar
+) {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    scale 0.6s var(--admin-ease-spring);
+}
+
+@starting-style {
+  .admin-modal-overlay {
+    opacity: 0;
+  }
+
+  :is(.admin-modal, .admin-row-menu__panel, .admin-popup, .admin-link-pop, .admin-editor__toolbar) {
+    opacity: 0;
+    scale: 0.9;
+  }
+}
+
+/* Menu items, dropdown options and table rows come in one after another (--i = row index). */
+@keyframes admin-row-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-1);
+  }
+}
+
+/* RowMenu wraps each entry to give it --i; the wrapper adds no box. */
+.admin-row-menu__row {
+  display: contents;
+}
+
+:is(.admin-row-menu__item, .admin-popup-item, .admin-table tbody tr) {
+  /* backwards, not both: a finished animation must not leave each row its own stacking context
+     (a row menu would then open under the next row). */
+  animation: admin-row-in var(--duration-base) var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 12) * 40ms);
+}
+
+/* Note fields grow a line at a time (height set in components/admin-sidebar.tsx). */
+textarea {
+  transition: height 0.6s var(--admin-ease-spring);
+}

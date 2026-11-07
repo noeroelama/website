@@ -78,7 +78,7 @@ function Invitation({ row, onClose }: { row: Row; onClose: () => void }) {
       <Button
         size="sm"
         icon="copy"
-        onClick={() => void navigator.clipboard?.writeText(row.invitation ?? "")}
+        onClick={() => navigator.clipboard?.writeText(row.invitation ?? "")}
       >
         Copy text
       </Button>
@@ -267,6 +267,7 @@ export function ZoomPage({
         <Field
           label="Passcode"
           name="passcode"
+          autoComplete="off"
           required
           maxLength={10}
           hint="Up to 10 characters"
@@ -374,6 +375,9 @@ export function ZoomPage({
             name="hostKey"
             hint="6 digits; stored encrypted and never put in invitations. Empty = keep."
             maxLength={6}
+            pattern="[0-9]{6}"
+            inputMode="numeric"
+            autoComplete="off"
           />
           {settings.hostKeySet ? (
             <ChoiceField

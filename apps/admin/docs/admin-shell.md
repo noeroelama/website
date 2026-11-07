@@ -96,12 +96,16 @@ router.push("/things"); router.refresh();
 - **Dropdowns.** Use `Select` instead of `<select>` (same props and `<option>` children). With
   more than 5 options it opens a list with a search box (case and accents ignored); the native
   select stays hidden in the page, so `name`, `onChange`, `required` and GET forms still work.
+  For a pill with a label (Audit Log's Date range, User, Action), pass `prefix` and the pill class
+  as `className` (with an `aria-label`): the whole pill is the button. Don't wrap `Select` in a
+  `<label>`, because clicks on the label text go to the hidden native select. In the right half
+  of the window the panel lines up with the button's right edge.
   A custom dropdown panel (e.g. Role Manager's permission checkboxes) uses the same `useDropdown`
   hook (fixed to the window above popups, closes on a click outside). An open dropdown that
   handles Escape calls `preventDefault()`, so `Modal` stays open.
 - `DataTable` options: `emptyState` replaces the "no results" message (shown under the header,
   centred in the table), `expandedRow` renders a detail row under a row (the caller owns the
-  open/closed state). `Pagination` offers 10 / 20 / 50 rows unless `pageSizeOptions` is given.
+  open/closed state). `Pagination` offers 10 / 25 / 50 rows unless `pageSizeOptions` is given.
 - **Table height.** Put a table in `<Card className="admin-list-card">` (`ListCard` does this):
   the card fills the rest of the screen height, and grows with the page when its rows need more
   room. No fixed heights or blank rows; the CSS is "A page with a table fills the screen height"
@@ -110,17 +114,41 @@ router.push("/things"); router.refresh();
   (`.admin-table__sub`: links, e-mails) breaks anywhere, so a table is never wider than its card
   and never scrolls sideways. Do not add `white-space: nowrap`, ellipsis or a `min-width` to
   table rules (same test).
+- **Control height.** Buttons (every size), fields, dropdowns (`Select`), the URL slug box and
+  the search box are one height: `--admin-control-height` in `globals.css` (34 px, 40 px under
+  768 px). Do not set a control's height elsewhere (test "admin controls" in
+  `tests/unit/design-tokens.test.ts`). Icon buttons, the editor toolbar and the pagination bar
+  keep their own compact sizes.
+- **Motion and overflow** (`globals.css`, section "Motion"; tests "admin motion and overflow" in
+  `tests/unit/design-tokens.test.ts`):
+  - Page change: React's `<ViewTransition>` wraps `<main>` (`admin-sidebar.tsx`), so a
+    navigation crossfades the old page into the new one; the side panel stays still. Anything
+    that runs as a transition (e.g. `router.refresh()` after saving) fades the same way. No
+    fade with reduced motion, or in browsers without the View Transitions API.
+  - Buttons: flat (no inset lines, shadow or glow); a press scales with `--admin-ease-spring`.
+  - Popups (modal, row menu, dropdown, account menu, link popover) start from opacity 0 and
+    scale 0.9 (`@starting-style`); every scrolling box has `overscroll-behavior: contain`.
+    Dropdown buttons press like buttons (scale 0.96) and their arrow turns over while open.
+  - Menu items, dropdown options and table rows come in one after another: give each a
+    `style={{ "--i": index }}` (RowMenu does this for its entries).
+  - Note fields (`<textarea>`) grow with their text (listener in `admin-sidebar.tsx`).
+  - A flex item that grows (`flex: 1`) also gets `min-width: 0`; on phones long words break
+    anywhere.
+- **Publish** buttons and menu items show the minimal line globe with the word (`icon="globeSimple"`,
+  label "Publish"), in forms, bulk bars, row menus and the Newsletter publish dialog.
 - **No emoji.** Use `Icon` (`ui/icon.tsx`) or words instead (test "admin text" in
   `tests/unit/design-tokens.test.ts`).
 - **Tabs.** Every tab row is `Tabs` (`ui/list-controls.tsx`). It scrolls sideways with no
   scrollbar (touch, trackpad, or mouse drag; a drag does not select a tab), its tabs stay inside
   its height, and its end fades into the background (`.admin-tabs`, test "admin tabs"). Page CSS
-  may change gaps and margins, not the row's overflow.
+  may change gaps and margins, not the row's overflow. Hover changes only a tab's colour (only the
+  active tab is bold), so tabs never change width on hover.
 - **Scrollbar.** Every scrollbar (page, side panel, popups, menus, tables, code blocks) is a slim
   rounded thumb on a transparent track (`*::-webkit-scrollbar` in `globals.css`, test "admin
   scrollbar"); the tab row has none (see Tabs). Only the page reserves its gutter
   (`html:has(.admin-dark-page)`, `scrollbar-gutter: stable`), so content keeps its width when a page
-  becomes long enough to scroll.
+  becomes long enough to scroll. Cream menus and dropdowns (`.admin-row-menu__panel`) use a dark
+  thumb instead, because the light one does not show on cream.
 - **Phone cards** (up to 767px). Every `DataTable` row becomes a cream card; the CSS is the block
   between `Mobile list cards: begin/end` in `globals.css` (test "admin tables on a phone").
   `DataTable` puts `data-card` on each cell (`cardRoles` in `list-model.ts`, by column key: `check`
@@ -144,14 +172,18 @@ router.push("/things"); router.refresh();
   buttons.
 - **Dark list pages** (Event, Gallery, Article, Newsletter, Audit Log) share one set of parts —
   add a new list page with them instead of copying markup:
-  - `useListTable(rows, sortValue, initialSort?)`: sort, page, page size and row selection. Define
-    `sortValue` outside the component so the sorted list is only rebuilt when rows or sort change.
+  - `useListTable(rows, sortValue, initialSort?, filterText?)`: sort, column filters, page, page
+    size and row selection. Define `sortValue` and `filterText` (a cell's text in its column's
+    checklist; default the sort value) outside the component. `table.header(key, label)` is a
+    sortable column's header: the filter icon opens **Sort A to Z / Z to A** and a checklist of the
+    column's values (`ui/column-menu.tsx`). There is no Filters button; on a phone `SortMenu` shows
+    the same menus as a row of chips under the search box.
   - `useBulkActions({ noun, show })`: runs one server action per selected row (stops at the first
     refusal), refreshes the page and shows "3 events deleted".
-  - `ListCard`: card with the optional filter panel, the table, then the bulk bar (rows selected)
-    or the pagination. `ListEmpty` is its "no results" message with **Clear Filters** / **Add**.
+  - `ListCard`: card with the table, then the bulk bar (rows selected) or the pagination; its
+    count is the rows left after the tab, search and column filters (`table.sorted`). `ListEmpty` is its "no results" message with **Clear Filters** / **Add**.
   - `SearchBox` (keeps its own text until **Search**/Enter — change its `key` to clear it),
-    `FiltersButton`, `Tabs`, `SelectCheckbox`, `RowMenu` + `MenuItem` + `MenuDivider` (the `⋯`
+    `Tabs`, `SelectCheckbox`, `RowMenu` + `MenuItem` + `MenuDivider` (the `⋯`
     menu keeps its own open state and closes when an item is clicked).
   - `ConfirmDialog` takes an `icon`; `DELETE_HINT` is the shared "you can revert it" text.
 
@@ -175,13 +207,16 @@ router.push("/things"); router.refresh();
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
   (`packages/domain/docs/newsletter.md`), Forms (`packages/domain/docs/forms.md`), Audit Log and
   Role Manager are the real, data-backed pages.
-- **Letter** (`/letters`, `letters.read`): one page with the tabs Outgoing, Incoming
-  (`?tab=incoming`, needs `incoming.read`) and Letter types (`?tab=types`, needs
-  `letter_types.read`). **Outgoing** (`src/components/letters-page.tsx`, model
-  `letters-model.ts`): tabs per desk (Drafts, To correct, To sign, To issue, Issued, Cancelled),
-  the write/edit form and a detail view with only the buttons the viewer's desks allow
-  (`letterActions`). **Incoming** (`incoming-page.tsx`, model `incoming-model.ts`): agenda book,
-  scan, disposition chain. Rules: `packages/domain/docs/documents.md`.
+- **Letter** (`/letters`, `letters.read`): one page with the tabs Outgoing and Incoming
+  (`?tab=incoming`, needs `incoming.read`), laid out like Newsletter: header (`Letter > Outgoing`)
+  with the buttons, the Status dropdown (`StatusMenu`), sort and search, then the tabs, then the
+  table. The **Letter types** button opens `?tab=types` (`letter_types.read`; no tab highlighted).
+  **Outgoing** (`src/components/letters-page.tsx`, model `letters-model.ts`): dropdown per desk
+  (All, Drafts, To correct, To sign, To issue, Issued, Cancelled), **Write letter**, and a detail
+  view with only the buttons the viewer's desks allow (`letterActions`). **Incoming**
+  (`incoming-page.tsx`, model `incoming-model.ts`): dropdown All, New, Disposed, Done, Archived;
+  **Send Mail** records a letter in the agenda book; scan, disposition chain. Rules:
+  `packages/domain/docs/documents.md`.
 - **OKR** (`/okr`, `src/components/okr-page.tsx`): one period (`?period=`), its vision and
   mission, objectives with key results and achievement; popup forms share
   `src/components/program-ui.tsx` (`FormModal`, `Field`, `ChoiceField`, `PeriodSwitch`). Rules:

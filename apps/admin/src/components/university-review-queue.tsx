@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
-import { reviewUniversityAction } from "./actions";
+import { reviewUniversityAction } from "@/app/(panel)/organizations/actions";
 import { Select } from "@/components/ui/select";
 
 export interface ProposalRow {
@@ -25,7 +25,7 @@ export interface ProposalRow {
 type Decision =
   { type: "approve" } | { type: "merge"; into: string } | { type: "reject"; note: string };
 
-/** The review queue: one row per proposal with Approve, Merge into … and Reject. */
+/** The review queue: one row per proposal with Accept, Merge into … and Reject. */
 export function ReviewQueue({ rows, canEdit }: { rows: ProposalRow[]; canEdit: boolean }) {
   const router = useRouter();
   const toast = useToastMessage();
@@ -74,9 +74,9 @@ export function ReviewQueue({ rows, canEdit }: { rows: ProposalRow[]; canEdit: b
                       size="sm"
                       variant="success"
                       disabled={busy}
-                      onClick={() => void decide(row, { type: "approve" }, "Campus approved")}
+                      onClick={() => void decide(row, { type: "approve" }, "Campus accepted")}
                     >
-                      Approve
+                      Accept
                     </Button>
                     <Select
                       className="admin-select"

@@ -59,7 +59,7 @@ export function UnitPeople(props: {
             {a.title} — {a.name}
           </span>
           {props.canEdit ? (
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void end(a)}>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => end(a)}>
               End
             </Button>
           ) : null}
@@ -98,6 +98,7 @@ export function AppointModal(props: {
 
   return (
     <Modal
+      asForm
       open={unit !== null}
       title={`Appoint to ${unit?.name ?? ""}`}
       width={480}
@@ -107,7 +108,7 @@ export function AppointModal(props: {
           <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
             Back
           </Button>
-          <Button variant="primary" disabled={busy} onClick={() => void appoint()}>
+          <Button type="submit" variant="primary" disabled={busy} onClick={() => appoint()}>
             Appoint
           </Button>
         </div>
@@ -222,7 +223,7 @@ export function RoleMapModal(props: {
           <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
             Back
           </Button>
-          <Button variant="primary" disabled={busy} onClick={() => void save()}>
+          <Button variant="primary" disabled={busy} onClick={() => save()}>
             Save
           </Button>
         </div>

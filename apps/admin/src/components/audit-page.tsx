@@ -10,7 +10,7 @@ import { downloadCsv } from "@/components/csv";
 import { formatInZone, timeAgo } from "@/components/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { ListCard, SortMenu, SearchBox, Tabs, useListTable } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
@@ -54,6 +54,9 @@ type SortKey = "date" | "action";
 
 const sortValue = (r: AuditRow, key: SortKey): string =>
   key === "date" ? r.occurredAt : r.actionLabel;
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (r: AuditRow, key: SortKey): string =>
+  key === "date" ? formatInZone(r.occurredAt, "UTC", false) : r.actionLabel;
 
 /** Before / After cell of one changed field. */
 function FieldCell({
@@ -225,7 +228,12 @@ export function AuditPage({
   }, [rows, tab, user, action, reversibleOnly, query]);
 
   /* Newest first until a header is clicked. */
-  const table = useListTable<AuditRow, SortKey>(filtered, sortValue, { key: "date", dir: "desc" });
+  const table = useListTable<AuditRow, SortKey>(
+    filtered,
+    sortValue,
+    { key: "date", dir: "desc" },
+    filterText,
+  );
 
   const counts = useMemo(
     () =>
@@ -284,14 +292,7 @@ export function AuditPage({
     },
     {
       key: "date",
-      header: (
-        <SortHeader
-          label="Date & Time"
-          active={table.sort.key === "date"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("date")}
-        />
-      ),
+      header: table.header("date", "Date & Time"),
       render: (r) => (
         <div className="admin-gallery-meta" title="UTC">
           <span className="admin-table__title">{formatInZone(r.occurredAt, "UTC")}</span>
@@ -316,14 +317,7 @@ export function AuditPage({
     },
     {
       key: "action",
-      header: (
-        <SortHeader
-          label="Action"
-          active={table.sort.key === "action"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("action")}
-        />
-      ),
+      header: table.header("action", "Action"),
       render: (r) => (
         <div className="admin-audit-action">
           <span className="admin-audit-action__line">
@@ -399,45 +393,47 @@ export function AuditPage({
               Export CSV
             </Button>
           </div>
-          <label className="admin-audit-pick">
-            <Icon name="calendar" size={14} />
-            <Select
-              aria-label="Date range"
-              value={range}
-              onChange={(e) => router.push(`/audit?range=${e.target.value}`)}
-            >
-              {Object.entries(AUDIT_RANGES).map(([key, r]) => (
-                <option key={key} value={key}>
-                  {r.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="admin-audit-pick">
-            <span>User</span>
-            <Select value={user} onChange={(e) => reset(setUser)(e.target.value)}>
-              <option value="">Anyone</option>
-              {users.map(([key, name]) => (
-                <option key={key} value={key}>
-                  {name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="admin-audit-pick">
-            <span>Action</span>
-            <Select
-              value={action}
-              onChange={(e) => reset(setAction)(e.target.value as AuditAction | "")}
-            >
-              <option value="">Any</option>
-              {AUDIT_ACTIONS.map((a) => (
-                <option key={a} value={a}>
-                  {label(AUDIT_ACTION_LABELS, a)}
-                </option>
-              ))}
-            </Select>
-          </label>
+          <Select
+            className="admin-audit-pick"
+            prefix={<Icon name="calendar" size={14} />}
+            aria-label="Date range"
+            value={range}
+            onChange={(e) => router.push(`/audit?range=${e.target.value}`)}
+          >
+            {Object.entries(AUDIT_RANGES).map(([key, r]) => (
+              <option key={key} value={key}>
+                {r.label}
+              </option>
+            ))}
+          </Select>
+          <Select
+            className="admin-audit-pick"
+            prefix={<span>User</span>}
+            aria-label="User"
+            value={user}
+            onChange={(e) => reset(setUser)(e.target.value)}
+          >
+            <option value="">Anyone</option>
+            {users.map(([key, name]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            className="admin-audit-pick"
+            prefix={<span>Action</span>}
+            aria-label="Action"
+            value={action}
+            onChange={(e) => reset(setAction)(e.target.value as AuditAction | "")}
+          >
+            <option value="">Any</option>
+            {AUDIT_ACTIONS.map((a) => (
+              <option key={a} value={a}>
+                {label(AUDIT_ACTION_LABELS, a)}
+              </option>
+            ))}
+          </Select>
           <SortMenu columns={columns} />
           <SearchBox
             placeholder="Search by title..."
@@ -472,7 +468,6 @@ export function AuditPage({
 
       <ListCard
         table={table}
-        total={filtered.length}
         noun="entry"
         columns={columns}
         expandedRow={(r) => (expanded.has(r.id) ? <ChangePanel row={r} onCopy={copy} /> : null)}

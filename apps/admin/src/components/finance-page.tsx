@@ -298,7 +298,10 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
             </p>
           </div>
         </div>
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             <label className="admin-field">
               <span className="admin-field__label">Category</span>
@@ -373,17 +376,18 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void save()}
+                onClick={() => save()}
               >
                 Save
               </Button>
             </div>
           </div>
-        </div>
+        </form>
         <ToastBanner message={toast.message} />
       </div>
     );
@@ -529,7 +533,7 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
                     variant="primary"
                     size="sm"
                     disabled={busy}
-                    onClick={() => void run(submitFinanceAction, {}, "Request submitted")}
+                    onClick={() => run(submitFinanceAction, {}, "Request submitted")}
                   >
                     Submit
                   </Button>
@@ -643,7 +647,7 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
                   variant="primary"
                   size="sm"
                   disabled={busy}
-                  onClick={() => void run(completeFinanceAction, {}, "Request done")}
+                  onClick={() => run(completeFinanceAction, {}, "Request done")}
                 >
                   Mark done
                 </Button>
@@ -652,11 +656,13 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
           </div>
         </div>
         <Modal
+          asForm
           open={noteStep !== null}
           title={noteStep?.title ?? ""}
           onClose={() => setNoteStep(null)}
           footer={
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               disabled={busy || (noteStep?.required === true && !noteStep.note.trim())}
@@ -681,11 +687,13 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
           </label>
         </Modal>
         <Modal
+          asForm
           open={paying !== null}
           title="Mark paid with the proof of transfer"
           onClose={() => setPaying(null)}
           footer={
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               disabled={busy || !paying?.file}
@@ -706,6 +714,7 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
                 <span className="admin-field__label">Amount paid ({r.currency})</span>
                 <input
                   className="admin-input"
+                  inputMode="decimal"
                   value={paying.amount}
                   onChange={(e) => setPaying({ ...paying, amount: e.target.value })}
                 />
@@ -789,7 +798,6 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
       />
       <ListCard
         table={table}
-        total={filtered.length}
         noun="request"
         columns={columns}
         empty={

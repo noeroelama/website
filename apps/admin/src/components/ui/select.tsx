@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
   type SelectHTMLAttributes,
 } from "react";
 import { filterOptions, needsSearch, optionsFrom } from "@/components/fields-model";
@@ -14,7 +15,8 @@ import { Icon } from "./icon";
 
 /**
  * Open state and position of a dropdown panel. The panel is fixed to the window under its button
- * (or above it when there is more room there), so a popup's scroll area does not cut it off; it
+ * (or above it when there is more room there), so a popup's scroll area does not cut it off; in
+ * the right half of the window it lines up with the button's right edge so it stays on screen; it
  * follows scrolling and resizing, and a click outside `box` closes it. Give the panel `position`
  * as its style (with `.admin-combo__panel`).
  */
@@ -30,8 +32,10 @@ export function useDropdown<T extends HTMLElement>() {
     if (!rect) return;
     const below = window.innerHeight - rect.bottom;
     const above = below < 280 && rect.top > below;
+    // The page's own width (without its scrollbar gutter), which is what `right` counts from.
+    const pageWidth = document.documentElement.getBoundingClientRect().width;
     setPosition({
-      left: rect.left,
+      ...(rect.left > pageWidth / 2 ? { right: pageWidth - rect.right } : { left: rect.left }),
       width: rect.width,
       ...(above ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
     });
@@ -69,15 +73,17 @@ export function useDropdown<T extends HTMLElement>() {
  * Admin dropdown: use it like `<select>` (same props, `<option>` children). It opens the same
  * cream menu as the Newsletter status filter (`.admin-row-menu__panel`), with a search box when
  * there are more than 5 options. The native `<select>` stays in the page (hidden), so `name`,
- * `value`/`defaultValue`, `onChange`, `required` and GET forms keep working.
+ * `value`/`defaultValue`, `onChange`, `required` and GET forms keep working. `prefix` is shown
+ * inside the button before the value (a short label or an icon), so the whole pill opens the menu.
  */
 export function Select({
   id,
   className,
   disabled,
+  prefix,
   "aria-label": ariaLabel,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement>) {
+}: Omit<SelectHTMLAttributes<HTMLSelectElement>, "prefix"> & { prefix?: ReactNode }) {
   const options = optionsFrom(rest.children);
   const native = useRef<HTMLSelectElement>(null);
   const { trigger, box, open, position, show: showPanel, hide } = useDropdown<HTMLButtonElement>();
@@ -161,6 +167,7 @@ export function Select({
           }
         }}
       >
+        {prefix}
         <span className="admin-combo__value">
           {options.find((o) => o.value === current)?.label ?? ""}
         </span>
@@ -192,6 +199,7 @@ export function Select({
                 role="option"
                 aria-selected={option.value === current}
                 aria-disabled={option.disabled || undefined}
+                style={{ "--i": i } as CSSProperties}
                 className={[
                   "admin-row-menu__item",
                   i === active ? "admin-combo__option--active" : "",

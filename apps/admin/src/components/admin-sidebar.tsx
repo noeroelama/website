@@ -9,6 +9,8 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  ViewTransition,
+  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -76,6 +78,27 @@ export function AdminSidebar(props: {
       unoptimized
     />
   );
+
+  // Every note field (textarea) on every admin page grows with its text, a line at a time; the
+  // CSS transition on `height` (globals.css) adds the spring.
+  useEffect(() => {
+    const grow = (event: Event) => {
+      const field = event.target;
+      if (!(field instanceof HTMLTextAreaElement)) return;
+      const from = field.offsetHeight;
+      field.style.height = "auto"; // measure: never smaller than its rows
+      const to = field.scrollHeight + field.offsetHeight - field.clientHeight;
+      field.style.height = `${from}px`;
+      void field.offsetHeight; // start the transition from the current height
+      field.style.height = `${to}px`;
+    };
+    document.addEventListener("input", grow);
+    document.addEventListener("focusin", grow);
+    return () => {
+      document.removeEventListener("input", grow);
+      document.removeEventListener("focusin", grow);
+    };
+  }, []);
 
   useEffect(() => {
     if (isDesktop || !drawerOpen) return;
@@ -181,9 +204,12 @@ export function AdminSidebar(props: {
         </div>
       </aside>
 
-      <main id="main" className="admin-main admin-dark-page">
-        {props.children}
-      </main>
+      {/* Navigations are transitions, so the browser crossfades the old page into the new one. */}
+      <ViewTransition>
+        <main id="main" className="admin-main admin-dark-page">
+          {props.children}
+        </main>
+      </ViewTransition>
     </div>
   );
 }
@@ -261,6 +287,7 @@ function UserMenu(props: {
             role="menuitem"
             href={webPath("/account/profile")}
             className="admin-popup-item"
+            style={{ "--i": 0 } as CSSProperties}
             onClick={close}
           >
             <UserIcon /> Profile
@@ -269,6 +296,7 @@ function UserMenu(props: {
             role="menuitem"
             href={webPath("/account")}
             className="admin-popup-item"
+            style={{ "--i": 1 } as CSSProperties}
             onClick={close}
           >
             <GearIcon /> Account
@@ -277,6 +305,7 @@ function UserMenu(props: {
             role="menuitem"
             type="button"
             className="admin-popup-item"
+            style={{ "--i": 2 } as CSSProperties}
             onClick={() => void signOut()}
           >
             <LogOutIcon /> Log out

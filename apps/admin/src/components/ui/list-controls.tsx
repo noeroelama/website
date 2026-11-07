@@ -1,11 +1,22 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import type { ActionFailure } from "../action-message";
 import {
+  columnValues,
   countText,
   emptyText,
+  filterRows,
   nextSort,
   pageSlice,
   runEach,
@@ -13,16 +24,17 @@ import {
   sortSummary,
   toggled,
   withIds,
+  type ColumnFilters,
   type SortState,
 } from "../list-model";
 import { Button } from "./button";
 import { Card, CardBody } from "./card";
-import { DataTable, Pagination, sortChoices, type Column } from "./data-table";
+import { DataTable, Pagination, SortHeader, sortChoices, type Column } from "./data-table";
 import { Icon, type IconName } from "./icon";
 
 /*
  * The common parts of the dark list pages (Event, Gallery, Article, Newsletter, Audit Log):
- * header search box and Filters button, tabs, the list card (filter panel, table, bulk bar or
+ * header search box, tabs, the list card (table with sort-and-filter column headers, bulk bar or
  * pagination), row checkbox, row "more" menu, empty message, plus the hooks for the table state
  * and the bulk server actions. Table, pagination and sortable headers are in `data-table.tsx`;
  * the rules are in `../list-model.ts`.
@@ -32,36 +44,67 @@ import { Icon, type IconName } from "./icon";
  */
 
 /**
- * State of one dark list table (rules in `../list-model.ts`): the sorted column, the page and
- * rows per page, and the selected rows (by id). `rows` are the filtered rows of the page;
- * `sortValue` must not change between renders (declare it outside the component).
+ * State of one dark list table (rules in `../list-model.ts`): the sorted column, the column
+ * filters, the page and rows per page, and the selected rows (by id). `rows` are the rows of the
+ * page (after its tab and search); `sortValue` and `filterText` must not change between renders
+ * (declare them outside the component). `filterText` is a cell's text in its column's filter
+ * checklist (default: the sort value).
  */
 export function useListTable<T extends { id: string }, K extends string>(
   rows: readonly T[],
   sortValue: (row: T, key: K) => string | number,
   /** Sorted column before the first header click (default: the rows' own order). */
   initialSort: SortState<K> = { key: null, dir: "asc" },
+  filterText: (row: T, key: K) => string = (row, key) => String(sortValue(row, key)),
 ) {
   const [sort, setSort] = useState<SortState<K>>(initialSort);
+  const [filters, setFilters] = useState<ColumnFilters<K>>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
+  // sortValue and filterText are module-level functions (see above).
+  /* eslint-disable react-hooks/exhaustive-deps */
+  const shown = useMemo(() => filterRows(rows, filters, filterText), [rows, filters]);
   const sorted = useMemo(() => {
     const key = sort.key;
-    return key === null ? rows : sortRows(rows, (row) => sortValue(row, key), sort.dir);
-    // sortValue is a module-level function (see above).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, sort]);
+    return key === null ? [...shown] : sortRows(shown, (row) => sortValue(row, key), sort.dir);
+  }, [shown, sort]);
+  /* eslint-enable react-hooks/exhaustive-deps */
   const view = pageSlice(sorted, page, pageSize);
   const pageIds = view.rows.map((row) => row.id);
   const pageAll = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
-  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id));
+  const allSelected = shown.length > 0 && shown.every((row) => selected.has(row.id));
 
   return {
     sort,
     onSort: (key: K) => setSort((current) => nextSort(current, key)),
+    /** Header of a sortable column: sort it and filter it by its values. */
+    header: (key: K, label: string) => (
+      <SortHeader
+        label={label}
+        active={sort.key === key}
+        dir={sort.dir}
+        onSort={(dir) => setSort({ key, dir })}
+        filter={{
+          values: columnValues(
+            rows,
+            (row) => filterText(row, key),
+            (row) => sortValue(row, key),
+          ),
+          hidden: filters[key] ?? new Set<string>(),
+          onChange: (hidden) => {
+            setFilters((current) => ({ ...current, [key]: hidden }));
+            setPage(1);
+          },
+        }}
+      />
+    ),
     sorted,
+    /** How many columns are filtered, and a reset (for "Clear Filters"). */
+    filterCount: Object.values(filters).filter((hidden) => (hidden as ReadonlySet<string>).size > 0)
+      .length,
+    clearFilters: () => setFilters({}),
     page: view.page,
     setPage,
     pageSize,
@@ -81,7 +124,7 @@ export function useListTable<T extends { id: string }, K extends string>(
       setSelected((current) =>
         withIds(
           current,
-          rows.map((row) => row.id),
+          shown.map((row) => row.id),
           !allSelected,
         ),
       ),
@@ -167,36 +210,6 @@ export function SearchBox({
         Search
       </button>
     </form>
-  );
-}
-
-/** Header "Filters" button with the number of filters that are on. */
-export function FiltersButton({
-  count,
-  open,
-  onToggle,
-}: {
-  count: number;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      icon="filter"
-      className="admin-filters-btn"
-      aria-label="Filters"
-      onClick={onToggle}
-      aria-expanded={open}
-    >
-      <span className="admin-filters-btn__label">Filters</span>
-      {count > 0 ? (
-        <span className="admin-filter-count" aria-label={`${count} on`}>
-          {count}
-        </span>
-      ) : null}
-    </Button>
   );
 }
 
@@ -327,8 +340,81 @@ export function RowMenu({
           if ((event.target as HTMLElement).closest("[role=menuitem]")) setOpen(false);
         }}
       >
-        {children}
+        {/* --i = the entry's index: entries come in one after another (globals.css). */}
+        {menuEntries(children).map((child, i) => (
+          <div
+            key={i}
+            role="none"
+            className="admin-row-menu__row"
+            style={{ "--i": i } as CSSProperties}
+          >
+            {child}
+          </div>
+        ))}
       </div>
+    </div>
+  );
+}
+
+/** A menu's entries in order, with the entries inside fragments (`<>…</>`) counted one by one. */
+function menuEntries(nodes: ReactNode): ReactNode[] {
+  return Children.toArray(nodes).flatMap((node) =>
+    isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment
+      ? menuEntries(node.props.children)
+      : [node],
+  );
+}
+
+/** "Status <value>" dropdown in a list header (Newsletter, Letter). */
+export function StatusMenu<K extends string>({
+  options,
+  value,
+  onSelect,
+}: {
+  options: readonly { key: K; label: string }[];
+  value: K;
+  onSelect: (key: K) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="admin-row-menu">
+      {open ? <div className="admin-row-menu__backdrop" onClick={() => setOpen(false)} /> : null}
+      <button
+        type="button"
+        className="admin-newsletter-status"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        Status <strong>{options.find((o) => o.key === value)?.label}</strong>
+        <Icon name="chevronDown" size={14} />
+      </button>
+      {open ? (
+        <div
+          className="admin-row-menu__panel admin-newsletter-status__menu"
+          role="menu"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setOpen(false);
+          }}
+        >
+          {options.map((o, i) => (
+            <button
+              key={o.key}
+              type="button"
+              role="menuitemradio"
+              style={{ "--i": i } as CSSProperties}
+              aria-checked={value === o.key}
+              className="admin-row-menu__item"
+              onClick={() => {
+                onSelect(o.key);
+                setOpen(false);
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -452,24 +538,18 @@ export function ListEmpty({
 }
 
 /**
- * Sort button of the phone's search row (`globals.css` "Mobile list cards"; hidden on a wide
- * screen, where the column headers sort). Put it in the page header, next to the search box.
+ * Phone only (`globals.css` "Mobile list cards"; on a wide screen the column headers do this):
+ * the sortable columns as a row of the same sort-and-filter menus, under the search box.
  */
 export function SortMenu<T>({ columns }: { columns: Column<T>[] }) {
   const choices = sortChoices(columns);
   if (choices.length === 0) return null;
   return (
-    <RowMenu icon="sort" label="Sort by" className="admin-sort-menu">
+    <div className="admin-sort-menu" role="group" aria-label="Sort and filter">
       {choices.map((choice) => (
-        <MenuItem
-          key={choice.label}
-          icon={choice.active ? (choice.dir === "asc" ? "arrowUp" : "arrowDown") : "sort"}
-          onClick={choice.onClick}
-        >
-          {choice.label}
-        </MenuItem>
+        <SortHeader key={choice.label} {...choice} />
       ))}
-    </RowMenu>
+    </div>
   );
 }
 
@@ -523,15 +603,14 @@ function ListSummary<T extends { id: string }>({
 }
 
 /**
- * The list card: optional filter panel, the table (fills the screen height; the empty message
- * sits in its middle), then the bulk bar while rows are selected, else the pagination.
+ * The list card: the table (fills the screen height; the empty message sits in its middle),
+ * then the bulk bar while rows are selected, else the pagination. The column headers made with
+ * `table.header()` sort and filter it.
  */
 export function ListCard<T extends { id: string }>({
   table,
-  total,
   noun,
   columns,
-  filters,
   empty,
   bulkActions,
   expandedRow,
@@ -550,13 +629,10 @@ export function ListCard<T extends { id: string }>({
     | "toggleAll"
     | "togglePage"
     | "clearSelection"
+    | "sorted"
   >;
-  /** Rows that match the filters (all pages). */
-  total: number;
   noun: string;
   columns: Column<T>[];
-  /** The filter panel, when open. */
-  filters?: ReactNode;
   empty: ReactNode;
   /** Buttons of the bulk bar; without them the list has no bulk bar. */
   bulkActions?: ReactNode;
@@ -564,10 +640,10 @@ export function ListCard<T extends { id: string }>({
   /** Shown under the pagination (e.g. a note). */
   children?: ReactNode;
 }) {
+  const total = table.sorted.length; // rows left after the tab, search and column filters
   return (
     <Card className="admin-events-card admin-list-card">
       <CardBody flush>
-        {filters}
         <ListSummary
           table={table}
           total={total}

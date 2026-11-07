@@ -216,11 +216,12 @@ export function CashbookPage({
         </div>
       ))}
       <Modal
+        asForm
         open={draft !== null}
         title="Manual cash book entry"
         onClose={() => setDraft(null)}
         footer={
-          <Button variant="primary" size="sm" disabled={busy} onClick={() => void save()}>
+          <Button type="submit" variant="primary" size="sm" disabled={busy} onClick={() => save()}>
             Add
           </Button>
         }
@@ -278,6 +279,7 @@ export function CashbookPage({
               <span className="admin-field__label">Amount</span>
               <input
                 className="admin-input"
+                inputMode="decimal"
                 value={draft.amount}
                 onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
               />

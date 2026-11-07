@@ -16,8 +16,6 @@ export interface ShortLink {
 /** The primary provider's prefix in the slug field (s.id is only the fallback). */
 export const PREFIX = "goppi.id/";
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
-
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** ISO date (2026-05-11) → "11 May 2026" for the table cells. */

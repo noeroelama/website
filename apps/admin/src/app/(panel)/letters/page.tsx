@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { orgUnitPath } from "@website/domain/organizations";
 import { can, canInSomeScope, scopedOrgUnitIds, type Principal } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
@@ -29,25 +30,22 @@ export default async function AdminLettersPage({
     ...(canInSomeScope(principal, "incoming.read")
       ? [{ key: "incoming" as const, label: "Incoming" }]
       : []),
-    ...(canInSomeScope(principal, "letter_types.read")
-      ? [{ key: "types" as const, label: "Letter types" }]
-      : []),
   ];
   const tab = (await searchParams)["tab"];
-  const active = sections.find((s) => s.key === tab)?.key ?? "outgoing";
-  return (
-    <>
-      <LetterSectionTabs sections={sections} active={active} />
-      {active === "incoming"
-        ? await incomingSection(principal)
-        : active === "types"
-          ? await typesSection(principal)
-          : await outgoingSection(principal)}
-    </>
-  );
+  // Letter types opens from a button, not a tab: with it open, neither tab is highlighted.
+  const active: LetterSection =
+    tab === "types" && canInSomeScope(principal, "letter_types.read")
+      ? "types"
+      : (sections.find((s) => s.key === tab)?.key ?? "outgoing");
+  const tabs = <LetterSectionTabs sections={sections} active={active} />;
+  return active === "incoming"
+    ? incomingSection(principal, tabs)
+    : active === "types"
+      ? typesSection(principal, tabs)
+      : outgoingSection(principal, tabs);
 }
 
-async function outgoingSection(principal: Principal) {
+async function outgoingSection(principal: Principal, sectionTabs: ReactNode) {
   const periods = await adminReads.listPeriods();
   const period = periods.find((p) => p.status === "active") ?? null;
   const [types, units, page] = await Promise.all([
@@ -105,11 +103,13 @@ async function outgoingSection(principal: Principal) {
         cancel: canInSomeScope(principal, "letters.cancel"),
       }}
       canWrite={canInSomeScope(principal, "letters.edit")}
+      canManageTypes={canInSomeScope(principal, "letter_types.read")}
+      sectionTabs={sectionTabs}
     />
   );
 }
 
-async function incomingSection(principal: Principal) {
+async function incomingSection(principal: Principal, sectionTabs: ReactNode) {
   const periods = await adminReads.listPeriods();
   const period = periods.find((p) => p.status === "active") ?? null;
   const [letters, units, seats] = period
@@ -146,11 +146,13 @@ async function incomingSection(principal: Principal) {
       officers={officers.map(([id, name]) => ({ id, name }))}
       canEdit={canInSomeScope(principal, "incoming.edit")}
       canDispose={canInSomeScope(principal, "incoming.dispose")}
+      canManageTypes={canInSomeScope(principal, "letter_types.read")}
+      sectionTabs={sectionTabs}
     />
   );
 }
 
-async function typesSection(principal: Principal) {
+async function typesSection(principal: Principal, sectionTabs: ReactNode) {
   const [types, settings] = await Promise.all([
     adminReads.listLetterTypes(),
     adminReads.getLetterSettings(),
@@ -174,6 +176,7 @@ async function typesSection(principal: Principal) {
       letterhead={settings.letterhead}
       letterheadVersion={settings.version}
       canEdit={canInSomeScope(principal, "letter_types.edit")}
+      sectionTabs={sectionTabs}
     />
   );
 }

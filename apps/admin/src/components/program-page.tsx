@@ -181,7 +181,7 @@ export function ProgramPage({ program, plan, options, checkins, can }: Props) {
             <Button
               size="sm"
               icon="check"
-              onClick={() => void run(approveProgramAction(ref), "Approved")}
+              onClick={() => run(approveProgramAction(ref), "Approved")}
             >
               Approve
             </Button>
@@ -192,12 +192,12 @@ export function ProgramPage({ program, plan, options, checkins, can }: Props) {
             </Button>
           ) : null}
           {can.manage && status === "approved" ? (
-            <Button size="sm" onClick={() => void run(startProgramAction(ref), "Started")}>
+            <Button size="sm" onClick={() => run(startProgramAction(ref), "Started")}>
               Start
             </Button>
           ) : null}
           {can.manage && status === "running" ? (
-            <Button size="sm" onClick={() => void run(finishProgramAction(ref), "Finished")}>
+            <Button size="sm" onClick={() => run(finishProgramAction(ref), "Finished")}>
               Finish
             </Button>
           ) : null}

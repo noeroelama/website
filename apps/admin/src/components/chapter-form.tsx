@@ -145,6 +145,7 @@ export function ChapterForm(props: {
 
   return (
     <Modal
+      asForm
       open
       title={props.chapter ? "Edit PPI" : "Create PPI"}
       width={640}
@@ -156,10 +157,11 @@ export function ChapterForm(props: {
             Back
           </Button>
           <Button
+            type="submit"
             variant="primary"
             icon="cloud"
             disabled={busy || logo.busy}
-            onClick={() => void save()}
+            onClick={() => save()}
           >
             Save
           </Button>

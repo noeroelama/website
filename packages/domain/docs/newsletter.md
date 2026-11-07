@@ -70,7 +70,7 @@ a confirmation e-mail; the subscription is active only after they open the link 
   (`isPublicCampaign`).
 - Subscriber list (`newsletter.read`): addresses and names are hidden (`s***@example.org`) unless
   the viewer has `newsletter.edit`. Header numbers: **Active subscribers** (confirmed, not deleted)
-  and how many confirmed this month (`subscriberStats`). Filters: status, PPI, joined date.
+  and how many confirmed this month (`subscriberStats`). Each sortable column (subscriber, PPI country, joined) sorts and filters from its header.
 - **Add New Subscriber** / **Import CSV** (`newsletter.edit`): still double opt-in — the person
   gets the confirmation e-mail (bilingual, same key `newsletter:{id}:optin:{n}` as the website)
   and stays Pending until they confirm. Name and PPI (chapter) are set only here. Existing

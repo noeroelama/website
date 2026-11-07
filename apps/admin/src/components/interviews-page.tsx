@@ -148,7 +148,7 @@ export function InterviewsPage(props: {
         </div>
       </div>
 
-      <div className="admin-filter-panel">
+      <div className="admin-toolbar">
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="interview-day">
             Day
@@ -189,7 +189,7 @@ export function InterviewsPage(props: {
                         size="sm"
                         icon="trash"
                         disabled={busy}
-                        onClick={() => void remove(s.id)}
+                        onClick={() => remove(s.id)}
                       >
                         Remove
                       </Button>
@@ -222,7 +222,7 @@ export function InterviewsPage(props: {
               size="sm"
               icon="plus"
               disabled={busy}
-              onClick={() => void create()}
+              onClick={() => create()}
             >
               Create times
             </Button>

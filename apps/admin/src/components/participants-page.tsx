@@ -151,7 +151,10 @@ export function ParticipantsPage({ batch, sheets, canEdit, send }: Props) {
       </div>
       {send}
       {canEdit ? (
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <label className="admin-field">
             <span className="admin-field__label">
               Paste participants: one per line; a note (Narasumber, Juara 1) and the e-mail used at
@@ -176,20 +179,20 @@ export function ParticipantsPage({ batch, sheets, canEdit, send }: Props) {
           </label>
           <div className="admin-form-actions">
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               icon="plus"
               disabled={busy || !text.trim()}
-              onClick={() => void add()}
+              onClick={() => add()}
             >
               Add participants
             </Button>
           </div>
-        </div>
+        </form>
       ) : null}
       <ListCard
         table={table}
-        total={sheets.length}
         noun="participant"
         columns={columns}
         empty={

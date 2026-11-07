@@ -64,7 +64,7 @@ export function FormModal({
           <Button variant="outline" icon="chevronLeft" onClick={close}>
             Back
           </Button>
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" loading={busy}>
             {submitLabel}
           </Button>
         </div>
@@ -93,6 +93,10 @@ export function Field({
   step?: number | "any";
   minLength?: number;
   maxLength?: number;
+  pattern?: string;
+  inputMode?: "numeric" | "decimal" | "email" | "url" | "tel";
+  /** "off" for secrets the browser must not offer to save or fill. */
+  autoComplete?: string;
 }) {
   const message = useContext(FieldMessages)[name];
   const id = `field-${name}`;

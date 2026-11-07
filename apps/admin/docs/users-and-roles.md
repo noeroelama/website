@@ -7,7 +7,7 @@ One page, **Role Manager** in the side panel, for who holds which role and what 
 **People** (`/roles`, `users.read` / `users.edit`): everyone who holds a role other than the
 default role (Visitor: every account has it, so Visitors are never listed), plus pending invites.
 Columns: Name, Role (the website role), Status (Active / Inactive / Invited) and Last login. Tabs
-per website role (with counts), search by name or e-mail, sort by any column, 10/20/50 per page.
+per website role (with counts), search by name or e-mail, sort by any column, 10/25/50 per page.
 
 **Two kinds of roles.** The **website role** is given here by hand, everywhere and for any period:
 an account has **one** (besides Visitor); giving another replaces it (`isWebsiteRole` in

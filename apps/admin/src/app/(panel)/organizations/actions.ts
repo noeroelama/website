@@ -8,9 +8,10 @@ import {
   chapterRecords,
   orgUnitActions,
   periodActions,
+  universityActions,
 } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/{chapters,periods,org-units,appointments}.ts (createGuardedAction).
+// Thin server-action wrappers: every rule lives in src/server/{chapters,periods,org-units,appointments,universities}.ts (createGuardedAction).
 export async function saveChapterAction(input: unknown) {
   const result = await chapterActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
@@ -92,5 +93,17 @@ export async function saveChapterOfficersAction(input: unknown) {
 export async function submitChapterReportAction(input: unknown) {
   const result = await chapterRecords().submitReport(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");
+  return result;
+}
+
+export async function reviewUniversityAction(input: unknown) {
+  const result = await universityActions().review(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations");
+  return result;
+}
+
+export async function addUniversityAction(input: unknown) {
+  const result = await universityActions().add(getPrincipal, getAuditContext)(input);
+  if (result.ok) revalidatePath("/organizations");
   return result;
 }

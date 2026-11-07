@@ -5,7 +5,7 @@
  */
 
 /** Rows-per-page choices of the list pages. */
-export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+export const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 export type SortDir = "asc" | "desc";
 
@@ -26,6 +26,34 @@ export function sortRows<T>(
     const cmp = av < bv ? -1 : av > bv ? 1 : 0;
     return dir === "asc" ? cmp : -cmp;
   });
+}
+
+/**
+ * Column filters (the checklist in a column's header menu): per column, the values the viewer
+ * unticked. A column without a set, or with an empty one, shows every row.
+ */
+export type ColumnFilters<K extends string> = Partial<Record<K, ReadonlySet<string>>>;
+
+/** A column's values for its checklist: each once, in the column's own sort order. */
+export function columnValues<T>(
+  rows: readonly T[],
+  text: (row: T) => string,
+  value: (row: T) => string | number,
+): string[] {
+  return [...new Set(sortRows(rows, value, "asc").map(text))];
+}
+
+/** The rows whose value is still ticked in every filtered column. */
+export function filterRows<T, K extends string>(
+  rows: readonly T[],
+  filters: ColumnFilters<K>,
+  text: (row: T, key: K) => string,
+): readonly T[] {
+  const active = (Object.entries(filters) as [K, ReadonlySet<string>][]).filter(
+    ([, hidden]) => hidden.size > 0,
+  );
+  if (active.length === 0) return rows;
+  return rows.filter((row) => active.every(([key, hidden]) => !hidden.has(text(row, key))));
 }
 
 /** Header click: a new column sorts ascending, the same column toggles the direction. */

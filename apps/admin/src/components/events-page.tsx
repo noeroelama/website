@@ -13,14 +13,13 @@ import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { EditableList } from "@/components/ui/editable-list";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { PhotoDrop } from "@/components/ui/photo-drop";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
 import {
-  FiltersButton,
   ListCard,
   ListEmpty,
   MenuDivider,
@@ -35,13 +34,12 @@ import {
 } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { EVENT_TYPE_LABELS, label } from "@/labels";
-import { matchesDate, moveItem, type DateFilter } from "./list-model";
+import { moveItem } from "./list-model";
 import {
   countdownLabel,
   eventsCsv,
   matchesTab,
   type EventItem,
-  type EventStatus,
   type EventTab,
 } from "./events-model";
 import { Select } from "@/components/ui/select";
@@ -76,6 +74,18 @@ const sortValue = (e: EventItem, key: SortKey): string =>
       : key === "status"
         ? e.status
         : e.modifiedAt;
+
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (e: EventItem, key: SortKey): string =>
+  key === "title"
+    ? e.title
+    : key === "date"
+      ? formatInZone(e.startsAt, e.timezone, false)
+      : key === "status"
+        ? e.status === "published"
+          ? "Public"
+          : "Private"
+        : formatInZone(e.modifiedAt, "UTC", false);
 
 const TABS = [
   { key: "all", label: "All" },
@@ -138,9 +148,6 @@ const EMPTY_FORM: EventForm = {
   sponsors: [],
 };
 
-/** Filter choice for the status select: any status, or "all". */
-type StatusFilter = "all" | EventStatus;
-
 /** Pending delete action shown in the dark confirm modal (one event or many). */
 type DeleteConfirm = { kind: "one"; event: EventItem } | { kind: "many"; count: number };
 
@@ -197,10 +204,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   const [tab, setTab] = useState<EventTab>("all");
   const [query, setQuery] = useState(""); // applied on Search / Enter
   const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   /* ---- form view state ---- */
@@ -210,24 +213,13 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   const [form, setForm] = useState<EventForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  const activeFilterCount =
-    (typeFilter !== "all" ? 1 : 0) +
-    (statusFilter !== "all" ? 1 : 0) +
-    (dateFilter !== "all" ? 1 : 0);
-
   /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const day = today.slice(0, 10);
     return events.filter(
-      (e) =>
-        matchesTab(e, tab, today) &&
-        (typeFilter === "all" || e.type === typeFilter) &&
-        (statusFilter === "all" || e.status === statusFilter) &&
-        matchesDate(e.startsAt, dateFilter, day) &&
-        (!q || e.title.toLowerCase().includes(q)),
+      (e) => matchesTab(e, tab, today) && (!q || e.title.toLowerCase().includes(q)),
     );
-  }, [events, tab, today, query, typeFilter, statusFilter, dateFilter]);
+  }, [events, tab, today, query]);
 
   const counts = useMemo(
     () => ({
@@ -239,7 +231,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     [events, today],
   );
 
-  const table = useListTable(filtered, sortValue);
+  const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
   /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
@@ -408,14 +400,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   );
 
   /* ---- table columns ---- */
-  const sortHeader = (key: SortKey, text: string) => (
-    <SortHeader
-      label={text}
-      active={table.sort.key === key}
-      dir={table.sort.dir}
-      onClick={() => table.onSort(key)}
-    />
-  );
 
   const columns: Column<EventItem>[] = [
     {
@@ -440,7 +424,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     },
     {
       key: "title",
-      header: sortHeader("title", "Event"),
+      header: table.header("title", "Event"),
       width: "32%",
       render: (r) => (
         <div className="admin-event-title">
@@ -467,7 +451,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     },
     {
       key: "date",
-      header: sortHeader("date", "Event Date"),
+      header: table.header("date", "Event Date"),
       width: "14%",
       render: (r) => (
         <span className="admin-event-date">
@@ -494,7 +478,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     },
     {
       key: "status",
-      header: sortHeader("status", "Status"),
+      header: table.header("status", "Status"),
       width: "12%",
       render: (r) => (
         <span className="admin-status-badge">
@@ -505,7 +489,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     },
     {
       key: "registered",
-      header: sortHeader("registered", "Last Modified"),
+      header: table.header("registered", "Last Modified"),
       width: "12%",
       render: (r) => (
         <span className="admin-event-meta">
@@ -538,7 +522,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               <>
                 {/* Both always listed (as in the design); the current state is disabled. */}
                 <MenuItem
-                  icon="globe"
+                  icon="globeSimple"
                   className="admin-row-menu__item--wide"
                   disabled={busy || r.status === "published"}
                   onClick={() => setPublishedFor([r.id], true)}
@@ -612,10 +596,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   const clearFilters = () => {
     setQuery("");
     setSearchKey((k) => k + 1);
-    setTypeFilter("all");
-    setStatusFilter("all");
-    setDateFilter("all");
-    setFiltersOpen(false);
+    table.clearFilters();
     table.setPage(1);
   };
 
@@ -635,7 +616,10 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
           </div>
         </div>
 
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             {/* Title */}
             <div className="admin-field">
@@ -791,16 +775,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               <span className="admin-field__label">Event Banner *</span>
               <div
                 className="admin-dropzone"
-                role="button"
-                tabIndex={0}
-                aria-label="Upload the event banner"
-                onClick={() => bannerInputRef.current?.click()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    bannerInputRef.current?.click();
-                  }
-                }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
@@ -808,6 +782,12 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                   if (file) void onBannerFile(file);
                 }}
               >
+                <button
+                  type="button"
+                  className="admin-pick"
+                  aria-label="Upload the event banner"
+                  onClick={() => bannerInputRef.current?.click()}
+                />
                 {bannerUpload.busy ? (
                   <span className="admin-dropzone__title">Uploading…</span>
                 ) : form.banner ? (
@@ -1020,26 +1000,29 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
+                formNoValidate
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy || bannerUpload.busy || photoUpload.busy}
-                onClick={() => void save(false)}
+                onClick={() => save(false)}
               >
                 Save draft
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
-                icon="globe"
+                icon="globeSimple"
                 disabled={busy || bannerUpload.busy || photoUpload.busy}
-                onClick={() => void save(true)}
+                onClick={() => save(true)}
               >
                 Publish
               </Button>
             </div>
           </div>
-        </div>
+        </form>
 
         <ToastBanner message={toast.message} />
       </div>
@@ -1072,11 +1055,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               </Button>
             ) : null}
           </div>
-          <FiltersButton
-            count={activeFilterCount}
-            open={filtersOpen}
-            onToggle={() => setFiltersOpen((v) => !v)}
-          />
           <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
@@ -1096,65 +1074,13 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
 
       <ListCard
         table={table}
-        total={filtered.length}
         noun="event"
         columns={columns}
-        filters={
-          filtersOpen ? (
-            <div className="admin-filter-panel">
-              <div className="admin-field">
-                <span className="admin-field__label">Event Type</span>
-                <Select
-                  className="admin-select"
-                  value={typeFilter}
-                  onChange={(e) => filterBy(setTypeFilter)(e.target.value)}
-                >
-                  <option value="all">All types</option>
-                  {EVENT_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {label(EVENT_TYPE_LABELS, t)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="admin-field">
-                <span className="admin-field__label">Status</span>
-                <Select
-                  className="admin-select"
-                  value={statusFilter}
-                  onChange={(e) => filterBy(setStatusFilter)(e.target.value as StatusFilter)}
-                >
-                  <option value="all">All statuses</option>
-                  <option value="published">Public</option>
-                  <option value="draft">Draft</option>
-                </Select>
-              </div>
-              <div className="admin-field">
-                <span className="admin-field__label">Event Date</span>
-                <Select
-                  className="admin-select"
-                  value={dateFilter}
-                  onChange={(e) => filterBy(setDateFilter)(e.target.value as DateFilter)}
-                >
-                  <option value="all">All dates</option>
-                  <option value="today">Today</option>
-                  <option value="month">This month</option>
-                  <option value="year">This year</option>
-                  <option value="past">Past events</option>
-                </Select>
-              </div>
-              <button type="button" className="admin-filter-panel__clear" onClick={clearFilters}>
-                <Icon name="x" size={12} />
-                Clear filters
-              </button>
-            </div>
-          ) : null
-        }
         empty={
           <ListEmpty
             noun="event"
             query={query}
-            filters={activeFilterCount}
+            filters={table.filterCount}
             emptyHint="Add the first event."
             onClear={clearFilters}
             addLabel="Add New Event"
@@ -1167,7 +1093,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               <Button
                 variant="primary"
                 size="sm"
-                icon="globe"
+                icon="globeSimple"
                 disabled={busy}
                 onClick={() => setPublishedFor(Array.from(selected), true)}
               >

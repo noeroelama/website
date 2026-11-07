@@ -95,7 +95,7 @@ export function DraftMinutes({
                   {p.title} — {p.pic ? (names.get(p.pic) ?? p.pic) : "no PIC (add it by hand)"}
                   {p.dueOn ? `, due ${p.dueOn}` : ""}{" "}
                   {p.pic ? (
-                    <Button size="sm" variant="ghost" icon="plus" onClick={() => void add(p, i)}>
+                    <Button size="sm" variant="ghost" icon="plus" onClick={() => add(p, i)}>
                       Add
                     </Button>
                   ) : null}
@@ -112,12 +112,12 @@ export function DraftMinutes({
                 variant="outline"
                 icon="download"
                 disabled={busy}
-                onClick={() => void submit(null)}
+                onClick={() => submit(null)}
               >
                 Pull Zoom transcript
               </Button>
             ) : null}
-            <Button type="submit" disabled={busy || transcript.trim().length < 20}>
+            <Button type="submit" loading={busy} disabled={transcript.trim().length < 20}>
               {busy ? "Drafting…" : "Draft"}
             </Button>
           </div>

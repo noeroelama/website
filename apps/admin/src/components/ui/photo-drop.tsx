@@ -33,19 +33,13 @@ export function PhotoDrop({
     reader.readAsDataURL(file);
   };
   return (
-    <div
-      className="admin-photo"
-      role="button"
-      tabIndex={0}
-      aria-label={label}
-      onClick={() => ref.current?.click()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          ref.current?.click();
-        }
-      }}
-    >
+    <div className="admin-photo">
+      <button
+        type="button"
+        className="admin-pick"
+        aria-label={label}
+        onClick={() => ref.current?.click()}
+      />
       {value ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- data-URL upload, not optimizable */}

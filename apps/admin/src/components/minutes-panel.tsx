@@ -102,7 +102,7 @@ export function MinutesPanel({
                 <Button
                   size="sm"
                   variant="success"
-                  onClick={() => void run(approveMinutesAction({ id: meetingId, version }))}
+                  onClick={() => run(approveMinutesAction({ id: meetingId, version }))}
                 >
                   Approve and lock
                 </Button>

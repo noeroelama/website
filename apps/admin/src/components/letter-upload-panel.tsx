@@ -174,13 +174,7 @@ export function LetterUploadPanel(props: {
               </fieldset>
             );
           })}
-          <Button
-            variant="outline"
-            size="sm"
-            icon="cloud"
-            disabled={busy}
-            onClick={() => void save()}
-          >
+          <Button variant="outline" size="sm" icon="cloud" disabled={busy} onClick={() => save()}>
             Save positions
           </Button>
         </>

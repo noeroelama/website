@@ -82,7 +82,7 @@ export function FormResponsesPage(props: {
                 size="sm"
                 icon="download"
                 disabled={busy || props.total === 0}
-                onClick={() => void exportCsv()}
+                onClick={() => exportCsv()}
               >
                 Export CSV
               </Button>

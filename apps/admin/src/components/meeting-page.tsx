@@ -166,7 +166,7 @@ export function MeetingPage({
             header: "",
             align: "right" as const,
             render: (p: P) => (
-              <Button size="sm" variant="outline" onClick={() => void tick(p.uid, !p.presentAt)}>
+              <Button size="sm" variant="outline" onClick={() => tick(p.uid, !p.presentAt)}>
                 {p.presentAt ? "Remove" : "Mark present"}
               </Button>
             ),
@@ -198,12 +198,7 @@ export function MeetingPage({
           >
             Attendance PDF
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            icon="download"
-            onClick={() => void exportAttendance()}
-          >
+          <Button size="sm" variant="outline" icon="download" onClick={() => exportAttendance()}>
             Export CSV
           </Button>
           {runs ? (

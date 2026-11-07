@@ -13,12 +13,11 @@ import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
 import {
-  FiltersButton,
   ListCard,
   ListEmpty,
   MenuDivider,
@@ -31,8 +30,7 @@ import {
   SortMenu,
 } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
-import { matchesDate, type DateFilter } from "./list-model";
-import { type AlbumEventOption, type AlbumItem, type AlbumStatus } from "./gallery-model";
+import { type AlbumEventOption, type AlbumItem } from "./gallery-model";
 import { Select } from "@/components/ui/select";
 
 /* ==================================================================
@@ -58,6 +56,10 @@ type SortKey = "title" | "date";
 const sortValue = (a: AlbumItem, key: SortKey): string =>
   key === "title" ? a.event.toLowerCase() : a.modifiedAt;
 
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (a: AlbumItem, key: SortKey): string =>
+  key === "title" ? a.event : formatInZone(a.modifiedAt, "UTC", false);
+
 interface AlbumForm {
   eventId: string;
   total: string;
@@ -68,9 +70,6 @@ interface AlbumForm {
 }
 
 const EMPTY_FORM: AlbumForm = { eventId: "", total: "", albumLink: "", url: "", photos: [] };
-
-/** Filter choice for the status select: any status, or "all". */
-type StatusFilter = "all" | AlbumStatus;
 
 /** Pending delete action shown in the dark confirm modal (one album or many). */
 type DeleteConfirm = { kind: "one"; album: AlbumItem } | { kind: "many"; count: number };
@@ -105,10 +104,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   /* ---- list state (sorting, paging and selection: useListTable) ---- */
   const [query, setQuery] = useState(""); // applied on Search / Enter
   const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
-  const [today] = useState(() => new Date().toISOString().slice(0, 10));
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   /* ---- form view state ---- */
@@ -118,20 +113,15 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   const [form, setForm] = useState<AlbumForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (dateFilter !== "all" ? 1 : 0);
-
   /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return albums.filter(
-      (a) =>
-        (statusFilter === "all" || a.status === statusFilter) &&
-        matchesDate(a.modifiedAt, dateFilter, today) &&
-        (!q || [a.event, a.url, a.albumLink].join(" ").toLowerCase().includes(q)),
+      (a) => !q || [a.event, a.url, a.albumLink].join(" ").toLowerCase().includes(q),
     );
-  }, [albums, query, today, statusFilter, dateFilter]);
+  }, [albums, query]);
 
-  const table = useListTable(filtered, sortValue);
+  const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
   /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
@@ -261,14 +251,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   );
 
   /* ---- table columns ---- */
-  const sortHeader = (key: SortKey, text: string) => (
-    <SortHeader
-      label={text}
-      active={table.sort.key === key}
-      dir={table.sort.dir}
-      onClick={() => table.onSort(key)}
-    />
-  );
 
   const checkboxCol: Column<AlbumItem> = {
     key: "check",
@@ -295,7 +277,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     checkboxCol,
     {
       key: "title",
-      header: sortHeader("title", "Gallery"),
+      header: table.header("title", "Gallery"),
       width: "38%",
       render: (r) => {
         /* Four thumbnails, then a dark tile counting the photos not shown ("48+"). */
@@ -344,7 +326,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     },
     {
       key: "date",
-      header: sortHeader("date", "Last Modified"),
+      header: table.header("date", "Last Modified"),
       width: "20%",
       render: (r) => (
         <span className="admin-gallery-meta">
@@ -377,7 +359,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               <>
                 {/* Both always listed (as in the design); the current state is disabled. */}
                 <MenuItem
-                  icon="globe"
+                  icon="globeSimple"
                   disabled={busy || r.status === "published"}
                   onClick={() => setPublishedFor([r.id], true)}
                 >
@@ -428,9 +410,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   const clearFilters = () => {
     setQuery("");
     setSearchKey((k) => k + 1);
-    setStatusFilter("all");
-    setDateFilter("all");
-    setFiltersOpen(false);
+    table.clearFilters();
     table.setPage(1);
   };
 
@@ -450,7 +430,10 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
           </div>
         </div>
 
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             {/* Event */}
             <div className="admin-field">
@@ -555,22 +538,18 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               {form.photos.length < ALBUM_MAX_IMAGES ? (
                 <div
                   className="admin-dropzone"
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload banner images"
-                  onClick={() => bannerInputRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      bannerInputRef.current?.click();
-                    }
-                  }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
                     void addPhotos(e.dataTransfer.files);
                   }}
                 >
+                  <button
+                    type="button"
+                    className="admin-pick"
+                    aria-label="Upload banner images"
+                    onClick={() => bannerInputRef.current?.click()}
+                  />
                   <Icon name="upload" size={34} />
                   <span className="admin-dropzone__title">
                     {upload.busy ? "Uploading…" : "Drag & drop banner images or click to browse"}
@@ -604,33 +583,30 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
+                formNoValidate
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy || upload.busy}
-                onClick={() => void save(false)}
+                onClick={() => save(false)}
               >
                 Save draft
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 disabled={busy || upload.busy}
-                onClick={() => void save(true)}
+                onClick={() => save(true)}
+
+                icon="globeSimple"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element -- packed public asset, same logo as the Public badge */}
-                <img
-                  src="/globe.png"
-                  alt=""
-                  width={14}
-                  height={14}
-                  className="admin-status-badge__img"
-                />{" "}
                 Publish
               </Button>
             </div>
           </div>
-        </div>
+        </form>
 
         <ToastBanner message={toast.message} />
       </div>
@@ -654,11 +630,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               </Button>
             ) : null}
           </div>
-          <FiltersButton
-            count={activeFilterCount}
-            open={filtersOpen}
-            onToggle={() => setFiltersOpen((v) => !v)}
-          />
           <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}
@@ -671,50 +642,13 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
 
       <ListCard
         table={table}
-        total={filtered.length}
         noun="album"
         columns={columns}
-        filters={
-          filtersOpen ? (
-            <div className="admin-filter-panel">
-              <div className="admin-field">
-                <span className="admin-field__label">Status</span>
-                <Select
-                  className="admin-select"
-                  value={statusFilter}
-                  onChange={(e) => filterBy(setStatusFilter)(e.target.value as StatusFilter)}
-                >
-                  <option value="all">All statuses</option>
-                  <option value="published">Public</option>
-                  <option value="draft">Draft</option>
-                </Select>
-              </div>
-              <div className="admin-field">
-                <span className="admin-field__label">Last Modified</span>
-                <Select
-                  className="admin-select"
-                  value={dateFilter}
-                  onChange={(e) => filterBy(setDateFilter)(e.target.value as DateFilter)}
-                >
-                  <option value="all">All dates</option>
-                  <option value="today">Today</option>
-                  <option value="month">This month</option>
-                  <option value="year">This year</option>
-                  <option value="past">Before today</option>
-                </Select>
-              </div>
-              <button type="button" className="admin-filter-panel__clear" onClick={clearFilters}>
-                <Icon name="x" size={12} />
-                Clear filters
-              </button>
-            </div>
-          ) : null
-        }
         empty={
           <ListEmpty
             noun="album"
             query={query}
-            filters={activeFilterCount}
+            filters={table.filterCount}
             emptyHint="Add the first album of a published event."
             onClear={clearFilters}
             addLabel="Add New Album"
@@ -727,7 +661,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               <Button
                 variant="primary"
                 size="sm"
-                icon="globe"
+                icon="globeSimple"
                 disabled={busy}
                 onClick={() => setPublishedFor(Array.from(selected), true)}
               >
@@ -788,20 +722,13 @@ function PhotoGrid({
   return (
     <div className="admin-gallery-grid">
       {photos.map((photo, i) => (
-        <div
-          key={`${photo.path}-${i}`}
-          className="admin-gallery-tile"
-          role="button"
-          tabIndex={0}
-          aria-label={`Replace banner image ${i + 1}`}
-          onClick={() => refs.current[i]?.click()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              refs.current[i]?.click();
-            }
-          }}
-        >
+        <div key={`${photo.path}-${i}`} className="admin-gallery-tile">
+          <button
+            type="button"
+            className="admin-pick"
+            aria-label={`Replace banner image ${i + 1}`}
+            onClick={() => refs.current[i]?.click()}
+          />
           {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
           <img src={photo.thumbUrl} alt="" className="admin-gallery-tile__img" />
           <button

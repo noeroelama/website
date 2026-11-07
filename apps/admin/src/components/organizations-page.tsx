@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   activatePeriodAction,
+  addUniversityAction,
   deleteChapterAction,
   deletePeriodAction,
   savePeriodAction,
@@ -17,15 +18,15 @@ import { Card, CardBody } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FieldError } from "@/components/ui/field-error";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
-import { Icon } from "@/components/ui/icon";
-import { MenuDivider, MenuItem, RowMenu, Tabs } from "@/components/ui/list-controls";
+import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
+import { MenuDivider, MenuItem, RowMenu, Tabs, useListTable } from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { CHAPTER_RISK_LABELS, label } from "@/labels";
 import type { ChapterItem } from "./chapters-model";
 import type { PeriodItem } from "./periods-model";
 import { Select } from "@/components/ui/select";
+import { ReviewQueue, type ProposalRow } from "./university-review-queue";
 
 /* ==================================================================
    Organizations — Period list and the PPI chapters list, ported from
@@ -38,11 +39,18 @@ import { Select } from "@/components/ui/select";
 export const ORG_SUBTITLE =
   "Manage the board periods, their structure and the PPI chapters shown on the public site.";
 
-/** The two lists of the Organizations page (`?view=ppi` opens the PPI list). */
-export type OrgView = "period" | "ppi";
+/** The lists of the Organizations page (`?view=ppi` / `?view=universities` open the others). */
+export type OrgView = "period" | "ppi" | "universities";
 
-/** Rows-per-page options for the dark bar. */
-const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+/** Universities tab: approved campuses of one PPI country and the campuses members requested. */
+export interface UniversitiesTabData {
+  country: string;
+  countries: { code: string; name: string }[];
+  approved: { id: string; name: string; city: string | null; source: "ror" | "manual" }[];
+  requests: ProposalRow[];
+  /** universities.edit: add campuses and decide requests. */
+  canEdit: boolean;
+}
 
 /** Create/Edit Period popup. */
 type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } | null;
@@ -51,20 +59,25 @@ type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } 
 type DeleteState =
   { kind: "period"; item: PeriodItem } | { kind: "ppis"; items: ChapterItem[] } | null;
 
-/** Period / PPI tabs under the page title. On the Structure page they are links back. */
+/** Period / PPI / Universities tabs under the page title. On the Structure page they are links back. */
 export function OrgTabs({
   view,
   onSelect,
   showPeriod = true,
+  showUniversities = false,
 }: {
   view: OrgView;
   /** Switch in place; without it the tabs link to /organizations. */
   onSelect?: (view: OrgView) => void;
   showPeriod?: boolean;
+  showUniversities?: boolean;
 }) {
   const router = useRouter();
-  const ppi = { key: "ppi" as const, label: "PPI" };
-  const tabs = showPeriod ? [{ key: "period" as const, label: "Period" }, ppi] : [ppi];
+  const tabs: { key: OrgView; label: string }[] = [
+    ...(showPeriod ? [{ key: "period" as const, label: "Period" }] : []),
+    { key: "ppi", label: "PPI" },
+    ...(showUniversities ? [{ key: "universities" as const, label: "Universities" }] : []),
+  ];
   return (
     <Tabs
       label="Organization lists"
@@ -73,7 +86,7 @@ export function OrgTabs({
       onSelect={(key) =>
         onSelect
           ? onSelect(key)
-          : router.push(key === "ppi" ? "/organizations?view=ppi" : "/organizations")
+          : router.push(key === "period" ? "/organizations" : `/organizations?view=${key}`)
       }
     />
   );
@@ -121,35 +134,20 @@ export function OrgDeleteDialog({
   );
 }
 
-/** Sortable table header — label + arrow icon (same pattern as the Events table). */
-function SortHeader({
-  label: text,
-  active,
-  dir,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`admin-th-sort${active ? " admin-th-sort--active" : ""}`}
-      onClick={onClick}
-    >
-      <span>{text}</span>
-      <Icon name={active ? (dir === "asc" ? "arrowUp" : "arrowDown") : "sort"} size={12} />
-    </button>
-  );
-}
-
 /** Columns of the Period table that can be sorted. */
 type PeriodSortKey = "name" | "status";
 
 /** Columns of the PPI table that can be sorted. */
 type PpiSortKey = "name" | "country" | "memberCount";
+
+const periodSortValue = (r: PeriodItem, key: PeriodSortKey) => r[key];
+const ppiSortValue = (r: ChapterItem, key: PpiSortKey) => r[key];
+/** A cell's text in its column's filter checklist. */
+const periodFilterText = (r: PeriodItem, key: PeriodSortKey) =>
+  key === "status" ? (r.status === "active" ? "Active" : "Inactive") : r.name;
+const ppiFilterText = (r: ChapterItem, key: PpiSortKey) => String(r[key]);
+/** The universities list is not sorted by a column (paging only). */
+const universitySortValue = (r: { name: string }, key: "name") => r[key];
 
 /** Cream pill (Figma status chip). The design shows Active / Inactive only. */
 const statusChip = (text: string) => <span className="admin-status-badge">{text}</span>;
@@ -167,6 +165,8 @@ interface OrganizationsProps {
   periods: PeriodItem[] | null;
   /** periods.edit: add, edit, activate and delete periods. */
   canEditPeriods: boolean;
+  /** Universities tab data; null without universities.read (the tab is hidden). */
+  universities: UniversitiesTabData | null;
   /** List shown first (`?view=ppi`). */
   initialView: OrgView;
 }
@@ -186,6 +186,7 @@ function OrganizationsList({
   contactEditIds,
   periods: periodList,
   canEditPeriods,
+  universities,
   initialView,
 }: OrganizationsProps) {
   const periods = useMemo(() => periodList ?? [], [periodList]);
@@ -194,80 +195,25 @@ function OrganizationsList({
   /* Chapter add/edit popup: null = closed, "new" = add, otherwise the chapter. */
   const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<OrgView>(periodList ? initialView : "ppi");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [view, setView] = useState<OrgView>(
+    (initialView === "period" && !periodList) || (initialView === "universities" && !universities)
+      ? "ppi"
+      : initialView,
+  );
+  const [universityModal, setUniversityModal] = useState<"add" | "requests" | null>(null);
+  const [universityErrors, setUniversityErrors] = useState<Readonly<Record<string, string>>>({});
   const [periodModal, setPeriodModal] = useState<PeriodModalState>(null);
   const [periodErrors, setPeriodErrors] = useState<Readonly<Record<string, string>>>({});
   /* Period waiting for the "Set as Active" confirmation. */
   const [activating, setActivating] = useState<PeriodItem | null>(null);
   const [deleting, setDeleting] = useState<DeleteState>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  /* No sort applied on load; the first click on a column sorts ascending. */
-  const [periodSort, setPeriodSort] = useState<PeriodSortKey | null>(null);
-  const [ppiSort, setPpiSort] = useState<PpiSortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const sortBy = <K extends string>(current: K | null, key: K, set: (k: K) => void) => {
-    if (current === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      set(key);
-      setSortDir("asc");
-    }
-    setPage(1);
-  };
-  const switchView = (next: OrgView) => {
-    setView(next);
-    setPage(1);
-  };
-
-  const sortedPeriods = useMemo(() => {
-    if (!periodSort) return periods;
-    return [...periods].sort((a, b) => {
-      const cmp = a[periodSort] < b[periodSort] ? -1 : a[periodSort] > b[periodSort] ? 1 : 0;
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [periods, periodSort, sortDir]);
-  const sortedPpis = useMemo(() => {
-    if (!ppiSort) return ppis;
-    return [...ppis].sort((a, b) => {
-      const cmp = a[ppiSort] < b[ppiSort] ? -1 : a[ppiSort] > b[ppiSort] ? 1 : 0;
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [ppis, ppiSort, sortDir]);
-
-  /* ---- pagination of whichever list is on screen ---- */
-  const total = view === "period" ? periods.length : ppis.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const shownStart = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
-  const shownEnd = Math.min(safePage * pageSize, total);
-  const periodPageRows = sortedPeriods.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const ppiPageRows = sortedPpis.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const pageNumbers: number[] = [];
-  {
-    const winStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
-    for (let i = winStart; i <= Math.min(totalPages, winStart + 4); i++) pageNumbers.push(i);
-  }
-
-  /* ---- bulk selection (PPI table) ---- */
-  const pageSelected = ppiPageRows.length > 0 && ppiPageRows.every((r) => selected.has(r.id));
-  const pageSomeSelected = ppiPageRows.some((r) => selected.has(r.id));
-  const toggleAllPage = () =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const r of ppiPageRows) {
-        if (pageSelected) next.delete(r.id);
-        else next.add(r.id);
-      }
-      return next;
-    });
-  const toggleOne = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  /* Sorting, column filters, paging and the PPI selection (useListTable). */
+  const periodTable = useListTable(periods, periodSortValue, undefined, periodFilterText);
+  const ppiTable = useListTable(ppis, ppiSortValue, undefined, ppiFilterText);
+  const universityRows = useMemo(() => universities?.approved ?? [], [universities]);
+  const universityTable = useListTable(universityRows, universitySortValue);
+  const { selected } = ppiTable;
+  const switchView = (next: OrgView) => setView(next);
 
   /* ---- actions ---- */
   const exportPeriodsCsv = () => {
@@ -326,6 +272,27 @@ function OrganizationsList({
     toast.show(periodModal.mode === "edit" ? "Period saved" : "Period created");
   };
 
+  const addUniversity = async () => {
+    if (!universities) return;
+    const value = (id: string) =>
+      document.querySelector<HTMLInputElement>(`#org-university-${id}`)?.value ?? "";
+    setBusy(true);
+    const result = await addUniversityAction({
+      name: value("name"),
+      countryCode: universities.country,
+      city: value("city"),
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setUniversityErrors(result.fields ?? {});
+      return toast.show(actionMessage(result));
+    }
+    setUniversityModal(null);
+    setUniversityErrors({});
+    router.refresh();
+    toast.show("Campus added");
+  };
+
   /** Deletes one period or the selected chapters (soft; revertible in the Audit Log). */
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -344,7 +311,7 @@ function OrganizationsList({
     }
     setBusy(false);
     setDeleting(null);
-    setSelected(new Set());
+    ppiTable.clearSelection();
     router.refresh();
     if (failure) return toast.show(failure);
     toast.show(
@@ -354,59 +321,15 @@ function OrganizationsList({
     );
   };
 
+  const table = view === "period" ? periodTable : view === "ppi" ? ppiTable : universityTable;
   const paginationBar = (
-    <div className="admin-darkbar">
-      <span className="admin-darkbar__info">
-        Showing {shownStart}–{shownEnd} of {total}
-      </span>
-      <span className="admin-darkbar__info">
-        Rows per page
-        <Select
-          className="admin-darkbar__select"
-          aria-label="Rows per page"
-          value={pageSize}
-          onChange={(e) => {
-            setPageSize(Number(e.target.value));
-            setPage(1);
-          }}
-        >
-          {PAGE_SIZE_OPTIONS.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </Select>
-      </span>
-      <span className="admin-darkbar__spacer" />
-      <button
-        type="button"
-        className="admin-darkbar__btn"
-        disabled={safePage <= 1}
-        onClick={() => setPage(safePage - 1)}
-        aria-label="Previous page"
-      >
-        <Icon name="chevronLeft" size={14} />
-      </button>
-      {pageNumbers.map((p) => (
-        <button
-          type="button"
-          key={p}
-          className={`admin-darkbar__btn${safePage === p ? " admin-darkbar__btn--active" : ""}`}
-          onClick={() => setPage(p)}
-        >
-          {p}
-        </button>
-      ))}
-      <button
-        type="button"
-        className="admin-darkbar__btn"
-        disabled={safePage >= totalPages}
-        onClick={() => setPage(safePage + 1)}
-        aria-label="Next page"
-      >
-        <Icon name="chevronRight" size={14} />
-      </button>
-    </div>
+    <Pagination
+      page={table.page}
+      pageSize={table.pageSize}
+      totalItems={table.sorted.length}
+      onPageChange={table.setPage}
+      onPageSizeChange={table.setPageSize}
+    />
   );
 
   const header = (title: string, actions: ReactNode) => (
@@ -418,7 +341,12 @@ function OrganizationsList({
         </div>
         <div className="admin-page-header__actions">{actions}</div>
       </div>
-      <OrgTabs view={view} onSelect={switchView} showPeriod={periodList !== null} />
+      <OrgTabs
+        view={view}
+        onSelect={switchView}
+        showPeriod={periodList !== null}
+        showUniversities={universities !== null}
+      />
     </>
   );
 
@@ -449,14 +377,7 @@ function OrganizationsList({
     const columns: Column<PeriodItem>[] = [
       {
         key: "name",
-        header: (
-          <SortHeader
-            label="Period"
-            active={periodSort === "name"}
-            dir={sortDir}
-            onClick={() => sortBy(periodSort, "name", setPeriodSort)}
-          />
-        ),
+        header: periodTable.header("name", "Period"),
         width: "40%",
         render: (r) => <span className="admin-table__title">{r.name}</span>,
       },
@@ -468,14 +389,7 @@ function OrganizationsList({
       },
       {
         key: "status",
-        header: (
-          <SortHeader
-            label="Status"
-            active={periodSort === "status"}
-            dir={sortDir}
-            onClick={() => sortBy(periodSort, "status", setPeriodSort)}
-          />
-        ),
+        header: periodTable.header("status", "Status"),
         width: "12%",
         render: (r) => statusChip(r.status === "active" ? "Active" : "Inactive"),
       },
@@ -555,7 +469,7 @@ function OrganizationsList({
 
         <Card className="admin-events-card admin-list-card admin-org-card">
           <CardBody flush>
-            <DataTable columns={columns} rows={periodPageRows} rowKey={(r) => r.id} />
+            <DataTable columns={columns} rows={periodTable.pageRows} rowKey={(r) => r.id} />
             {paginationBar}
           </CardBody>
         </Card>
@@ -563,6 +477,7 @@ function OrganizationsList({
         {/* Create/Edit Period popup: Period (its years, which set the dates) and Cabinet.
             Cancel keeps the list. */}
         <Modal
+          asForm
           open={periodModal !== null}
           title={periodModal?.mode === "edit" ? "Edit Period" : "Create Period"}
           width={520}
@@ -574,10 +489,11 @@ function OrganizationsList({
                 Back
               </Button>
               <Button
+                type="submit"
                 variant="primary"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void savePeriod()}
+                onClick={() => savePeriod()}
               >
                 Save
               </Button>
@@ -638,6 +554,148 @@ function OrganizationsList({
   }
 
   /* ================================================================
+     UNIVERSITIES LIST (approved campuses of one country; requests in a popup)
+     ================================================================ */
+
+  if (view === "universities" && universities) {
+    const countryName =
+      universities.countries.find((c) => c.code === universities.country)?.name ??
+      universities.country;
+    const columns: Column<UniversitiesTabData["approved"][number]>[] = [
+      {
+        key: "name",
+        header: "Campus",
+        render: (r) => <span className="admin-table__title">{r.name}</span>,
+      },
+      { key: "city", header: "City", render: (r) => r.city ?? "—" },
+      {
+        key: "source",
+        header: "Source",
+        render: (r) => statusChip(r.source === "ror" ? "ROR" : "Added"),
+      },
+    ];
+    return (
+      <div>
+        {header(
+          "Organizations > Universities",
+          <div className="admin-fab">
+            <Select
+              className="admin-select"
+              aria-label="Country"
+              value={universities.country}
+              onChange={(e) =>
+                router.push(`/organizations?view=universities&country=${e.target.value}`)
+              }
+            >
+              {universities.countries.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              icon="inbox"
+              onClick={() => setUniversityModal("requests")}
+            >
+              Requested ({universities.requests.length})
+            </Button>
+            {universities.canEdit && universities.country ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="plus"
+                onClick={() => {
+                  setUniversityErrors({});
+                  setUniversityModal("add");
+                }}
+              >
+                Add University
+              </Button>
+            ) : null}
+          </div>,
+        )}
+
+        <Card className="admin-events-card admin-list-card admin-org-card">
+          <CardBody flush>
+            <DataTable
+              columns={columns}
+              rows={universityTable.pageRows}
+              rowKey={(r) => r.id}
+              emptyText={`No listed campus in ${countryName} yet`}
+            />
+            {paginationBar}
+          </CardBody>
+        </Card>
+
+        <Modal
+          asForm
+          open={universityModal === "add"}
+          title="Add University"
+          subtitle={`Listed right away for members in ${countryName}.`}
+          width={520}
+          hideClose
+          onClose={() => setUniversityModal(null)}
+          footer={
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setUniversityModal(null)}>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="cloud"
+                disabled={busy}
+                onClick={() => void addUniversity()}
+              >
+                Save
+              </Button>
+            </div>
+          }
+        >
+          {(
+            [
+              // Same rules as UniversityProposalSchema (the server checks them again).
+              ["name", "Campus name *", "e.g. Kyoto University", true, 3, 200],
+              ["city", "City", "e.g. Kyoto", false, 0, 100],
+            ] as const
+          ).map(([key, text, placeholder, required, minLength, maxLength]) => (
+            <div className="admin-field" key={key}>
+              <label className="admin-field__label" htmlFor={`org-university-${key}`}>
+                {text}
+              </label>
+              <input
+                id={`org-university-${key}`}
+                className="admin-input"
+                required={required}
+                minLength={minLength}
+                maxLength={maxLength}
+                placeholder={placeholder}
+                aria-invalid={universityErrors[key] ? true : undefined}
+                aria-describedby={`org-university-${key}-error`}
+              />
+              <FieldError id={`org-university-${key}-error`} message={universityErrors[key]} />
+            </div>
+          ))}
+        </Modal>
+
+        <Modal
+          open={universityModal === "requests"}
+          title="Requested Universities"
+          subtitle="Campuses members proposed because they were not listed. Accept a real campus, merge a duplicate into the listed one (members follow it), or reject."
+          width={960}
+          onClose={() => setUniversityModal(null)}
+        >
+          <ReviewQueue rows={universities.requests} canEdit={universities.canEdit} />
+        </Modal>
+
+        <ToastBanner message={toast.message} />
+      </div>
+    );
+  }
+
+  /* ================================================================
      PPI LIST
      ================================================================ */
 
@@ -664,22 +722,20 @@ function OrganizationsList({
             key: "check",
             width: "24px",
             align: "left" as const,
-            header: checkbox("Select all on page", pageSelected, toggleAllPage, pageSomeSelected),
+            header: checkbox(
+              "Select all on page",
+              ppiTable.pageAll,
+              ppiTable.togglePage,
+              ppiTable.pageSome,
+            ),
             render: (r: ChapterItem) =>
-              checkbox(`Select ${r.name}`, selected.has(r.id), () => toggleOne(r.id)),
+              checkbox(`Select ${r.name}`, selected.has(r.id), () => ppiTable.toggle(r.id)),
           },
         ]
       : []),
     {
       key: "name",
-      header: (
-        <SortHeader
-          label="PPI"
-          active={ppiSort === "name"}
-          dir={sortDir}
-          onClick={() => sortBy(ppiSort, "name", setPpiSort)}
-        />
-      ),
+      header: ppiTable.header("name", "PPI"),
       width: "18%",
       render: (r) => (
         <div>
@@ -692,14 +748,7 @@ function OrganizationsList({
     },
     {
       key: "country",
-      header: (
-        <SortHeader
-          label="Country"
-          active={ppiSort === "country"}
-          dir={sortDir}
-          onClick={() => sortBy(ppiSort, "country", setPpiSort)}
-        />
-      ),
+      header: ppiTable.header("country", "Country"),
       width: "12%",
       render: (r) => <span>{r.country}</span>,
     },
@@ -715,14 +764,7 @@ function OrganizationsList({
     },
     {
       key: "members",
-      header: (
-        <SortHeader
-          label="Members"
-          active={ppiSort === "memberCount"}
-          dir={sortDir}
-          onClick={() => sortBy(ppiSort, "memberCount", setPpiSort)}
-        />
-      ),
+      header: ppiTable.header("memberCount", "Members"),
       width: "9%",
       render: (r) => <span className="admin-table__title">{r.memberCount}</span>,
     },
@@ -776,7 +818,7 @@ function OrganizationsList({
     },
   ];
 
-  const allSelected = ppis.length > 0 && selected.size === ppis.length;
+  const { allSelected } = ppiTable;
 
   return (
     <div>
@@ -796,27 +838,22 @@ function OrganizationsList({
 
       <Card className="admin-events-card admin-list-card admin-org-card">
         <CardBody flush>
-          <DataTable columns={columns} rows={ppiPageRows} rowKey={(r) => r.id} />
+          <DataTable columns={columns} rows={ppiTable.pageRows} rowKey={(r) => r.id} />
 
           {selected.size > 0 ? (
             /* Bulk action bar (Figma: floats above the pagination while rows are selected). */
             <div className="admin-bulkbar admin-org-bulkbar">
               <span className="admin-bulkbar__summary">
-                {checkbox(
-                  "Select all PPIs",
-                  allSelected,
-                  () => setSelected(allSelected ? new Set() : new Set(ppis.map((p) => p.id))),
-                  true,
-                )}
+                {checkbox("Select all PPIs", allSelected, ppiTable.toggleAll, true)}
                 {selected.size} selected
               </span>
               {!allSelected ? (
                 <button
                   type="button"
                   className="admin-bulkbar__select-all"
-                  onClick={() => setSelected(new Set(ppis.map((p) => p.id)))}
+                  onClick={ppiTable.toggleAll}
                 >
-                  Select all {ppis.length} ppis
+                  Select all {ppiTable.sorted.length} ppis
                 </button>
               ) : null}
               <div className="admin-bulkbar__actions">

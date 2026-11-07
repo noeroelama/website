@@ -44,8 +44,13 @@ job.
   article). Checked on the server by `createGuardedAction`; the page only hides buttons.
 - Body HTML is sanitised on save **and** again on render. Allowed: paragraphs, headings, bold,
   italic, underline, strike, quotes, lists, links (http/https/mailto, `rel="noopener noreferrer"`),
-  https images, code, dividers and text alignment. Inline images are uploaded first; the body
-  never holds data URLs.
+  https images (plain http only from localhost/127.0.0.1, where local development serves uploads),
+  code, dividers and text alignment. Inline images are uploaded first; the body never holds
+  data URLs.
+- The editor's content blocks are saved as one `<div>` per block (`joinBlocks`), and edit opens
+  the same blocks again (`splitBlocks`, `apps/admin/src/components/ui/rich-text-box.tsx`; same
+  for Newsletter and Letters). Bodies saved before that get one block per paragraph, heading,
+  list …
 - Every change is one transaction with a version check and an audit entry (module `articles`):
   CREATE / UPDATE / PUBLISH / UNPUBLISH / DELETE. Delete is a soft delete and can be reverted
   for 14 days on the Audit Log page; an edit that changed the URL is not revertible.

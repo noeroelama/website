@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   cancelLetterAction,
@@ -18,7 +18,7 @@ import { actionMessage, type ActionFailure } from "@/components/action-message";
 import { formatInZone } from "@/components/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import {
   ListCard,
@@ -29,11 +29,12 @@ import {
   Tabs,
   useListTable,
   SortMenu,
+  StatusMenu,
 } from "@/components/ui/list-controls";
 import { Modal } from "@/components/ui/modal";
 import {
   joinBlocks,
-  newBlock,
+  splitBlocks,
   RichTextStack,
   type RichTextBlock,
 } from "@/components/ui/rich-text-box";
@@ -61,6 +62,9 @@ const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 type SortKey = "subject" | "created";
 const sortValue = (l: LetterItem, key: SortKey) =>
   key === "subject" ? l.subject.toLowerCase() : l.createdAt;
+/** A cell's text in its column's filter checklist (dates by day). */
+const filterText = (l: LetterItem, key: SortKey): string =>
+  key === "subject" ? l.subject : formatInZone(l.createdAt, browserZone(), false);
 
 interface TypeOption {
   id: string;
@@ -95,6 +99,10 @@ interface Props {
   viewerId: string;
   desks: LetterDesks;
   canWrite: boolean;
+  /** letter_types.read: shows the Letter types button. */
+  canManageTypes: boolean;
+  /** Outgoing / Incoming tabs, under the header (`LetterSectionTabs`). */
+  sectionTabs: ReactNode;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -170,7 +178,7 @@ function LettersList(props: Props) {
       ) as Record<LetterTab, number>,
     [items],
   );
-  const table = useListTable(filtered, sortValue);
+  const table = useListTable(filtered, sortValue, undefined, filterText);
   const typeOf = (id: string) => types.find((t) => t.id === id);
 
   const fail = (result: ActionFailure) => {
@@ -191,7 +199,7 @@ function LettersList(props: Props) {
       place: letter?.place ?? "",
       attachmentNote: letter?.attachmentNote ?? "",
       letterDate: letter?.letterDate ?? today(),
-      bodies: [newBlock(letter?.body ?? "")],
+      bodies: splitBlocks(letter?.body ?? ""),
     });
     setView("form");
   };
@@ -276,14 +284,7 @@ function LettersList(props: Props) {
   const columns: Column<LetterItem>[] = [
     {
       key: "subject",
-      header: (
-        <SortHeader
-          label="Letter"
-          active={table.sort.key === "subject"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("subject")}
-        />
-      ),
+      header: table.header("subject", "Letter"),
       width: "40%",
       render: (l) => (
         <div>
@@ -302,14 +303,7 @@ function LettersList(props: Props) {
     },
     {
       key: "created",
-      header: (
-        <SortHeader
-          label="Created"
-          active={table.sort.key === "created"}
-          dir={table.sort.dir}
-          onClick={() => table.onSort("created")}
-        />
-      ),
+      header: table.header("created", "Created"),
       width: "18%",
       render: (l) => (
         <span className="admin-table__sub">{formatInZone(l.createdAt, browserZone())}</span>
@@ -362,7 +356,10 @@ function LettersList(props: Props) {
             </p>
           </div>
         </div>
-        <div className="admin-dark-form">
+        <form
+          className="admin-dark-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           {current?.reviewNote ? (
             <p className="admin-card__subtitle">Returned with: {current.reviewNote}</p>
           ) : null}
@@ -539,17 +536,18 @@ function LettersList(props: Props) {
             </Button>
             <div className="admin-form-actions__right">
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 icon="cloud"
                 disabled={busy}
-                onClick={() => void save()}
+                onClick={() => save()}
               >
                 Save draft
               </Button>
             </div>
           </div>
-        </div>
+        </form>
         <ToastBanner message={toast.message} />
       </div>
     );
@@ -709,11 +707,13 @@ function LettersList(props: Props) {
           </div>
         </div>
         <Modal
+          asForm
           open={asking === "return" || asking === "cancel"}
           title={asking === "return" ? "Return to draft" : "Cancel this letter?"}
           onClose={() => setAsking(null)}
           footer={
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               disabled={busy || !note.trim()}
@@ -786,9 +786,9 @@ function LettersList(props: Props) {
 
   return (
     <div>
-      <div className="admin-page-header">
+      <div className="admin-page-header admin-events-header">
         <div>
-          <h1 className="admin-page-header__title">Letters</h1>
+          <h1 className="admin-page-header__title">Letter &gt; Outgoing</h1>
           <p className="admin-page-header__desc">
             {periodName
               ? `Outgoing letters of the ${periodName} board${props.truncated ? " (newest 300 shown)" : ""}.`
@@ -797,6 +797,16 @@ function LettersList(props: Props) {
         </div>
         <div className="admin-page-header__actions">
           <div className="admin-fab">
+            {props.canManageTypes ? (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="settings"
+                onClick={() => router.push("/letters?tab=types")}
+              >
+                Letter types
+              </Button>
+            ) : null}
             {canWrite ? (
               <Button
                 variant="outline"
@@ -810,6 +820,17 @@ function LettersList(props: Props) {
               </Button>
             ) : null}
           </div>
+          <StatusMenu
+            options={LETTER_TABS.map((t) => ({
+              key: t.key,
+              label: `${t.label} (${counts[t.key]})`,
+            }))}
+            value={tab}
+            onSelect={(key) => {
+              setTab(key);
+              table.setPage(1);
+            }}
+          />
           <SortMenu columns={columns} />
           <SearchBox
             placeholder="Search subject, number or recipient..."
@@ -821,18 +842,9 @@ function LettersList(props: Props) {
           />
         </div>
       </div>
-      <Tabs
-        label="Letter desks"
-        tabs={LETTER_TABS.map((t) => ({ ...t, count: counts[t.key] }))}
-        active={tab}
-        onSelect={(next) => {
-          setTab(next);
-          table.setPage(1);
-        }}
-      />
+      {props.sectionTabs}
       <ListCard
         table={table}
-        total={filtered.length}
         noun="letter"
         columns={columns}
         empty={

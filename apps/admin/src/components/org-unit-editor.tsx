@@ -430,7 +430,7 @@ export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgU
           size="sm"
           icon="cloud"
           disabled={busy || photo.busy}
-          onClick={() => void save()}
+          onClick={() => save()}
         >
           Save
         </Button>

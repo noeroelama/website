@@ -362,7 +362,7 @@ export const interviewActions = lazyEnv(() =>
   createInterviewActions({ interviews: adminStores().interviews, now: () => new Date() }),
 );
 
-/** Universities page: review of proposed campuses. */
+/** Organizations → Universities tab: add and review campuses. */
 export const universityActions = lazyEnv(() =>
   createUniversityActions({ universities: adminStores().universities, now: () => new Date() }),
 );

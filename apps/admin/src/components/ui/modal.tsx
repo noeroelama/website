@@ -20,6 +20,11 @@ export interface ModalProps {
   className?: string;
   hideClose?: boolean;
   style?: CSSProperties;
+  /**
+   * Body and footer form one `<form>`: Enter in a field and a `type="submit"` footer button run
+   * the action after native validation (see Button). Leave it off when the body has its own form.
+   */
+  asForm?: boolean;
 }
 
 export function Modal({
@@ -33,6 +38,7 @@ export function Modal({
   className,
   hideClose,
   style,
+  asForm = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -77,8 +83,17 @@ export function Modal({
             </button>
           ) : null}
         </div>
-        <div className="admin-modal__body">{children}</div>
-        {footer ? <div className="admin-modal__footer">{footer}</div> : null}
+        {asForm ? (
+          <form className="admin-modal__form" onSubmit={(event) => event.preventDefault()}>
+            <div className="admin-modal__body">{children}</div>
+            {footer ? <div className="admin-modal__footer">{footer}</div> : null}
+          </form>
+        ) : (
+          <>
+            <div className="admin-modal__body">{children}</div>
+            {footer ? <div className="admin-modal__footer">{footer}</div> : null}
+          </>
+        )}
       </div>
     </div>
   );

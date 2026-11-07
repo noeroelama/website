@@ -19,7 +19,8 @@ import {
   qrTextProblem,
 } from "@website/domain/documents";
 import { withoutScheme } from "@/components/format";
-import { PREFIX, PAGE_SIZE_OPTIONS, formatDate, type ShortLink } from "@/components/links-model";
+import { PREFIX, formatDate, type ShortLink } from "@/components/links-model";
+import { PAGE_SIZE_OPTIONS } from "@/components/list-model";
 import { actionMessage } from "@/components/action-message";
 import {
   createLinkAction,
@@ -217,20 +218,10 @@ function QrPreview({
         </div>
       </div>
       <div className="admin-qr-preview__actions">
-        <Button
-          variant="primary"
-          icon="download"
-          onClick={() => void downloadPng()}
-          disabled={!ready}
-        >
+        <Button variant="primary" icon="download" onClick={() => downloadPng()} disabled={!ready}>
           Download PNG
         </Button>
-        <Button
-          variant="primary"
-          icon="download"
-          onClick={() => void downloadSvg()}
-          disabled={!ready}
-        >
+        <Button variant="primary" icon="download" onClick={() => downloadSvg()} disabled={!ready}>
           Download SVG
         </Button>
       </div>
@@ -939,7 +930,7 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
                 <Button
                   variant="primary"
                   icon="link"
-                  onClick={() => void generateLink()}
+                  onClick={() => generateLink()}
                   disabled={!canEdit || busy}
                   style={{ whiteSpace: "nowrap" }}
                 >
@@ -1086,6 +1077,7 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
 
       {/* Edit link popup */}
       <Modal
+        asForm
         open={editOpen}
         title="Edit Link"
         subtitle="Edit shortened link details."
@@ -1110,9 +1102,10 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               Back
             </Button>
             <Button
+              type="submit"
               variant="outline"
               icon="cloud"
-              onClick={() => void saveEdit()}
+              onClick={() => saveEdit()}
               disabled={editSaved}
             >
               {editSaved ? "Saved" : "Save draft"}
@@ -1191,7 +1184,7 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
             <Button variant="outline" icon="chevronLeft" onClick={() => setDeleteConfirm(null)}>
               Back
             </Button>
-            <Button variant="danger" icon="trash" onClick={() => void doDelete()}>
+            <Button variant="danger" icon="trash" onClick={() => doDelete()}>
               {deleteConfirm?.kind === "one" && deleteConfirm.link.archived ? "Restore" : "Archive"}
             </Button>
           </div>

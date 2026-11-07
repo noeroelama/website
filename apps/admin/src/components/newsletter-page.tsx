@@ -16,12 +16,11 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
-import { SortHeader, type Column } from "@/components/ui/data-table";
+import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
 import {
-  FiltersButton,
   ListCard,
   ListEmpty,
   MenuDivider,
@@ -38,26 +37,15 @@ import { Modal } from "@/components/ui/modal";
 import {
   joinBlocks,
   newBlock,
+  splitBlocks,
   RichTextStack,
   type RichTextBlock,
 } from "@/components/ui/rich-text-box";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { timeAgo } from "@/components/format";
-import { countText, matchesDate } from "./list-model";
+import { countText } from "./list-model";
 import type { CampaignItem as NewsletterItem, SubscriberItem } from "./newsletter-model";
 import { Select } from "@/components/ui/select";
-
-/** Campaign Status dropdown (design: All · Sent · Scheduled · Draft; "Sent" includes sending). */
-type CampaignStatusFilter = "all" | "sent" | "scheduled" | "draft";
-const STATUS_FILTERS: readonly [CampaignStatusFilter, string][] = [
-  ["all", "All"],
-  ["sent", "Sent"],
-  ["scheduled", "Scheduled"],
-  ["draft", "Draft"],
-];
-/** Subscriber "Joined" filter. */
-type JoinedFilter = "all" | "today" | "month" | "year";
-type SubscriberStatus = SubscriberItem["status"];
 
 /** Dates on this page: UTC, same text on the server and in the browser ("24 Sep 2026"). */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -166,6 +154,29 @@ const subscriberSortValue = (s: SubscriberItem, key: SubscriberSortKey): string 
       ? (s.ppi ?? "").toLowerCase()
       : s.subscribed;
 
+/** A cell's text in its column's filter checklist (dates by day). */
+const campaignFilterText = (c: NewsletterItem, key: CampaignSortKey): string => {
+  switch (key) {
+    case "subject":
+      return c.subject;
+    case "status":
+      return STATUS_BADGE[c.status].label;
+    case "recipients":
+      return formatCount(c.sentCount);
+    case "open":
+      return formatRate(c.openRate);
+    case "click":
+      return formatRate(c.clickRate);
+    case "sent":
+      return formatDate(
+        c.status === "draft" ? c.modifiedAt : (c.sentAt ?? c.sendAt ?? c.modifiedAt),
+      );
+  }
+};
+
+const subscriberFilterText = (s: SubscriberItem, key: SubscriberSortKey): string =>
+  key === "name" ? (s.name ?? s.email) : key === "ppi" ? (s.ppi ?? "") : formatDate(s.subscribed);
+
 /** Form shape for create/edit. */
 interface NewsletterForm {
   subject: string;
@@ -236,12 +247,6 @@ function NewsletterList({
   const [form, setForm] = useState<NewsletterForm>(EMPTY_FORM);
 
   const [tab, setTab] = useState<"campaign" | "subscriber">("campaign");
-  const [statusFilter, setStatusFilter] = useState<CampaignStatusFilter>("all");
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-  const [subStatusFilter, setSubStatusFilter] = useState<"all" | SubscriberStatus>("all");
-  const [ppiFilter, setPpiFilter] = useState<string>("all");
-  const [joinedFilter, setJoinedFilter] = useState<JoinedFilter>("all");
-  const [subFiltersOpen, setSubFiltersOpen] = useState(false);
   const [query, setQuery] = useState(""); // applied on Search / Enter
   const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
@@ -251,39 +256,25 @@ function NewsletterList({
   /* ---- derived lists (one per table; `filtered` follows the active tab) ---- */
   const filteredCampaigns = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = campaigns.filter((c) => {
-      if (statusFilter === "sent" && !wentOut(c)) return false;
-      if (statusFilter !== "all" && statusFilter !== "sent" && c.status !== statusFilter) {
-        return false;
-      }
-      return !q || c.subject.toLowerCase().includes(q);
-    });
-    return list;
-  }, [campaigns, statusFilter, query]);
+    return campaigns.filter((c) => !q || c.subject.toLowerCase().includes(q));
+  }, [campaigns, query]);
 
   const filteredSubs = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const today = new Date().toISOString().slice(0, 10);
-    return subscribers.filter((s) => {
-      if (subStatusFilter !== "all" && s.status !== subStatusFilter) return false;
-      if (ppiFilter === "none" && s.ppi !== null) return false;
-      if (ppiFilter !== "all" && ppiFilter !== "none" && s.ppi !== ppiFilter) return false;
-      if (!matchesDate(s.subscribed, joinedFilter, today)) return false;
-      return !q || s.email.toLowerCase().includes(q) || !!s.name?.toLowerCase().includes(q);
-    });
-  }, [subscribers, subStatusFilter, ppiFilter, joinedFilter, query]);
+    return subscribers.filter(
+      (s) => !q || s.email.toLowerCase().includes(q) || !!s.name?.toLowerCase().includes(q),
+    );
+  }, [subscribers, query]);
 
   /* One table state per tab (sorting, paging, selection). */
-  const campaignTable = useListTable(filteredCampaigns, campaignSortValue);
-  const subTable = useListTable(filteredSubs, subscriberSortValue);
+  const campaignTable = useListTable(
+    filteredCampaigns,
+    campaignSortValue,
+    undefined,
+    campaignFilterText,
+  );
+  const subTable = useListTable(filteredSubs, subscriberSortValue, undefined, subscriberFilterText);
   const selected = isCampaign ? campaignTable.selected : subTable.selected;
-
-  /* Filters that are on (the Filters badge and the empty message say how many). */
-  const subPanelFilterCount =
-    (subStatusFilter !== "all" ? 1 : 0) +
-    (ppiFilter !== "all" ? 1 : 0) +
-    (joinedFilter !== "all" ? 1 : 0);
-  const activeFilterCount = isCampaign ? (statusFilter !== "all" ? 1 : 0) : subPanelFilterCount;
 
   const resetPaging = () => {
     campaignTable.setPage(1);
@@ -294,7 +285,6 @@ function NewsletterList({
     setTab(next);
     campaignTable.clearSelection();
     subTable.clearSelection();
-    setStatusMenuOpen(false);
     /* Each tab is its own list — the searchbox starts fresh. */
     setQuery("");
     setSearchKey((k) => k + 1);
@@ -304,11 +294,8 @@ function NewsletterList({
   const clearFilters = () => {
     setQuery("");
     setSearchKey((k) => k + 1);
-    setStatusFilter("all");
-    setSubStatusFilter("all");
-    setPpiFilter("all");
-    setJoinedFilter("all");
-    setSubFiltersOpen(false);
+    campaignTable.clearFilters();
+    subTable.clearFilters();
     resetPaging();
   };
 
@@ -466,7 +453,7 @@ function NewsletterList({
   const toForm = (mode: "create" | "edit", item?: NewsletterItem) => {
     setFormMode(mode);
     setEditingId(item?.id ?? null);
-    setForm(item ? { subject: item.subject, bodies: [newBlock(item.body)] } : EMPTY_FORM);
+    setForm(item ? { subject: item.subject, bodies: splitBlocks(item.body) } : EMPTY_FORM);
     campaignTable.clearSelection();
     setView("form");
   };
@@ -562,22 +549,6 @@ function NewsletterList({
     ),
   });
 
-  const sortHeader = (label: string, key: CampaignSortKey) => (
-    <SortHeader
-      label={label}
-      active={campaignTable.sort.key === key}
-      dir={campaignTable.sort.dir}
-      onClick={() => campaignTable.onSort(key)}
-    />
-  );
-  const subSortHeader = (label: string, key: SubscriberSortKey) => (
-    <SortHeader
-      label={label}
-      active={subTable.sort.key === key}
-      dir={subTable.sort.dir}
-      onClick={() => subTable.onSort(key)}
-    />
-  );
   /* "—" until a campaign went out. */
   const numberCell = (r: NewsletterItem, text: string) => (
     <span className="admin-newsletter-number">{wentOut(r) ? text : "—"}</span>
@@ -587,7 +558,7 @@ function NewsletterList({
     checkboxCol<NewsletterItem>(campaignTable, (r) => `Select ${r.subject}`),
     {
       key: "subject",
-      header: sortHeader("Campaign", "subject"),
+      header: campaignTable.header("subject", "Campaign"),
       width: "34%",
       render: (r) => (
         <div>
@@ -601,7 +572,7 @@ function NewsletterList({
     },
     {
       key: "status",
-      header: sortHeader("Status", "status"),
+      header: campaignTable.header("status", "Status"),
       width: "12%",
       render: (r) => (
         <span className={`admin-newsletter-badge admin-newsletter-badge--${r.status}`}>
@@ -612,28 +583,28 @@ function NewsletterList({
     },
     {
       key: "recipients",
-      header: sortHeader("Recipients", "recipients"),
+      header: campaignTable.header("recipients", "Recipients"),
       width: "10%",
       align: "right",
       render: (r) => numberCell(r, formatCount(r.sentCount)),
     },
     {
       key: "open",
-      header: sortHeader("Open rate", "open"),
+      header: campaignTable.header("open", "Open rate"),
       width: "10%",
       align: "right",
       render: (r) => numberCell(r, formatRate(r.openRate)),
     },
     {
       key: "click",
-      header: sortHeader("Click rate", "click"),
+      header: campaignTable.header("click", "Click rate"),
       width: "10%",
       align: "right",
       render: (r) => numberCell(r, formatRate(r.clickRate)),
     },
     {
       key: "sent",
-      header: sortHeader("Sent", "sent"),
+      header: campaignTable.header("sent", "Sent"),
       width: "15%",
       render: (r) => {
         const when = r.status === "draft" ? r.modifiedAt : (r.sentAt ?? r.sendAt ?? r.modifiedAt);
@@ -682,7 +653,7 @@ function NewsletterList({
           <RowMenu>
             {canSend ? (
               <MenuItem
-                icon="globe"
+                icon="globeSimple"
                 disabled={!changeable(r) || busy}
                 onClick={() => setPublishFor([r])}
               >
@@ -736,7 +707,7 @@ function NewsletterList({
     checkboxCol<SubscriberItem>(subTable, (r) => `Select ${r.name ?? r.email}`),
     {
       key: "name",
-      header: subSortHeader("Subscriber", "name"),
+      header: subTable.header("name", "Subscriber"),
       width: "45%",
       render: (r) => (
         <div>
@@ -759,13 +730,13 @@ function NewsletterList({
     },
     {
       key: "ppi",
-      header: subSortHeader("PPI Country", "ppi"),
+      header: subTable.header("ppi", "PPI Country"),
       width: "30%",
       render: (r) => <span className="admin-table__title">{r.ppi ?? "—"}</span>,
     },
     {
       key: "subscribed",
-      header: subSortHeader("Joined", "subscribed"),
+      header: subTable.header("subscribed", "Joined"),
       width: "22%",
       render: (r) => (
         <span className="admin-event-meta">
@@ -836,7 +807,7 @@ function NewsletterList({
         title={`${publishLabel}?`}
         confirmLabel={publishLabel}
         tone="primary"
-        icon="globe"
+        icon="globeSimple"
         pending={busy}
         onConfirm={() => void doPublish()}
         onCancel={() => setPublishFor(null)}
@@ -848,6 +819,7 @@ function NewsletterList({
       </ConfirmDialog>
 
       <Modal
+        asForm
         open={scheduleFor !== null}
         title="Schedule campaign"
         subtitle={`“${scheduleFor?.subject ?? ""}” goes to every active subscriber at this time.`}
@@ -857,10 +829,11 @@ function NewsletterList({
         footer={footer(
           () => setScheduleFor(null),
           <Button
+            type="submit"
             variant="outline"
             icon="clock"
             disabled={busy || !sendAt}
-            onClick={() => void doSchedule()}
+            onClick={() => doSchedule()}
           >
             Schedule
           </Button>,
@@ -923,6 +896,7 @@ function NewsletterList({
 
       {/* Add New Subscriber: the person still confirms by e-mail (double opt-in). */}
       <Modal
+        asForm
         open={addOpen}
         title="Add New Subscriber"
         subtitle="They get a confirmation e-mail and receive campaigns only after they confirm."
@@ -932,10 +906,11 @@ function NewsletterList({
         footer={footer(
           () => setAddOpen(false),
           <Button
+            type="submit"
             variant="outline"
             icon="plus"
             disabled={busy || !newSubscriber.email.trim()}
-            onClick={() => void addSubscriber()}
+            onClick={() => addSubscriber()}
           >
             Add Subscriber
           </Button>,
@@ -1017,7 +992,10 @@ function NewsletterList({
           </div>
         </div>
 
-        <div className="admin-dark-form admin-newsletter-form">
+        <form
+          className="admin-dark-form admin-newsletter-form"
+          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+        >
           <div className="admin-form-grid">
             <div className="admin-field admin-form-grid__full">
               <label className="admin-field__label" htmlFor="campaign-subject">
@@ -1037,17 +1015,19 @@ function NewsletterList({
               <FieldError id="campaign-subject-error" />
             </div>
 
-            {/* Content Blocks — a stack of composer "type boxes" (+ adds one below, the grip
-                reorders), the same box model as the article form. */}
+            {/* Content Blocks — the article editor: blocks in one outlined frame (the + under a
+                block opens the block menu, the grip reorders). */}
             <div className="admin-field admin-form-grid__full">
               <span className="admin-field__label">Content Blocks *</span>
-              <RichTextStack
-                blocks={form.bodies}
-                onChange={(bodies) => setForm((f) => ({ ...f, bodies }))}
-                uploadImage={uploadImage}
-                label="Campaign content"
-                readOnly={formReadonly}
-              />
+              <div className="admin-article-frame">
+                <RichTextStack
+                  blocks={form.bodies}
+                  onChange={(bodies) => setForm((f) => ({ ...f, bodies }))}
+                  uploadImage={uploadImage}
+                  label="Campaign content"
+                  readOnly={formReadonly}
+                />
+              </div>
             </div>
           </div>
 
@@ -1068,32 +1048,35 @@ function NewsletterList({
                 variant="outline"
                 size="sm"
                 icon="send"
-                onClick={() => void sendTest()}
+                onClick={() => sendTest()}
                 disabled={formReadonly || busy || upload.busy}
               >
                 Send Test
               </Button>
               <Button
+                type="submit"
+                formNoValidate
                 variant="outline"
                 size="sm"
                 icon="cloud"
-                onClick={() => void saveAndClose()}
+                onClick={() => saveAndClose()}
                 disabled={formReadonly || busy || upload.busy}
               >
                 Save draft
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
-                icon="globe"
-                onClick={() => void publishCampaign()}
+                icon="globeSimple"
+                onClick={() => publishCampaign()}
                 disabled={formReadonly || !canSend || busy || upload.busy}
               >
                 Publish
               </Button>
             </div>
           </div>
-        </div>
+        </form>
 
         {popups}
         <ToastBanner message={toast.message} />
@@ -1135,8 +1118,6 @@ function NewsletterList({
     />
   );
 
-  const statusLabel = STATUS_FILTERS.find(([key]) => key === statusFilter)?.[1] ?? "All";
-
   return (
     <div className="admin-newsletter">
       <div className="admin-page-header admin-events-header">
@@ -1160,52 +1141,6 @@ function NewsletterList({
                   </Button>
                 ) : null}
               </div>
-              {/* Status dropdown (All · Sent · Scheduled · Draft). */}
-              <div className="admin-row-menu">
-                {statusMenuOpen ? (
-                  <div
-                    className="admin-row-menu__backdrop"
-                    onClick={() => setStatusMenuOpen(false)}
-                  />
-                ) : null}
-                <button
-                  type="button"
-                  className="admin-newsletter-status"
-                  aria-haspopup="menu"
-                  aria-expanded={statusMenuOpen}
-                  onClick={() => setStatusMenuOpen((v) => !v)}
-                >
-                  Status <strong>{statusLabel}</strong>
-                  <Icon name="chevronDown" size={14} />
-                </button>
-                {statusMenuOpen ? (
-                  <div
-                    className="admin-row-menu__panel admin-newsletter-status__menu"
-                    role="menu"
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") setStatusMenuOpen(false);
-                    }}
-                  >
-                    {STATUS_FILTERS.map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={statusFilter === key}
-                        className="admin-row-menu__item"
-                        onClick={() => {
-                          setStatusFilter(key);
-                          setStatusMenuOpen(false);
-                          campaignTable.clearSelection();
-                          resetPaging();
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
               <SortMenu columns={columns} />
               {searchBox("Search by title...", "Search campaigns")}
             </>
@@ -1213,12 +1148,7 @@ function NewsletterList({
             <>
               <div className="admin-fab">
                 {canExport ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon="download"
-                    onClick={() => void exportCsv()}
-                  >
+                  <Button variant="outline" size="sm" icon="download" onClick={() => exportCsv()}>
                     Export CSV
                   </Button>
                 ) : null}
@@ -1251,11 +1181,6 @@ function NewsletterList({
                   </Button>
                 </>
               ) : null}
-              <FiltersButton
-                count={subPanelFilterCount}
-                open={subFiltersOpen}
-                onToggle={() => setSubFiltersOpen((v) => !v)}
-              />
               <SortMenu columns={subscriberColumns} />
               {searchBox("Search by name or e-mail...", "Search subscribers")}
             </>
@@ -1290,14 +1215,13 @@ function NewsletterList({
       {isCampaign ? (
         <ListCard
           table={campaignTable}
-          total={filteredCampaigns.length}
           noun="campaign"
           columns={columns}
           empty={
             <ListEmpty
               noun="campaign"
               query={query}
-              filters={activeFilterCount}
+              filters={campaignTable.filterCount}
               emptyHint="Write the first campaign."
               onClear={clearFilters}
               addLabel="Add New Campaign"
@@ -1311,7 +1235,7 @@ function NewsletterList({
                   <Button
                     variant="primary"
                     size="sm"
-                    icon="globe"
+                    icon="globeSimple"
                     disabled={busy}
                     onClick={() => setPublishFor(campaigns.filter((c) => selected.has(c.id)))}
                   >
@@ -1336,75 +1260,13 @@ function NewsletterList({
       ) : (
         <ListCard
           table={subTable}
-          total={filteredSubs.length}
           noun="subscriber"
           columns={subscriberColumns}
-          filters={
-            subFiltersOpen ? (
-              <div className="admin-filter-panel">
-                <div className="admin-field">
-                  <span className="admin-field__label">Status</span>
-                  <Select
-                    className="admin-select"
-                    value={subStatusFilter}
-                    onChange={(e) => {
-                      setSubStatusFilter(e.target.value as "all" | SubscriberStatus);
-                      resetPaging();
-                    }}
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="pending">Pending</option>
-                    <option value="unsubscribed">Unsubscribed</option>
-                  </Select>
-                </div>
-                <div className="admin-field">
-                  <span className="admin-field__label">PPI Country</span>
-                  <Select
-                    className="admin-select"
-                    value={ppiFilter}
-                    onChange={(e) => {
-                      setPpiFilter(e.target.value);
-                      resetPaging();
-                    }}
-                  >
-                    <option value="all">All PPIs</option>
-                    <option value="none">No PPI</option>
-                    {chapters.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="admin-field">
-                  <span className="admin-field__label">Joined</span>
-                  <Select
-                    className="admin-select"
-                    value={joinedFilter}
-                    onChange={(e) => {
-                      setJoinedFilter(e.target.value as JoinedFilter);
-                      resetPaging();
-                    }}
-                  >
-                    <option value="all">All dates</option>
-                    <option value="today">Today</option>
-                    <option value="month">This month</option>
-                    <option value="year">This year</option>
-                  </Select>
-                </div>
-                <button type="button" className="admin-filter-panel__clear" onClick={clearFilters}>
-                  <Icon name="x" size={12} />
-                  Clear filters
-                </button>
-              </div>
-            ) : null
-          }
           empty={
             <ListEmpty
               noun="subscriber"
               query={query}
-              filters={activeFilterCount}
+              filters={subTable.filterCount}
               emptyHint="People join through the newsletter field on the website."
               onClear={clearFilters}
               addLabel="Add New Subscriber"

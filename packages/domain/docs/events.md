@@ -9,7 +9,7 @@ shows it on the site (**Public**); the row menu and the bulk bar publish / **Mak
 once, the row menu copies the public link (`/events/<slug>`), and Delete moves events to the trash.
 
 The list (the shared dark admin look, "Dark admin pages" in `apps/admin/src/app/globals.css`) has
-the tabs All / Upcoming / Past / Drafts, a title search, Filters (type, status, event date), and
+the tabs All / Upcoming / Past / Drafts, a title search, a sort-and-filter menu on each sortable column, and
 the columns Event, Event Date ("14 Nov 2026" on the event's clock + "In N days"), Location,
 Status and **Last Modified** ("2 hours ago" + the author: the staff member of the event's newest
 change, from the newest 500 `events` audit entries and `users/{uid}`, mapped by
