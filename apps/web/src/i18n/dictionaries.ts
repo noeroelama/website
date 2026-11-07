@@ -71,8 +71,11 @@ const id = {
     highlightKinds: { recruitment: "Oprec", form: "Formulir", event: "Acara" },
     closes: "tutup",
     starts: "mulai",
+    allActivities: "Semua kegiatan",
+    noActivities: "Belum ada kegiatan yang dibuka.",
   },
   pages: {
+    activities: "Kegiatan",
     news: "Berita",
     events: "Acara",
     gallery: "Galeri",
@@ -720,8 +723,11 @@ const en: Dictionary = {
     highlightKinds: { recruitment: "Recruitment", form: "Form", event: "Event" },
     closes: "closes",
     starts: "starts",
+    allActivities: "All activities",
+    noActivities: "Nothing is open right now.",
   },
   pages: {
+    activities: "Activities",
     news: "News",
     events: "Events",
     gallery: "Gallery",

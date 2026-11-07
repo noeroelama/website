@@ -108,6 +108,7 @@ export function SiteFooter({ t }: { t: Dictionary }) {
   const explore = [
     ["/", t.nav.home],
     ["/about", t.nav.about],
+    ["/activities", t.pages.activities],
     ["/events", t.nav.events],
     ["/gallery", t.nav.gallery],
     ["/news", t.nav.news],

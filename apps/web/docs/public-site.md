@@ -12,7 +12,9 @@ explains the purpose of the site and shows the Google data notice; About, Terms 
 static pages. Home also lists the 3 latest news and a **highlights panel** (L1,
 `src/server/highlights.ts`): up to 3 open recruitments, 3 public forms in their answer window and 3
 upcoming published events. Its only inputs are those three public lists, so meetings, Zoom bookings
-and unit agendas can never appear (`tests/integration/highlights.test.ts`).
+and unit agendas can never appear (`tests/integration/highlights.test.ts`). **Activities**
+(`/activities`, M4, linked from the panel and the footer) is the same read model
+(`src/components/highlights.tsx`) without the limit of 3.
 
 **News**: `/news` lists visible news as cards, newest first, filtered by category and tag
 (`?category=academic&tag=riset&page=2`, 12 per page). `/news/[slug]` shows the article (shared

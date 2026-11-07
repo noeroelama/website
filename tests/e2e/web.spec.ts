@@ -18,6 +18,7 @@ test("public pages are available without signing in", async ({ request }) => {
     ["/news", "Berita"],
     ["/map", "Peta"],
     ["/events", "Acara"],
+    ["/activities", "Kegiatan"],
     ["/gallery", "Galeri"],
     ["/about", "Tentang kami"],
     ["/terms", "Syarat dan Ketentuan"],

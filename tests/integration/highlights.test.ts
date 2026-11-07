@@ -77,6 +77,21 @@ describe("public highlights (L1)", () => {
     ]);
   });
 
+  it("the activities page (M4) takes the same list without the limit of 3", () => {
+    const events = Array.from(
+      { length: 5 },
+      (_, i) =>
+        ({
+          slug: `e${i}`,
+          title: `E${i}`,
+          startsAt: at(`2026-12-0${i + 1}T00:00:00Z`),
+        }) as PublicEvent,
+    );
+    const input = { recruitments: [], forms: [], events };
+    expect(publicHighlights(input, now)).toHaveLength(3);
+    expect(publicHighlights(input, now, Infinity)).toHaveLength(5);
+  });
+
   it("can never include meetings, Zoom bookings or unit agendas", () => {
     const source = readFileSync("apps/web/src/server/highlights.ts", "utf8");
     for (const forbidden of ["meetings", "zoom", "calendar", "tasks", "programs"]) {

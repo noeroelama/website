@@ -12,12 +12,12 @@ export interface Highlight {
   readonly at: Date | null;
 }
 
-/** At most this many per kind. */
+/** At most this many per kind on the home panel (the /activities page passes Infinity). */
 const LIMIT = 3;
 
 /**
  * The home highlights: open recruitments, public forms in their answer window and upcoming
- * published events. Its inputs are those three PUBLIC lists only, so meetings, Zoom bookings
+ * published events (also the public /activities page, M4). Its inputs are those three PUBLIC lists only, so meetings, Zoom bookings
  * and unit agendas can never reach it (tests/integration/highlights.test.ts).
  */
 export function publicHighlights(
@@ -27,11 +27,12 @@ export function publicHighlights(
     readonly events: readonly PublicEvent[];
   },
   now: Date,
+  limit = LIMIT,
 ): Highlight[] {
   return [
     ...input.recruitments
       .filter((r) => isRecruitmentOpen(r, now))
-      .slice(0, LIMIT)
+      .slice(0, limit)
       .map((r) => ({
         kind: "recruitment" as const,
         title: r.title,
@@ -40,7 +41,7 @@ export function publicHighlights(
       })),
     ...input.forms
       .filter((f) => publicAnswerState(f, now) === "open")
-      .slice(0, LIMIT)
+      .slice(0, limit)
       .map((f) => ({
         kind: "form" as const,
         title: f.title,
@@ -50,7 +51,7 @@ export function publicHighlights(
     ...input.events
       .filter((e) => e.startsAt >= now)
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
-      .slice(0, LIMIT)
+      .slice(0, limit)
       .map((e) => ({
         kind: "event" as const,
         title: e.title,
