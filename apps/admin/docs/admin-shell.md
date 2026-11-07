@@ -201,6 +201,12 @@ router.push("/things"); router.refresh();
 - **Zoom** (`/zoom`, `zoom-page.tsx`): bookings 30 days back to 180 ahead, the booking form,
   approve/reject, cancel, the invitation with its QR, and Settings (`zoom.settings`). Rules:
   `packages/domain/docs/zoom.md`.
+- **Settings** (`/settings`, `settings.read`; L3): sections Zoom, WhatsApp, other integrations and
+  Letters. Zoom settings stay on `/zoom` (`zoom.settings`) and the letterhead on `/letters/types`
+  (`letter_types.edit`); this page links to them. Integrations (WAHA, Cloud API, Zoom, Drive,
+  Anthropic, short links, calendar feed, Resend) are configured only in the hosting app screen, so
+  the page shows yes/no per integration and the messaging mode, never a value
+  (`src/server/settings.ts`, `tests/unit/admin-settings.test.ts`).
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

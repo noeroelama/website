@@ -123,6 +123,7 @@ export const ADMIN_PAGES = {
   },
   tasks: { label: "Unit task boards", extras: { share: "Share unit boards with a person" } },
   calendar: { label: "Calendar (own items, .ics feed)", extras: { holidays: "Manage holidays" } },
+  settings: { label: "Settings (integration status)" },
 } as const satisfies Record<string, AdminPageDefinition>;
 
 export type AdminPageId = keyof typeof ADMIN_PAGES;

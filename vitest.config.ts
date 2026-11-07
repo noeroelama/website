@@ -114,6 +114,7 @@ export default defineConfig({
         "packages/db/src/sql/calendar.ts",
         "apps/admin/src/server/calendar.ts",
         "apps/admin/src/server/search.ts",
+        "apps/admin/src/server/settings.ts",
         "apps/web/src/server/highlights.ts",
         "apps/admin/src/server/chapter-records.ts",
         "packages/db/src/sql/chapter-records.ts",

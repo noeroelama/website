@@ -72,6 +72,7 @@ describe("admin side panel navigation", () => {
       "Finance",
       "Meetings",
       "Zoom",
+      "Settings",
     ]);
   });
 
