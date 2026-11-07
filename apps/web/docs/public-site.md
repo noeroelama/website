@@ -9,7 +9,10 @@ Our Community (five PPIs, linking to `/map`); address and social icons (new tab)
 Terms of Use, Privacy Policy. The header has no language switch or Sign in link (design choice):
 visitors read the site in Indonesian unless the `lang` cookie says `en` (kept for a year). Home
 explains the purpose of the site and shows the Google data notice; About, Terms and Privacy are
-static pages. Home also lists the 3 latest news.
+static pages. Home also lists the 3 latest news and a **highlights panel** (L1,
+`src/server/highlights.ts`): up to 3 open recruitments, 3 public forms in their answer window and 3
+upcoming published events. Its only inputs are those three public lists, so meetings, Zoom bookings
+and unit agendas can never appear (`tests/integration/highlights.test.ts`).
 
 **News**: `/news` lists visible news as cards, newest first, filtered by category and tag
 (`?category=academic&tag=riset&page=2`, 12 per page). `/news/[slug]` shows the article (shared
@@ -135,7 +138,8 @@ completeness test fail until both exist.
   `eventCounters/{eventId}`).
 - Without `RECAPTCHA_SECRET_KEY`, development and test skip the captcha; staging and production
   refuse every registration (fail closed).
-- If the news read fails, Home logs `home_latest_news_failed` and leaves the section out.
+- If the news read fails, Home logs `home_latest_news_failed` and leaves the section out; a failing
+  highlights read logs `home_highlights_failed` the same way.
 
 ## Configuration
 

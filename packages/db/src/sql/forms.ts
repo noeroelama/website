@@ -269,6 +269,16 @@ export function createSqlFormWebStore(db: Database) {
   const byToken = (token: string) => forms.where("publicToken", "==", token).limit(1);
 
   return {
+    /** Published public forms (the home highlights keep those whose window is open). */
+    async listPublished(): Promise<Form[]> {
+      const snapshot = await forms
+        .where("usage", "==", "public")
+        .where("status", "==", "published")
+        .where("deletedAt", "==", null)
+        .get();
+      return snapshot.docs.map((doc) => toForm(doc.id, doc.data()));
+    },
+
     /** The form and its current version, or null when the token answers nothing. */
     async findPublic(
       token: string,

@@ -67,6 +67,10 @@ const id = {
     google:
       "Bila kamu masuk dengan Google, kami hanya menerima ID akun, alamat email, nama, dan foto profilmu (izin openid, email, profile). Data itu dipakai untuk membuat dan mengamankan akunmu, tidak pernah dijual, dan tidak dibagikan kepada pengiklan. Kami tidak meminta akses ke Gmail, Drive, Kalender, atau layanan Google lain.",
     googleMore: "Baca Kebijakan Privasi",
+    highlights: "Sedang berlangsung",
+    highlightKinds: { recruitment: "Oprec", form: "Formulir", event: "Acara" },
+    closes: "tutup",
+    starts: "mulai",
   },
   pages: {
     news: "Berita",
@@ -712,6 +716,10 @@ const en: Dictionary = {
     google:
       "If you sign in with Google, we only receive your account ID, e-mail address, name and profile picture (openid, email, profile scopes). We use them to create and protect your account, never sell them and never share them with advertisers. We do not request access to Gmail, Drive, Calendar or any other Google service.",
     googleMore: "Read the Privacy Policy",
+    highlights: "Happening now",
+    highlightKinds: { recruitment: "Recruitment", form: "Form", event: "Event" },
+    closes: "closes",
+    starts: "starts",
   },
   pages: {
     news: "News",

@@ -1,4 +1,5 @@
 import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
 import { lazyEnv } from "@website/config/env";
 import { createSqlFormWebStore } from "@website/db/sql";
 import { createRecaptchaVerifier, passesCaptcha } from "./captcha";
@@ -15,6 +16,14 @@ const store = lazyEnv(() => createSqlFormWebStore(webDb()));
 export const publicFormByToken = lazyEnv(() =>
   createPublicFormReader({ find: (token) => store().findPublic(token, new Date()) }),
 );
+
+/** Published public forms for the home highlights (cached for minutes under the tag "forms"). */
+export async function publishedPublicForms() {
+  "use cache";
+  cacheTag("forms");
+  cacheLife("minutes");
+  return store().listPublished();
+}
 
 /** Submit button of /f/{token} (src/app/f/[token]/actions.ts). */
 export const submitPublicForm = lazyEnv(() => {
