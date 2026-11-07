@@ -117,6 +117,9 @@ draft ──→ submitted ──┬─ secretariat review ─┐
 - **Notices** (J2, `notices.lpj`, `apps/admin/docs/messaging.md`): opened → PICs (with the due
   date); submitted → both review desks; both reviews in → the approval desk; returned /
   approved → PICs.
+- **Deadline reminders** (M6, cron `deadline-reminders`, `apps/admin/docs/cron.md`): PICs get
+  one reminder per due date for open milestones and draft/returned LPJs due within 3 days, and
+  one when a draft/returned LPJ is past due. Applicants get one the day before their interview.
 - **Dashboard**: a warning when no account holds `lpj.review_secretariat` globally (shown to
   `roles.edit`, LPJ desks and programme approvers).
 - Audit: module `lpj`, resource `lpj`; not revertible. LPJs are never deleted.

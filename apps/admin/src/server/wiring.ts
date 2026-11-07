@@ -20,6 +20,7 @@ import { logSecurityEvent } from "@website/observability";
 import { keyedHash, signLink } from "@website/security";
 import { createAccountActions } from "./accounts";
 import { createApplicationActions } from "./applications";
+import { createDeadlineReminders } from "./deadline-reminders";
 import { createAppointmentActions } from "./appointments";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createChapterActions } from "./chapters";
@@ -407,6 +408,7 @@ export const cronRoute = lazyEnv(() =>
       "meeting-reminders": () => meetingActions().sendReminders(),
       "zoom-rooms": () => zoomActions().retryRooms(),
       "recording-archive": () => recordingArchive()(),
+      "deadline-reminders": () => deadlineReminders()(),
     },
     log: ({ message, ...fields }) =>
       message === "cron_job_failed"
@@ -846,6 +848,25 @@ async function activePeriod(): Promise<{ id: string; name: string } | null> {
   const active = (await adminStores().periods.listForAdmin()).find((p) => p.status === "active");
   return active ? { id: active.id, name: active.name } : null;
 }
+
+/** cron "deadline-reminders" (M6): interviews, milestones, LPJs. */
+export const deadlineReminders = lazyEnv(() =>
+  createDeadlineReminders({
+    applications: adminStores().applications,
+    programs: async () => {
+      const period = await activePeriod();
+      return period ? adminStores().programs.listForPeriod(period.id) : [];
+    },
+    lpj: async () => {
+      const period = await activePeriod();
+      return period ? adminStores().lpj.listForPeriod(period.id) : [];
+    },
+    contacts: (uids) => adminStores().contacts.contacts(uids),
+    send: (message, key) => messenger().send(message, key),
+    adminUrl: getAppUrls().ADMIN_URL ?? "",
+    now: () => new Date(),
+  }),
+);
 
 /** My Tasks and unit task boards (G1). */
 export const tasks = lazyEnv(() =>

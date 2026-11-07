@@ -390,6 +390,17 @@ export function createSqlApplicationStore(db: Database) {
         .sort((a, b) => submittedTime(a) - submittedTime(b));
     },
 
+    /** Applications still at the interview stage whose booked interview starts in [from, to). */
+    async interviewsBetween(from: Date, to: Date): Promise<Application[]> {
+      const snapshot = await applications
+        .where("interview.startsAt", ">=", from)
+        .where("interview.startsAt", "<", to)
+        .get();
+      return snapshot.docs
+        .map((doc) => toApplication(doc.id, doc.data()))
+        .filter((a) => a.status === "interview");
+    },
+
     async get(id: string): Promise<Application | null> {
       if (!safeId.safeParse(id).success) return null;
       const snapshot = await applications.doc(id).get();

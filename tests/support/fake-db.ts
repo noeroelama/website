@@ -122,6 +122,7 @@ export function fakeDb(options: { failWith?: Error } = {}) {
           if (op === "in") return (value as unknown[]).includes(v);
           if (op === ">=") return v !== undefined && sortable(v) >= sortable(value);
           if (op === "<=") return v !== undefined && sortable(v) <= sortable(value);
+          if (op === "<") return v !== undefined && sortable(v) < sortable(value);
           throw new Error(`fake: unsupported op ${op}`);
         };
         return query(name, [...filters, test], order, directions, after, max);
