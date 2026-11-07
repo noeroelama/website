@@ -81,4 +81,6 @@ export const COLLECTIONS = [
   "taskBoardShares",
   "holidays",
   "calendarFeeds",
+  "chapterOfficers",
+  "chapterReports",
 ] as const;

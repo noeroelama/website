@@ -26,6 +26,7 @@ import { createChapterActions } from "./chapters";
 import { createMessenger, type Message } from "@website/domain/messaging";
 import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
+import { createChapterRecords } from "./chapter-records";
 import { createDashboard } from "./dashboard";
 import { createSearch } from "./search";
 import { createEventActions } from "./events";
@@ -136,6 +137,15 @@ export const galleryActions = lazyEnv(() =>
 /** Organizations → PPI (chapters) actions. */
 export const chapterActions = lazyEnv(() =>
   createChapterActions({ chapters: adminStores().chapters, now: () => new Date() }),
+);
+
+/** Chapter officers, quarterly reports and the risk signal (H1-H3). */
+export const chapterRecords = lazyEnv(() =>
+  createChapterRecords({
+    records: adminStores().chapterRecords,
+    chapter: (id) => adminStores().chapters.get(id),
+    now: () => new Date(),
+  }),
 );
 
 /** Organizations → Period (board periods) actions. */
@@ -932,6 +942,9 @@ export const adminReads = {
     adminStores().forms.currentVersions(forms),
   listAlbums: () => adminStores().galleries.listForAdmin(),
   listChapters: () => adminStores().chapters.listForAdmin(),
+  getChapter: (id: string) => adminStores().chapters.get(id),
+  chapterOfficers: (id: string) => adminStores().chapterRecords.officers(id),
+  chapterReports: (id: string) => adminStores().chapterRecords.reportsOf(id),
   listPeriods: () => adminStores().periods.listForAdmin(),
   getPeriod: (id: string) => adminStores().periods.get(id),
   listOrgUnits: (periodId: string) => adminStores().orgUnits.listForPeriod(periodId),

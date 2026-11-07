@@ -157,6 +157,8 @@ const statusChip = (text: string) => <span className="admin-status-badge">{text}
 interface OrganizationsProps {
   /** PPI chapters from the database. */
   chapters: ChapterItem[];
+  /** H2 signal per chapter id (computed on read; inactive chapters absent). */
+  signals: Record<string, string>;
   /** organizations.edit: add, edit, activate/deactivate and delete chapters. */
   canEdit: boolean;
   /** Chapters whose contact details this chapter admin may edit (organizations.edit there). */
@@ -179,6 +181,7 @@ export function OrganizationsPage(props: OrganizationsProps) {
 /** Organizations screens (all state lives here; remounted on navigation). */
 function OrganizationsList({
   chapters: ppis,
+  signals,
   canEdit,
   contactEditIds,
   periods: periodList,
@@ -680,7 +683,9 @@ function OrganizationsList({
       width: "18%",
       render: (r) => (
         <div>
-          <div className="admin-table__title">{r.name}</div>
+          <a className="admin-table__title" href={`/organizations/chapters/${r.id}`}>
+            {r.name}
+          </a>
           <div className="admin-table__sub admin-org-code">#{r.countryCode}</div>
         </div>
       ),
@@ -734,6 +739,7 @@ function OrganizationsList({
       render: (r) => (
         <div className="admin-org-badges">
           {r.risk !== "none" ? statusChip(label(CHAPTER_RISK_LABELS, r.risk)) : null}
+          {signals[r.id] ? statusChip(signals[r.id] as string) : null}
           {statusChip(r.active ? "Active" : "Inactive")}
         </div>
       ),

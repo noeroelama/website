@@ -1,10 +1,11 @@
+import { CHAPTER_SIGNAL_LABELS } from "@website/domain/organizations";
 import { can, scopedChapterIds } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { toChapterItem } from "@/components/chapters-model";
 import { OrganizationsPage } from "@/components/organizations-page";
 import { toPeriodItem } from "@/components/periods-model";
 import { requireAdminViewer } from "@/server/context";
-import { adminReads } from "@/server/wiring";
+import { adminReads, chapterRecords } from "@/server/wiring";
 
 // Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
@@ -22,9 +23,16 @@ export default async function OrganizationsRoute({
     adminReads.listChapters(),
     canReadPeriods ? adminReads.listPeriods() : null,
   ]);
+  const signals = await chapterRecords().signals(chapters);
   return (
     <OrganizationsPage
       chapters={chapters.map(toChapterItem)}
+      signals={Object.fromEntries(
+        chapters.flatMap((c) => {
+          const s = signals.get(c.id);
+          return s ? [[c.id, CHAPTER_SIGNAL_LABELS[s.signal]]] : [];
+        }),
+      )}
       canEdit={can(viewer.principal, "organizations.edit")}
       contactEditIds={contactScope === "all" ? [] : contactScope}
       periods={periods?.map(toPeriodItem) ?? null}

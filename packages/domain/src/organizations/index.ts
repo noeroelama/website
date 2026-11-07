@@ -469,3 +469,4 @@ export function derivedAssignments(
   if (seat === "secretary") return [officer, forUnit(map.unitSecretary)];
   return [officer];
 }
+export * from "./chapter-records";

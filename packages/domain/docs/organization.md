@@ -109,6 +109,24 @@ These members are display data for the cabinet page only — not accounts and no
   `structure.read` to see the list. Audit module `structure`, resource `orgUnit`; only DELETE
   entries are revertible (a revert of an edit would not rewrite the paths below the unit).
 
+### Chapter officers, quarterly reports and risk signal (H1-H3)
+
+- Code: `packages/domain/src/organizations/chapter-records.ts` (quarter maths, signal, officer
+  warning), `packages/db/src/sql/chapter-records.ts`, `apps/admin/src/server/chapter-records.ts`,
+  page `/organizations/chapters/[id]` (linked from the chapter name on the PPI list). Tests:
+  `tests/unit/chapter-records.test.ts`, `tests/integration/chapter-records.test.ts`.
+- Officers (`chapterOfficers/{chapterId}`): free text name and position, optional term end. A
+  warning shows from 60 days before the end; an empty end date reads "unknown", never "expired".
+- Report (`chapterReports/{chapterId}_{yyyy}Q{n}`): active members, activities, obstacles. The
+  chapter admin (`organizations.edit` for that chapter) submits for its own chapter; a global
+  holder (secretariat/Sekjen) may submit on its behalf and the report is marked
+  `filledByCentre` (decided from the submitter's scope at submit time). Submitting again for the
+  same quarter replaces it; reports are never deleted; a quarter that has not started is refused.
+- Signal (computed on read, shown next to the board's own `risk` note): only finished quarters
+  from 2026Q3 count. Missed in a row up to the last finished quarter: 0 = Active, 1 = Needs
+  checking, 2+ = At risk of vacancy, with the quarters as the reason. Inactive chapters are not
+  rated.
+
 ## Configuration
 
 Logo and member-photo uploads need `FILE_STORAGE_DIR`.
