@@ -37,8 +37,8 @@ These members are display data for the cabinet page only — not accounts and no
   (`periods/{id}`, `settings/activePeriod`); admin `apps/admin/src/server/periods.ts`, the Period
   tab in `organizations-page.tsx`, rows in `periods-model.ts`
 - Structure: `OrgUnit`, `OrgUnitInputSchema`, `UnitMemberSchema`, `UnitDivisionSchema`,
-  `unitPeopleCount`, `placeOrgUnit`, `assertNoCycle`, `movedPath`, `orgUnitPath`, `inTreeOrder` in
-  the same domain file; database
+  `unitPeopleCount`, `placeOrgUnit`, `placeReportTo`, `assertNoCycle`, `movedPath`,
+  `orgUnitPath`, `inTreeOrder` in the same domain file; database
   `packages/db/src/sql/org-units.ts` (`orgUnits/{id}`, code index
   `orgUnitCodes/{periodId}_{code}`); admin `apps/admin/src/server/org-units.ts`,
   `src/app/(panel)/organizations/periods/[id]/page.tsx`, `src/components/org-structure-page.tsx`,
@@ -56,14 +56,24 @@ These members are display data for the cabinet page only — not accounts and no
   these fields existed read as 0 / none / "none".
 - Country: 2-letter ISO code (upper-cased); time zone: IANA name; links http(s); at most 5 other
   links; latitude/longitude in degrees (the marker, e.g. the country's centre).
+- Public chapter profile (the detail page `/map/[slug]`, user): `description` (long text),
+  `role` (the contact person's role, e.g. "Ketua", shown with the name) and `phone` are chapter
+  fields like the rest — the page reads only the chapter document, nothing is hardcoded.
 - `mapPosition(lat, lng)` turns the coordinates into percent of the map box. The map is
   equirectangular; the constants are fitted to the PPIDK map (Astana, Tokyo, Wellington).
-- One reader list (`listActive`) drives the markers, the About list and the count, so they never
-  disagree; inactive chapters are hidden everywhere on the site.
+- One reader list (`listActive`) drives the markers, the About list, the count and the `/map`
+  country table, so they never disagree; inactive chapters are hidden everywhere
+  (`PublicChapter` carries `active`).
+- Each chapter has a `region` (`CHAPTER_REGIONS`: oceania, southeastAsia, eastAsia, southAsia,
+  middleAsia, others; empty = hidden from the table) and a `mapNo` (badge number on the
+  `/map` table; empty = no badge) set by the national board: they decide the `/map` group and
+  number of the chapter, so moving a chapter to another group (e.g. Middle Asia → Others) or
+  giving a new PPI the next free number is a data change. Only the heading order lives in
+  `apps/web/src/lib/country-names.ts`, not in the data.
 - Permission `organizations.edit` (global) to add, edit and delete;
   `organizations.read` to see the page. A chapter admin (`organizations.edit` for one chapter)
   edits only that chapter's contact person, public contact, website, e-mail, Instagram and links;
-  name, country, time zone, logo, URL, map position, member count, conditions and risk stay with
+  name, country, region, map number, time zone, logo, URL, map position, member count, conditions and risk stay with
   the national board (refused on the server, disabled in the form). Audit module `organizations`,
   resource `chapter`; revertible for 14 days except edits that changed the URL.
 - Delete (chapters, periods, units) is soft: `deletedAt` is set, the item leaves the admin lists
@@ -98,6 +108,11 @@ These members are display data for the cabinet page only — not accounts and no
   structure is read-only.
 - The code is upper-cased and unique per period. New units from the unit page sit at the top
   level; units imported under a parent keep their place (Move has no button in the redesign).
+- A unit also stores `reportTo` (nullable): who it reports to — the _functional_ chain, which is
+  independent of the display tree (`parentId`) since round 23 (e.g. KSA displays under Biro but
+  reports to Sektif). The target must be a live unit of the same period, never the unit itself,
+  and a cycle is refused (the store walks the target's line). A unit other units report to
+  cannot be deleted until their reports are changed. The About page tree does not use it yet.
 - A unit keeps at most 50 core members and 30 divisions of at most 50 members each, in display
   order. Photos use the public upload preset `cabinet` (`structure.edit`).
 - A unit is deleted only when no live unit sits below it and nobody holds an active appointment

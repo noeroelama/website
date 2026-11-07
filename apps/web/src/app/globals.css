@@ -1,14 +1,34 @@
 /* Public site frame (header, footer, home sections). Values only from @website/ui tokens. */
-.site-header,
-.site-footer {
-  background: var(--color-frame);
-  color: var(--color-on-panel);
+.site-header {
+  background: var(--color-black); /* black band, matches the news page (user) */
+  color: var(--color-on-panel-muted);
+  font-family: var(--font-body); /* Inter for the header (user) */
+  font-size: var(--text-xs); /* smaller header text, just a bit more (user) */
 }
 
 .site-header a,
 .site-footer a {
-  color: var(--color-on-panel);
   text-decoration: none;
+}
+
+/* Footer text white; only the Explore/… headings stay dark (user). */
+.site-footer {
+  color: var(--color-white);
+}
+
+.site-footer a {
+  color: var(--color-white);
+}
+
+/* Header links a bit brighter (user: "agak terang dikit"), footer stays muted. */
+.site-header a {
+  color: var(--color-on-panel);
+}
+
+/* Header links: white when the page is active or hovered (user). */
+.site-header a:hover,
+.site-header a[aria-current="page"] {
+  color: var(--color-white);
 }
 
 .site-header a:hover,
@@ -31,26 +51,20 @@
   height: var(--space-12);
   width: auto;
 }
-
 .site-header__inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-block: var(--space-4);
+  /* Compact header: smaller vertical padding makes the hero feel taller on-screen. */
+  padding-block: var(--space-2);
 }
 
-/* Narrow screens: logo and account on the first row, links below. Wide: links and account
-   together on the right. */
+/* Narrow screens: header links below the logo row. Wide: links on the right. */
 .site-header__inner > nav {
   order: 1;
   width: 100%;
-}
-
-.site-account,
-.site-header .site-account-chip {
-  margin-left: auto;
 }
 
 @media (min-width: 64rem) {
@@ -59,107 +73,6 @@
     width: auto;
     margin-left: auto;
   }
-
-  .site-account,
-  .site-header .site-account-chip {
-    margin-left: 0;
-  }
-}
-
-.site-account {
-  position: relative;
-}
-
-.site-account-chip,
-.site-account-trigger {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--size-control);
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.site-header .site-account-chip:hover,
-.site-account-trigger:hover {
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
-  text-decoration: none;
-}
-
-.site-account-avatar {
-  display: grid;
-  place-items: center;
-  width: var(--space-6);
-  height: var(--space-6);
-  border-radius: var(--radius-full);
-  background: var(--color-accent);
-  color: var(--color-frame);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  object-fit: cover;
-}
-
-.site-account-arrow {
-  width: var(--space-4);
-  height: var(--space-4);
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.5;
-}
-
-.site-account-menu {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  right: 0;
-  z-index: 10;
-  display: grid;
-  min-width: 10rem;
-  padding: var(--space-1);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-popover);
-}
-
-.site-account-menu a,
-.site-account-menu button {
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-sm);
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.site-account-menu a:hover,
-.site-account-menu button:hover {
-  background: var(--color-hover);
-}
-
-.site-account-error {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  right: 0;
-  z-index: 11;
-  width: max-content;
-  margin: 0;
-  padding: var(--space-2);
-  background: var(--color-surface);
-  color: var(--color-danger);
-  font-size: var(--text-xs);
 }
 
 .site-header__nav {
@@ -169,7 +82,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs); /* header text just a bit smaller (user) */
   line-height: var(--leading-sm);
 }
 
@@ -178,7 +91,9 @@
 }
 
 .site-footer {
-  font-size: var(--text-sm);
+  background: var(--color-black); /* black footer, matches the news page (user) */
+  font-family: var(--font-body); /* Inter for the whole footer (user) */
+  font-size: var(--text-xs); /* all footer text one step smaller (user) */
   line-height: var(--leading-sm);
 }
 
@@ -186,7 +101,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-8);
-  padding-block: var(--space-16) var(--space-12);
+  padding-block: var(--space-10) var(--space-8); /* shorter top-bottom (user) */
 }
 
 @media (min-width: 64rem) {
@@ -202,14 +117,25 @@
   font-weight: var(--font-semibold);
 }
 
+/* Tagline wraps earlier: narrower right edge, without moving the Explore column (user). */
+.site-footer__brand p {
+  max-width: 16rem; /* narrower still (user: "lagi") */
+}
+
 .site-footer__address {
   margin-top: 0;
+  max-width: 19rem; /* a bit wider than first set (user: "tambahkan sedikit") */
 }
 
 .site-footer__heading {
   margin: 0 0 var(--space-2);
-  color: var(--color-accent);
-  font-size: var(--text-lg);
+  /* dark like the previous ghost-panel text: cream at 45% opacity (user) */
+  color: color-mix(
+    in srgb,
+    var(--color-brand-50) 30%,
+    transparent
+  ); /* darker still (user: "kurang gelap") */
+  font-size: var(--text-sm); /* one step smaller (user) */
   line-height: var(--leading-lg);
 }
 
@@ -248,8 +174,8 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-block: var(--space-6) var(--space-8);
-  color: var(--color-on-panel-muted);
+  padding-block: var(--space-4) var(--space-6); /* shorter top-bottom (user) */
+  color: var(--color-on-panel-muted); /* muted again (user) */
 }
 
 .site-footer__bottom a {
@@ -290,8 +216,54 @@
   border-radius: var(--radius-lg);
 }
 
-.site-card__title {
+/* Type label of the event card, bold and black (user); one line, ellipsis so the row
+   stays even. The margin overrides the browser default paragraph gap, tightening the
+   space between the type label and the card headline ("Headline" = the title).
+   font-size overrides .site-muted's text-sm — the card text was shrunk (user). */
+.site-card__type {
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-ink); /* black, wins over .site-muted (user) */
+  font-size: var(--text-xs); /* smaller card text (user) */
+  font-weight: var(--font-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Meta line of the event card: date • location • type, with the dot as a centered
+   separator ("logo titik ditengah") exactly like the design card; small text (user),
+   single line with ellipsis so the card shape stays the same. */
+.site-card__meta {
+  display: block;
   margin: var(--space-1) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs); /* smaller card text (user) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-card__meta [aria-hidden="true"] {
+  margin-inline: var(--space-1-5);
+}
+
+/* Title clamped to two lines (ellipsis) so the card shape stays the same. */
+.site-card__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: var(--space-1) 0;
+}
+
+/* Description excerpt of the event card; clamped to two lines so the rows stay even. */
+.site-card__excerpt {
+  margin: var(--space-1) 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--text-xs); /* smaller card text, wins over .site-muted (user) */
 }
 
 .site-card__title a {
@@ -307,7 +279,1122 @@
   gap: var(--space-3);
 }
 
-/* Event detail */
+/* ---- Events & Gallery list pages (Figma EVENT PUBLIC / GALLERY PUBLIC) ---- */
+.site-lists {
+  background: var(--color-bg); /* cream page (design) */
+}
+
+.site-lists__inner {
+  max-width: var(--measure-page);
+  margin-inline: auto;
+  padding: var(--space-24) var(--space-6);
+}
+
+.site-lists__title {
+  margin: 0;
+  color: var(--color-frame); /* dark, design */
+  font-family: var(--font-sans); /* Poppins, design */
+  font-size: var(--text-5xl);
+  line-height: var(--leading-5xl);
+}
+
+.site-lists__tagline {
+  margin: var(--space-2) 0 0;
+  color: var(--color-frame);
+  font-family: var(--font-body); /* Inter, design */
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+
+/* Dark filter bar (design "Filter Bar / Desktop", bg=brand-950): fields row on top, then
+   a dashed divider, then the category pills row — all inside the same panel. */
+.site-lists__bar {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-12);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--color-frame);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+}
+
+/* Three equal fields, spaced symmetrically across the bar (design: 3 × 391px). */
+.site-lists__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end; /* labels sit above their boxes */
+  gap: var(--space-4) var(--space-6);
+  color: var(--color-brand-200);
+}
+
+/* One filter field: label line (icon + name) above the control(s). */
+.site-lists__field {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-brand-200);
+}
+
+.site-lists__field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-transform: uppercase; /* design: RENTANG WAKTU / CARI KEGIATAN */
+}
+
+/* The field logo repeated on the label line: cream like the label text (dark bar). */
+.site-lists__field-label-icon {
+  width: var(--space-4);
+  height: var(--space-4);
+  color: var(--color-brand-200);
+  flex: none;
+}
+
+/* Each control sits in a box so the field logo can float inside the white input
+   (datetime picker / location pin / search — dark transparent stroke SVGs). */
+.site-lists__box {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.site-lists__box-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: var(--space-4);
+  height: var(--space-4);
+  color: var(--color-ink); /* dark logos on the white boxes */
+  pointer-events: none;
+}
+
+.site-lists__field-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.site-lists__bar .ui-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2)
+    calc(var(--space-3) + var(--space-4) + var(--space-2));
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-bg); /* boxes like the page background, on the dark bar (user) */
+  color: var(--color-ink);
+  font: inherit;
+}
+
+.site-lists__bar .ui-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* The white solid divider of the design between fields and categories (user). */
+.site-lists__bar-divider {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--color-white);
+}
+
+.site-lists__bar-clear {
+  color: var(--color-brand-200);
+  font-family: var(--font-body);
+}
+
+/* No visible button in the design (three fields only): the submit control is kept
+   invisible for screen readers and for Enter to apply the filters. */
+.site-lists__bar-submit {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: calc(-1 * var(--space-0-5)); /* off its 1px box, like the classic sr-only rule */
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Category pills row of the design ("Categories"): label, pills, count on the right.
+   Lives inside the dark bar below the divider, so it is styled for the dark panel. */
+.site-lists__pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-xs); /* same size as the field labels (Rentang Waktu) */
+}
+
+.site-lists__pills-label {
+  color: var(--color-brand-200);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+}
+
+.site-lists__pill {
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-brand-950) 30%, transparent);
+  border-radius: var(--radius-full);
+  background: var(--color-bg); /* pill buttons like the page background (user) */
+  color: var(--color-brand-950); /* dark text on the cream pill, on the dark bar */
+  font-family: var(--font-body);
+  font-size: var(--text-xs); /* same size as the field labels (Rentang Waktu) */
+  font-weight: var(--font-bold); /* bold labels (user) */
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.site-lists__pill:hover {
+  border-color: var(--color-brand-800);
+  color: var(--color-brand-800);
+}
+
+.site-lists__pill[aria-current="true"] {
+  background: var(--color-white); /* clicked pill turns white (user) */
+  border-color: var(--color-white);
+  color: var(--color-brand-950);
+}
+
+.site-lists__count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-left: auto; /* right-aligned like the design counter */
+  color: color-mix(in srgb, var(--color-brand-50) 60%, transparent);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+}
+
+/* The four-squares logo beside the counter ("MENAMPILKAN N KEGIATAN") */
+.site-lists__count-icon {
+  width: var(--space-4);
+  height: var(--space-4);
+  flex: none;
+}
+
+/* The events page is one column as wide as its 3-card panel, widened a bit (user). */
+.site-lists--events .site-lists__inner {
+  max-width: 74rem;
+}
+
+/* Cards fill the panel in 3 equal columns (still 22rem at the widest); row gap bigger
+   than the base grid so the card rows breathe top-bottom (user asked, then reduced). */
+.site-lists--events .site-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--space-10);
+  margin-top: var(--space-10);
+}
+
+@media (max-width: 56rem) {
+  .site-lists--events .site-cards {
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  }
+}
+
+.site-lists .site-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+/* Title on the event cards: one line with an ellipsis so the row stays even (user),
+   and one step smaller than the base h3 (user: smaller card text). */
+.site-lists--events .site-card__title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-lg);
+}
+
+/* Event cards: no panel, so the photo and text run edge to edge (user). */
+.site-lists--events .site-card {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.site-lists .site-card__image {
+  aspect-ratio: 5 / 4; /* photo block of the design card, on the other list pages */
+}
+
+.site-lists--events .site-card__image {
+  aspect-ratio: 3 / 2; /* events: shortened top-bottom (user) */
+}
+
+/* The gallery list gets the same card look as the events list (user). */
+.site-lists--gallery .site-lists__inner {
+  max-width: 74rem;
+}
+
+.site-lists--gallery .site-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--space-10);
+  margin-top: var(--space-10);
+}
+
+@media (max-width: 56rem) {
+  .site-lists--gallery .site-cards {
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  }
+}
+
+.site-lists--gallery .site-card {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.site-lists--gallery .site-card__title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-lg);
+}
+
+.site-lists--gallery .site-card__image {
+  aspect-ratio: 3 / 2;
+}
+
+.site-lists--gallery .site-muted {
+  font-size: var(--text-2xs); /* photo count as small as the event meta (user) */
+}
+
+/* News list (user): the Events/Gallery layout with INVERTED colours — black page,
+   cream filter panel. All the panel pieces flip light↔dark. */
+.site-lists--news {
+  background: var(--color-black); /* black page (user) */
+  min-height: 100vh;
+}
+
+.site-lists--news .site-lists__title,
+.site-lists--news .site-lists__tagline {
+  color: var(--color-brand-50); /* cream headings on the black page */
+}
+
+/* Cream filter panel with dark labels (user: "BG panel warna cream"). */
+.site-lists--news .site-lists__bar {
+  background: var(--color-brand-50);
+}
+
+.site-lists--news .site-lists__fields,
+.site-lists--news .site-lists__field,
+.site-lists--news .site-lists__field-label-icon,
+.site-lists--news .site-lists__pills-label {
+  color: var(--color-brand-950);
+}
+
+/* News filters: date range + Country + search — the same three fields as the
+   events/gallery panel (user). */
+.site-lists--news .site-lists__fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.site-lists--news .site-lists__bar .ui-input {
+  background: var(--color-white); /* white boxes on the cream panel */
+  border-color: color-mix(in srgb, var(--color-brand-950) 24%, transparent);
+  color: var(--color-ink);
+}
+
+.site-lists--news .site-lists__bar-divider {
+  border-top-color: var(--color-brand-950);
+}
+
+.site-lists--news .site-lists__bar-clear {
+  color: var(--color-brand-800);
+}
+
+/* News pills stay BLACK even on the cream filter panel (user: "warnanya tetap
+   hitam seperti sebelumnya"): dark pills with cream text, white active pill. */
+.site-lists--news .site-lists__pill {
+  background: var(--color-brand-950);
+  border-color: transparent;
+  color: var(--color-brand-50);
+}
+
+.site-lists--news .site-lists__pill:hover {
+  border-color: var(--color-brand-50);
+  color: var(--color-brand-50);
+}
+
+.site-lists--news .site-lists__pill[aria-current="true"] {
+  background: var(--color-white);
+  border-color: var(--color-white);
+  color: var(--color-brand-950);
+}
+
+.site-lists--news .site-lists__count {
+  color: var(--color-brand-950);
+}
+
+/* The news list uses the same column as the events and gallery lists (user). */
+.site-lists--news .site-lists__inner {
+  max-width: 74rem;
+}
+
+/* Cards: white panels on the black page, in the same 3-up grid as events/gallery. */
+.site-lists--news .site-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--space-10);
+  margin-top: var(--space-10);
+}
+
+@media (max-width: 56rem) {
+  .site-lists--news .site-cards {
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  }
+}
+
+.site-lists--news .site-card__title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-lg);
+}
+
+.site-lists--news .site-card__image {
+  aspect-ratio: 3 / 2; /* same photo block as the events cards */
+}
+
+.site-lists--news .site-muted {
+  color: var(--color-brand-100); /* cream empty state, readable on the black page */
+}
+
+/* Cards: no box — the photo and text run edge to edge on the black page, exactly
+   like the events and gallery cards (user). The generic title/type colours are
+   dark, so the news card text is re-coloured cream here. */
+.site-lists--news .site-card {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* Higher specificity than `.site-lists .site-card__title a` (dark, defined later)
+   so the headlines stay readable on the black page. */
+.site-lists.site-lists--news .site-card__title a,
+.site-lists--news .site-card__type {
+  color: var(--color-brand-50); /* cream type + headline (user) */
+}
+
+.site-lists--news .site-card__meta {
+  color: color-mix(in srgb, var(--color-brand-50) 65%, transparent);
+}
+
+/* Pager on the black page: cream numbers, cream active box (mirror of the cream page). */
+.site-lists--news .site-lists__pager a,
+.site-lists--news .site-lists__pager-num,
+.site-lists--news .site-lists__pager-dots {
+  color: var(--color-brand-50);
+}
+
+.site-lists--news .site-lists__pager-num[aria-current="page"] {
+  background: var(--color-brand-50);
+  color: var(--color-ink);
+}
+
+/* Article page (user): same black page and 74rem column as the list, cream text,
+   banner full width, then the body and a "Recent News" row of 3 cards. */
+.site-article__back {
+  display: inline-block;
+  margin-bottom: var(--space-4); /* close under the back link (user: "buat mepet") */
+  color: var(--color-brand-200); /* lighter than the cream text, like a back link */
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+}
+
+.site-article__back:hover {
+  color: var(--color-brand-50);
+}
+
+.site-article__meta {
+  margin: var(--space-4) 0 0;
+  color: color-mix(in srgb, var(--color-brand-50) 65%, transparent);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+
+.site-article__meta [aria-hidden="true"] {
+  margin-inline: var(--space-1-5);
+}
+
+.site-article__banner {
+  display: block;
+  width: 100%;
+  height: auto; /* scaled by the browser from the tagged width/height */
+  margin-top: var(--space-10);
+  /* Much shorter banner: the seeded photos are 1200×580 (~2:1), so a 5:1 strip shows
+     roughly 40% of their height — 60% shorter top-to-bottom (user). */
+  aspect-ratio: 5 / 1;
+  object-fit: cover;
+  object-position: center;
+}
+
+.site-article__body {
+  margin-top: var(--space-8);
+  color: var(--color-brand-50);
+  font-family: var(--font-body); /* Inter (user) */
+  font-size: var(--text-sm); /* back to the small size (user: "diperkecil seperti sebelumnya") */
+  line-height: var(--leading-lg);
+  text-align: justify; /* rata kiri kanan (user) */
+  max-width: none; /* the text runs to the right edge of the column (user) */
+}
+
+.site-article__recent {
+  margin-top: var(--space-16);
+}
+
+.site-article__heading {
+  margin: 0 0 var(--space-8);
+  color: var(--color-brand-50); /* cream, like the card type labels */
+  font-family: var(--font-sans); /* Poppins, like the page title */
+  font-size: var(--text-xl);
+}
+
+/* Map page (user): same black page and 74rem column as the news list. Two columns —
+   the region map on the left, the PPI country list on the right. The map column is
+   FIXED WIDTH and the image scales down with it (`width:100%; height:auto`), so the
+   map keeps its 940:860 aspect and is never cropped (user: "gambar diperkecil namun
+   tidak memotong, hanya dimensinya") — making the column narrower only shrinks the
+   map's dimensions. It stays constant no matter which chapters the list shows (user:
+   when the data changes, only the table grows or shrinks). The map is 4/5 of its
+   native size: column 48rem = 768px, image 768×702.7px. The table no longer shares
+   the image's height — it is a separate column that grows and shrinks with the rows. */
+.site-map {
+  display: grid;
+  grid-template-columns: 52rem minmax(0, 18rem); /* the map a bit bigger and the table a bit narrower (user, again); 52rem = 832px, still never cropped */
+  align-items: stretch; /* the image and the table share one row, like one big table (user) */
+  gap: var(--space-8); /* wider air between the map and the table (user) */
+  margin-top: var(--space-12); /* like the filter bar on the list pages */
+}
+
+/* The image keeps its own aspect and is never cropped (user: the previous
+   cover trick cut real pixels — Asia-Oseania.png fills its whole 940×860
+   canvas, no blank strip to absorb the overflow). */
+.site-map__map {
+  min-width: 0; /* let the image column shrink with the grid, never force it wider */
+}
+
+.site-map__image {
+  display: block;
+  width: 100%;
+  height: auto; /* natural map aspect, fully visible */
+}
+
+/* The side list (side.svg) recreated from data (user): a plain table with square
+   corners straight on the black page — no cream panel, no rounded bands. The
+   design's five region groups (OCEANIA … MIDDLE ASIA); one cream row per chapter —
+   the registry number in a dark round badge, the country label and the alias
+   (PERMITHA, PERPIKA) on the same row. Every row is a link to the chapter's detail
+   page /map/[slug] (user). */
+.site-map__groups {
+  display: grid;
+  gap: var(--space-4); /* slightly tighter than before (user) */
+}
+
+.site-map__group-title {
+  margin: 0 0 var(--space-1); /* tight to the first record (user) */
+  padding-inline: var(--space-1); /* flush with the records (user) */
+  color: var(--color-brand-50); /* cream on the black page, no panel behind it */
+  font-size: var(--text-2xs); /* same size as the records (user) */
+  font-weight: var(--font-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.site-map__list {
+  display: grid;
+  gap: var(--space-1); /* the thin gaps between the rows */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The row is the <a> now (the whole row links to the chapter page); the <li> is a
+   bare wrapper. A hover outline shows it is clickable. */
+.site-map__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-8); /* compact record (user); no longer sized to the map's height */
+  padding: var(--space-1);
+  background: var(--color-brand-200); /* darker cream, the design's band color (user) */
+  color: inherit; /* the link keeps the row's text colors */
+  text-decoration: none;
+}
+
+.site-map__row:hover {
+  box-shadow: inset 0 0 0 1px var(--color-brand-950); /* clickable (user) */
+}
+
+/* The registry number in the design's dark round badge ("14 Vietnam"). */
+.site-map__no {
+  display: grid; /* centers the digits in the round badge */
+  place-items: center;
+  flex: none;
+  min-width: var(--space-6); /* room for the two-digit numbers (10–17) */
+  height: var(--space-6);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-brand-950); /* dark round badge */
+  color: var(--color-brand-50);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-2-5xl); /* exactly 1 — the single-line "1" step */
+}
+
+.site-map__label {
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-ink); /* dark label on the cream rows */
+  line-height: var(--leading-sm);
+}
+
+/* The PPI alias on the same row ("5 Thailand PERMITHA"), pushed right (user). */
+.site-map__alias {
+  margin-left: auto; /* right-aligned on the row */
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold); /* bold, like the badges (user) */
+  color: var(--color-brand-950);
+  opacity: 0.8; /* lighter than the country name, like the design */
+}
+
+/* Below the 74rem column the fixed 48rem map would overflow; let it shrink with
+   the column instead (no cropping — it keeps its aspect). Phones (<56rem) stack. */
+@media (max-width: 64rem) {
+  .site-map {
+    grid-template-columns: minmax(0, 40rem) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 56rem) {
+  .site-map {
+    grid-template-columns: minmax(0, 1fr); /* stacked below the fold on phones */
+  }
+}
+
+/* Chapter detail page /map/[slug] (user): same black frame as /map — the page
+   header is the SAME title + tagline as /map (user: "Seperti halaman map"), then
+   the country's design image LEFT and the cream panel (brand-200, "Crem tua")
+   with the chapter's own data RIGHT (user: "kiri gambar, kanan container" — NOT
+   stacked). The columns and the air between them are THE SAME as the /map block
+   (user: "jarak dan ukurannya seperti pada halaman Map"): the image column is
+   the map's fixed 52rem and the panel the map table's 18rem, with the map
+   block's 2rem gap — the image no longer touches the panel (user). The panel is
+   only as tall as its rows (user: "tinggi panel ini tidak perlu sejajar") and
+   NOT rounded (user: "jangan dibuat rounded"). The "← Back to Map" link is the
+   panel's first row, ABOVE the country name (user: "Pindahkan ← Back to Map
+   diposisi diatas teks New Zealand (Detil Chapter)"), with air under it (user:
+   "Jarak antara ← Back to Map dan New Zealand ditambah"). The rows are the
+   DASHBOARD's flat rows (user: no field headers): the logo photo — sized to the
+   description's width above it (user: "Gambar di atas deskripsi diperkecil agar
+   sesuai dengan Panjang bagian deskripsi") — the description paragraph, the
+   contact person and their role — BOLD (user: "dicetak tebal") — "Email:" /
+   "Phone:" lines, then RIGHT AFTER the phone the chapter name and the social
+   logo row: the SAME five platform logos as the footer and the PPi slider
+   (LinkedIn, YouTube, Instagram, X, Facebook) in BLACK (user: "Logo Social
+   media sama seperti halaman dashboard… Warnanya hitam") — every chapter shows
+   the five, each linking to the chapter's own profile when it has one (the
+   instagram field / a matching socials row), else the network home page like
+   the footer; links outside the five platforms are not shown. FONTS (user):
+   the country name and the
+   description are POPPINS (--font-sans), everything else in the panel is INTER
+   (--font-body); all SMALLER still (user: "Ukuran font diperkecil" again) —
+   16 px name (--text-base, BOLD 700 — user asked to thicken it, then: "Text
+   New Zealand perbesar sedikit saja"), 10 px rows (--text-3xs) with TIGHT line spacing everywhere —
+   --leading-3xs (1.35) on the description and every contact row (user checked
+   the description's line spacing against the role line's; they were equal and
+   both got tighter: "Kalau sudah sama berarti kurang rapat"); the contact
+   lines are ONE
+   tight block (no air between them — user: "Jarak antar baris dikurangi")
+   with ~10 px of air ABOVE it and ABOVE the chapter name (user: "Jarak antara
+   Budi Setiawan dan atasnya ditambah, serta PPI Selandia Baru dan atasnya
+   ditambah"); the chapter name is PLAIN TEXT, no website link (user: "Link
+   PPI Selandia Baru dihilangkan"). */
+.chapter {
+  display: grid;
+  grid-template-columns: 52rem minmax(0, 18rem); /* the map's fixed image column and the map table's panel width (user) */
+  align-items: start; /* the panel keeps its content height (user) */
+  gap: var(--space-8); /* the same air as between the map and the table on /map (user) */
+  margin-top: var(--space-12); /* like the map block */
+}
+
+.chapter__image {
+  display: block;
+  width: 100%; /* fills the 52rem image column, like the /map image */
+  height: auto; /* natural 940:860 aspect, fully visible */
+}
+
+.chapter__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(
+    --space-0-5
+  ); /* mepet lagi (user: "Jarak antar paragaf dibuat mepet lagi"): 2 px between every block */
+  padding: var(--space-4); /* compact, like the table rows around it */
+  background: var(--color-brand-200); /* "BG Panel Crem tua" (user) */
+  font-family: var(
+    --font-body
+  ); /* Inter for the rows (user: Poppins is only the name + description) */
+  font-size: var(
+    --text-3xs
+  ); /* even smaller (user: "Ukuran font diperkecil"): 10 px, the smallest text token */
+}
+
+/* The back link is the panel's first row, above the country name (user). */
+.chapter__back {
+  color: var(--color-brand-950); /* dark on the cream panel */
+  font-family: var(--font-body);
+  font-size: var(--text-3xs); /* even smaller (user) */
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-2); /* air between the back link and the country name (user) */
+  text-decoration: none;
+}
+
+.chapter__back:hover {
+  text-decoration: underline; /* clickable */
+}
+
+.chapter__name {
+  margin: 0;
+  color: var(--color-brand-950); /* dark on the cream panel */
+  font-family: var(--font-sans); /* Poppins — the country name (user) */
+  font-size: var(
+    --text-base
+  ); /* bumped back up a little (user: "Text New Zealand perbesar sedikit saja"): 16 px */
+  font-weight: var(
+    --font-bold
+  ); /* bolder still (user: "Teks New Zealand apa bisa dipertebal lagi?") — 700, a loaded Poppins weight */
+  line-height: var(--leading-sm);
+}
+
+/* The logo photo above the description, sized to match the description's wide
+   paragraph (user: "Gambar di atas deskripsi diperkecil agar sesuai dengan
+   Panjang bagian deskripsi") — stops at the longest description line instead of
+   the panel's edges; keeps the photo's own aspect (the seed 1200×580 is wide,
+   so it renders ≈ 24:9). */
+.chapter__logo {
+  display: block;
+  max-width: 100%; /* never wider than the panel's content column */
+  height: auto; /* keeps the uploaded photo's aspect */
+  align-self: flex-start; /* hug the paragraph's left edge, not the right one */
+}
+
+/* A little extra air between the logo photo and the description below it
+   (user: "jarak antara deskripsi dan gambar diatasnya tambahkan sedikit
+   saja", then "ditambah sedikit lagi") — 6 px total with the panel's 2 px
+   gap. Only when the logo is directly above the description. */
+.chapter__logo + .chapter__about {
+  margin-top: var(--space-1);
+}
+
+/* The flat contact rows (user): no labels — the values follow the dashboard's
+   plain lines, with "Email:" / "Phone:" prefixed in the text itself. */
+/* The contact rows are one tight block — no air between the lines (user:
+   "Jarak antar baris dikurangi") — with air ABOVE it, between the description
+   and the contact person (user: "Jarak antara Budi Setiawan dan atasnya
+   ditambah"; measured with the panel's own 2 px gap). */
+.chapter__team {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--space-2);
+}
+
+.chapter__person {
+  margin: 0;
+  color: var(--color-brand-950); /* the contact person, like a filled field value */
+  font-family: var(--font-body); /* Inter — everything but the name and description (user) */
+  font-weight: var(--font-semibold);
+  line-height: var(
+    --leading-3xs
+  ); /* tighter, the same as the description and the role line (user) */
+}
+
+.chapter__role {
+  margin: 0;
+  color: var(--color-ink); /* the role line, like the dashboard's subdued hint */
+  font-family: var(--font-body);
+  font-weight: var(--font-bold); /* the role row is BOLD (user: "dicetak tebal") */
+  line-height: var(--leading-3xs); /* same tight spacing as the description line (user) */
+}
+
+.chapter__line {
+  margin: 0;
+  color: var(--color-brand-950);
+  font-family: var(--font-body);
+  line-height: var(--leading-3xs); /* same tight spacing as the other contact rows */
+  overflow-wrap: anywhere; /* long e-mails and phones stay inside the narrow panel */
+}
+
+.chapter__about {
+  margin: 0;
+  color: var(--color-brand-950);
+  font-family: var(--font-sans); /* Poppins — the description (user) */
+  line-height: var(
+    --leading-3xs
+  ); /* same tight spacing as the role line below (user: "Jarak antar baris dikurangi") */
+  white-space: pre-line; /* the admin writes paragraphs with blank lines */
+  overflow-wrap: anywhere;
+}
+
+.chapter__link {
+  color: inherit;
+  text-decoration: underline; /* clickable contact (e-mail, phone) */
+  text-underline-offset: 2px;
+}
+
+.chapter__link:hover {
+  opacity: 0.7;
+}
+
+.chapter__org {
+  /* plain text — the website link is gone (user: "Link PPI Selandia Baru
+     dihilangkan"); air above it like above the contact person (user: "PPI
+     Selandia Baru dan atasnya ditambah"; with the panel's own 2 px gap) */
+  margin-top: var(--space-2);
+  color: var(--color-brand-950);
+  font-family: var(--font-body);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-3xs); /* same tight spacing as the rows above */
+  overflow-wrap: anywhere;
+}
+
+/* The social logo row — the same five platform logos as the footer and the PPi
+   slider (LinkedIn, YouTube, Instagram, X, Facebook; Shared SocialLinks paths)
+   but BLACK on the cream panel (user: "Logo Social media sama seperti halaman
+   dashboard: LinkedIn, Youtube, Instagram, X, Facebook. Warnanya hitam").
+   Every chapter shows the five; each links to the chapter's own profile when it
+   has one (instagram field / matching socials row), else the network home page
+   like the footer. Links outside the five are not shown. */
+.chapter__socials {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  margin-top: 0; /* flush under the chapter name (the panel's gap spaces it) */
+  padding: 0;
+  color: var(--color-black); /* the logos are black (user) */
+  list-style: none;
+}
+
+.chapter__socials li {
+  display: block;
+}
+
+.chapter__socials a {
+  display: block;
+  color: inherit;
+}
+
+.chapter__socials a:has(svg) {
+  line-height: 0; /* the global link color would tint the currentColor icons red */
+}
+
+.chapter__socials a:hover {
+  opacity: 0.7;
+}
+
+.chapter__socials svg {
+  display: block;
+  width: var(--space-5); /* 20 px, the slider's size */
+  height: var(--space-5);
+  fill: currentColor;
+}
+
+/* Same media caps as the map block: below 64rem the image column shrinks (40rem
+   cap) and the panel takes what the image leaves, below 56rem the boxes stack. */
+@media (max-width: 64rem) {
+  .chapter {
+    grid-template-columns: minmax(0, 40rem) minmax(0, 1fr); /* same as /map below its column size */
+  }
+}
+
+@media (max-width: 56rem) {
+  .chapter {
+    grid-template-columns: minmax(0, 1fr); /* image then panel, stacked on phones */
+    gap: var(--space-8);
+  }
+}
+
+.site-lists .site-card__title a {
+  color: var(--color-frame);
+  text-decoration: none; /* headline text without an underline (user) */
+}
+
+/* Numbered pager (design "Pagination": 38px squares, active brand-800) */
+.site-lists__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1); /* tighter between numbers (user) */
+  margin-top: var(--space-12);
+  font-family: var(--font-body);
+  font-size: var(--text-xs); /* smaller pager text (user) */
+}
+
+.site-lists__pager a {
+  color: var(--color-frame);
+  text-decoration: none;
+}
+
+.site-lists__pager-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8); /* smaller than the 38px squares (user) */
+  height: var(--space-8);
+  background: transparent; /* no box, numbers alone (user) */
+  color: var(--color-frame);
+}
+
+.site-lists__pager-num[aria-current="page"] {
+  background: var(--color-ink); /* active page: black box (user) */
+  color: var(--color-brand-50);
+  font-weight: var(--font-bold);
+}
+
+.site-lists__pager-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  color: var(--color-frame);
+}
+
+/* Event detail (design "EVENT PUBLIC" detail hero): full-bleed banner flush with the
+   header and the page edges, centered title + meta line, black register button,
+   About | Guest Speaker columns, schedule rows, Our Network & Partners logos. */
+.site-event {
+  margin: 0;
+  padding: 0;
+}
+
+.site-event__banner {
+  display: block;
+  width: 100%;
+  max-width: 1920px; /* capped at 1920 wide (user) */
+  height: 336px; /* same as the gallery banner (user) */
+  object-fit: cover; /* crop to the banner, like the design hero */
+  margin-inline: auto;
+}
+
+.site-event__inner {
+  max-width: 74rem; /* same column as the events list grid */
+  margin-inline: auto;
+  padding: var(--space-12) var(--space-6) var(--space-24);
+}
+
+/* Hero: title + meta + button as ONE block, left-aligned, same on every event (user). */
+.site-event__head {
+  text-align: left;
+}
+
+.site-event__title {
+  margin: 0;
+  color: var(--color-frame); /* dark, design */
+  font-family: var(--font-sans); /* Poppins, design */
+  font-size: var(--text-3xl); /* smaller (user) */
+  line-height: var(--leading-3xl);
+  text-align: left;
+}
+
+/* "April 3, 2025 • Shanghai • Seminar | 18:00 PM - 22:00 PM" (design, 18px Inter). */
+.site-event__meta {
+  margin: var(--space-3) 0 0;
+  color: var(--color-frame);
+  font-size: var(--text-xs); /* Inter, smaller (user) */
+  line-height: var(--leading-xs);
+  text-align: left;
+}
+
+.site-event__meta [aria-hidden="true"] {
+  margin-inline: var(--space-2);
+}
+
+.site-event__actions {
+  margin-top: var(--space-3); /* close to the meta line above (user) */
+}
+
+/* Closed events keep the same button layout; only the state differs. */
+.site-event__closed {
+  margin-top: var(--space-3);
+  text-align: left;
+  font-size: var(--text-xs); /* Inter, smaller (user) */
+}
+.site-event__button:disabled,
+.site-event__button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Register button: black (user), cream text like the design's button. */
+.site-event__button,
+.site-album__drive,
+.site-event .ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-2) var(--space-5); /* taller button (user) */
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-ink);
+  color: var(--color-brand-50);
+  font-family: var(--font-body);
+  font-size: var(--text-xs); /* Inter, smaller (user) */
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-xs);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site-event__button:hover,
+.site-album__drive:hover,
+.site-event .ui-button:hover {
+  background: var(--color-frame);
+}
+
+/* About (wide) | Guest Speaker (narrow), as the design's two frames. */
+.site-event__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-10);
+  margin-top: var(--space-12); /* --space-14 does not exist in the token set */
+}
+
+@media (max-width: 48rem) {
+  .site-event__columns {
+    grid-template-columns: 1fr;
+  }
+  .site-event__speakers {
+    padding-left: 0;
+  }
+}
+
+.site-event__heading {
+  font-family: var(--font-sans); /* Poppins, design */
+  font-size: var(--text-xl); /* smaller (user) */
+}
+
+.site-event__text {
+  margin: var(--space-4) 0 0;
+  max-width: 40rem; /* narrower text, left-right (user) */
+  font-size: var(--text-xs); /* Inter, smaller (user) */
+  line-height: var(--leading-xs);
+}
+
+.site-event__text p {
+  margin: 0; /* no gap between paragraphs (user) */
+}
+
+.site-event__speakers {
+  margin: 0; /* flush with the About heading (user) */
+  padding-left: var(--space-16); /* shifted toward the right, once more (user) */
+}
+
+.site-event__speakers ul {
+  margin: var(--space-4) 0 0; /* starts level with the description */
+  padding: 0;
+  list-style: none;
+}
+
+.site-event__speakers li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 0; /* no space inside a row (user); the rows gap below */
+  font-size: var(--text-xs); /* Inter, smaller (user); no divider lines (user) */
+}
+
+/* Bold text is Poppins and stays 14px; plain text Inter is 12px (user). */
+.site-event__speakers li strong,
+.site-event__schedule-row strong {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+/* More space between the speakers (user). */
+.site-event__speakers li + li {
+  padding-top: var(--space-4);
+}
+
+/* Speaker photos: portrait rectangles, not circles — shorter (user). */
+.site-event__speakers .site-avatar {
+  width: var(--space-12);
+  height: var(--space-10);
+  border-radius: 0;
+}
+
+/* Name and description on their own line each (user). */
+/* Name and description on their own line each, with no gap between them (user). */
+.site-event__speakers li > span {
+  display: grid;
+  gap: 0;
+  align-content: start;
+}
+
+.site-event__speakers li .site-muted {
+  font-size: var(--text-xs); /* Inter, smaller (user) */
+}
+
+/* Bold text is Poppins, plain text Inter (user). */
+.site-event__speakers li strong,
+.site-event__schedule-row strong {
+  font-family: var(--font-sans);
+}
+
+.site-event__speakers li:last-child {
+  padding-bottom: 0;
+}
+
+.site-event__speakers .site-avatar {
+  flex: none;
+  margin-top: var(--space-1);
+}
+
+.site-event__schedule {
+  margin: var(--space-10) 0 0;
+  max-width: 40rem; /* lines end where the description ends (user) */
+}
+
+/* Tighter gap between the heading and the first record (user). */
+.site-event__schedule .site-event__heading {
+  margin-bottom: var(--space-2);
+}
+
+/* "09:00  Opening Ceremony & National Anthem" — no dot, roomy gap after the time (user). */
+.site-event__schedule-row {
+  padding: var(--space-3) 0;
+  font-size: var(--text-xs); /* Inter, smaller (user) */
+  border-bottom: 1px solid var(--color-frame); /* line after each record (user) */
+}
+
+.site-event__schedule-row strong {
+  margin-inline-end: var(--space-3);
+}
+
+/* "Our Network & Partners" centred; the logos stay empty in dummy data (user). */
+.site-event__partners {
+  margin-top: var(--space-16);
+}
+.site-event__partners .site-event__heading {
+  text-align: center;
+}
+.site-event__partners .site-logos {
+  justify-content: center;
+}
+
+/* ---- Event detail */
 .site-pre {
   white-space: pre-line;
 }
@@ -331,6 +1418,141 @@
 .site-logo {
   height: var(--space-12);
   width: auto;
+}
+
+/* Gallery album detail (user mock): the event detail fonts — banner, header with
+   small button pills (year · city · type), a fixed brief line, divider, photo grid
+   (one tall photo left, the rest stacked right) and the Drive button. Everything
+   centred in a column narrower than the events one (user). */
+.site-album .site-event__inner {
+  max-width: 48rem;
+}
+
+.site-album .site-event__title {
+  text-align: center;
+}
+
+.site-album__pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* Pill colours (user): the year is white, the city and the event type the grey,
+   all with an accent (red) outline. */
+.site-album__pill {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  background: var(--color-grey);
+  color: var(--color-white);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.site-album__pill--white {
+  background: var(--color-white);
+  color: var(--color-grey);
+}
+
+/* Brief description under the pills (user mock), centred like the rest. */
+.site-album__brief {
+  margin: var(--space-3) auto 0;
+  max-width: 40rem;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--text-xs); /* Inter, same as the event detail text */
+  line-height: var(--leading-xs);
+}
+
+/* Divider: short centred rule, snug under the brief description (user). */
+.site-album__divider {
+  margin: var(--space-3) auto 0;
+  border: 0;
+  border-top: 1px solid var(--color-frame);
+  width: 6rem;
+}
+
+/* One place for the photo height (user: 119px). The wide photo's height is derived
+   from it — twice one photo plus the stack gap — so the left image always matches
+   the two right ones flush, whatever the image files' own proportions are. */
+.site-album {
+  --photo-height: 119px;
+}
+
+/* Photo grid (user: "seperti panel / tabel"): one row, like a table — the right
+   stack sets the height (2 × 119px + gap) and the left photo has the same
+   definite height, so the wide photo is always flush top and bottom. */
+.site-album__photos {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.site-album__stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Albums of exactly two photos sit side by side at equal width. */
+.site-album__photos--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.site-album__photos--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Photos: fixed height (user); width follows the column, object-fit crops.
+   Rounded corners like the event cards (radius-lg). */
+.site-album__photo {
+  display: block;
+  width: 100%;
+  height: var(--photo-height);
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
+/* Left photo: exactly as tall as the two right photos stacked (2 × height + gap),
+   instead of following the image's own proportions. */
+.site-album__photo--wide {
+  height: calc(var(--photo-height) * 2 + var(--space-4));
+}
+
+@media (max-width: 48rem) {
+  .site-album__photos,
+  .site-album__photos--pair,
+  .site-album__photos--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .site-album__photo--wide {
+    height: var(--photo-height);
+  }
+}
+
+.site-album__actions {
+  margin-top: var(--space-6);
+  text-align: center;
+}
+
+/* Drive button: dark red (user), keeps the event button size and fonts. */
+.site-album__drive {
+  background: var(--color-accent);
+}
+
+.site-album__drive:hover {
+  background: var(--color-accent-hover);
+}
+
+.site-album__drive-logo {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-inline-end: var(--space-2);
+  flex: none;
 }
 
 /* Gallery album: photo grid and native <dialog> lightbox */
@@ -364,14 +1586,16 @@
   margin-inline: auto;
 }
 
-/* Map of the member councils (PPI Negara) */
+/* Map of the member councils (PPI Negara) — scoped under the box so the
+   height:100% here does not override the /map page's own .site-map__image
+   (which is how the map page kept stretching to the table's height). */
 .site-map__box {
   position: relative;
   max-width: var(--measure-content);
   aspect-ratio: 616 / 720;
 }
 
-.site-map__image {
+.site-map__box .site-map__image {
   display: block;
   width: 100%;
   height: 100%;
@@ -473,8 +1697,8 @@
   justify-items: center;
   align-content: center;
   gap: var(--space-6);
-  min-height: min(calc(100svh - 5rem), 42rem);
-  padding: var(--space-24) var(--space-6);
+  min-height: min(calc(100svh - 2rem), 42rem);
+  padding: var(--space-24) var(--space-2); /* side padding nearly zero so the title has one full line (user) */
   background: color-mix(in srgb, var(--color-brand-600) 60%, transparent);
   color: var(--color-white);
   text-align: center;
@@ -493,9 +1717,10 @@
 }
 
 .home-hero h1 {
-  max-width: var(--measure-content);
+  max-width: none; /* full width so the title fits on one line (user) */
   margin: 0;
-  font-size: var(--text-5xl);
+  font-family: var(--font-sans); /* Poppins (user) */
+  font-size: var(--text-5xl); /* 48px, back to 5XL (user) */
   line-height: var(--leading-5xl);
   text-wrap: balance;
 }
@@ -505,21 +1730,20 @@
   margin: 0;
   color: var(--color-brand-200);
   font-family: var(--font-body);
-  font-size: var(--text-lg);
+  font-size: var(--text-base); /* 16px, one step smaller (user) */
   line-height: var(--leading-lg);
 }
 
 .home-hero a {
   display: inline-flex;
   align-items: center;
-  min-height: var(--size-control);
-  padding: var(--space-2) var(--space-8);
+  padding: var(--space-2) var(--space-4); /* taller top-bottom, still hugging the text (user) */
   border-radius: var(--radius-md);
   background: var(--color-ink);
   color: var(--color-white);
   font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
+  font-size: var(--text-xs); /* 12px, one step smaller (user) */
+  font-weight: var(--font-regular); /* regular, not bold (user) */
   text-decoration: none;
 }
 
@@ -527,56 +1751,14 @@
   background: var(--color-brand-950);
 }
 
-/* ---- Stats (Figma: "Our Organization in Numbers", 2x2 on small screens) ---- */
-.home-stats {
-  background: var(--color-bg);
-}
-
-.home-stats__inner {
-  max-width: var(--measure);
-  margin-inline: auto;
-  padding-block: var(--space-24);
-  text-align: center;
-}
-
-.home-stats__inner h2 {
-  margin: 0 0 var(--space-8);
-  color: var(--color-brand-600);
-  font-size: var(--text-3xl);
-  line-height: var(--leading-3xl);
-}
-
-.home-stats__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-4);
-  padding: 0;
-  list-style: none;
-}
-
-.home-stat {
-  padding: var(--space-6);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--color-card);
-}
-
-.home-stat strong {
-  display: block;
-  color: var(--color-brand-600);
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-}
-
-.home-stat span {
-  font-family: var(--font-body);
-}
-
 /* ---- Featured cards (Latest Events / Latest News) ---- */
+/* Section and card backgrounds are swapped (user): sections carry the card colour, cards the
+   page colour — same pair of colours, inverted roles. */
 .home-section {
-  max-width: var(--measure-page);
+  max-width: var(--measure-page); /* outer panel stays as before (user) */
   margin-inline: auto;
   padding: var(--space-24) var(--space-6);
+  background: var(--color-white); /* container white (user) */
 }
 
 .home-section h2 {
@@ -589,9 +1771,10 @@
 
 .home-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 24rem)); /* cards capped smaller (user) */
+  justify-content: center; /* row centered in the full-width container */
   gap: var(--space-6);
-  margin: 0;
+  margin: 0; /* container spans edge to edge again (user) */
   padding: 0;
   list-style: none;
 }
@@ -603,7 +1786,7 @@
   padding: var(--space-8);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
-  background: var(--color-card);
+  background: var(--color-bg);
 }
 
 .home-card h3 {
@@ -626,7 +1809,7 @@
 .home-card p {
   margin: 0;
   color: var(--color-ink);
-  font-family: var(--font-body);
+  font-family: var(--font-body); /* Inter for the card description (user) */
   font-size: var(--text-base);
   line-height: var(--leading-base);
   text-align: center;
@@ -638,6 +1821,7 @@
 
 .home-card .home-card__action {
   margin-top: auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -646,9 +1830,9 @@
   border-radius: var(--radius-md);
   background: var(--color-brand-600);
   color: var(--color-white);
-  font-family: var(--font-body);
+  font-family: var(--font-body); /* Inter, regular weight (user) */
   font-size: var(--text-sm);
-  font-weight: var(--font-bold);
+  font-weight: var(--font-regular);
   text-decoration: none;
 }
 
@@ -656,107 +1840,1251 @@
   background: var(--color-primary);
 }
 
-.home-section__more {
-  display: block;
-  width: max-content;
-  margin: var(--space-10) auto 0;
-  color: var(--color-brand-600);
-  font-family: var(--font-body);
-  font-weight: var(--font-semibold);
-  text-decoration: none;
+/* ---- Secretary General's welcome (Figma "Sambutan Sekretaris Jenderal"): photo left ---- */
+.home-welcome {
+  /* Small portrait beside the quote; section background matches the Latest News sections. */
+  --home-media-w: 10rem;
+  background: var(--color-bg);
 }
 
-.home-section__more:hover {
-  text-decoration: underline;
-}
-
-/* ---- Chair's welcome quote (Crimson Pro, Figma "Sambutan Ketua PPIT") ---- */
-.home-chair {
-  background: var(--color-card);
-}
-
-.home-chair__inner {
-  max-width: 70rem;
+.home-welcome__inner {
+  display: grid;
+  gap: var(--space-10);
+  align-items: center;
+  max-width: var(--measure-page);
   margin-inline: auto;
   padding: var(--space-24) var(--space-6);
-  text-align: center;
 }
 
-.home-chair__inner h2 {
+.home-welcome__photo {
+  width: min(100%, var(--home-media-w));
+  aspect-ratio: 3 / 4;
+  /* dark background behind the placeholder silhouette (user: "BG foto warna gelap") */
+  background: var(--color-frame);
+}
+
+.home-welcome__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
+.home-welcome__text h2 {
   margin: 0 0 var(--space-8);
   color: var(--color-brand-600);
   font-size: var(--text-3xl);
   line-height: var(--leading-3xl);
 }
 
-.home-chair__quote {
-  margin: 0;
+.home-welcome__quote {
+  max-width: var(--measure-content);
   color: var(--color-quote);
   font-family: var(--font-serif);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
+  font-style: italic;
   line-height: var(--leading-quote);
 }
 
-/* ---- Stay-connected band (Figma frame 2400: dark strip before the footer) ---- */
-.home-connect {
+.home-welcome__quote p {
+  margin: 0; /* paragraphs snug against each other (user: "menempel") */
+}
+
+.home-welcome__quote p:last-child {
+  margin-bottom: 0;
+}
+
+.home-welcome__name {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-8) 0 0;
+  color: var(--color-brand-600);
+  font-family: var(--font-body); /* Inter for the name (user) */
+  font-size: var(--text-lg); /* same size as the welcome quote (user) */
+  font-weight: var(--font-regular); /* not bold (user) */
+  line-height: var(--leading-lg);
+}
+
+/* ---- Blank page the height of the Secretary General's welcome (user: empty) ----
+   Same footprint as .home-welcome: 6rem vertical padding + 3rem heading area + ~7 lines
+   of the serif quote (20px × line-height 1.7) + name block. Content is aria-hidden. */
+.home-blank {
+  min-height: 37.75rem;
+  background: var(--color-bg);
+}
+
+/* ---- Sponsor band (Figma frame 2400): real wordmark logos, each brand twice = 6.
+   The strip itself is one thin dark line (1.25rem tall on desktop): the logos stay at
+   their full size and are centred on it, spilling a couple of px over the strip edges.
+   On narrow screens the logos wrap, so the band grows with snug padding instead. ---- */
+.home-logos {
   background: var(--color-frame);
+}
+
+.home-logos__list {
+  /* One row, edge to edge: first logo (eBay) at the left, last (AJIO) at the right,
+     with the same gap between every pair. The row is slightly narrower than the page
+     measure so the logos sit closer together; wraps only on narrow screens. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 76rem;
+  margin-inline: auto;
+  /* Snug vertical padding keeps the band one thin dark line. */
+  padding: var(--space-2) var(--space-6);
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .home-logos {
+    height: 4.375rem; /* 3.375rem +30% (user) */
+  }
+
+  .home-logos__list {
+    height: 100%;
+    padding-block: 0;
+  }
+}
+
+/* Brand logos scale by width. The PNG canvases are cropped to the visible wordmark
+   (ebay 116×48, amazon 160×32), so the width sets the real rendered height. */
+.home-logos__mark {
+  display: block;
+  height: auto;
+  width: auto;
+}
+
+.home-logos__mark--ebay {
+  width: 3.75rem; /* 116×48 → visible ≈ 1.55rem tall */
+}
+
+.home-logos__mark--amazon {
+  width: 6.5rem; /* 160×32 → visible ≈ 1.3rem tall */
+}
+
+/* AJIO stays plain text (Figma frame 2400 sets it as a wordmark), regular weight and
+   slightly smaller than the logos beside it. */
+.home-logos__mark--text {
+  color: var(--color-on-panel);
+  font-size: clamp(var(--text-lg), 2.25vw, var(--text-2-5xl)); /* 28px cap, below the wordmarks */
+  font-weight: var(--font-regular);
+  line-height: var(--leading-2-5xl); /* exactly 1 — the single-line "1" step */
+}
+
+/* ---- Member councils carousel (Figma frame 2399): full-bleed country slides, aspect ratio
+       1200/630 = Section.png (user: same size as the section photo above) ---- */
+.ppi-slider {
+  position: relative;
+  background: var(--color-frame);
+}
+
+.ppi-slider__track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.ppi-slider__track::-webkit-scrollbar {
+  display: none;
+}
+
+.ppi-slider__slide {
+  position: relative;
+  flex: 0 0 100%;
+  display: grid;
+  align-items: center;
+  justify-items: end; /* text stays right (user), shifted toward the middle below */
+  aspect-ratio: 1200 / 580; /* a little shorter top-bottom (user) */
+  scroll-snap-align: start;
+  overflow: hidden;
+}
+
+.ppi-slider__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ppi-slider__veil {
+  position: absolute;
+  inset: 0;
+  /* stays in front of the photo (DOM order after <img>), behind the panel; pure black at
+     70% like the design frame (bg = the black token at 70%) — photo stays visible but darkened (user) */
+  background: color-mix(in srgb, var(--color-black) 70%, transparent);
+}
+
+/* Wrapper for the active panel + the dimmed "previous slide" ghost next to it (user).
+   z-index 1 keeps the text above the veil; the arrows get z-index 2 so their clicks
+   still land on the chevrons even where the wrapper's box overlaps them (user:
+   "tombol tidak berfungsi"). */
+.ppi-slider__panels {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  width: max-content;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+/* The ghost shares the panel's own grid, width and padding so it looks exactly like a
+   real panel (user: "jarak dan ukuran panel ghost sama dengan panel real"), just dimmed. */
+.ppi-slider__panel,
+.ppi-slider__ghost {
+  display: grid;
+  gap: 0; /* title ↔ description and label ↔ social fully tight (user, again) */
+  max-width: 30rem; /* narrower typing bounds again (user) */
+  padding-inline: var(--space-4); /* more left-right room around the text (user) */
+  color: var(--color-brand-50);
+}
+
+.ppi-slider__panel {
+  margin: var(--space-10) var(--space-16); /* a bit more toward the middle (user) */
+}
+
+/* Previous slide's text, dimmed, beside the active panel (user). */
+.ppi-slider__ghost {
+  margin: var(--space-10) 0 0; /* same top offset as the panel's own margin */
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Ghost title white (user), still dimmed by the ghost's opacity. */
+.ppi-slider__ghost h2 {
+  color: var(--color-white);
+}
+
+.ppi-slider__panel h2,
+.ppi-slider__ghost h2 {
+  /* margin: 0 also applies to the ghost — the global h2 bottom margin would otherwise
+     make the ghost's title↔description gap bigger than the panel's (user) */
+  margin: 0;
+  font-size: var(--text-lg); /* smaller title (user) */
+  line-height: var(--leading-lg);
+}
+
+/* Ghost title white (user), still dimmed by the ghost's opacity. */
+.ppi-slider__ghost h2 {
+  color: var(--color-white);
+}
+
+.ppi-slider__desc {
+  /* Left-anchored (user: "geser ke kiri") with a narrower right boundary (20rem, user:
+     "batas kanan dipersempit") and the full text always shown — no ellipsis. */
+  justify-self: start;
+  margin: 0;
+  max-width: 20rem; /* narrower paragraph bounds again (user) */
+  color: var(--color-brand-200);
+  font-family: var(--font-sans); /* Poppins (user: "rubah fontnya poppins") */
+  font-size: var(
+    --text-2xs
+  ); /* smaller description again, one more step (user: "kembalikan, perkecil lagi") */
+  line-height: var(--leading-3xs); /* tighter line spacing again (user) */
+  text-align: left;
+}
+
+/* PIC (person in charge) block below the description; display:grid also takes the
+   panel's description clamp off this p. */
+.ppi-slider__pic {
+  display: grid;
+  gap: 0; /* "Ketua/Email/Phone" one per line (user: enter tiap baris) */
+  margin: var(--space-2) 0 0; /* reduced gap to the description (user) */
+  color: var(--color-brand-200);
+  font-family: var(--font-sans); /* Poppins (user: "rubah fontnya poppins") */
+  font-size: var(
+    --text-2xs
+  ); /* smaller contact again, one more step (user: "kembalikan, perkecil lagi") */
+  line-height: var(--leading-3xs); /* tighter line spacing again (user) */
+  text-align: left;
+}
+
+.ppi-slider__pic strong {
+  color: var(--color-brand-50); /* the cream token (user: "warna seperti PPI Selandia Baru") */
+  font-size: var(
+    --text-xs
+  ); /* name smaller again, one more step (user: "kembalikan, perkecil lagi") */
+  font-weight: var(--font-bold);
+  line-height: var(--leading-3xs); /* tighter line spacing again (user) */
+}
+
+/* Email/Phone also cream like the design (the cream token). "Ketua ..." matches via .ppi-slider__pic-role. */
+.ppi-slider__pic > span:not(.ppi-slider__pic-role) {
+  color: var(--color-brand-50);
+}
+
+.ppi-slider__social-label {
+  margin: var(--space-2) 0 0; /* reduced gap to the Phone line (user) */
+  color: var(--color-brand-50); /* the cream token (user: "warna seperti PPI Selandia Baru") */
+  font-family: var(--font-sans); /* Poppins (user: "rubah fontnya poppins") */
+  font-size: var(
+    --text-2xs
+  ); /* smaller label again, one more step (user: "kembalikan, perkecil lagi") */
+  font-weight: var(--font-bold); /* bold label (user) */
+  line-height: var(--leading-3xs); /* tighter line spacing again (user) */
+  text-align: left;
+}
+
+.ppi-slider__pic-role {
+  color: var(--color-brand-50); /* "Ketua ..." same cream as the rest of the block (user) */
+  font-weight: var(--font-bold); /* bold "Ketua ..." line (user) */
+}
+
+.ppi-slider__social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  /* tight to the label above, like the top of the panel (user) */
+  margin-top: 0;
+  padding: 0;
+  list-style: none;
+  /* same cream as the footer's social icons --color-on-panel = brand-50 (user: "samakan") */
   color: var(--color-on-panel);
 }
 
-.home-connect__inner {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-6);
-  max-width: var(--measure-content);
-  margin-inline: auto;
-  padding: var(--space-24) var(--space-6);
-  text-align: center;
+.ppi-slider__social a {
+  display: block;
+  line-height: 0;
+  /* the global `a { color: accent }` would tint the currentColor icons red (user saw
+     merah); make the links inherit the cream from .ppi-slider__social like the footer */
+  color: inherit;
 }
 
-.home-connect h2 {
-  margin: 0;
-  color: var(--color-brand-200);
+/* Same social logos as the footer (shared SocialLinks), back to the slider's previous
+   smaller size (user: "perkecil, samakan seperti sebelumnya"). */
+.ppi-slider__social svg {
+  display: block;
+  width: var(--space-5); /* smaller icons, as before (user) */
+  height: var(--space-5);
+  fill: currentColor;
+}
+
+.ppi-slider__arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2; /* above the panels wrapper so clicks land on the chevron (user) */
+  width: var(--space-24); /* big invisible hit area for easy navigation (user) */
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent; /* invisible but still clickable (user) */
   font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
+  line-height: var(--leading-2-5xl); /* exactly 1 — the single-line "1" step */
+  cursor: pointer;
+  outline: none; /* only the chevron shows (user) */
 }
 
-.home-connect__inner > p {
-  margin: 0;
-  font-family: var(--font-body);
+.ppi-slider__arrow:hover:not(:disabled) {
+  color: transparent; /* stays invisible on hover (user: "tidak terlihat tapi tetap berfungsi") */
 }
 
-.home-connect .site-filters {
-  justify-content: center;
+.ppi-slider__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
-.home-connect .ui-input {
-  min-width: min(16rem, 60vw);
+.ppi-slider__arrow--prev {
+  left: var(--space-6);
+}
+
+.ppi-slider__arrow--next {
+  right: var(--space-6);
+}
+
+/* Narrow screens: no room for the previous slide's text next to the panel. */
+@media (max-width: 47.999rem) {
+  .ppi-slider__ghost {
+    display: none;
+  }
+}
+
+@media (min-width: 48rem) {
+  .home-welcome__inner {
+    grid-template-columns: minmax(10rem, var(--home-media-w)) 1fr;
+  }
+
+  .ppi-slider__ghost {
+    margin-top: var(--space-16); /* same top offset as the panel on desktop */
+  }
+
+  .ppi-slider__panel {
+    margin: var(--space-16) calc(var(--space-32) + var(--space-20)); /* +2 more steps toward the middle (user: "2 kali lagi geser") */
+  }
+
+  .ppi-slider__panel h2,
+  .ppi-slider__ghost h2 {
+    font-size: var(--text-2xl); /* smaller desktop title (user) */
+    line-height: var(--leading-2xl);
+  }
 }
 
 @media (min-width: 48rem) {
   .home-hero {
-    min-height: min(calc(100svh - 5rem), 46rem);
+    min-height: min(calc(100svh - 2rem), 46rem);
   }
 
-  .home-hero h1 {
-    font-size: var(--text-6xl);
-    line-height: var(--leading-6xl);
+  .home-welcome__photo img {
+    border-radius: var(--radius-xl);
   }
+}
 
-  .home-stats__inner {
-    max-width: var(--measure-page);
-  }
+/* ---- About Us (the gallery detail template's frame, redesigned: "Font Header:
+   Cinzel Decorative Bold, Font teks: Poppins", and later requests: one-step
+   bigger headers, justified text, bold A—K—S—I initials, and an elegant look) ---- */
 
-  .home-stats__grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+/* The narrower prose column inside the album frame. */
+.site-about .site-event__inner {
+  max-width: 48rem;
+}
 
-  .home-stat {
-    padding: var(--space-8);
-  }
+/* Round 38 (user: "Buat halaman detil ini agak lebar ke kiri-kanan agar
+   tulisan judul seperti DIREKTORAT PERGERAKAN DAN PENGABDIAN MASYARAKAT bisa
+   satu baris"): the /struktur/[unitId] detail pages widen back to the page's
+   74rem column (this rule comes after the 48rem ones — same specificity,
+   later wins). */
+.site-about__detail .site-event__inner {
+  max-width: 74rem;
+}
 
-  .home-stat strong {
-    font-size: var(--text-3xl);
-    line-height: var(--leading-3xl);
+/* ---- Hero: the board photo with a dark gradient. The album banner stays
+   flush and full-bleed; the page title is kept for screen readers only
+   (user: "Tulisan Tentang Kami dan garis dibawah teks itu dihapus aja"). ---- */
+.site-about__hero {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* The photo itself: taller than the album banner, and a dark bottom-up
+   gradient is painted over it (the placeholder is a solid dark rect, so this
+   is only visible once the real photo is in). */
+.site-about__banner {
+  height: 27rem;
+  margin-bottom: 0;
+}
+
+.site-about__hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-brand-950) 28%, transparent) 0%,
+    color-mix(in srgb, var(--color-brand-950) 67%, transparent) 78%
+  );
+}
+
+/* Screen-reader-only page title (no visible text, no gold rule — user). */
+.site-about__hero .site-event__title {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (max-width: 48rem) {
+  .site-about__banner {
+    height: 21rem;
   }
+}
+
+/* ---- Sections ---- */
+
+/* Hairline between the prose blocks; the aspirasi card starts its own block. */
+.site-about__section + .site-about__section {
+  margin-top: var(--space-10);
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* More air above the structure heading after the Visi/Misi card
+   (user: "Jarak antara teks Struktur organisasi dan atasnya ditambah"). */
+.site-about__aspirasi + .site-about__section {
+  margin-top: var(--space-16);
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.site-about__heading {
+  margin: 0;
+  color: var(--color-frame);
+  font-family: var(--font-cinzel);
+  font-weight: var(--font-bold);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Short gold rule under each heading, like an ornament on the page title's. */
+.site-about__heading::after {
+  content: "";
+  display: block;
+  width: var(--space-12);
+  height: 0.125rem;
+  margin-top: var(--space-2);
+  background: var(--color-gold);
+}
+
+.site-about__text,
+.site-about__missions {
+  margin: var(--space-4) 0 0;
+  color: var(--color-frame);
+  font-family: var(--font-poppins);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  text-align: justify; /* rata kanan-kiri (user) */
+}
+
+/* Editorial drop cap on the first paragraph of the profile. */
+.site-about__lead::first-letter {
+  float: left;
+  margin-right: var(--space-2);
+  font-family: var(--font-cinzel);
+  font-size: var(--text-5xl);
+  line-height: var(--leading-2-5xl); /* tight, for the floated cap */
+  color: var(--color-primary);
+  font-weight: var(--font-bold);
+}
+
+/* The four mission points (A—K—S—I). */
+.site-about__missions {
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--color-panel-line);
+}
+
+.site-about__missions li + li {
+  margin-top: var(--space-3);
+}
+
+.site-about__missions li {
+  text-align: justify; /* rata kanan-kiri (user) */
+}
+
+/* The initial A—K—S—I of each mission point: bigger and bold (user). */
+.site-about__missions li::first-letter {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+/* The slogan of each mission point ("A—Accelerate Collaboration" etc. up to
+   the colon) is bold (user round 12: "teks Accelerate Collaboration, Knit
+   Strategic Partnership, Spark Innovation, Inspire Impact dicetak tebal"). */
+.site-about__missions strong {
+  font-weight: var(--font-bold);
+}
+
+/* ---- Visi + Misi on one maroon card, the contrasting block ---- */
+.site-about__aspirasi {
+  margin-top: var(--space-12);
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-popover);
+}
+
+/* The card's own block, with no hairline: the card is already a block. */
+.site-about__aspirasi .site-about__section + .site-about__section {
+  border-top: none;
+  margin-top: var(--space-10);
+  padding-top: var(--space-10);
+}
+
+.site-about__aspirasi .site-about__heading {
+  color: var(--color-on-panel);
+}
+
+.site-about__aspirasi .site-about__text,
+.site-about__aspirasi .site-about__missions {
+  color: var(--color-on-panel-muted);
+}
+
+/* The mission initials are gold inside the card. */
+.site-about__aspirasi .site-about__missions li::first-letter {
+  color: var(--color-gold);
+}
+
+/* ---- The structure tree: accordion rows, detail opens under each unit ------ */
+.site-about__tree,
+.site-about__divisions,
+.site-about__people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-about__tree {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* Rows in the structure section: the three roots' names and every unit row. A
+   Biro/Direktorat root is a toggle button (user round 6: "sementara
+   Direktorat dan biro dropdown" — chevron rotates on expand); all other rows
+   are LINKS to the unit's own page (no "Lihat detail pengurus" text, user
+   round 5: "Hapus semua teks Lihat detail pengurus"). Names Poppins (user
+   font rule). */
+.site-about__unit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--color-frame);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  text-align: left;
+  text-decoration: none;
+}
+
+/* Headline units keep the large size (user: "Ukuran font selain Badan
+   Pelaksana Harian, Biro, dan Direktorat Diperkecil"); the rest is smaller. */
+.site-about__unit strong {
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+
+.site-about__unit--small strong {
+  font-size: var(--text-base);
+}
+
+/* Sekretaris Jenderal & Wakil Sekretaris Jenderal share one size, one step
+   above the other small rows (user round 9: "Ukuran font Sekretaris Jenderal
+   dan Wakil Sekretaris Jenderal dibuat sama. Setelah itu ukurannya
+   diperbesar 1px" — 17px; there is no 17px token, the calc is allowed and
+   verified by the design-tokens test). */
+.site-about__unit--lead strong {
+  font-size: calc(var(--text-base) + 1px);
+}
+
+/* The unit code as a small outlined pill (Inter for the small tracked meta). */
+.site-about__code {
+  padding: var(--space-0-5) var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+/* The Biro/Direktorat dropdown toggle's chevron (rotates when open). */
+.site-about__unit-chevron {
+  flex: none;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.site-about__unit[aria-expanded="true"] .site-about__unit-chevron {
+  transform: rotate(90deg);
+}
+
+/* The three roots sit side by side as their own blocks (user round 6:
+   "Biro dan Direktorat dibuat sejajar dengan BAPELHA"; round 10 came back:
+   "Bagian Biro dan Direktoran kembali digeser ke kiri, sejajar dengan Badan
+   Pelaksana Harian"). Each block after the first opens with a hairline
+   separator (user round 10: "dibawah Bendahara Eksekutif dan dibawah biro
+   paling bawah, diberi garis batas untuk pemisah" — the lines sit between
+   the Bapelha block and the Biro block, and between the Biro block and the
+   Direktorat block): 24px air, the line, then 24px air. The trailing blocks'
+   own root-tree margin is zeroed so the air around the line is symmetric. */
+.site-about__structure-part + .site-about__structure-part {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.site-about__structure-part + .site-about__structure-part .site-about__structure-root-tree {
+  margin-top: 0;
+}
+
+/* Round 39 (user: "Setelah gambar organisasi berikan garis pembatas sebelum
+   masuk ke teks Badan Pelaksana Harian"): the FIRST structure part (Bapelha)
+   gets the same hairline the parts use between themselves — the divider under
+   the organization-chart frame. (`:first-of-type` — the three parts are the
+   only sections among their siblings, so it hits exactly the Bapelha block;
+   the nested .site-about__tree lists keep no border.) */
+.site-about__structure-part:first-of-type {
+  margin-top: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* Bapelha's root rows live in their own list so the li does not draw a stray
+   list-item marker (user round 7: "Sebelah Badan Pelaksana Harian ada
+   bullet, itu dihapus"). The top margin adds a little air between the
+   "Struktur Organisasi" heading and the Bapelha row (user round 8: "Jarak
+   antara Badan Pelaksana Harian dengan atasnya ditambah sedikit"); the
+   trailing blocks zero it because their air is the separator line (round
+   10). */
+.site-about__structure-root-tree {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-about__people {
+  display: grid;
+  gap: var(--space-0-5);
+  margin-top: var(--space-1);
+}
+
+.site-about__divisions {
+  display: grid;
+  gap: var(--space-1-5);
+  margin-top: var(--space-1-5);
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--color-border-subtle);
+}
+
+.site-about__division {
+  color: var(--color-frame);
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  line-height: var(--leading-base);
+}
+
+.site-about__people li {
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-base);
+  text-align: justify; /* rata kanan-kiri (user) */
+}
+
+/* The entry details of a unit: its people, divisions and the sub-trees
+   below it, indented with a guide line under the row (the umbrella rows are
+   toggles, every other row is static). Kept BEFORE the --tight variant below
+   so the variant's margin override wins (same specificity, source order). */
+.site-about__unit-detail {
+  margin-top: var(--space-1-5);
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--color-border-subtle);
+}
+
+.site-about__unit-detail > * + * {
+  margin-top: var(--space-1-5);
+}
+
+/* Bapelha's root detail opens with the SAME gap as every other parent row
+   inside the branch, so the vertical rhythm under the root is uniform (user
+   round 7 wanted it "rapat" at 2px; round 9: "Jarak atas Bawah Sekretaris
+   Jenderal belum sama dengan yang lain" — so it joined the rest at 12px,
+   which also removed the need for the old child-detail override). */
+.site-about__unit-detail--tight {
+  margin-top: var(--space-3);
+}
+
+.site-about__unit-detail--tight .site-about__tree {
+  margin-top: 0;
+}
+
+/* Every parent row inside Bapelha's branch opens its detail with the SAME
+   gap as the tree's grid between sibling rows, so the vertical rhythm is
+   uniform end to end (user round 8: "Jarak antar Sekretaris Jenderal, Wakil
+   Sekretaris Jenderal, Sekretaris Eksekutif, Bendahara Eksekutif
+   diseragamkan"; round 9: "Jarak atas Bawah Sekretaris Jenderal belum sama
+   dengan yang lain"). The base detail margin is 6px (the tree-list gap is
+   12px), so the child details need the override — it must come after the
+   base `.site-about__unit-detail` (same specificity, source order). */
+.site-about__unit-detail--tight .site-about__unit-detail {
+  margin-top: var(--space-3);
+}
+
+/* Nested trees sit inside the detail block: no extra indent of their own. */
+.site-about__tree ul {
+  padding-left: 0;
+  border-left: 0;
+  margin-top: 0;
+}
+
+.site-about__unit:hover strong,
+.site-about__unit:focus-visible strong {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 0.0625rem;
+  text-underline-offset: var(--space-1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Unit detail page (/struktur/[unitId]): breadcrumb, officers with photos,
+ * sub-units as cards. Same 48rem column and ornament headings as /about.
+ * ------------------------------------------------------------------------- */
+
+.site-unit__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-base);
+}
+
+.site-unit__crumbs,
+.site-unit__back,
+.site-unit__crumbs-path {
+  font-family: var(--font-body);
+}
+
+.site-unit__back {
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+}
+
+.site-unit__back:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+.site-unit__crumbs-path {
+  color: var(--color-text-muted);
+}
+
+.site-unit__crumbs-path a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+/* Round 15: every crumb after the first is separated by a " > " marker and
+   the LAST crumb is the page itself (not a link), so the path reads "Badan
+   Pelaksana Harian > Sekretaris Jenderal" (user: "Badan Pelaksana Harian
+   seharusnya Badan Pelaksana Harian > Sekretaris Jenderal"). */
+.site-unit__crumbs-path > * + *::before {
+  content: ">";
+  margin: 0 var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.site-unit__crumbs-path .site-unit__crumbs-self {
+  color: var(--color-frame);
+  font-weight: var(--font-semibold);
+}
+
+.site-unit__crumbs-path a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+/* The unit's own name and code, centred like the section ornaments. */
+.site-about__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* Structure pages use ONLY Poppins + Inter (user): the title joins the h2
+   family in Poppins, no Cinzel in the whole /struktur area. */
+.site-unit__title {
+  font-family: var(--font-sans);
+  font-weight: var(--font-bold);
+  text-align: center;
+  /* Round 38: the bidang titles run on two lines ("Bidang Minat dan Bakat" /
+     "Direktorat Pengembangan Sumber Daya Manusia") — honor the \n. */
+  white-space: pre-line;
+}
+
+.site-about__detail .site-about__heading {
+  font-family: var(--font-sans);
+  font-weight: var(--font-bold);
+}
+
+.site-about__detail .site-about__head + .site-about__section {
+  margin-top: var(--space-10);
+}
+
+/* Round 30 (user: "disetiap bagian terkait diatasnya beri garis pembatas
+   dulu seperti Sektif dan Wakil sektif"): the "Bagian Terkait" cards of the
+   unit detail pages always carry the hairline ABOVE them. Between the Wakil
+   columns and the cards the existing `.site-about__section + .site-about__section`
+   rule draws it (the two blocks are separate sections again); this rule adds
+   the same line when nothing precedes the section (a bidang page that only
+   has the cards right under the header). */
+.site-about__detail .site-unit__related {
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-10);
+}
+
+/* Round 37 (user: "Diatas Bapelha masukan dulu gambar Organization.png"): the
+   organization chart at the top of the Struktur section, above the tree —
+   a wide banner, full content width. Round 38 (user: "Pada gambar struktur
+   organisasi, gunakan BG yang sama seperti Visi-Misi"): it sits on the same
+   maroon panel as the VISI/MISI card. Round 39 (user: "Gambar Struktur
+   organisasi diperbesar sedikit. Jarak antara tulisan struktur organisasi dan
+   gambar struktur dibuat mepet. Setelah gambar organisasi berikan garis
+   pembatas sebelum masuk ke teks Badan Pelaksana Harian"): the image bleeds
+   FULL WIDTH edge-to-edge inside the frame (a bit bigger than the padded
+   card), the frame hugs the "Struktur Organisasi" heading (margin-top
+   space-12 → space-3), and the tree below got its own hairline (see
+   .site-about__tree). */
+.site-about__structure-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.site-about__structure-frame {
+  margin-top: var(--space-3);
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-popover);
+  /* Clip the full-bleed image to the card's rounded corners. */
+  overflow: hidden;
+}
+
+.site-about__structure-frame .site-about__structure-img {
+  margin: 0 calc(-1 * var(--space-12));
+  width: calc(100% + 2 * var(--space-12));
+}
+
+/* Officers: photo (or initial) + name + role, two columns on wide screens. */
+.site-unit__members {
+  display: grid;
+  gap: var(--space-5);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 40rem) {
+  /* Round 36 (user: "Buat gambar staf berjejer 3 ke samping, sehingga ada 2
+     jajar"): the members render THREE across — the 6 staff of a biro/bidang
+     fall into exactly two rows. */
+  .site-unit__members {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Round 39 (user: "Posisi gambar staff dibuat center") centered the rows —
+     round 40 (user: "Tampilan gambar staff dibuat seperti table aja, 2 row
+     dan 3 column. Lalu setiap isi nanti rata kiri, agar fotonya simetris
+     semua. Begitupun jika nanti staff lebih dari 6, tinggal tambah rownya"):
+     LEFT-aligned again (the flex default) so every avatar starts at the same
+     x inside its column and the grid reads like a table — 3 columns, any
+     staff count above 6 wraps into further rows by itself. */
+  .site-unit__member {
+    justify-content: flex-start;
+  }
+}
+
+.site-unit__member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.site-unit__avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-12);
+  height: var(--space-12);
+  border-radius: var(--radius-full);
+  background: var(--color-panel);
+  color: var(--color-gold);
+  font-family: var(--font-sans);
+  font-weight: var(--font-bold);
+  font-size: var(--text-xl);
+  line-height: var(--leading-2-5xl);
+}
+
+img.site-unit__avatar {
+  object-fit: cover;
+}
+
+.site-unit__person {
+  display: grid;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.site-unit__person strong {
+  color: var(--color-frame);
+  font-family: var(--font-poppins);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+
+.site-unit__role {
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: var(--leading-base);
+}
+
+/* The LEAD officer pages (Sekretaris Jenderal / Wakil Sekretaris Jenderal —
+   and, since round 19, Sekretaris Eksekutif & Bendahara Eksekutif, whose
+   pages show their wakil as photo columns below, see `.site-unit__deputies`)
+   replace the compact avatar grid with a profile hero: a BIG
+   portrait photo, CENTRED, with the jabatan text and the code pill (SEKJEN)
+   underneath — and NO "Pengurus" heading (user round 13: "Halaman ini
+   memuat: Foto (Agak besar), Jabatan (pills alias jabatan)"; round 14:
+   "Tulisan Pengurus dan garis dibawahnya dihapus. Gambar dibuat lebih besar,
+   bentuknya potrait, dan posisi center. Dibawahnya ada tulisan Sekretaris
+   Jenderal, Pills SEKJEN"). */
+.site-unit__leads {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-6);
+}
+
+.site-unit__lead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.site-unit__lead-photo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 240x320px: a 3:4 portrait, 2.5x the --space-24/--space-32 tokens. */
+  width: calc(var(--space-24) * 2.5);
+  height: calc(var(--space-32) * 2.5);
+  border-radius: var(--radius-xl);
+  background: var(--color-panel);
+  color: var(--color-gold);
+  font-family: var(--font-sans);
+  font-weight: var(--font-bold);
+  font-size: var(--text-6xl);
+  line-height: var(--leading-6xl);
+}
+
+img.site-unit__lead-photo {
+  object-fit: cover;
+}
+
+.site-unit__lead-meta {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: var(--space-2);
+}
+
+.site-unit__lead-name {
+  color: var(--color-frame);
+  font-family: var(--font-poppins);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-lg);
+  line-height: var(--leading-base);
+}
+
+/* The jabatan as plain big text ("Sekretaris Jenderal"), with the code pill
+   underneath. Pre-line (round 38): the bidang heads' two-line jabatan
+   ("Kepala Bidang Minat dan Bakat" / "Direktorat Pengembangan Sumber Daya
+   Manusia") honors the \n in the server string. */
+.site-unit__lead-jabatan {
+  color: var(--color-frame);
+  font-family: var(--font-poppins);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  white-space: pre-line;
+}
+
+/* Sub-units: one card per child, maroon-tinted on hover. */
+.site-unit__children {
+  display: grid;
+  /* Round 31 (user: "buat isi bagian terkait ini jarak per barisnya
+     perdekat, jangan terlalu jauh"): the cards sit 8px apart before; 2px
+     now — the row borders keep them readable. */
+  gap: var(--space-0-5);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-unit__child {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-lg);
+  color: var(--color-frame);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  text-decoration: none;
+}
+
+.site-unit__child:hover,
+.site-unit__child:focus-visible {
+  background: var(--color-hover);
+  border-color: transparent;
+}
+
+/* Round 34 (user: "Di halaman Detil Bapelha. Saya ingin pengurus diganti
+   dengan Sekjen, Dibawahnya ada Wasekjen, Dibawah Wasekjen ada Sektif dan
+   Bend" + "Maksud saya tampilkan fotonya"): the ROOT page's officer line as
+   PHOTO COLUMNS — one CENTRED flex row per officer level of the functional
+   chain (Sekjen on top as the big lead portrait, then the Wasekjen, then
+   Sektif & Bend side by side; see `.site-unit__lead` and
+   `.site-unit__deputy` for the column styles). */
+.site-unit__officers {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-unit__officers-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.site-unit__officer-children {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The Sekjen's lead portrait is normally a plain li — as a LINK here strip
+   the anchor chrome so it looks exactly like the hero portrait. */
+.site-unit__officer-lead {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-unit__child strong {
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+
+.site-unit__child .site-about__code {
+  margin-left: auto;
+}
+
+/* Round 20 (user: "Wakilnya langsung ditampilkan pakai foto dibawah Sektif,
+   namun ukurannya lebih kecil"): on the SEKTIF & BEND pages the wakil show
+   right under the hero as photo COLUMNS — a portrait HALF the hero's size
+   (120x160px, 1.25x the --space-24/--space-32 tokens), the person's name,
+   the jabatan and the code pill, each column a link to the wakil's page.
+   The card list above (`.site-unit__children`) still serves the "Bagian
+   Terkait" pages (SEKJEN/WASEKJEN and the regular units). */
+.site-unit__deputies {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-8);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Round 37 (user: "Gambar setiap Sekretaris pada Biro dan Dir, buat
+   gambarnya seperti Wakil (portrait)"): the sekretaris of a biro/direktorat
+   as wakil-style portrait columns — same photo size, no link, with the
+   SEKBIRO/SEKDIR pill (uppercased by `.site-about__code`). */
+.site-unit__sekretaris {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-8);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-unit__deputy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-frame);
+  text-decoration: none;
+}
+
+.site-unit__deputy-photo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 120x160px: a 3:4 portrait, half the lead hero's 240x320. */
+  width: calc(var(--space-24) * 1.25);
+  height: calc(var(--space-32) * 1.25);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  color: var(--color-gold);
+  font-family: var(--font-sans);
+  font-weight: var(--font-bold);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+  transition: box-shadow 0.15s ease;
+}
+
+img.site-unit__deputy-photo {
+  object-fit: cover;
+}
+
+.site-unit__deputy:hover .site-unit__deputy-photo,
+.site-unit__deputy:focus-visible .site-unit__deputy-photo {
+  box-shadow: 0 0 0 2px var(--color-gold);
+}
+
+.site-unit__deputy-meta {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: var(--space-1);
+}
+
+/* Round 38: pre-line honors the bidang wakil/sekreteris two-liners
+   ("Wakil Kepala Bidang Minat dan Bakat" / direktorat name) — the \n in the
+   server string. */
+.site-unit__deputy-jabatan {
+  font-family: var(--font-poppins);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  white-space: pre-line;
+}
+
+.site-unit__deputy-name {
+  font-family: var(--font-poppins);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }

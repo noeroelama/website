@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Crimson_Pro, Inter, Poppins } from "next/font/google";
+import { Cinzel_Decorative, Crimson_Pro, Inter, Poppins } from "next/font/google";
 import type { ReactNode } from "react";
 import "@website/ui/styles.css";
 import "./globals.css";
@@ -8,6 +8,8 @@ import { Localized } from "@/i18n/localized";
 
 // Self-hosted at build time by next/font; design tokens use them through --font-poppins and,
 // on the home page, --font-inter (body copy) and --font-crimson (chair's welcome quote).
+// --font-cinzel (Cinzel Decorative, 700) is the About Us headings font (user: "Font Header:
+// Cinzel Decorative Bold").
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -26,6 +28,12 @@ const crimsonPro = Crimson_Pro({
   variable: "--font-crimson",
 });
 
+const cinzelDecorative = Cinzel_Decorative({
+  subsets: ["latin"],
+  weight: ["700"],
+  variable: "--font-cinzel",
+});
+
 export const metadata: Metadata = {
   title: { default: "PPIDK Asia-Oseania", template: "%s · PPIDK Asia-Oseania" },
   description: "Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania",
@@ -35,7 +43,10 @@ export const metadata: Metadata = {
 // segment ({children}) is always rendered, outside the language boundary.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="id" className={`${poppins.variable} ${inter.variable} ${crimsonPro.variable}`}>
+    <html
+      lang="id"
+      className={`${poppins.variable} ${inter.variable} ${crimsonPro.variable} ${cinzelDecorative.variable}`}
+    >
       <body>
         <Localized render={(t) => <SiteHeader t={t} />} />
         {children}

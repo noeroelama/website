@@ -70,6 +70,13 @@ export function createGalleryActions(deps: GalleryDeps) {
             slug,
             eventId: event.id,
             eventTitle: event.title,
+            // Snapshots of the linked event — the /gallery filter bar and the cards
+            // read these without loading the events.
+            eventType: event.type,
+            eventStartsAt: event.startsAt,
+            eventTimezone: event.timezone,
+            eventLocation: event.location,
+            eventDescription: event.description,
             images: input.images,
             totalPhotos: input.totalPhotos,
             albumUrl: input.albumUrl,

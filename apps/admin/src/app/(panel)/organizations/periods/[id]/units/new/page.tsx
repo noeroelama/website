@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AccessMessage } from "@/components/access-message";
 import { OrgUnitEditor } from "@/components/org-unit-editor";
+import { toOrgUnitItem } from "@/components/org-units-model";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
@@ -17,5 +18,6 @@ export default async function CreateUnitRoute({ params }: { params: Promise<{ id
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
   const period = await adminReads.getPeriod(id);
   if (!period || period.deletedAt) notFound();
-  return <OrgUnitEditor periodId={period.id} unit={null} />;
+  const units = await adminReads.listOrgUnits(id);
+  return <OrgUnitEditor periodId={period.id} unit={null} units={units.map(toOrgUnitItem)} />;
 }

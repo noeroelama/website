@@ -1,5 +1,10 @@
 import type { FeaturedImage } from "@website/domain/content";
-import type { Chapter, ChapterRisk, SocialLink } from "@website/domain/organizations";
+import type {
+  Chapter,
+  ChapterRegion,
+  ChapterRisk,
+  SocialLink,
+} from "@website/domain/organizations";
 
 /** A PPI chapter row of Organizations → PPI, mapped on the server from `chapters/{id}`. */
 export interface ChapterItem {
@@ -8,6 +13,10 @@ export interface ChapterItem {
   name: string;
   slug: string;
   countryCode: string;
+  /** /map table group; null = hidden from the table. */
+  region: ChapterRegion | null;
+  /** Badge number on /map's country table; null = no badge. */
+  mapNo: number | null;
   /** English country name (Intl, computed on the server). */
   country: string;
   timezone: string;
@@ -17,6 +26,9 @@ export interface ChapterItem {
   logo: FeaturedImage | null;
   contactName: string;
   contactPublic: string;
+  description: string;
+  role: string | null;
+  phone: string | null;
   website: string | null;
   email: string | null;
   instagram: string | null;
@@ -45,6 +57,8 @@ export function toChapterItem(c: Chapter): ChapterItem {
     name: c.name,
     slug: c.slug,
     countryCode: c.countryCode,
+    region: c.region,
+    mapNo: c.mapNo,
     country: regionNames.of(c.countryCode) ?? c.countryCode,
     timezone: c.timezone,
     utcOffset: utcOffset(c.timezone),
@@ -52,6 +66,9 @@ export function toChapterItem(c: Chapter): ChapterItem {
     logo: c.logo,
     contactName: c.contactName,
     contactPublic: c.contactPublic,
+    description: c.description,
+    role: c.role,
+    phone: c.phone,
     website: c.website,
     email: c.email,
     instagram: c.instagram,

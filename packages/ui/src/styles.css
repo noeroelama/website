@@ -53,6 +53,10 @@
   --color-card: #faf9f6; /* feature card and quote-section background */
   --color-quote: #444444; /* chair's welcome quote body */
 
+  /* Public site news/gallery pills and buttons (design) */
+  --color-grey: #555555; /* the album pill's grey (year white beside it) */
+  --color-accent-hover: #8a2929; /* darker accent on hover (drive button) */
+
   /* ---- Typography (Poppins) ---- */
   --font-sans: var(--font-poppins), system-ui, sans-serif;
   /* Loaded by apps/web with next/font; Inter carries body copy, Crimson Pro the welcome quote. */
@@ -81,6 +85,8 @@
   --leading-xl: 1.4;
   --text-2xl: 1.5rem; /* 24 — section / card title */
   --leading-2xl: 1.3;
+  --text-2-5xl: 1.75rem; /* 28 — the home hero wordmark's clamp cap (extra step) */
+  --leading-2-5xl: 1;
   --text-3xl: 1.875rem; /* 30 — hero sub-title */
   --leading-3xl: 1.2;
   --text-4xl: 2.25rem; /* 36 — page title / hero */

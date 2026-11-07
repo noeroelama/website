@@ -96,6 +96,7 @@ interface ArticleForm {
   /** Byline: kept from the article, or the staff member's name for a new one (no field in the design). */
   author: string;
   category: NewsCategory;
+  location: string;
   url: string;
   excerpt: string;
   banner: FeaturedImage | null;
@@ -111,6 +112,7 @@ const EMPTY_FORM: ArticleForm = {
   title: "",
   author: "",
   category: NEWS_CATEGORIES[0],
+  location: "",
   url: "",
   excerpt: "",
   banner: null,
@@ -145,6 +147,7 @@ function formFrom(a: ArticleItem): ArticleForm {
     title: a.title,
     author: a.author,
     category: a.categoryKey,
+    location: a.location,
     url: a.url,
     excerpt: a.excerpt,
     banner: a.featuredImage,
@@ -309,6 +312,7 @@ function ArticleList({
       slug: form.url.trim(),
       author: form.author,
       category: form.category,
+      location: form.location,
       publishAt: form.date ? new Date(form.date).toISOString() : null,
       summary: form.excerpt,
       tags: form.tags,
@@ -626,6 +630,27 @@ function ArticleList({
             ))}
           </Select>
           <FieldError id="article-category-error" message={fieldErrors["category"]} />
+        </div>
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="article-location">
+            Location *
+          </label>
+          <input
+            id="article-location"
+            required
+            maxLength={300}
+            className="admin-input"
+            type="text"
+            placeholder="Jakarta, Indonesia"
+            value={form.location}
+            onChange={(e) => setForm({ ...form, location: e.target.value })}
+            {...errorProps("location", "article-location")}
+          />
+          <FieldError
+            id="article-location-error"
+            message={fieldErrors["location"]}
+            hint="City and country; the Country filter on the news page reads it."
+          />
         </div>
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="article-date">

@@ -23,15 +23,19 @@ job.
 
 ## Rules and assumptions
 
-- Fields: title (3–200), URL slug (unique per kind), author, category (General, Academic,
-  Community, Announcement, International), publish date (entered in the viewer's time zone,
-  stored UTC), summary (≤ 500), up to 10 lower-case tags, featured image (preset `thumbnail`),
-  body (rich text). **Required** (also for drafts): title, URL, author, category, publish date,
-  summary and featured image (`NewsInputSchema`; the form marks them with *).
+- Fields: title (3–200), URL slug (unique per kind), author, category (Seminar, Workshop,
+  Webinar, Conference, Meetup, Lainnya — the same activity types as the events/gallery pills;
+  "Lainnya" (`other`) holds everything that is not one of the five), location ("Jakarta,
+  Indonesia"; the public cards and the news Country filter read it — see
+  `apps/web/docs/public-site.md`), publish date (entered in
+  the viewer's time zone, stored UTC), summary (≤ 500), up to 10 lower-case tags, featured image
+  (preset `thumbnail`), body (rich text). **Required** (also for drafts): title, URL, author,
+  category, location, publish date, summary and featured image (`NewsInputSchema`; the form marks
+  them with *).
 - Admin page layout (Figma "ARTICLE ADMIN"): the list (tabs All/Published/Drafts, title search,
   filters, bulk Publish/Delete, row menu Publish or Make Private · Copy Link · Settings · Delete
   Article); the editor page holds only the featured image and the content boxes (Back · Preview ·
-  Save draft · Publish); title, category, date, URL, summary and tags are edited in the
+  Save draft · Publish); title, category, location, date, URL, summary and tags are edited in the
   **Settings** panel (row menu, or opened by Save draft/Publish when one of those fields is
   refused). The URL follows the title while it is still the title's slug. There is no Author
   field: a new article gets the staff member's name (else e-mail), an edit keeps its byline.
@@ -51,7 +55,8 @@ job.
   for 14 days on the Audit Log page; an edit that changed the URL is not revertible.
 - The admin list loads the 500 most recently changed articles and filters them in the browser.
 - Public site: `createSqlNewsReader` returns `PublicNews` DTOs (no id, version, status or
-  chapter); `relatedNews` picks up to 3 others with the same category or a shared tag. Pages:
+  chapter); `relatedNews` (same category or shared tag) still exists for tests, while the
+  public article page links the 3 newest articles ("Recent News"). Pages:
   `apps/web/docs/public-site.md`. Cached for minutes.
 
 ## Configuration

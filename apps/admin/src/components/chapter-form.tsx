@@ -2,24 +2,36 @@
 
 import { useRef, useState, type InputHTMLAttributes } from "react";
 import type { FeaturedImage } from "@website/domain/content";
-import { CHAPTER_RISKS, type ChapterRisk, type SocialLink } from "@website/domain/organizations";
+import {
+  CHAPTER_REGIONS,
+  CHAPTER_RISKS,
+  type ChapterRisk,
+  type SocialLink,
+} from "@website/domain/organizations";
 import { saveChapterAction, setChapterActiveAction } from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
 import { publicImage, useImageUpload } from "@/components/image-upload";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
-import { CHAPTER_RISK_LABELS, label } from "@/labels";
+import { CHAPTER_REGION_LABELS, CHAPTER_RISK_LABELS, label } from "@/labels";
 import type { ChapterItem } from "./chapters-model";
 import { Select } from "@/components/ui/select";
 
 interface Form {
   name: string;
   countryCode: string;
+  /** "" = hidden from the /map table; the groups of the side.svg design otherwise. */
+  region: string;
+  /** "" = no badge number on the /map table. */
+  mapNo: string;
   timezone: string;
   logo: FeaturedImage | null;
   contactName: string;
   contactPublic: string;
+  description: string;
+  role: string;
+  phone: string;
   website: string;
   email: string;
   instagram: string;
@@ -34,13 +46,19 @@ interface Form {
   active: boolean;
 }
 
-const fromChapter = (c: ChapterItem | null): Form => ({
+/** A new chapter starts with the next free badge number (suggestedMapNo). */
+const fromChapter = (c: ChapterItem | null, suggestedMapNo?: number): Form => ({
   name: c?.name ?? "",
   countryCode: c?.countryCode ?? "",
+  region: c?.region ?? "",
+  mapNo: c ? String(c.mapNo ?? "") : String(suggestedMapNo ?? ""),
   timezone: c?.timezone ?? "",
   logo: c?.logo ?? null,
   contactName: c?.contactName ?? "",
   contactPublic: c?.contactPublic ?? "",
+  description: c?.description ?? "",
+  role: c?.role ?? "",
+  phone: c?.phone ?? "",
   website: c?.website ?? "",
   email: c?.email ?? "",
   instagram: c?.instagram ?? "",
@@ -62,12 +80,14 @@ const fromChapter = (c: ChapterItem | null): Form => ({
  */
 export function ChapterForm(props: {
   chapter: ChapterItem | null;
+  /** Next free badge number, suggested for a new chapter (edit leaves it alone). */
+  suggestedMapNo?: number;
   /** Chapter admin: only the contact fields can change (the server enforces it too). */
   contactOnly?: boolean;
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
-  const [form, setForm] = useState<Form>(() => fromChapter(props.chapter));
+  const [form, setForm] = useState<Form>(() => fromChapter(props.chapter, props.suggestedMapNo));
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -193,6 +213,41 @@ export function ChapterForm(props: {
           </Select>
         </div>
         <div className="admin-field">
+          <label className="admin-field__label" htmlFor="chapter-region">
+            Map region
+          </label>
+          <Select
+            id="chapter-region"
+            className="admin-input"
+            disabled={props.contactOnly}
+            value={form.region}
+            onChange={(e) => set("region", e.target.value)}
+          >
+            <option value="">Not shown on the map</option>
+            {CHAPTER_REGIONS.map((region) => (
+              <option key={region} value={region}>
+                {label(CHAPTER_REGION_LABELS, region)}
+              </option>
+            ))}
+          </Select>
+          <FieldError
+            id="chapter-region-error"
+            message={errors["region"]}
+            hint="The group on /map's country table"
+          />
+        </div>
+        {field(
+          "mapNo",
+          "Map number",
+          "№ on /map's country table (next free: pre-filled)",
+          "number",
+          true,
+          {
+            min: 1,
+            step: 1,
+          },
+        )}
+        <div className="admin-field">
           <label className="admin-field__label" htmlFor="chapter-risk">
             Risk
           </label>
@@ -245,6 +300,27 @@ export function ChapterForm(props: {
         })}
         {field("contactName", "Contact person", "Shown publicly")}
         {field("contactPublic", "Public contact", "E-mail or phone the contact allows to publish")}
+        {field("role", "Role", "e.g. Ketua — shown with the contact person")}
+        {field("phone", "Phone", "+64 …", "tel")}
+        <div className="admin-field admin-form-grid__full">
+          <label className="admin-field__label" htmlFor="chapter-description">
+            Description
+          </label>
+          <textarea
+            id="chapter-description"
+            className="admin-input admin-textarea"
+            rows={4}
+            placeholder="About the PPI chapter, shown on its public page"
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            aria-describedby="chapter-description-error"
+          />
+          <FieldError
+            id="chapter-description-error"
+            message={errors["description"]}
+            hint="Shown on the chapter page (/map/…)"
+          />
+        </div>
         {field("website", "Website", "https://…", "url")}
         {field("email", "E-mail", undefined, "email")}
         {field("instagram", "Instagram", "@handle")}

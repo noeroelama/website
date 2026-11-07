@@ -4,6 +4,7 @@ import type { FeaturedImage } from "@website/domain/content";
 import {
   toPublicChapter,
   type Chapter,
+  type ChapterRegion,
   type ChapterRisk,
   type PublicChapter,
   type SocialLink,
@@ -18,11 +19,16 @@ function toChapter(id: string, data: Record<string, unknown>): Chapter {
     slug: data["slug"] as string,
     name: data["name"] as string,
     countryCode: data["countryCode"] as string,
+    region: (data["region"] as ChapterRegion | null | undefined) ?? null,
+    mapNo: (data["mapNo"] as number | null | undefined) ?? null,
     active: data["active"] as boolean,
     timezone: data["timezone"] as string,
     logo: data["logo"] as FeaturedImage | null,
     contactName: data["contactName"] as string,
     contactPublic: data["contactPublic"] as string,
+    description: (data["description"] as string | undefined) ?? "",
+    role: (data["role"] as string | null | undefined) ?? null,
+    phone: (data["phone"] as string | null | undefined) ?? null,
     website: data["website"] as string | null,
     email: data["email"] as string | null,
     instagram: data["instagram"] as string | null,
@@ -45,11 +51,16 @@ export function chapterSnapshot(c: ChapterFields): Snapshot {
     slug: c.slug,
     name: c.name,
     countryCode: c.countryCode,
+    region: c.region,
+    mapNo: c.mapNo,
     active: c.active,
     timezone: c.timezone,
     logo: c.logo ? { ...c.logo } : null,
     contactName: c.contactName,
     contactPublic: c.contactPublic,
+    description: c.description,
+    role: c.role,
+    phone: c.phone,
     website: c.website,
     email: c.email,
     instagram: c.instagram,
@@ -92,12 +103,14 @@ export function createSqlChapterStore(db: Database) {
 export type SqlChapterStore = ReturnType<typeof createSqlChapterStore>;
 
 /**
- * Active chapters for the website (role web_ro): ONE list drives the map markers, the member
- * councils on About and the chapter count, so they can never disagree.
+ * Chapters for the website (role web_ro). ONE list drives the map markers, the member
+ * councils on About and the /map country table, so they can never disagree. Only active
+ * chapters ever appear; `region` decides the /map table group (null = also hidden).
  */
 export function createSqlChapterReader(db: Database) {
   const store = chapters(db);
   return {
+    /** Every active chapter that is not deleted, by name. */
     async listActive(): Promise<PublicChapter[]> {
       const snapshot = await store.docs.where("active", "==", true).orderBy("name").get();
       return snapshot.docs

@@ -6,6 +6,7 @@ import {
   movedPath,
   ORG_UNIT_MOVE_LIMIT,
   placeOrgUnit,
+  placeReportTo,
   type OrgUnit,
   type OrgUnitInput,
   type OrgUnitType,
@@ -25,6 +26,7 @@ function toOrgUnit(id: string, data: Record<string, unknown>): OrgUnit {
     id,
     periodId: data["periodId"] as string,
     parentId: data["parentId"] as string | null,
+    reportTo: (data["reportTo"] as string | null) ?? null,
     path: data["path"] as string[],
     name: data["name"] as string,
     code: data["code"] as string,
@@ -46,6 +48,7 @@ export function orgUnitSnapshot(u: OrgUnitFields): Snapshot {
   return {
     periodId: u.periodId,
     parentId: u.parentId,
+    reportTo: u.reportTo,
     path: [...u.path],
     name: u.name,
     code: u.code,
@@ -137,11 +140,27 @@ export function createSqlOrgUnitStore(db: Database) {
           ) {
             throw new RuleViolationError("Use Move to put the unit under another unit.");
           }
-          const [period, parent] = await Promise.all([
+          const [period, parent, reportTarget] = await Promise.all([
             periodIn(tx, input.periodId),
             unitIn(tx, input.parentId),
+            unitIn(tx, input.reportTo),
           ]);
           const path = placeOrgUnit(input.periodId, period, input.parentId, parent);
+          placeReportTo(input.periodId, period, id, input.reportTo, reportTarget);
+          // A reporting chain is always acyclic: walking the target's line must never
+          // come back to the unit being saved.
+          let hop = reportTarget;
+          while (hop && hop.reportTo) {
+            if (hop.reportTo === id) {
+              throw new RuleViolationError("The reporting chain would become a cycle.");
+            }
+            hop = await unitIn(tx, hop.reportTo);
+            if (!hop) {
+              throw new RuleViolationError(
+                "The reporting chain points to a unit that does not exist.",
+              );
+            }
+          }
           return { ...input, path, deletedAt: null };
         },
         audit,
@@ -160,15 +179,19 @@ export function createSqlOrgUnitStore(db: Database) {
         expectedVersion,
         async (current, tx) => {
           const unit = current as OrgUnit;
-          const [period, below, appointed] = await Promise.all([
+          const [period, below, appointed, reporters] = await Promise.all([
             periodIn(tx, unit.periodId),
             tx.get(store.docs.where("path", "array-contains", unit.id)),
             tx.get(appointments.where("orgUnitId", "==", unit.id).where("status", "==", "active")),
+            tx.get(store.docs.where("reportTo", "==", unit.id)),
           ]);
           // Same period rule as a save (missing or archived period refused).
           placeOrgUnit(unit.periodId, period, null, null);
           if (below.docs.some((doc) => !doc.get("deletedAt"))) {
             throw new RuleViolationError("Delete or move the units below this unit first.");
+          }
+          if (reporters.docs.some((doc) => !doc.get("deletedAt"))) {
+            throw new RuleViolationError("Units report to this unit; change their reports first.");
           }
           if (!appointed.empty) {
             throw new RuleViolationError("End the active appointments in this unit first.");

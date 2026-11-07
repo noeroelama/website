@@ -1,6 +1,7 @@
 import type { Database, Query } from "./store";
 import type { Snapshot } from "@website/audit";
 import type { FeaturedImage } from "@website/domain/content";
+import type { EventType } from "@website/domain/events";
 import { toPublicAlbum, type Album, type PublicAlbum } from "@website/domain/gallery";
 import { createSluggedStore, toDate } from "./slugged";
 
@@ -12,6 +13,13 @@ function toAlbum(id: string, data: Record<string, unknown>): Album {
     slug: data["slug"] as string,
     eventId: data["eventId"] as string,
     eventTitle: data["eventTitle"] as string,
+    // Imported albums may predate the event snapshots; the list falls back to its own
+    // time/region/type filters when a field is missing.
+    eventType: (data["eventType"] as EventType | null | undefined) ?? null,
+    eventStartsAt: toDate(data["eventStartsAt"]),
+    eventTimezone: (data["eventTimezone"] as string | null | undefined) ?? null,
+    eventLocation: (data["eventLocation"] as string | null | undefined) ?? null,
+    eventDescription: (data["eventDescription"] as string | null | undefined) ?? null,
     images: data["images"] as FeaturedImage[],
     totalPhotos: data["totalPhotos"] as number | null,
     albumUrl: data["albumUrl"] as string,
@@ -28,6 +36,11 @@ export function albumSnapshot(a: AlbumFields): Snapshot {
     slug: a.slug,
     eventId: a.eventId,
     eventTitle: a.eventTitle,
+    eventType: a.eventType,
+    eventStartsAt: a.eventStartsAt?.toISOString() ?? null, // audit snapshots are JSON
+    eventTimezone: a.eventTimezone,
+    eventLocation: a.eventLocation,
+    eventDescription: a.eventDescription,
     images: a.images.map((image) => ({ ...image })),
     totalPhotos: a.totalPhotos,
     albumUrl: a.albumUrl,

@@ -45,44 +45,38 @@ const id = {
     signOutFailed: "Gagal keluar. Silakan coba lagi.",
   },
   footer: {
-    tagline: "Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania",
-    explore: "Jelajahi",
-    services: "Layanan",
+    /* Footer text is English in every language (user), like the header; only the address
+       block in site-frame.tsx stays Indonesian. */
+    tagline: "Overseas Indonesian Students' Association Alliance for Asia-Oceania Region",
+    explore: "Explore",
+    services: "Services",
     shop: "E-Commerce",
-    community: "Komunitas Kami",
-    address: "Alamat",
-    social: "Media sosial",
-    rights: "Hak cipta dilindungi",
-    terms: "Syarat dan Ketentuan",
-    privacy: "Kebijakan Privasi",
+    community: "Our Community",
+    address: "Address",
+    social: "Social media",
+    rights: "All Rights Reserved",
+    terms: "Terms of Use",
+    privacy: "Privacy Policy",
   },
   home: {
-    googleHeading: "Pemberitahuan data Google",
-    google:
-      "Bila kamu masuk dengan Google, kami hanya menerima ID akun, alamat email, nama, dan foto profilmu (izin openid, email, profile). Data itu dipakai untuk membuat dan mengamankan akunmu, tidak pernah dijual, dan tidak dibagikan kepada pengiklan. Kami tidak meminta akses ke Gmail, Drive, Kalender, atau layanan Google lain.",
-    googleMore: "Baca Kebijakan Privasi",
-    // TODO: ganti kutipan sambutan dengan teks asli dari ketua umum.
     heroTitle: "Menyatukan Pelajar Indonesia di Asia & Oseania",
-    heroSubtitle: "Menghubungkan Pelajar Indonesia di Seluruh Asia & Oseania",
+    heroSubtitle: "Connecting Indonesian Students All Across Asia & Oceania", // English like the design (user)
     heroCta: "Pelajari Lebih Lanjut",
-    statsHeading: "Organisasi Kami dalam Angka",
-    stats: [
-      { value: "500+", label: "Relawan" },
-      { value: "15+", label: "Tahun Berkiprah" },
-      { value: "500+", label: "Pelajar Indonesia" },
-      { value: "50+", label: "Acara per Tahun" },
-    ],
-    eventsHeading: "Acara Terbaru",
-    newsHeading: "Berita Terbaru",
-    readMore: "Baca",
-    allEvents: "Lihat Semua Acara",
-    allNews: "Lihat Semua Berita",
-    chairHeading: "Sambutan Ketua Umum",
-    chairQuote:
-      "Selamat datang di PPIDK Asia-Oseania — rumah bagi perhimpunan pelajar Indonesia yang tersebar di Asia dan Oseania. Di sini kami merawat kebersamaan, berbagi informasi, dan menguatkan kontribusi pelajar Indonesia lintas negara. Semoga setiap pengunjung menemukan hal yang bermanfaat dan terinspirasi untuk ikut membangun Indonesia dari mana pun berada.",
-    connectHeading: "Tetap Terhubung",
-    connectBody:
-      "Berlangganan buletin untuk mendapat kabar acara, berita, dan agenda perhimpunan di kawasan.",
+    // Heading dan tombol berita/acara mengikuti desain (bahasa Inggris); lihat HOME PUBLIC.
+    eventsHeading: "Latest Events",
+    newsHeading: "Latest News",
+    readMore: "Read",
+    register: "Register",
+    welcomeHeading: "Sambutan Sekretaris Jenderal",
+    welcomeQuote:
+      "“Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nSed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.”",
+    welcomeName: "Lorem Ipsum",
+    welcomeRole: "Sekretaris Jenderal PPIDK Asia-Oseania",
+    sponsorLabel: "Sponsor",
+    slider: {
+      previous: "PPI sebelumnya",
+      next: "PPI berikutnya",
+    },
     fallbackEvents: [
       {
         title: "Forum Diskusi",
@@ -110,15 +104,15 @@ const id = {
     ],
   },
   pages: {
-    news: "Berita",
-    events: "Acara",
-    gallery: "Galeri",
+    news: "Blog & Article" /* English heading like the design (user) */,
+    events: "Events" /* English heading like the design (user) */,
+    gallery: "Our Gallery" /* English heading like the design (user) */,
     map: "Peta",
   },
   news: {
     latest: "Berita terbaru",
     by: "Oleh",
-    allCategories: "Semua kategori",
+    allCategories: "Semua" /* same as the events/gallery pills (user) */,
     category: "Kategori",
     filter: "Terapkan",
     tagged: "Tag",
@@ -128,23 +122,61 @@ const id = {
     share: "Bagikan",
     previous: "Sebelumnya",
     next: "Berikutnya",
+    pagination: "Navigasi halaman",
     all: "Lihat semua berita",
+    /* Panel labels of the news list (same shape as the events/gallery bar, user). */
+    search: "Cari Berita",
+    searchPlaceholder: "Cari judul berita…",
+    showing: "Menampilkan {n} berita",
+    /* Article page (user): English headings like the design; the back link reads
+       "← Back to Blog & Articles", the card row is "Recent News". */
+    backToArticles: "Back to Blog & Articles",
+    recentNews: "Recent News",
+    tagline:
+      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community." /* same tagline as events and gallery (user) */,
+    /* News categories are the events/gallery activity types (user): the pill row
+       reads exactly "Semua Seminar Workshop Webinar Conference Meetup Lainnya". */
     categories: {
-      general: "Umum",
-      academic: "Akademik",
-      community: "Komunitas",
-      announcement: "Pengumuman",
-      international: "Internasional",
+      seminar: "Seminar",
+      workshop: "Workshop",
+      webinar: "Webinar",
+      conference: "Conference",
+      meeting: "Meetup",
+      other: "Lainnya",
     },
   },
   events: {
     upcoming: "Akan datang",
     past: "Sudah lewat",
-    type: "Jenis",
-    allTypes: "Semua jenis",
-    from: "Dari tanggal",
-    to: "Sampai tanggal",
-    filter: "Terapkan",
+    allTypes: "Semua",
+    category: "Kategori",
+    other: "Lainnya",
+    period: "Rentang Waktu",
+    allPeriods: "Semua rentang waktu" /* shared by the news panel (user) */,
+    periodOptions: {
+      upcoming: "Mendatang",
+      week: "Minggu ini",
+      month: "Bulan ini",
+      year: "Tahun ini",
+      custom: "Menyesuaikan",
+    },
+    /* Pill labels exactly as the design mock (SEMINAR WORKSHOP WEBINAR CONFERENCE MEETUP). */
+    pillTypes: {
+      seminar: "Seminar",
+      workshop: "Workshop",
+      webinar: "Webinar",
+      conference: "Conference",
+      meeting: "Meetup",
+    },
+    region: "Country" /* label as in the design mock (user) */,
+    allRegions: "Seluruh Asiania",
+    search: "Cari Kegiatan",
+    searchPlaceholder: "Cari nama event…",
+    showing: "Menampilkan {n} kegiatan",
+    tagline:
+      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
+    from: "Dari",
+    to: "Sampai",
     clear: "Hapus filter",
     empty: "Belum ada acara.",
     when: "Waktu",
@@ -152,10 +184,13 @@ const id = {
     eventTime: "waktu setempat",
     yourTime: "waktumu",
     deadline: "Pendaftaran ditutup",
-    speakers: "Pembicara",
-    schedule: "Susunan acara",
-    sponsors: "Didukung oleh",
-    register: "Daftar",
+    /* Event detail design (Figma EVENT-PUBLIC / user mock): these labels are English
+       in every language, the way the footer stays English. */
+    about: "About",
+    speakers: "Guest Speaker",
+    schedule: "Event schedule",
+    sponsors: "Our Network & Partners",
+    register: "Register Now",
     registering: "Mendaftarkan…",
     signInToRegister: "Masuk untuk mendaftar",
     profileNeeded: "Lengkapi profil anggotamu dulu untuk mendaftar.",
@@ -188,14 +223,39 @@ const id = {
   gallery: {
     photos: "foto",
     seeAll: "Lihat semua foto",
+    tagline:
+      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
     empty: "Belum ada album.",
     close: "Tutup",
     previous: "Sebelumnya",
     next: "Berikutnya",
     open: "Buka foto",
     eventAlbum: "Album foto acara ini",
+    viewAlbum:
+      "View Full Album on Google Drive" /* button label, English in every language (user mock) */,
+    brief:
+      "A brief description of the event highlights. Lorem ipsum." /* fixed dummy text, English in every language (user mock) */,
   },
   map: {
+    /* Static map page (user): the design title and tagline, verbatim — English
+       headings like the other list pages. The keys below the divider belong to the
+       interactive chapter map used by About, Profile and the chapter cards. */
+    title: "Map PPI Negara Kawasan Asia Oseania",
+    tagline:
+      "Connecting Indonesian across Asia-Oceania through collaboration, culture, and community.",
+    /* Country list panel under the map image (user): side.svg recreated from data —
+       one row per chapter; inactive chapters dim. */
+    list: "List PPI Negara",
+    /* Chapter detail page /map/[slug] (user): the dashboard's plain rows — "Email:" /
+       "Phone:" lines, no field headers (user). English in both languages, like the map
+       headings. Row click → the detail page. */
+    detail: {
+      back: "Back to Map",
+      email: "Email",
+      phone: "Phone",
+      instagram: "Instagram",
+    },
+    /* ---- interactive chapter map (About/Profile/chapter cards) ---- */
     intro: "PPI Negara anggota PPIDK Asia-Oseania. Pilih titik di peta untuk melihat kontaknya.",
     count: "PPI Negara",
     label: "Peta PPI Negara di kawasan Asia-Oseania",
@@ -596,19 +656,46 @@ const id = {
   },
   about: {
     title: "Tentang kami",
-    intro:
-      "PPIDK Asia-Oseania (Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania) adalah organisasi kemahasiswaan nirlaba yang menaungi PPI Negara di kawasan Asia dan Oseania.",
-    whatHeading: "Yang kami lakukan",
-    what: [
-      "Menghubungkan pelajar Indonesia di kawasan Asia-Oseania melalui PPI Negara.",
-      "Menyelenggarakan acara, kajian, dan program bersama antarnegara.",
-      "Menyampaikan informasi resmi organisasi kepada anggota dan publik.",
+    profilHeading: "PROFIL PPIDK ASIA-OSEANIA",
+    profilParagraphs: [
+      "Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania (PPIDK Asia-Oseania) merupakan bagian dari Perhimpunan Pelajar Indonesia Dunia yang berfungsi sebagai wadah koordinasi, komunikasi, dan kolaborasi bagi organisasi Perhimpunan Pelajar Indonesia di negara-negara kawasan Asia-Oseania. PPIDK Asia-Oseania hadir untuk memperkuat sinergi antarpelajar Indonesia yang sedang menempuh pendidikan di berbagai negara dalam kawasan tersebut.",
+      "Kawasan Asia-Oseania merupakan salah satu kawasan dengan jumlah pelajar Indonesia yang besar dan tersebar di berbagai negara. Keragaman latar belakang akademik, budaya, bahasa, serta pengalaman internasional menjadi potensi penting yang terus dihimpun dan dikembangkan oleh PPIDK Asia-Oseania. Melalui berbagai program pendidikan, pengembangan kapasitas, kajian, kebudayaan, media, kewirausahaan, serta hubungan antarlembaga, PPIDK Asia-Oseania berupaya menghadirkan kontribusi nyata bagi pelajar Indonesia dan pembangunan bangsa. PPIDK Asia-Oseania saat ini menaungi 16 PPI Negara. Setiap PPI Negara menjadi wadah bagi pelajar Indonesia untuk memperoleh dukungan akademik dan nonakademik, membangun jejaring, mempererat persaudaraan, serta memperkuat identitas kebangsaan selama menempuh pendidikan di luar negeri.",
+    ],
+    kolaborasiHeading: "Kolaborasi ASIANIA",
+    kolaborasiParagraphs: [
+      'Nama "Kolaborasi" dipilih sebagai identitas kerja. Ia merepresentasikan cara kabinet ini memandang peran PPIDK Asiania: sebagai simpul penghubung antara PPI Dunia dan PPI negara, dan sebaliknya, serta antar-PPI negara di seluruh kawasan Asia-Oseania, kawasan dengan keunikan, keragaman negara, latar belakang akademik, kompetensi, dan perspektif yang luas.',
+      'Nama "Asiania" menegaskan identitas kolektif kawasan, bahwa keunikan dan keragaman bukanlah penghalang untuk berjalan bersama, melainkan justru sumber kekuatan, sepan-jang seluruh elemen terhubung oleh tujuan yang sama.',
+      "Kolaborasi Asiania bukan sekadar nama yang dipilih untuk mengisi struktur administratif kepengurusan. Nama ini lahir dari sebuah keyakinan mendasar: bahwa Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania (PPIDK Asiania) bukanlah forum koordinasi semata, melainkan sebuah ekosistem, tempat gagasan bertemu kesempatan, pengalaman bertemu dengan kolaborasi, dan diaspora Indonesia tumbuh menjadi kekuatan yang memberi dampak.",
+    ],
+    visionHeading: "VISI",
+    visionDefault:
+      "Mewujudkan PPIDK Asia-Oseania sebagai katalisator inklusif dan progresif yang mempererat sinergi diaspora Indonesia melalui inovasi digital dan kolaborasi strategis yang berdampak nyata.",
+    missionHeading: "MISI",
+    missionDefault: [
+      "A—Accelerate Collaboration: Mewujudkan jejaring kolaborasi yang kuat, sistematis, dan berkesinambungan antar-PPI Negara di kawasan Asia-Oseania sebagai ruang pertukaran gagasan, pengalaman, dan potensi sebagai identitas gerakan bersama PPIDK Asia-Oseania melalui semangat #kolaborASIANIA.",
+      "K—Knit Strategic Partnership: Memperkuat peran PPIDK Asia-Oseania sebagai penghubung strategis antara PPI Negara, PPI Dunia, dan diaspora Indonesia di tingkat regional maupun global.",
+      "S—Spark Innovation: Menghadirkan program-program yang bersifat solutif, inovatif, dan aplikatif untuk memperluas manfaat organisasi bagi diaspora, masyarakat Indonesia, serta jejaring internasional.",
+      "I—Inspire Impact: Mengoptimalkan ruang digital, diplomasi, pengabdian, dan pengembangan kapasitas sebagai instrumen utama dalam memperkuat citra dan kontribusi diaspora Indonesia.",
     ],
     structureHeading: "Struktur organisasi",
     structure:
       "Kepengurusan disusun per periode. Visi, misi, dan susunan pengurus periode berjalan ditampilkan di sini setelah ditetapkan.",
-    councilsHeading: "PPI Negara",
-    councils: "Lihat semuanya di peta",
+    unitMembers: "Pengurus",
+    // Round 15: "Bagian di dalamnya" → "Bagian Terkait" (user: "Bagian di
+    // dalamnya seharusnya ganti dengan Bagian Terkaiit" — typo corrected);
+    // the back link shortens to a plain "Back" (user: "← Kembali ke Tentang
+    // kami ganti jadi ← Back").
+    unitChildren: "Bagian Terkait",
+    // Round 19 (user: "ada tambahan Wakilnya yang mungkin lebih dari satu"):
+    // on the SEKTIF & BEND detail pages the children section is headed
+    // "Wakil" — those children ARE the wakil of the officer.
+    unitDeputies: "Wakil",
+    // Round 35 (user: "Buat urutan fotonya begini: Kepala/Dir. Wakil.
+    // Sekretaris. Staff."): on the biro/direktorat pages the non-head team
+    // lists under its own headings.
+    unitSekretaris: "Sekretaris",
+    unitStaff: "Staff",
+    unitBack: "Back",
   },
   terms: {
     title: "Syarat dan Ketentuan",
@@ -730,32 +817,24 @@ const en: Dictionary = {
     privacy: "Privacy Policy",
   },
   home: {
-    googleHeading: "Google data notice",
-    google:
-      "If you sign in with Google, we only receive your account ID, e-mail address, name and profile picture (openid, email, profile scopes). We use them to create and protect your account, never sell them and never share them with advertisers. We do not request access to Gmail, Drive, Calendar or any other Google service.",
-    googleMore: "Read the Privacy Policy",
     heroTitle: "Connecting Indonesian Students All Across Asia & Oceania",
     heroSubtitle:
       "Building bonds, sharing knowledge, and celebrating Indonesian culture across the region.",
     heroCta: "Learn More",
-    statsHeading: "Our Organization in Numbers",
-    stats: [
-      { value: "500+", label: "Volunteers" },
-      { value: "15+", label: "Years of Operation" },
-      { value: "500+", label: "Indonesian Students" },
-      { value: "50+", label: "Events per Year" },
-    ],
     eventsHeading: "Latest Events",
     newsHeading: "Latest News",
     readMore: "Read",
-    allEvents: "View All Events",
-    allNews: "View All News",
-    chairHeading: "Welcome from the Chair",
-    chairQuote:
-      "Welcome to PPIDK Asia-Oceania — home of the Indonesian student associations across Asia and Oceania. Here we nurture our shared community, exchange information, and strengthen the contribution of Indonesian students across borders. May every visitor find something useful and feel inspired to help build Indonesia, wherever they are.",
-    connectHeading: "Stay Connected",
-    connectBody:
-      "Subscribe to our newsletter for upcoming events, news, and association updates across the region.",
+    register: "Register",
+    welcomeHeading: "A Word from the Secretary General",
+    welcomeQuote:
+      "“Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nSed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.”",
+    welcomeName: "Lorem Ipsum",
+    welcomeRole: "Secretary General, PPIDK Asia-Oceania",
+    sponsorLabel: "Sponsors",
+    slider: {
+      previous: "Previous PPI",
+      next: "Next PPI",
+    },
     fallbackEvents: [
       {
         title: "Discussion Forum",
@@ -786,15 +865,15 @@ const en: Dictionary = {
     ],
   },
   pages: {
-    news: "News",
+    news: "Blog & Article" /* English heading like the design (user) */,
     events: "Events",
-    gallery: "Gallery",
+    gallery: "Our Gallery",
     map: "Map",
   },
   news: {
     latest: "Latest news",
     by: "By",
-    allCategories: "All categories",
+    allCategories: "All" /* same as the events/gallery pills (user) */,
     category: "Category",
     filter: "Apply",
     tagged: "Tag",
@@ -804,23 +883,57 @@ const en: Dictionary = {
     share: "Share",
     previous: "Previous",
     next: "Next",
+    pagination: "Page navigation",
     all: "See all news",
+    search: "Search news",
+    searchPlaceholder: "Search news titles…",
+    showing: "Showing {n} news",
+    /* Same English article page headings as the Indonesian dictionary (user). */
+    backToArticles: "Back to Blog & Articles",
+    recentNews: "Recent News",
+    tagline:
+      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
     categories: {
-      general: "General",
-      academic: "Academic",
-      community: "Community",
-      announcement: "Announcement",
-      international: "International",
+      seminar: "Seminar",
+      workshop: "Workshop",
+      webinar: "Webinar",
+      conference: "Conference",
+      meeting: "Meetup",
+      other: "Others" /* same label as the events "Lainnya" pill */,
     },
   },
   events: {
     upcoming: "Upcoming",
     past: "Past",
-    type: "Type",
-    allTypes: "All types",
+    allTypes: "All",
+    category: "Category",
+    other: "Others",
+    period: "Date Range",
+    allPeriods: "Any date range" /* shared by the news panel (user) */,
+    periodOptions: {
+      upcoming: "Upcoming",
+      week: "This week",
+      month: "This month",
+      year: "This year",
+      custom: "Custom…",
+    },
+    /* Pill labels exactly as the design mock (SEMINAR WORKSHOP WEBINAR CONFERENCE MEETUP). */
+    pillTypes: {
+      seminar: "Seminar",
+      workshop: "Workshop",
+      webinar: "Webinar",
+      conference: "Conference",
+      meeting: "Meetup",
+    },
+    region: "Country" /* label as in the design mock (user) */,
+    allRegions: "All regions",
+    search: "Search",
+    searchPlaceholder: "Search activities…",
+    showing: "Showing {n} activities",
+    tagline:
+      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
     from: "From",
     to: "To",
-    filter: "Apply",
     clear: "Clear filters",
     empty: "No events yet.",
     when: "When",
@@ -828,10 +941,11 @@ const en: Dictionary = {
     eventTime: "local time",
     yourTime: "your time",
     deadline: "Registration closes",
-    speakers: "Speakers",
-    schedule: "Schedule",
-    sponsors: "Supported by",
-    register: "Register",
+    about: "About",
+    speakers: "Guest Speaker",
+    schedule: "Event Schedule",
+    sponsors: "Our Network & Partners",
+    register: "Register Now",
     registering: "Registering…",
     signInToRegister: "Sign in to register",
     profileNeeded: "Complete your member profile first to register.",
@@ -864,14 +978,34 @@ const en: Dictionary = {
   gallery: {
     photos: "photos",
     seeAll: "See all photos",
+    tagline:
+      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
     empty: "No albums yet.",
     close: "Close",
     previous: "Previous",
     next: "Next",
     open: "Open photo",
     eventAlbum: "Photo album of this event",
+    viewAlbum:
+      "View Full Album on Google Drive" /* button label, English in every language (user mock) */,
+    brief:
+      "A brief description of the event highlights. Lorem ipsum." /* fixed dummy text, English in every language (user mock) */,
   },
   map: {
+    /* Same design title and tagline as the Indonesian dictionary (user). */
+    title: "Map PPI Negara Kawasan Asia Oseania",
+    tagline:
+      "Connecting Indonesian across Asia-Oceania through collaboration, culture, and community.",
+    /* Same list heading as the Indonesian dictionary; the country names are English. */
+    list: "List PPI Negara",
+    /* Chapter detail page /map/[slug] (user): the same dashboard field labels
+       (English in both languages). */
+    detail: {
+      back: "Back to Map",
+      email: "Email",
+      phone: "Phone",
+      instagram: "Instagram",
+    },
     intro:
       "The national associations (PPI) in PPIDK Asia-Oseania. Select a point on the map to see their contacts.",
     count: "national associations",
@@ -1273,19 +1407,36 @@ const en: Dictionary = {
   },
   about: {
     title: "About us",
-    intro:
-      "PPIDK Asia-Oseania (Indonesian Students' Association in Asia-Oceania) is a non-profit student organisation that brings together the national Indonesian student associations (PPI) in Asia and Oceania.",
-    whatHeading: "What we do",
-    what: [
-      "Connect Indonesian students across Asia-Oceania through their national associations.",
-      "Run events, studies and joint programmes between countries.",
-      "Share official information with members and the public.",
+    profilHeading: "PROFILE OF PPIDK ASIA-OCEANIA",
+    profilParagraphs: [
+      "PPIDK Asia-Oceania (the Indonesian Students' Association of the Asia-Oceania region) is part of the Indonesian Students' Association Worldwide and serves as a body for coordination, communication and collaboration between the national Indonesian student associations (PPI) in the countries of Asia-Oceania. PPIDK Asia-Oceania exists to strengthen the synergy of Indonesian students studying in the countries of the region.",
+      "Asia-Oceania is one of the regions with the largest numbers of Indonesian students, spread across many countries. The diversity of academic backgrounds, cultures, languages and international experience is an important asset that PPIDK Asia-Oceania brings together and develops. Through programmes in education, capacity building, studies, culture, media, entrepreneurship and inter-institutional relations, PPIDK Asia-Oceania works to make a real contribution to Indonesian students and to the nation's development. PPIDK Asia-Oceania currently brings together 16 national associations. Each national association is a home for Indonesian students to receive academic and non-academic support, build networks, strengthen brotherhood and reinforce their national identity while studying abroad.",
+    ],
+    kolaborasiHeading: "KOLABORASI ASIANIA",
+    kolaborasiParagraphs: [
+      "The name \"Kolaborasi\" (Collaboration) was chosen as the cabinet's working identity. It reflects how this cabinet sees the role of PPIDK Asiania: as a hub connecting the Indonesian Students' Association Worldwide with the national associations — and, in turn, the national associations with one another — across Asia-Oceania, a region of distinctive countries, academic backgrounds, competences and perspectives.",
+      'The name "Asiania" affirms the region\'s collective identity: that uniqueness and diversity are not obstacles to moving forward together but a source of strength, as long as every part is connected by a shared purpose.',
+      "Kolaborasi Asiania is not merely a name chosen to fill the board's administrative structure. The name was born of a fundamental conviction: that PPIDK Asiania is not just a coordination forum but an ecosystem, where ideas meet opportunity, experience meets collaboration, and the Indonesian diaspora grows into a force that makes an impact.",
+    ],
+    visionHeading: "VISION",
+    visionDefault:
+      "To make PPIDK Asia-Oceania an inclusive and progressive catalyst that strengthens the synergy of the Indonesian diaspora through digital innovation and strategic collaboration that delivers real impact.",
+    missionHeading: "MISSION",
+    missionDefault: [
+      "A—Accelerate Collaboration: building a strong, systematic and sustainable network of collaboration among the national associations of Asia-Oceania as a space for exchanging ideas, experience and potential, as the shared identity of PPIDK Asia-Oceania's movement under the spirit of #kolaborASIANIA.",
+      "K—Knit Strategic Partnership: strengthening PPIDK Asia-Oceania's role as a strategic link between the national associations, the Indonesian Students' Association Worldwide and the Indonesian diaspora at regional and global levels.",
+      "S—Spark Innovation: delivering programmes that are solution-oriented, innovative and practical, to widen the organisation's benefit to the diaspora, Indonesian society and international networks.",
+      "I—Inspire Impact: making the most of digital spaces, diplomacy, service and capacity building as the main instruments for strengthening the image and contribution of the Indonesian diaspora.",
     ],
     structureHeading: "Organisation structure",
     structure:
       "The board is formed per period. The vision, mission and board of the current period appear here once they are set.",
-    councilsHeading: "National associations",
-    councils: "See them all on the map",
+    unitMembers: "Officers",
+    unitChildren: "Related parts",
+    unitDeputies: "Deputies",
+    unitSekretaris: "Secretary",
+    unitStaff: "Staff",
+    unitBack: "Back",
   },
   terms: {
     title: "Terms and Conditions",

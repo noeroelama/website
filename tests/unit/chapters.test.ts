@@ -17,6 +17,9 @@ const valid = {
   logo: null,
   contactName: "Sari",
   contactPublic: "humas@ppijepang.org",
+  description: "Wadah pelajar Indonesia di Jepang.",
+  role: "Ketua",
+  phone: "+81 90 1234 5678",
   website: "https://ppijepang.org",
   email: "info@ppijepang.org",
   instagram: "@ppijepang",
@@ -28,13 +31,33 @@ const valid = {
 
 describe("chapters (PPI Negara, feature A2)", () => {
   it("accepts a complete chapter; the country code is upper-cased; empty optionals become null", () => {
-    const parsed = ChapterInputSchema.parse({ ...valid, website: "", email: "", instagram: "" });
+    const parsed = ChapterInputSchema.parse({
+      ...valid,
+      website: "",
+      email: "",
+      instagram: "",
+      role: "",
+      phone: "",
+      region: "",
+      mapNo: "",
+    });
     expect(parsed).toMatchObject({
       countryCode: "JP",
+      region: null,
+      mapNo: null,
       website: null,
       email: null,
       instagram: null,
+      role: null,
+      phone: null,
     });
+    expect(ChapterInputSchema.parse({ ...valid, region: "southeastAsia" }).region).toBe(
+      "southeastAsia",
+    );
+    expect(ChapterInputSchema.safeParse({ ...valid, region: "atlantis" }).success).toBe(false);
+    expect(ChapterInputSchema.parse({ ...valid, mapNo: "18" }).mapNo).toBe(18);
+    expect(ChapterInputSchema.safeParse({ ...valid, mapNo: "0" }).success).toBe(false);
+    expect(ChapterInputSchema.safeParse({ ...valid, mapNo: "abc" }).success).toBe(false);
   });
 
   it("refuses bad country codes, zones, links, e-mails, coordinates and unknown keys", () => {
@@ -84,14 +107,20 @@ describe("chapters (PPI Negara, feature A2)", () => {
     const dto = toPublicChapter(chapter);
     expect(Object.keys(dto).sort()).toEqual(
       [
+        "active",
         "contactName",
         "contactPublic",
         "countryCode",
+        "description",
         "email",
         "instagram",
         "logo",
+        "mapNo",
         "name",
+        "phone",
         "position",
+        "region",
+        "role",
         "slug",
         "socials",
         "timezone",

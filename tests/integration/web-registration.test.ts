@@ -9,6 +9,7 @@ const event: PublicEvent = {
   title: "Simposium",
   type: "seminar",
   startsAt: new Date("2026-11-20T02:00:00Z"),
+  endsAt: null,
   timezone: "Asia/Tokyo",
   registrationClosesAt: null,
   location: "Tokyo",

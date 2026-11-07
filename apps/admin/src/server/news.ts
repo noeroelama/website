@@ -84,6 +84,7 @@ export function createNewsActions(deps: NewsDeps) {
             title: input.title,
             author: input.author,
             category: input.category,
+            location: input.location,
             summary: input.summary,
             tags: input.tags,
             body: sanitizeRichText(input.body),

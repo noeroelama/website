@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-labelledby="welcome-portrait-title">
+  <title id="welcome-portrait-title">Foto anonymous — ganti dengan foto asli Sekretaris Jenderal</title>
+  <rect width="600" height="800" fill="#fbf3ec"/>
+  <circle cx="300" cy="272" r="128" fill="#e8d8cb"/>
+  <circle cx="300" cy="272" r="128" fill="none" stroke="#a63232" stroke-width="10"/>
+  <path d="M300 446 c-118 0 -168 74 -168 186 l0 50 c0 38 40 68 168 68 s168 -30 168 -68 l0 -50 c0 -112 -50 -186 -168 -186 Z" fill="#e8d8cb"/>
+</svg>

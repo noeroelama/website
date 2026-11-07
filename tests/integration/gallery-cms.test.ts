@@ -192,4 +192,55 @@ describe("Gallery CMS", () => {
     ).toEqual(["UNPUBLISH", "PUBLISH", "DELETE"]);
     expect(REVERTIBLE_COLLECTIONS["album"]).toBe("galleries");
   });
+
+  it("legacy albums without the event snapshots keep nulls; the audit before-snapshot keeps them null", async () => {
+    // Imported albums may predate the event snapshots (gallery.ts): the reader falls
+    // back to null for the missing fields instead of crashing, and the audit entry's
+    // `before` snapshot writes eventStartsAt as null too (100% branch coverage; `after`
+    // re-joins the published event, so it carries the real date).
+    const eventId = await createEvent(true);
+    await fake.db
+      .collection("galleries")
+      .doc("g-legacy")
+      .set({
+        slug: "legacy",
+        eventId,
+        eventTitle: "Legacy",
+        images: [image],
+        totalPhotos: 3,
+        albumUrl: "https://photos.app.goo.gl/legacy",
+        published: true,
+        version: 1,
+        active: true,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    const reader = createSqlGalleryReader(fake.db as unknown as Db);
+    expect(await reader.listPublished()).toMatchObject([
+      {
+        slug: "legacy",
+        eventType: null,
+        eventStartsAt: null,
+        eventTimezone: null,
+        eventLocation: null,
+        eventDescription: null,
+      },
+    ]);
+    await gallery().save(...as(editor))({
+      images: [image],
+      totalPhotos: 3,
+      albumUrl: "https://photos.app.goo.gl/legacy",
+      eventId,
+      slug: "legacy",
+      id: "g-legacy",
+      version: 1,
+      publish: true,
+    });
+    expect(auditEntries().at(-1)).toMatchObject({
+      action: "UPDATE",
+      before: { eventStartsAt: null, eventType: null },
+      after: { eventStartsAt: "2026-09-20T02:00:00.000Z", eventTitle: "Simposium 2026" },
+    });
+  });
 });

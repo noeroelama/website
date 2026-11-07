@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { formatNewsDate, relatedNews } from "@website/domain/content";
 import { isValidSlug } from "@website/domain/shared";
 import { sanitizeRichText } from "@website/security/html";
-import { ArticleView } from "@website/ui";
 import { NewsCards } from "@/components/news-cards";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
-import { getAppUrls } from "@/server/env";
+import { cityOf, formatEventDate } from "@/lib/event-time";
 import { publicNews, publicNewsBySlug } from "@/server/news";
 
 // Unknown, draft, future or deleted slug → the 404 page. With Cache Components the response has
@@ -36,45 +34,49 @@ export default async function NewsArticlePage({ params }: PageProps<"/news/[slug
   if (!item) notFound();
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
-  const related = relatedNews(item, await publicNews());
-  const url = `${getAppUrls().WEB_URL ?? ""}/news/${item.slug}`;
-  const share = [
-    ["WhatsApp", `https://wa.me/?text=${encodeURIComponent(`${item.title} ${url}`)}`],
-    ["X", `https://x.com/intent/post?url=${encodeURIComponent(url)}`],
-    ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`],
-    ["LinkedIn", `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`],
-  ] as const;
+  // Recent News: the three newest articles, the current one excluded (user).
+  const recent = (await publicNews()).filter((n) => n.slug !== item.slug).slice(0, 3);
   return (
-    <>
-      <ArticleView
-        title={item.title}
-        author={item.author}
-        date={formatNewsDate(item.publishAt, language)}
-        category={t.news.categories[item.category]}
-        image={item.featuredImage}
-        safeHtml={sanitizeRichText(item.body)}
-        tags={item.tags.map((tag) => ({
-          label: tag,
-          href: `/news?tag=${encodeURIComponent(tag)}`,
-        }))}
-      />
-      <div className="ui-shell">
-        {/* Plain share links: no third-party scripts. */}
-        <p className="site-share">
-          {t.news.share}:
-          {share.map(([name, href]) => (
-            <a key={name} href={href} target="_blank" rel="noopener noreferrer">
-              {name}
-            </a>
-          ))}
+    // Same frame as the news list (user): black page, 74rem column, cream text;
+    // the Recent News cards inherit the black-page card styles.
+    <main className="site-lists site-lists--news">
+      <div className="site-lists__inner">
+        <a className="site-article__back" href="/news">
+          ← {t.news.backToArticles}
+        </a>
+        <h1 className="site-lists__title">{item.title}</h1>
+        <p className="site-article__meta">
+          {formatEventDate(item.publishAt, "UTC")}
+          {item.location && (
+            <>
+              <span aria-hidden="true">•</span>
+              {cityOf(item.location)}
+            </>
+          )}
+          <span aria-hidden="true">•</span>
+          {t.news.categories[item.category]}
         </p>
-        {related.length > 0 && (
-          <section>
-            <h2>{t.news.related}</h2>
-            <NewsCards items={related} t={t} language={language} />
+        {item.featuredImage && (
+          // eslint-disable-next-line @next/next/no-img-element -- Storage serves scaled WebP
+          <img
+            className="site-article__banner"
+            src={item.featuredImage.url}
+            width={item.featuredImage.width}
+            height={item.featuredImage.height}
+            alt=""
+          />
+        )}
+        <div
+          className="site-article__body"
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(item.body) }}
+        />
+        {recent.length > 0 && (
+          <section className="site-article__recent">
+            <h2 className="site-article__heading">{t.news.recentNews}</h2>
+            <NewsCards items={recent} t={t} />
           </section>
         )}
       </div>
-    </>
+    </main>
   );
 }

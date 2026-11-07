@@ -67,7 +67,8 @@ export function shortUtc(iso: string, ref?: string): string {
   const d = new Date(iso);
   const time = d.toISOString().slice(11, 16);
   if (ref === undefined) return time;
-  const year = d.getUTCFullYear() === new Date(ref).getUTCFullYear() ? "" : ` ${d.getUTCFullYear()}`;
+  const year =
+    d.getUTCFullYear() === new Date(ref).getUTCFullYear() ? "" : ` ${d.getUTCFullYear()}`;
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${year}, ${time}`;
 }
 

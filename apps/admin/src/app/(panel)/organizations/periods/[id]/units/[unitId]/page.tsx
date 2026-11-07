@@ -22,5 +22,6 @@ export default async function EditUnitRoute({
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
   const unit = await adminReads.getOrgUnit(unitId);
   if (!unit || unit.deletedAt || unit.periodId !== id) notFound();
-  return <OrgUnitEditor periodId={id} unit={toOrgUnitItem(unit)} />;
+  const all = await adminReads.listOrgUnits(id);
+  return <OrgUnitEditor periodId={id} unit={toOrgUnitItem(unit)} units={all.map(toOrgUnitItem)} />;
 }
