@@ -20,13 +20,6 @@ or following a link.
   the panel; the same file as `apps/web/public/logo.webp`), linking to the public website
   (`WEB_URL`; not a link when it is unset); also the optional QR-code centre logo in Tools
 - Tests: `tests/unit/admin-navigation.test.ts`
-- Search box (G4): a plain GET form to `/search?q=` above the menu; `/` focuses it (not while
-  typing in a field). `src/server/search.ts` matches by word prefix (letters also by number):
-  menu pages from `navigationFor` (so access is the menu's), then letters, programmes and
-  meetings of the active period from the SAME queries and scope filters as their list pages, and
-  people via `accounts.searchByPrefix` limited to the `users.read` chapters. No prefix fields were
-  added: the per-period lists are already bounded and MySQL JSON has no case-insensitive index.
-  Tests: `tests/integration/search.test.ts` (nothing outside scope).
 
 ## How to use it
 

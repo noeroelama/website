@@ -28,7 +28,6 @@ import { createResendSender, emailChannel } from "@website/email";
 import { createCronRoute, CRON_JOBS } from "./cron";
 import { createChapterRecords } from "./chapter-records";
 import { createDashboard } from "./dashboard";
-import { createSearch } from "./search";
 import { createEventActions } from "./events";
 import { createFinanceActions } from "./finance";
 import { createFormActions } from "./forms";
@@ -887,18 +886,6 @@ export const calendar = lazyEnv(() =>
     secret: getAdminEnv().CALENDAR_FEED_SIGNING_SECRET ?? null,
     adminUrl: getAppUrls().ADMIN_URL ?? "",
     now: () => new Date(),
-  }),
-);
-
-/** Global search (G4): menu pages, then letters, programmes, meetings and people in scope. */
-export const search = lazyEnv(() =>
-  createSearch({
-    activePeriod,
-    letters: async (periodId, orgUnitIds) =>
-      (await adminStores().letters.list({ periodId, orgUnitIds, limit: 300 })).items,
-    programs: (periodId) => adminStores().programs.listForPeriod(periodId),
-    meetings: (periodId) => adminStores().meetings.listForPeriod(periodId),
-    people: (text) => adminStores().accounts.searchByPrefix(text, 20),
   }),
 );
 
