@@ -13,6 +13,8 @@ import {
   PeriodSwitch,
   text,
 } from "@/components/program-ui";
+import { downloadCsv } from "@/components/csv";
+import { programsCsv } from "@/components/exports-model";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
@@ -34,6 +36,7 @@ interface Row {
   health: HealthStatus | null;
   /** The viewer is a PIC of it. */
   mine: boolean;
+  milestones: Array<{ title: string; dueOn: string | null; done: boolean }>;
 }
 
 /** What the plan form offers: the units the viewer may plan for, the period's key results. */
@@ -244,6 +247,14 @@ export function ProgramsPage({
             href={`/programs/report?period=${period.id}`}
           >
             Report card
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            icon="download"
+            onClick={() => downloadCsv(`programmes-${period.id}`, programsCsv(rows))}
+          >
+            Export CSV
           </Button>
           <div className="admin-fab">
             {plan ? (

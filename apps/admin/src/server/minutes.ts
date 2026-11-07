@@ -374,7 +374,41 @@ export function minutesSheet(
   };
 }
 
-/** GET /api/meetings/<id>/minutes: the minutes as PDF for whoever may see the meeting. */
+/** The attendance list alone (M8): each participant, present with the time signed, or absent. */
+export function attendanceSheet(
+  meeting: Meeting,
+  names: ReadonlyMap<string, string>,
+  now: Date,
+): ReportPdfInput {
+  const when = new Intl.DateTimeFormat("en-GB", {
+    timeZone: meeting.timeZone,
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+  const present = Object.keys(meeting.attendance).length;
+  return {
+    title: `Daftar hadir / Attendance: ${meeting.title}`,
+    subtitle: `${when.format(meeting.startsAt)} (${meeting.timeZone})`,
+    sections: [
+      {
+        heading: `${present} of ${meeting.participants.length} present`,
+        lines: meeting.participants.map((p) => {
+          const a = meeting.attendance[p.uid];
+          const who = `${names.get(p.uid) ?? p.uid} (${MEETING_ROLE_LABELS[p.role]})`;
+          return a
+            ? `${who}: present ${a.at.toISOString().slice(0, 16).replace("T", " ")} UTC (${a.method})`
+            : `${who}: absent`;
+        }),
+      },
+    ],
+    footer: `Printed ${now.toISOString().slice(0, 16).replace("T", " ")} UTC`,
+  };
+}
+
+/**
+ * GET /api/meetings/<id>/minutes: the minutes (or, with ?sheet=attendance, the attendance list)
+ * as PDF for whoever may see the meeting.
+ */
 export function createMinutesFileRoute(deps: {
   readonly getMeeting: (id: string) => Promise<Meeting | null>;
   readonly listItems: (
@@ -386,7 +420,11 @@ export function createMinutesFileRoute(deps: {
   readonly render: (input: ReportPdfInput) => Promise<Uint8Array>;
   readonly now: () => Date;
 }) {
-  return async (id: string, principal: Principal | null): Promise<Response> => {
+  return async (
+    id: string,
+    principal: Principal | null,
+    sheet: "minutes" | "attendance" = "minutes",
+  ): Promise<Response> => {
     if (principal === null || !principal.active) return jsonError("unauthenticated");
     if (!canAccessAdmin(principal)) return jsonError("forbidden");
     const meeting = safeId.safeParse(id).success ? await deps.getMeeting(id) : null;
@@ -396,22 +434,29 @@ export function createMinutesFileRoute(deps: {
         { status: 404, headers: { "Cache-Control": "no-store" } },
       );
     }
-    const items = await deps.listItems(meeting.id);
+    const items = sheet === "minutes" ? await deps.listItems(meeting.id) : [];
     const names = await deps.names([
       ...new Set([...meeting.participantIds, ...items.map((i) => i.pic)]),
     ]);
     const bytes = await deps.render(
-      minutesSheet(
-        meeting,
-        names,
-        items.map((i) => ({ title: i.title, pic: i.pic, dueOn: i.dueOn, done: i.doneAt !== null })),
-        deps.now(),
-      ),
+      sheet === "attendance"
+        ? attendanceSheet(meeting, names, deps.now())
+        : minutesSheet(
+            meeting,
+            names,
+            items.map((i) => ({
+              title: i.title,
+              pic: i.pic,
+              dueOn: i.dueOn,
+              done: i.doneAt !== null,
+            })),
+            deps.now(),
+          ),
     );
     return new Response(new Uint8Array(bytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="minutes-${meeting.id}.pdf"`,
+        "Content-Disposition": `inline; filename="${sheet}-${meeting.id}.pdf"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

@@ -396,6 +396,17 @@ describe("minutes PDF (F5)", () => {
     fake.docs.set("meetings/m1", { ...meetingDoc });
     await empty("m1", member);
     expect(JSON.stringify(sheet)).toContain("member (Participant)");
+
+    // M8: the attendance list alone, with the time each person signed.
+    fake.docs.set("meetings/m1", {
+      ...meetingDoc,
+      attendance: { chair: { at: new Date("2026-11-10T10:02:00Z"), method: "code" } },
+    });
+    const list = await empty("m1", member, "attendance");
+    expect(list.headers.get("Content-Disposition")).toContain("attendance-m1.pdf");
+    expect(sheet).toMatchObject({ title: "Daftar hadir / Attendance: Rapat kerja" });
+    expect(JSON.stringify(sheet)).toContain("chair (Chair): present 2026-11-10 10:02 UTC (code)");
+    expect(JSON.stringify(sheet)).toContain("sec (Secretary (minutes)): absent");
   });
 });
 

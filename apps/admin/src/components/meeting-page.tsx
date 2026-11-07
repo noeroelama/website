@@ -11,11 +11,14 @@ import {
 } from "@website/domain/meetings";
 import {
   cancelMeetingAction,
+  logAttendanceExportAction,
   markAttendanceAction,
   openCodeAction,
   saveRoomAction,
 } from "@/app/(panel)/meetings/actions";
 import { actionMessage } from "@/components/action-message";
+import { downloadCsv } from "@/components/csv";
+import { attendanceCsv } from "@/components/exports-model";
 import { formatInZone } from "@/components/format";
 import { MeetingForm, MEETING_STATUS_TONE, type MeetingValues } from "@/components/meetings-page";
 import { DraftMinutes } from "@/components/draft-minutes";
@@ -125,6 +128,15 @@ export function MeetingPage({
   const [cancelling, setCancelling] = useState(false);
   const [screen, setScreen] = useState(false);
 
+  const exportAttendance = async () => {
+    const result = await logAttendanceExportAction({ rows: m.participants.length });
+    if (!result.ok) {
+      toast.show(actionMessage(result));
+      return;
+    }
+    downloadCsv(`attendance-${m.id}`, attendanceCsv(m.participants));
+  };
+
   const tick = async (uid: string, present: boolean) => {
     const result = await markAttendanceAction({ id: m.id, version: m.version, uid, present });
     if (!result.ok) return toast.show(actionMessage(result));
@@ -178,6 +190,22 @@ export function MeetingPage({
           </p>
         </div>
         <div className="admin-page-header__actions">
+          <Button
+            size="sm"
+            variant="outline"
+            icon="download"
+            href={`/api/meetings/${m.id}/minutes?sheet=attendance`}
+          >
+            Attendance PDF
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            icon="download"
+            onClick={() => void exportAttendance()}
+          >
+            Export CSV
+          </Button>
           {runs ? (
             <Button size="sm" icon="qr" onClick={() => setScreen(true)}>
               Show attendance code

@@ -6,6 +6,7 @@ import {
   applicationFileUrlAction,
   approvePlacementAction,
   failApplicationAction,
+  logApplicantsExportAction,
   offerApplicationAction,
   passApplicationAction,
   ratifyApplicationAction,
@@ -14,6 +15,8 @@ import {
   returnPactAction,
 } from "@/app/(panel)/recruitment/actions";
 import { actionMessage } from "@/components/action-message";
+import { downloadCsv } from "@/components/csv";
+import { applicantsCsv } from "@/components/exports-model";
 import { formatInZone } from "@/components/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -626,6 +629,20 @@ export function ApplicationsPage(props: {
             onClick={() => router.push("/recruitment")}
           >
             Back
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            icon="download"
+            onClick={() =>
+              void (async () => {
+                const result = await logApplicantsExportAction({ rows: filtered.length });
+                if (result.ok) downloadCsv(`applicants-${recruitment.id}`, applicantsCsv(filtered));
+                else toast.show(actionMessage(result));
+              })()
+            }
+          >
+            Export CSV
           </Button>
           <SortMenu columns={columns} />
           <SearchBox

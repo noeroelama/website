@@ -21,6 +21,7 @@ import { keyedHash, signLink } from "@website/security";
 import { createAccountActions } from "./accounts";
 import { createApplicationActions } from "./applications";
 import { createDeadlineReminders } from "./deadline-reminders";
+import { createExportLog, createReportCardFileRoute } from "./exports";
 import { createAppointmentActions } from "./appointments";
 import { createAuditLogActions, REVERTIBLE_COLLECTIONS } from "./audit-log";
 import { createChapterActions } from "./chapters";
@@ -744,6 +745,25 @@ export const minutesFile = lazyEnv(() =>
     names: accountNames,
     render: renderReportPdf,
     now: () => new Date(),
+  }),
+);
+
+/** GET /api/programs/report: the period report card as PDF (M8). */
+export const reportCardFile = lazyEnv(() =>
+  createReportCardFileRoute({
+    periods: () => adminStores().periods.listForAdmin(),
+    card: (id) => adminStores().periodReport.card(id, new Date()),
+    units: (id) => adminStores().orgUnits.listForPeriod(id),
+    render: renderReportPdf,
+    now: () => new Date(),
+  }),
+);
+
+/** Browser-built CSV exports of personal data, logged as data.export (M8). */
+export const exportLog = lazyEnv(() =>
+  createExportLog({
+    logExport: (actorId, details) =>
+      logSecurityEvent(adminStores().logger, { type: "data.export", actorId, details }),
   }),
 );
 

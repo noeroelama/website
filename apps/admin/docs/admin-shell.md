@@ -225,6 +225,26 @@ router.push("/things"); router.refresh();
   browser (nothing is stored). The URL Shortener uses goppi.id first and s.id as fallback (`packages/domain/docs/links.md`): create with an optional slug, rename the title, archive/restore, clicks on open. Tests:
   `tests/unit/admin-tools.test.ts`.
 
+## Exports (M8)
+
+CSV is built in the browser from the rows the page already shows (`src/components/exports-model.ts`
+→ `downloadCsv`, UTC times, cells quoted with `esc`). Exports of personal data first call a
+logging action (`src/server/exports.ts` `createExportLog`, the page's `.read` permission) that
+writes a `data.export` security event; the download starts only when it succeeds.
+
+| Export                                   | Where                                 | Logged dataset             |
+| ---------------------------------------- | ------------------------------------- | -------------------------- |
+| Programmes + milestones (CSV)            | Programmes                            | —                          |
+| Period report card (PDF)                 | Report card → PDF                     | —                          |
+| Zoom bookings (CSV)                      | Zoom                                  | —                          |
+| Meeting attendance (CSV, PDF)            | Meeting → Export CSV / Attendance PDF | `meeting_attendance` (CSV) |
+| Applicants (CSV, filtered list)          | Recruitment → Applications            | `applicants`               |
+| Accounts + role assignments (CSV)        | Role Manager                          | `accounts`                 |
+| Audit by date range (CSV)                | Audit Log (date range filter)         | —                          |
+| Form responses, subscribers, cash report | their pages (server-built)            | see their docs             |
+
+Tests: `tests/unit/admin-exports.test.ts`, `tests/integration/exports.test.ts`.
+
 ## Configuration
 
 None.

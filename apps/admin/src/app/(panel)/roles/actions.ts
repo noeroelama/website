@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
-import { accountActions, roleActions } from "@/server/wiring";
+import { accountActions, exportLog, roleActions } from "@/server/wiring";
 
 // Thin server-action wrappers for Role Manager: every rule lives in src/server/accounts.ts
 // (people) and src/server/roles.ts (roles), both built with createGuardedAction.
@@ -47,4 +47,9 @@ export async function saveRoleAction(input: unknown) {
 
 export async function deleteRoleAction(input: unknown) {
   return done(await roleActions().deleteRole(getPrincipal, getAuditContext)(input));
+}
+
+/** Export CSV of personal data: logged as a data.export security event (M8). */
+export async function logPeopleExportAction(input: unknown) {
+  return exportLog().people(getPrincipal, getAuditContext)(input);
 }

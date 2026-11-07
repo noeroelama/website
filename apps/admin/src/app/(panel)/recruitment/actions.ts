@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
-import { applicationActions, interviewActions, recruitmentActions } from "@/server/wiring";
+import {
+  applicationActions,
+  exportLog,
+  interviewActions,
+  recruitmentActions,
+} from "@/server/wiring";
 
 // Thin server-action wrappers: every rule lives in src/server/recruitment.ts (createGuardedAction).
 export async function saveRecruitmentAction(input: unknown) {
@@ -76,4 +81,9 @@ export async function createInterviewPlanAction(input: unknown) {
 
 export async function removeInterviewSlotAction(input: unknown) {
   return queued(await interviewActions().removeSlot(getPrincipal, getAuditContext)(input));
+}
+
+/** Export CSV of personal data: logged as a data.export security event (M8). */
+export async function logApplicantsExportAction(input: unknown) {
+  return exportLog().applicants(getPrincipal, getAuditContext)(input);
 }

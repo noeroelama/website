@@ -18,6 +18,7 @@ import {
   cancelInviteAction,
   deleteRoleAction,
   findPeopleAction,
+  logPeopleExportAction,
   personDetailsAction,
   revokeRoleAction,
   saveRoleAction,
@@ -25,6 +26,8 @@ import {
 } from "@/app/(panel)/roles/actions";
 import { ActionError } from "@/components/action-error";
 import { actionMessage, type ActionFailure } from "@/components/action-message";
+import { downloadCsv } from "@/components/csv";
+import { peopleCsv } from "@/components/exports-model";
 import { formatUtc } from "@/components/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -258,6 +261,20 @@ export function RoleManagerPeople({
               </Button>
             ) : null}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            icon="download"
+            onClick={() =>
+              void (async () => {
+                const result = await logPeopleExportAction({ rows: filtered.length });
+                if (result.ok) downloadCsv("accounts", peopleCsv(filtered, names));
+                else toast.show(actionMessage(result));
+              })()
+            }
+          >
+            Export CSV
+          </Button>
           <SortMenu columns={columns} />
           <SearchBox
             key={searchKey}

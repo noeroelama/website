@@ -47,6 +47,11 @@ export default async function AdminProgramsPage({
           progress: p.progressPercent,
           health: p.health?.status ?? null,
           mine: p.pics.includes(principal.userId),
+          milestones: p.milestones.map((m) => ({
+            title: m.title,
+            dueOn: m.dueOn,
+            done: m.completedAt !== null,
+          })),
         }))}
       plan={
         editable.length > 0 && canInSomeScope(principal, "programs.edit")

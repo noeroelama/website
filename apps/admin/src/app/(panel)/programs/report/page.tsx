@@ -52,6 +52,14 @@ export default async function ReportCardPage({
           <Button
             variant="outline"
             size="sm"
+            icon="download"
+            href={`/api/programs/report?period=${period.id}`}
+          >
+            PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             icon="chevronLeft"
             href={`/programs?period=${period.id}`}
           >

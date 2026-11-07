@@ -74,6 +74,8 @@ scheduled ──(end time passes, read-time)──→ finished
   My Tasks reads them by PIC).
 - **PDF** at `/api/meetings/[id]/minutes`, rendered on request (`minutesSheet`), never stored:
   attendance (frozen list once approved), quorum, notes per item, action items, approval line.
+  `?sheet=attendance` prints the attendance list alone (`attendanceSheet`: present with the
+  time signed and the method, or absent) — M8.
 
 ## Machine-drafted minutes (F6)
 

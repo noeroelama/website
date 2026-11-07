@@ -16,6 +16,8 @@ import {
   saveZoomSettingsAction,
 } from "@/app/(panel)/zoom/actions";
 import { actionMessage, type ActionFailure } from "@/components/action-message";
+import { downloadCsv } from "@/components/csv";
+import { zoomCsv } from "@/components/exports-model";
 import { formatInZone } from "@/components/format";
 import { ChoiceField, Field, FormModal, num, text } from "@/components/program-ui";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -199,6 +201,14 @@ export function ZoomPage({
           </p>
         </div>
         <div className="admin-page-header__actions">
+          <Button
+            size="sm"
+            variant="outline"
+            icon="download"
+            onClick={() => downloadCsv("zoom-bookings", zoomCsv(rows))}
+          >
+            Export CSV
+          </Button>
           {settings ? (
             <Button
               size="sm"

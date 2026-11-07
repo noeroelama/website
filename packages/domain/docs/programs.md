@@ -128,7 +128,8 @@ draft ──→ submitted ──┬─ secretariat review ─┐
 
 Code: `src/programs/report.ts` (pure maths), `packages/db/src/sql/programs.ts`
 (`createSqlPeriodReport().card(periodId, now)`), admin page `/programs/report?period=`
-(`programs.read`; linked from the Programmes header). Tests: `tests/unit/report-card.test.ts`,
+(`programs.read`; linked from the Programmes header), its PDF at `/api/programs/report?period=`
+(`reportCardSheet` in `apps/admin/src/server/exports.ts`, M8). Tests: `tests/unit/report-card.test.ts`,
 `tests/integration/lpj.test.ts` (report card).
 
 - **Computed on every request, nothing stored** (a stored report goes stale and is then read as
