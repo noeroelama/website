@@ -18,12 +18,6 @@ import { FieldError } from "@/components/ui/field-error";
 import { ListCard, ListEmpty, useListTable } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 
-/* ==================================================================
-   Letter types — name, code ({jenis}), number pattern, desks, whether
-   the verification page shows the content to anyone. Deactivate,
-   never delete: issued letters point to their type.
-   ================================================================== */
-
 export interface LetterTypeItem {
   id: string;
   version: number;
@@ -57,7 +51,6 @@ const EMPTY: Draft = {
   sort: "0",
 };
 
-/** "007/UND/SEKJEN/…" for the pattern being typed, or the reason it cannot number. */
 function example(draft: Draft): string {
   try {
     return formatNumber(draft.numberFormat, {
@@ -78,7 +71,6 @@ interface Props {
   letterhead: Letterhead;
   letterheadVersion: number | null;
   canEdit: boolean;
-  /** Outgoing / Incoming tabs, under the header (`LetterSectionTabs`). */
   sectionTabs: ReactNode;
 }
 
@@ -94,7 +86,6 @@ const ART: Array<{ key: "header" | "footer" | "watermark" | "emblem"; label: str
   { key: "emblem", label: "Emblem (text letterhead)" },
 ];
 
-/** Letterhead: text, four images (uploaded as `letterhead`), watermark strength, initials box. */
 function LetterheadForm({
   initial,
   version,
@@ -142,10 +133,7 @@ function LetterheadForm({
   };
 
   return (
-    <form
-      className="admin-dark-form"
-      onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-    >
+    <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
       <div className="admin-form-grid">
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="kop-parent">
@@ -393,10 +381,7 @@ function LetterTypesList({
           show={toast.show}
         />
       ) : draft ? (
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="type-name">

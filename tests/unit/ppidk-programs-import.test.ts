@@ -13,7 +13,6 @@ import { mapPpidkPrograms, type PpidkProgramTables } from "../../packages/db/src
 import { fakeDb } from "../support/fake-db";
 
 const now = new Date("2026-11-04T00:00:00Z");
-/** `mysql --batch` output of these rows: missing columns are NULL, line breaks escaped. */
 const table = (rows: Array<Record<string, string>>) => {
   const header = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   const cell = (value: string | undefined) =>
@@ -373,7 +372,6 @@ const plan = mapPpidkPrograms(tables, {
 const doc = (path: string) => plan.writes.find((w) => w.path === path)?.data;
 const reasons = plan.skipped.map((s) => `${s.table}/${s.id}: ${s.reason}`);
 
-/** The plan written to a database, read back through the platform stores. */
 const stores = () => {
   const fake = fakeDb();
   for (const w of plan.writes) fake.docs.set(w.path, w.data);
@@ -501,7 +499,6 @@ describe("PPIDK programmes and finance import (step 6.7)", () => {
         finishedAt: new Date("2026-09-06T10:00:00Z"),
       },
     });
-    // No PPIDK deadline (and no finish time): the platform rule from the import day.
     expect(await s.lpj.get("ppidk-program-36")).toMatchObject({
       status: "submitted",
       dueOn: "2026-11-18",
@@ -582,7 +579,6 @@ describe("PPIDK programmes and finance import (step 6.7)", () => {
       status: "done",
       documents: [],
       doneAt: new Date("2026-09-05T00:00:00Z"),
-      // The proof is not in the download: it is never served (as the platform's own placeholder).
       payment: { uid: "ppidk", amountMinor: 10000000, proof: { path: "", size: 0, sha256: "" } },
     });
     expect(await s.finance.get("ppidk-finance-702")).toMatchObject({

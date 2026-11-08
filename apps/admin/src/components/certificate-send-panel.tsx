@@ -16,10 +16,6 @@ const STATUS_LABELS: Record<string, string> = {
   queued: "sending",
 };
 
-/**
- * D5 bulk sending: paste the participant list (with e-mails) again; each matched sheet gets a
- * link to the website's pickup page, 50 per click; progress per status; failed ones retried.
- */
 export function CertificateSendPanel({
   batchId,
   progress,
@@ -54,10 +50,7 @@ export function CertificateSendPanel({
   };
 
   return (
-    <form
-      className="admin-dark-form"
-      onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-    >
+    <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
       <p className="admin-field__label">
         Send pickup links:{" "}
         {Object.entries(progress)

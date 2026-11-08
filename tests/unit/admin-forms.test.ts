@@ -60,7 +60,6 @@ describe("Forms page model", () => {
       questions: version.questions,
       modifiedAt: "2026-10-02T00:00:00.000Z",
     });
-    // A form whose version could not be read shows no questions (and is not frozen).
     expect(toFormItem(form, undefined, null)).toMatchObject({ answered: false, questions: [] });
   });
 
@@ -76,7 +75,6 @@ describe("Forms page model", () => {
     const draft = toDraft(question!);
     expect(draft).toMatchObject({ options: "Red\nBlue", maxSelections: "2", min: "", max: "" });
     expect(fromDraft({ ...draft, options: " Red \n\nBlue\n" })).toEqual(question);
-    // The builder output is what the save action validates.
     const parsed = FormInputSchema.safeParse({
       title: "Survey",
       description: "",

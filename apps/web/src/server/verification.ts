@@ -17,16 +17,11 @@ import { sanitizeRichText } from "@website/security/html";
 
 export interface VerificationDeps {
   readonly reader: Pick<SqlVerificationReader, "find">;
-  /** Private Storage read (archived PDFs). */
   readonly readFile: (path: string) => Promise<Uint8Array | null>;
 }
 
 const MAX_NAME = 200;
 
-/**
- * Public verification (D7): /verify/<code> on the website and the bare /<CODE> on the
- * verification host. No sign-in; nothing but the public DTO leaves the server.
- */
 export function createVerification(deps: VerificationDeps) {
   async function check(rawCode: string, typedName: string | null) {
     const code = normalizeVerificationCode(rawCode);
@@ -35,7 +30,6 @@ export function createVerification(deps: VerificationDeps) {
     if (!found) return null;
     const { letter, type } = found;
     if (found.certificate) {
-      // A certificate sheet (D5): no content gate and no file here (the pickup page has them).
       const view = certificateVerification({
         code,
         batch: letter,
@@ -61,7 +55,6 @@ export function createVerification(deps: VerificationDeps) {
       typedName: typedName === null ? null : typedName.slice(0, MAX_NAME),
     });
     return {
-      // Sanitized again when shown (it was sanitized when saved).
       view:
         result.bodyHtml === null
           ? result
@@ -76,17 +69,11 @@ export function createVerification(deps: VerificationDeps) {
   ): Promise<LetterVerification | CertificateVerification | null> =>
     (await check(rawCode, typedName))?.view ?? null;
 
-  /**
-   * The archived PDF, under the SAME rule as the content on the page (checked again here: the
-   * request can be built by hand). Cancelled letters cannot be downloaded (the archive has no
-   * cancelled stamp). A changed archive is never served.
-   */
   async function download(rawCode: string, typedName: string | null): Promise<Response> {
     const checked = await check(rawCode, typedName);
     if (checked?.view.kind !== "letter" || !checked.view.canDownload) {
       return new Response("Not found", { status: 404 });
     }
-    // canDownload implies an archive.
     const { view: result } = checked;
     const archive = checked.archive as LetterArchive;
     const bytes = await deps.readFile(archive.path);
@@ -115,7 +102,6 @@ export interface PickupSheet {
   readonly note: string | null;
   readonly activity: string;
   readonly letterDate: string | null;
-  /** The 15-minute signed download link (admin /certificates/pickup). */
   readonly href: string;
 }
 
@@ -127,18 +113,10 @@ const PickupInput = z
   .object({ email: NewsletterEmailSchema, captcha: z.string().max(4000) })
   .strict();
 
-/**
- * Certificate pickup (D5-P, /certificates): the e-mail given at registration, matched EXACTLY
- * through its keyed hash (no lists, no partial search). Only sheets of issued batches; each
- * comes with a short signed download link. reCAPTCHA here, the tighter per-IP limit in the
- * request guard.
- */
 export function createCertificatePickup(deps: {
   readonly reader: Pick<SqlVerificationReader, "certificatesByEmailHash">;
   readonly captcha: (token: string) => Promise<boolean>;
-  /** keyedHash(CERTIFICATE_EMAIL_PURPOSE, email, SUBSCRIBER_HASH_SECRET). */
   readonly hashEmail: (email: string) => string;
-  /** The signed download link of the sheet with this verification code. */
   readonly link: (code: string) => string;
 }) {
   async function lookup(input: unknown): Promise<PickupResult> {

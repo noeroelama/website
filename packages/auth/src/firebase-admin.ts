@@ -1,7 +1,3 @@
-/**
- * Firebase Admin adapter for IdentityProvider. SERVER ONLY.
- * Apps must import this exclusively from their `src/server/**` modules (lint-enforced).
- */
 import {
   cert,
   getApp,
@@ -34,7 +30,6 @@ function adminApp(config: FirebaseAdminConfig): App {
     env: process.env,
   });
   if (getApps().some((a) => a.name === APP_NAME)) return getApp(APP_NAME);
-  // Prefer Workload Identity Federation / ADC; JSON key fields are a fallback.
   const credential =
     config.clientEmail && config.privateKey
       ? cert({
@@ -50,7 +45,6 @@ export function createFirebaseIdentityProvider(config: FirebaseAdminConfig): Ide
   const auth = () => getAuth(adminApp(config));
   return {
     async createSessionCookie(idToken, maxAgeMs) {
-      // Reject tokens that are not from a fresh sign-in (mitigates replay of old tokens).
       const decoded = await auth().verifyIdToken(idToken, true);
       if (Date.now() / 1000 - decoded.auth_time > 5 * 60) {
         throw new Error("Recent sign-in required");
@@ -77,7 +71,6 @@ export function createFirebaseIdentityProvider(config: FirebaseAdminConfig): Ide
       await auth().revokeRefreshTokens(uid);
     },
     createCustomToken(uid) {
-      // Needs a service-account key (or the "Service Account Token Creator" role with ADC).
       return auth().createCustomToken(uid);
     },
   };
@@ -102,11 +95,6 @@ export function createFirebaseAccountAdmin(config: FirebaseAdminConfig): Account
   };
 }
 
-/**
- * The uid of the account with this e-mail, created (unverified, no password: the person signs in
- * with Google or sets a password via "forgot password") when there is none. WhatsApp sign-up
- * (C4) only.
- */
 export function createFirebaseAccountCreator(config: FirebaseAdminConfig) {
   const auth = () => getAuth(adminApp(config));
   return async (email: string, displayName: string): Promise<string> => {

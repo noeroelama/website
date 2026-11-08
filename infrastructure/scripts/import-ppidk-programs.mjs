@@ -1,31 +1,4 @@
 #!/usr/bin/env node
-/**
- * Imports OKR, work programmes, LPJ and finance from PPIDK (block J, step 6.7, DEC-10):
- * objectives with their key results, programmes with PICs, milestones (progress recomputed) and
- * weekly check-ins, LPJs with their desks, finance requests with their desks, documents and proof
- * of transfer, and the cash book (lines of paid requests and manual lines). Run locally by the
- * owner with the admin service account AFTER the people import (step 3.9) and after freezing the
- * PPIDK proker and finance screens. Dry run unless --apply is given; safe to run again (ids come
- * from PPIDK).
- *
- *   1. Export each table from MariaDB as TSV into one folder, e.g.
- *        for t in users org_units objectives key_results programs program_members \
- *                 program_milestones program_checkins program_reports keuangan_pengajuan \
- *                 keuangan_transaksi; do
- *          mysql --batch -e "SELECT * FROM $t" asiania_my > ppidk/$t.tsv; done
- *   2. Download the finance PDFs (R2 keys in `dokumen`, `bukti_transfer` and `bukti`) into one
- *      folder, keeping their paths.
- *   3. node --experimental-strip-types --import ./infrastructure/scripts/ts-register.mjs \
- *        --env-file=apps/admin/.env.local infrastructure/scripts/import-ppidk-programs.mjs \
- *        --dir ./ppidk [--files ./ppidk-r2] [--apply]
- *   4. Read the report (ppidk/import-programs-report.json): counts and every skipped row.
- *
- * Files: only real PDFs (checked by their first bytes) found under --files are referenced and
- * copied privately into FILE_STORAGE_DIR. Run it where FILE_STORAGE_DIR is (cPanel Terminal)
- * with --files.
- * Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY (and
- * FILE_STORAGE_DIR with --files).
- */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -62,7 +35,6 @@ if (missing.length > 0) {
   process.exit(2);
 }
 
-// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
 const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -82,14 +54,12 @@ const read = (name) => parseTsv(readFileSync(join(values.dir, `${name}.tsv`), "u
 const tables = Object.fromEntries(PPIDK_PROGRAM_TABLES.map((name) => [name, read(name)]));
 const users = read("users");
 
-// Periods, units and accounts come from the people import: refuse to run before it.
 const periods = await db.collection("periods").get();
 if (!periods.docs.some((doc) => doc.id.startsWith("ppidk-"))) {
   console.error("Run the people import first (import-ppidk-people.mjs).");
   process.exit(1);
 }
 
-// Same accounts as the people import: existing ones by e-mail, otherwise ppidk-<id>.
 const existing = new Map();
 const emails = users.map((u) => u.email?.trim().toLowerCase()).filter(Boolean);
 for (let i = 0; i < emails.length; i += 100) {
@@ -99,7 +69,6 @@ for (let i = 0; i < emails.length; i += 100) {
 const emailOf = new Map(users.map((u) => [u.id, u.email?.trim().toLowerCase()]));
 const uidOf = (ppidkId) => existing.get(emailOf.get(ppidkId)) ?? `ppidk-${ppidkId}`;
 
-/** A PPIDK path inside --files (never outside it), or null. */
 const localPath = (ppidkPath) => {
   if (!values.files) return null;
   const root = resolve(values.files);
@@ -107,7 +76,6 @@ const localPath = (ppidkPath) => {
   const inside = relative(root, full);
   return inside && !inside.startsWith("..") ? full : null;
 };
-/** Size and sha256 of a real PDF (starts with "%PDF-"), else null. */
 const file = (ppidkPath) => {
   const full = localPath(ppidkPath);
   if (!full || !existsSync(full) || !statSync(full).isFile()) return null;
@@ -129,7 +97,6 @@ if (!values.apply) {
   process.exit(0);
 }
 
-// Files first: a document never points to a file that is not uploaded.
 if (plan.files.length > 0) {
   const storage = createDiskFileStorage({
     root: process.env.FILE_STORAGE_DIR,

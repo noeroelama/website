@@ -7,7 +7,6 @@ import { webDb } from "./db";
 
 const reader = lazyEnv(() => createSqlGalleryReader(webDb()));
 
-/** Published albums, newest change first (cached for minutes under the tag "gallery"). */
 export async function publicAlbums(): Promise<PublicAlbum[]> {
   "use cache";
   cacheTag("gallery");
@@ -22,7 +21,6 @@ export async function publicAlbumBySlug(slug: string): Promise<PublicAlbum | nul
   return reader().findPublishedBySlug(slug);
 }
 
-/** The album linked from an event page whose registration has closed. */
 export async function publicAlbumForEvent(eventId: string): Promise<PublicAlbum | null> {
   "use cache";
   cacheTag("gallery");

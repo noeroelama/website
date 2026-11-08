@@ -15,11 +15,6 @@ async function FromCookie({ render }: { render: Render }) {
   return render(DICTIONARIES[language], language);
 }
 
-/**
- * Renders UI text in the visitor's language. Partial Prerendering: the prerendered shell holds
- * the Indonesian version (default, also what crawlers and Google's OAuth review get); the version
- * for the `lang` cookie streams in at request time. Nothing personal is read here.
- */
 export function Localized({ render }: { render: Render }) {
   return (
     <Suspense fallback={render(DICTIONARIES.id, "id")}>

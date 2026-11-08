@@ -12,7 +12,6 @@ import { createApplying } from "./recruitment";
 
 export const recruitmentStore = lazyEnv(() => createSqlRecruitmentWebStore(webDb()));
 
-/** Published recruitments (cached for minutes under the tag "recruitment"). */
 export async function publishedRecruitments(): Promise<Recruitment[]> {
   "use cache";
   cacheTag("recruitment");
@@ -20,7 +19,6 @@ export async function publishedRecruitments(): Promise<Recruitment[]> {
   return recruitmentStore().listPublished();
 }
 
-/** /recruitment/[id]: the signed-in member's own application (uid from the session only). */
 export const applying = lazyEnv(() =>
   createApplying({
     store: recruitmentStore(),
@@ -33,10 +31,8 @@ export const applying = lazyEnv(() =>
   }),
 );
 
-/** `personalityResults/{uid}` with the website's client (the applicant's own result). */
 export const personalityResults = lazyEnv(() => createSqlPersonalityStore(webDb()));
 
-/** The personality test (C5): signed 7-day links (LINK_SIGNING_SECRET), one result per person. */
 export const personalityTest = lazyEnv(() => {
   const secret = getWebEnv().LINK_SIGNING_SECRET;
   if (!secret) throw new Error("LINK_SIGNING_SECRET is required for the personality test.");

@@ -24,7 +24,6 @@ import { getDocumentsByIds } from "./batch";
 import { createSluggedStore, toDate } from "./slugged";
 
 export type FormFields = Omit<Form, "id" | "version" | "createdAt" | "updatedAt">;
-/** What the form editor saves: the settings and the questions of the current version. */
 export type FormSettings = Pick<Form, "title" | "description" | "usage" | "opensAt" | "closesAt">;
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
@@ -68,7 +67,6 @@ function toResponse(id: string, data: Record<string, unknown>): FormResponse {
   };
 }
 
-/** Audit snapshot = the editable fields (dates as ISO strings, also stored that way). */
 export function formSnapshot(f: FormFields): Snapshot {
   return {
     title: f.title,
@@ -81,7 +79,6 @@ export function formSnapshot(f: FormFields): Snapshot {
   };
 }
 
-/** The questions as written into the audit entry of a save (labels only, no answers). */
 const questionSummary = (questions: readonly Question[]) =>
   questions.map((q) => ({ id: q.id, type: q.type, label: q.label, required: q.required }));
 
@@ -92,10 +89,6 @@ export type FormAudit = (
   next: Form,
 ) => AuditEvent;
 
-/**
- * `forms/{id}` (soft delete) and `formVersions/{formId}_{n}` (questions; never deleted).
- * The public token is stored beside the snapshot so a revert never changes the public URL.
- */
 export function createSqlFormStore(db: Database) {
   const store = createSluggedStore<Form>(db, {
     collection: "forms",
@@ -112,7 +105,6 @@ export function createSqlFormStore(db: Database) {
     get: store.get,
     write: store.write,
 
-    /** Every form that is not deleted, last changed first. */
     async listForAdmin(): Promise<Form[]> {
       const snapshot = await store.docs.orderBy("updatedAt", "desc").get();
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((f) => !f.deletedAt);
@@ -124,7 +116,6 @@ export function createSqlFormStore(db: Database) {
       return snapshot.exists ? toVersion(snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /** The current version of each form (one batched read), by form id. */
     async currentVersions(forms: readonly Form[]): Promise<Map<string, FormVersion>> {
       const found = await getDocumentsByIds<Record<string, unknown>>(
         db,
@@ -138,13 +129,11 @@ export function createSqlFormStore(db: Database) {
       return result;
     },
 
-    /** The questions of a version, read inside a transaction (e.g. publishing). */
     async versionIn(tx: Transaction, formId: string, n: number): Promise<FormVersion | null> {
       const snapshot = await tx.get(versionRef(formId, n));
       return snapshot.exists ? toVersion(snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /** The newest responses of a form (at most `limit`). */
     async listResponses(formId: string, limit: number): Promise<FormResponse[]> {
       const snapshot = await db
         .collection("formResponses")
@@ -155,18 +144,11 @@ export function createSqlFormStore(db: Database) {
       return snapshot.docs.map((doc) => toResponse(doc.id, doc.data()));
     },
 
-    /** Every version of a form, oldest first. */
     async listVersions(formId: string): Promise<FormVersion[]> {
       const snapshot = await versions.where("formId", "==", safeId.parse(formId)).get();
       return snapshot.docs.map((doc) => toVersion(doc.data())).sort((a, b) => a.number - b.number);
     },
 
-    /**
-     * Create or edit, ONE transaction: the form and its current version are read; the freezing
-     * rule (planVersion) decides whether the questions are written in place or as version n+1;
-     * `check` may refuse (e.g. a published form gaining a file question); the form, the version
-     * and the audit entry are written together.
-     */
     save(
       id: string | null,
       expectedVersion: number | null,
@@ -258,10 +240,6 @@ export type SubmitOutcome =
       readonly fields: Readonly<Record<string, string>>;
     };
 
-/**
- * The website's side of public forms (C2): read a form by its public token and store a
- * response. Only public forms are reachable (`publicAnswerState`); recruitment forms never are.
- */
 export function createSqlFormWebStore(db: Database) {
   const forms = db.collection("forms");
   const versions = db.collection("formVersions");
@@ -269,7 +247,6 @@ export function createSqlFormWebStore(db: Database) {
   const byToken = (token: string) => forms.where("publicToken", "==", token).limit(1);
 
   return {
-    /** Published public forms (the home highlights keep those whose window is open). */
     async listPublished(): Promise<Form[]> {
       const snapshot = await forms
         .where("usage", "==", "public")
@@ -279,7 +256,6 @@ export function createSqlFormWebStore(db: Database) {
       return snapshot.docs.map((doc) => toForm(doc.id, doc.data()));
     },
 
-    /** The form and its current version, or null when the token answers nothing. */
     async findPublic(
       token: string,
       now: Date,
@@ -295,11 +271,6 @@ export function createSqlFormWebStore(db: Database) {
       return { form, version: toVersion(version.data() as Record<string, unknown>), state };
     },
 
-    /**
-     * ONE transaction: the form (by token) and its current version are read; the window, the
-     * version the visitor saw and the answers are checked; the response is written, the
-     * version is marked answered (frozen) and the form's response count goes up.
-     */
     submit(token: string, version: number, raw: unknown, now: Date): Promise<SubmitOutcome> {
       if (!isPublicToken(token)) return Promise.resolve({ ok: false, error: "not_found" });
       return db.runTransaction(async (tx): Promise<SubmitOutcome> => {

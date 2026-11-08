@@ -5,29 +5,20 @@ import { ColumnMenu, type ColumnMenuProps } from "./column-menu";
 import { Icon } from "./icon";
 import { Select } from "./select";
 
-/** Render a raw cell value safely: strings/numbers pass through, others fall back to empty. */
 function cellText(value: unknown): string {
   if (typeof value === "string" || typeof value === "number") return String(value);
   return "";
 }
 
-/**
- * Generic admin data table + pagination. Presentational only; state (page, pageSize, sorting…)
- * lives in the caller. Styling via `admin-table*` classes in globals.css.
- */
-
 type SortHeaderProps = ColumnMenuProps;
 
-/** The props of a header made with `SortHeader`, or null for any other header. */
 const sortHeaderProps = (header: ReactNode): SortHeaderProps | null =>
   isValidElement<SortHeaderProps>(header) && header.type === SortHeader ? header.props : null;
 
-/** Text of a column header (a plain string or a `SortHeader` label); "" when it has none. */
 export function headerText(header: ReactNode): string {
   return typeof header === "string" ? header : (sortHeaderProps(header)?.label ?? "");
 }
 
-/** The sortable columns (those with a `SortHeader`): what the phone's sort menu offers. */
 export const sortChoices = <T,>(columns: readonly Column<T>[]): SortHeaderProps[] =>
   columns.flatMap((col) => sortHeaderProps(col.header) ?? []);
 
@@ -45,16 +36,10 @@ export interface DataTableProps<T> {
   rowKey: (row: T) => string;
   emptyText?: string;
   hideHeader?: boolean;
-  /** Custom "no results" content, centred in the table under its header (default: `emptyText`).
-   *  In a list card (`.admin-list-card`) the table fills the screen height, so it sits in the
-   *  middle of the table. */
   emptyState?: ReactNode;
-  /** When non-null, render a full-width row underneath `row` (e.g. an
-   *  expandable detail panel). The caller owns the expansion state. */
   expandedRow?: (row: T) => ReactNode;
 }
 
-/** Default "no results" message. */
 function DefaultEmpty({ text }: { text?: string | undefined }) {
   return (
     <div className="admin-empty">
@@ -75,7 +60,6 @@ export function DataTable<T>({
   expandedRow,
 }: DataTableProps<T>) {
   const empty = rows.length === 0;
-  // On a phone each row is a card: the role says where a cell goes, the label names a detail line.
   const roles = cardRoles(columns.map((col) => col.key));
 
   return (
@@ -134,16 +118,11 @@ export interface PaginationProps {
   page: number;
   pageSize: number;
   totalItems: number;
-  /** Rows-per-page choices (default 10 / 25 / 50). */
   pageSizeOptions?: readonly number[];
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
 }
 
-/**
- * Footer of the dark list pages: "Showing 1–10 of 112", rows per page and a sliding window of
- * five page numbers (`.admin-darkbar` in globals.css).
- */
 export function Pagination({
   page,
   pageSize,
@@ -216,10 +195,6 @@ export function Pagination({
   );
 }
 
-/**
- * Sortable column header: a menu to sort the column and filter it by its values (`ColumnMenu`).
- * Make it with `useListTable().header(key, label)`, which wires both.
- */
 export function SortHeader(props: SortHeaderProps) {
   return <ColumnMenu {...props} />;
 }

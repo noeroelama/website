@@ -33,7 +33,6 @@ interface Row {
   mine: boolean;
 }
 
-/** The current meeting, when editing. */
 export interface MeetingValues {
   id: string;
   version: number;
@@ -47,10 +46,6 @@ export interface MeetingValues {
   participants: Array<{ email: string; role: MeetingRole }>;
 }
 
-/**
- * Participants typed one per line: `email` (participant) or `email chair` / `email secretary`.
- * An unknown role word is sent as is and refused by the server with a message.
- */
 export function parseParticipants(value: string): Array<{ email: string; role: MeetingRole }> {
   return value
     .split("\n")
@@ -65,7 +60,6 @@ export function parseParticipants(value: string): Array<{ email: string; role: M
 export const participantsText = (people: MeetingValues["participants"]) =>
   people.map((p) => (p.role === "member" ? p.email : `${p.email} ${p.role}`)).join("\n");
 
-/** Schedule / edit a meeting (one form for both). */
 export function MeetingForm({
   open,
   onClose,
@@ -166,7 +160,6 @@ export function MeetingForm({
   );
 }
 
-/** Meetings (F4): the period's meetings the viewer takes part in or may read. */
 export function MeetingsPage({
   period,
   periods,
@@ -176,7 +169,6 @@ export function MeetingsPage({
   period: { id: string; name: string } | null;
   periods: Array<{ id: string; name: string }>;
   rows: Row[];
-  /** Where the viewer may schedule ([] = cannot). */
   units: Array<{ id: string; name: string }>;
 }) {
   const [adding, setAdding] = useState(false);

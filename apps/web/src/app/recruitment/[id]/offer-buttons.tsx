@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { respondOfferAction } from "./actions";
 
-/** Accept (takes the seat; refused when the unit is full) or decline the own offer. */
 export function OfferButtons(props: { recruitmentId: string; labels: Dictionary["recruitment"] }) {
   const router = useRouter();
   const t = props.labels;

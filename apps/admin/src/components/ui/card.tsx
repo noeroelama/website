@@ -1,9 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-/**
- * Admin card primitives. Presentational only — styles come from `admin-card*` classes in
- * `apps/admin/src/app/globals.css` (design tokens; no hex here).
- */
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }

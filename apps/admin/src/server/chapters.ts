@@ -18,10 +18,6 @@ const SaveInput = ChapterInputSchema.extend({
   version: z.number().int().min(1).nullable(),
 }).strict();
 
-/**
- * What only the national board changes. A chapter admin (organizations.edit for its chapter) may
- * change the rest: the contact person, public contact, website, e-mail, Instagram and links.
- */
 const BOARD_FIELDS = [
   "name",
   "countryCode",
@@ -37,7 +33,6 @@ const BOARD_FIELDS = [
   "risk",
 ] as const satisfies readonly (keyof Chapter)[];
 
-/** Audit entry for one chapter change (module `organizations`, resource `chapter`). */
 const chapterAudit =
   (audit: AuditBuilder, action: "CREATE" | "UPDATE" | "DELETE", revertible = true) =>
   (
@@ -59,17 +54,10 @@ const chapterAudit =
       revertible,
     });
 
-/**
- * Organizations → PPI actions: save (add/edit), activate/deactivate and delete (soft; reverting
- * the DELETE entry in the Audit Log within 14 days brings the chapter back).
- * The national board (global organizations.edit) changes everything; a chapter admin (the
- * permission for one chapter) only the contact fields of that chapter.
- */
 export function createChapterActions(deps: ChapterDeps) {
   const save = createGuardedAction({
     permission: "organizations.edit",
     input: SaveInput,
-    // Creating needs the global permission; editing is checked against the chapter itself.
     resource: (input) => (input.id ? { chapterId: input.id } : {}),
     handler: async ({ id, version, slug: typedSlug, ...input }, principal, audit) => {
       const contactOnly = !can(principal, "organizations.edit");
@@ -80,10 +68,8 @@ export function createChapterActions(deps: ChapterDeps) {
         (current) => {
           const slug = typedSlug || current?.slug || slugify(input.name);
           if (!slug) throw new RuleViolationError("Use letters or numbers in the name or URL.");
-          // A changed URL would leave the slug index behind on revert: never revertible.
           if (current) revertible = current.slug === slug;
           const next = { ...input, slug, active: current?.active ?? true, deletedAt: null };
-          // contactOnly always edits an existing chapter (creating needs the global permission).
           const before = current as Chapter;
           const changed = (key: (typeof BOARD_FIELDS)[number]) =>
             JSON.stringify(next[key]) !== JSON.stringify(before[key]);
@@ -107,7 +93,6 @@ export function createChapterActions(deps: ChapterDeps) {
     },
   });
 
-  /** Deactivate (hidden from the map and About) or activate again; never deletes. */
   const setActive = createGuardedAction({
     permission: "organizations.edit",
     input: z.object({ id: safeId, version: z.number().int().min(1), active: z.boolean() }).strict(),
@@ -123,7 +108,6 @@ export function createChapterActions(deps: ChapterDeps) {
     },
   });
 
-  /** Soft delete: hidden from the admin list, the map and About. National board only. */
   const remove = createGuardedAction({
     permission: "organizations.edit",
     input: z.object({ id: safeId, version: z.number().int().min(1) }).strict(),

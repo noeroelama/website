@@ -1,13 +1,3 @@
-/**
- * PPIDK → platform import of OKR, work programmes, check-ins, LPJ and finance (block J, step 6.7,
- * DEC-10): pure mapping from the MariaDB tables (exported as TSV) to database documents, run after
- * the people import (periods, units and accounts exist) and after freezing the PPIDK proker and
- * finance screens. Progress is recomputed with the platform rule, the LPJ plan is frozen with the
- * platform's `openLpj`, and paid requests write their cash book line with `cashEntryFromRequest`,
- * so imported documents follow the same rules as new ones. The local script
- * infrastructure/scripts/import-ppidk-programs.mjs reads the files, writes what this returns and
- * copies the private PDFs. Ids come from PPIDK (idempotent).
- */
 import {
   cashEntryFromRequest,
   financeFilePath,
@@ -38,7 +28,6 @@ import type { PpidkFileInfo } from "./documents";
 import type { PlannedWrite, TsvRow } from "./people";
 import type { PlannedFile } from "./recruitment";
 
-/** The tables this import reads (one `<name>.tsv` file each). */
 export const PPIDK_PROGRAM_TABLES = [
   "org_units",
   "objectives",
@@ -97,7 +86,6 @@ const FINANCE_CATEGORY: Readonly<Record<string, FinanceCategory>> = {
   reimburse: "reimbursement",
   anggaran: "budget",
 };
-/** `jenis/kategori` → cash book kind and category (PPIDK `KATEGORI_MASUK` / `KATEGORI_KELUAR`). */
 const CASH_LINE: Readonly<Record<string, { kind: CashKind; category: CashCategory }>> = {
   "masuk/saldo_awal": { kind: "in", category: "opening_balance" },
   "masuk/iuran": { kind: "in", category: "dues" },
@@ -111,7 +99,6 @@ const CASH_LINE: Readonly<Record<string, { kind: CashKind; category: CashCategor
   "keluar/pencairan": { kind: "out", category: "disbursement" },
   "keluar/lain": { kind: "out", category: "other_out" },
 };
-/** Programme plan fields the platform has no own field for: kept as lines of the description. */
 const PLAN_EXTRAS = [
   ["Target audience", "target_audience"],
   ["Indicator", "indicator"],
@@ -121,7 +108,6 @@ const PLAN_EXTRAS = [
   ["Location", "location"],
   ["Partners", "partners"],
 ] as const;
-/** PPIDK finance is in IDR only (its migration has no currency column). */
 const IDR = "IDR";
 
 const at = (value: string | null | undefined) => (value ? new Date(`${value}Z`) : null);
@@ -132,7 +118,6 @@ const json = <T>(value: string | null | undefined, fallback: T): T => {
     return fallback;
   }
 };
-/** PPIDK decimal(15,2) → minor units of the currency ("50000.00" JPY → 50000), or null. */
 const minorOf = (value: string, currency: string): number | null =>
   /^[A-Z]{3}$/.test(currency)
     ? toMinor(value.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, ""), currency)
@@ -142,7 +127,6 @@ export function mapPpidkPrograms(
   tables: PpidkProgramTables,
   options: {
     uidOf: (ppidkUserId: string) => string;
-    /** A real PDF of PPIDK's storage, or null when it is not in the download. */
     file: (ppidkPath: string) => PpidkFileInfo | null;
     now: Date;
   },
@@ -158,7 +142,6 @@ export function mapPpidkPrograms(
   const id = (table: string, value: string | null | undefined) => `ppidk-${table}-${String(value)}`;
   const person = (ppidkUserId: string | null | undefined) =>
     ppidkUserId ? options.uidOf(ppidkUserId) : null;
-  /** PPIDK did not record who did it (or the account is gone). */
   const who = (ppidkUserId: string | null | undefined) => person(ppidkUserId) ?? "ppidk";
   const meta = (row: TsvRow) => ({
     version: 1,
@@ -171,7 +154,6 @@ export function mapPpidkPrograms(
     if (minor === null) skip(table, row, `${what} not imported: ${value} ${currency}`);
     return minor;
   };
-  /** A downloaded PDF copied to `to`, or null with the reason reported. */
   const pdf = (table: string, row: TsvRow, from: string, to: string): FinanceFile | null => {
     if (!from.toLowerCase().endsWith(".pdf")) {
       skip(table, row, `file not imported (only PDFs): ${from}`);
@@ -186,9 +168,7 @@ export function mapPpidkPrograms(
     return { path: to, name: from.split("/").pop() as string, ...info };
   };
 
-  /* ---- org units (paths for scope checks) ---- */
   const units = new Map(tables.org_units.map((u) => [u["id"] as string, u]));
-  /** `orgUnitPath` of an imported unit, or null when the unit is not in the export. */
   const unitPath = (unitId: string): string[] | null => {
     const path: string[] = [];
     for (
@@ -201,7 +181,6 @@ export function mapPpidkPrograms(
     return path.length > 0 ? path : null;
   };
 
-  /* ---- OKR: objectives with their key results inside ---- */
   const keyResults = new Map<string, KeyResult[]>();
   const objectiveOf = new Map<string, string>();
   const objectiveIds = new Set(tables.objectives.map((o) => o["id"]));
@@ -245,7 +224,6 @@ export function mapPpidkPrograms(
     });
   }
 
-  /* ---- programmes, PICs, milestones ---- */
   const picsOf = new Map<string, string[]>();
   const milestonesOf = new Map<string, Milestone[]>();
   const programRows = new Map(tables.programs.map((r) => [r["id"] as string, r]));
@@ -359,7 +337,6 @@ export function mapPpidkPrograms(
     set(`programs/${programId}`, withoutId(program));
   }
 
-  /* ---- weekly check-ins: one per programme per UTC week ---- */
   const weeks = new Set<string>();
   for (const c of tables.program_checkins) {
     const program = programs.get(c["program_id"] as string);
@@ -387,7 +364,6 @@ export function mapPpidkPrograms(
     });
   }
 
-  /* ---- LPJ: the plan frozen by the platform rule, the PPIDK text and desks ---- */
   for (const l of tables.program_reports) {
     const status = LPJ_STATUS[l["status"] as string];
     const program = programs.get(l["program_id"] as string);
@@ -424,7 +400,6 @@ export function mapPpidkPrograms(
       : null;
     set(`lpjReports/${program.id}`, {
       ...fields,
-      // PPIDK's LPJ text has no own place for testimonials and links: kept in the realization.
       realization: [
         l["realization"],
         l["testimonials"] && `Testimonials:\n${l["testimonials"]}`,
@@ -453,7 +428,6 @@ export function mapPpidkPrograms(
     });
   }
 
-  /* ---- finance requests (and the cash book line of the paid ones) ---- */
   const requests = new Set<string>();
   for (const r of tables.keuangan_pengajuan) {
     const status = FINANCE_STATUS[r["status"] as string];
@@ -519,7 +493,6 @@ export function mapPpidkPrograms(
       status,
       createdBy: who(r["created_by_user_id"]),
       documents,
-      // PPIDK kept no submission time.
       submittedAt: null,
       treasurer: stamp(
         r["treasurer_reviewed_by_user_id"],
@@ -533,7 +506,6 @@ export function mapPpidkPrograms(
       ),
       revisionNote: r["revision_note"] ?? null,
       revisionRound: Number(r["revision_round"]),
-      // PPIDK kept the reason, not who rejected it nor when (its last change is used).
       rejection:
         status === "rejected"
           ? { uid: "ppidk", at: updatedAt, note: r["catatan_koordinator"] as string }
@@ -545,7 +517,6 @@ export function mapPpidkPrograms(
           (r["disbursed_amount"]
             ? amount("keuangan_pengajuan", r, r["disbursed_amount"], IDR, "amount paid")
             : null) ?? nominal,
-        // A proof not in the download: the platform's placeholder, never served.
         proof: (proofFrom &&
           pdf("keuangan_pengajuan", r, proofFrom, financeFilePath(where, "proof", "ppidkpdf"))) || {
           path: "",
@@ -563,7 +534,6 @@ export function mapPpidkPrograms(
     if (line) set(`cashEntries/${line.id}`, withoutId(line));
   }
 
-  /* ---- manual cash book lines (lines of paid requests come from the request) ---- */
   for (const t of tables.keuangan_transaksi) {
     if (t["pengajuan_id"]) {
       if (!requests.has(t["pengajuan_id"])) skip("keuangan_transaksi", t, "request not imported");
@@ -606,6 +576,5 @@ export function mapPpidkPrograms(
   return { writes, files, skipped, counts };
 }
 
-/** The document as the stores keep it (the id is the document id, not a field). */
 const withoutId = (value: { id: string }): Record<string, unknown> =>
   Object.fromEntries(Object.entries(value).filter(([key]) => key !== "id"));

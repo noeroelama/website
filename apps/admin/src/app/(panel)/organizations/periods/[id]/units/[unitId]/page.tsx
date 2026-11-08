@@ -5,10 +5,8 @@ import { toOrgUnitItem } from "@/components/org-units-model";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Organizations → Period → Structure → Edit Unit. */
 export default async function EditUnitRoute({
   params,
 }: {

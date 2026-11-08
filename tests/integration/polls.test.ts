@@ -178,7 +178,6 @@ describe("POST /webhooks/waha (J3)", () => {
     expect((await surveys().since(new Date(0)))[0]).toMatchObject({ stars: 4, votedAt: now });
     await route()(signed(vote([labels[4]], 2)));
     expect((await surveys().since(new Date(0)))[0]?.stars).toBe(1);
-    // The same event again (provider retry) changes nothing.
     await surveys().vote("poll-1", () => 3, now);
     await route()(signed(vote([labels[4]], 2)));
     expect((await surveys().since(new Date(0)))[0]?.stars).toBe(3);
@@ -205,7 +204,6 @@ describe("POST /webhooks/waha (J3)", () => {
     expect((await route()(signed({ event: "poll.vote", payload: {} }))).status).toBe(400);
     expect((await route()(signed(vote("not a list")))).status).toBe(400);
     expect((await route()(signed(vote([5, labels[0]])))).status).toBe(200);
-    // Non-text options are ignored; the text one counts.
     expect((await surveys().since(new Date(0)))[0]?.stars).toBe(5);
   });
 });

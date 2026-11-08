@@ -32,7 +32,6 @@ function toOrgUnit(id: string, data: Record<string, unknown>): OrgUnit {
     description: data["description"] as string,
     sort: data["sort"] as number,
     active: data["active"] as boolean,
-    // Units saved before the cabinet members existed read as empty.
     members: (data["members"] as UnitMember[] | undefined) ?? [],
     divisions: (data["divisions"] as UnitDivision[] | undefined) ?? [],
     version: data["version"] as number,
@@ -60,7 +59,6 @@ export function orgUnitSnapshot(u: OrgUnitFields): Snapshot {
 
 const copyMember = (m: UnitMember) => ({ ...m, photo: m.photo ? { ...m.photo } : null });
 
-/** Same arguments as the audit callback of the other stores (`before` is null on create). */
 export type OrgUnitAudit = (
   before: Snapshot | null,
   after: Snapshot | null,
@@ -68,11 +66,6 @@ export type OrgUnitAudit = (
   next: OrgUnit,
 ) => AuditEvent;
 
-/**
- * `orgUnits/{id}` with the code index `orgUnitCodes/{periodId}_{code}` (unique per period).
- * Every write reads the period and the parent in the same transaction, so a unit is never placed
- * under a parent that moved meanwhile or in a period that was archived meanwhile.
- */
 export function createSqlOrgUnitStore(db: Database) {
   const store = createSluggedStore<OrgUnit>(db, {
     collection: "orgUnits",
@@ -91,7 +84,6 @@ export function createSqlOrgUnitStore(db: Database) {
 
   const periodIn = async (tx: Transaction, id: string) => {
     const snapshot = await tx.get(periods.doc(safeId.parse(id)));
-    // A deleted period is treated as missing: nothing is added to it.
     return snapshot.exists && !snapshot.get("deletedAt")
       ? { status: snapshot.get("status") as PeriodStatus }
       : null;
@@ -105,7 +97,6 @@ export function createSqlOrgUnitStore(db: Database) {
   return {
     get: store.get,
 
-    /** Every unit of one period, in tree order. */
     async listForPeriod(periodId: string): Promise<OrgUnit[]> {
       const snapshot = await store.docs.where("periodId", "==", safeId.parse(periodId)).get();
       return inTreeOrder(
@@ -113,13 +104,11 @@ export function createSqlOrgUnitStore(db: Database) {
       );
     },
 
-    /** Every unit below this one (one `array-contains` query on `path`). */
     async descendants(id: string): Promise<OrgUnit[]> {
       const snapshot = await store.docs.where("path", "array-contains", safeId.parse(id)).get();
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data()));
     },
 
-    /** Create or edit. The period and parent never change here (that is `move`). */
     save(
       id: string | null,
       expectedVersion: number | null,
@@ -149,11 +138,6 @@ export function createSqlOrgUnitStore(db: Database) {
       );
     },
 
-    /**
-     * Soft delete (`deletedAt`), revertible in the Audit Log. Refused while units sit below it
-     * (their paths would point to a deleted unit), while someone holds an active appointment in
-     * it (the roles it gives would stay), and in an archived period.
-     */
     remove(id: string, expectedVersion: number, audit: OrgUnitAudit, now: Date): Promise<OrgUnit> {
       return store.write(
         id,
@@ -165,7 +149,6 @@ export function createSqlOrgUnitStore(db: Database) {
             tx.get(store.docs.where("path", "array-contains", unit.id)),
             tx.get(appointments.where("orgUnitId", "==", unit.id).where("status", "==", "active")),
           ]);
-          // Same period rule as a save (missing or archived period refused).
           placeOrgUnit(unit.periodId, period, null, null);
           if (below.docs.some((doc) => !doc.get("deletedAt"))) {
             throw new RuleViolationError("Delete or move the units below this unit first.");
@@ -180,10 +163,6 @@ export function createSqlOrgUnitStore(db: Database) {
       );
     },
 
-    /**
-     * Puts the unit under another parent (or at the top level) and rewrites the paths of the
-     * whole subtree in ONE transaction. A move inside its own subtree is refused.
-     */
     move(
       id: string,
       expectedVersion: number,

@@ -15,10 +15,6 @@ import {
   sessionEnv,
 } from "@website/config/env";
 
-/**
- * Public content, member self-service, sign-in, CAPTCHA and confirmation e-mails. Validated lazily
- * at first use, not at build.
- */
 const webEnvSchema = baseEnv
   .extend(firebaseAdminEnv.shape)
   .extend(databaseEnv.shape)
@@ -33,10 +29,6 @@ const webEnvSchema = baseEnv
 
 export const getWebEnv = lazyEnv(() => loadEnv(webEnvSchema, process.env));
 
-/**
- * Our apps' public URLs only (no secrets), for the sign-in return target. Loaded separately so
- * the static sign-in page works without Firebase configuration.
- */
 export const getAppUrls = lazyEnv(() =>
   loadEnv(baseEnv.extend(publicUrlsEnv.shape), {
     APP_ENV: process.env["NODE_ENV"] === "development" ? "development" : undefined,

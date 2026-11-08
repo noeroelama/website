@@ -1,12 +1,6 @@
-/**
- * Per-client rate limiting: 100 requests/minute and 10,000 requests/day. After the daily
- * quota (far beyond normal use) the client is not blocked: every request is slowed down by a
- * fixed delay until 00:00 UTC. The per-minute limit keeps applying.
- */
 export interface RateLimitPolicy {
   readonly perMinute: number;
   readonly perDay: number;
-  /** Delay added to each request once the daily quota is used up. */
   readonly throttleDelayMs: number;
 }
 
@@ -16,11 +10,10 @@ export const DEFAULT_RATE_LIMIT: RateLimitPolicy = {
   throttleDelayMs: 500,
 };
 
-/** Counter state stored per client key. */
 export interface RateLimitState {
-  readonly day: string; // YYYY-MM-DD (UTC)
+  readonly day: string;
   readonly dayCount: number;
-  readonly minute: number; // minutes since epoch
+  readonly minute: number;
   readonly minuteCount: number;
 }
 
@@ -29,11 +22,9 @@ export interface RateLimitDecision {
   readonly limit: number;
   readonly remaining: number;
   readonly retryAfterSeconds: number;
-  /** True once the daily quota is used up: the request is delayed by `throttleDelayMs`. */
   readonly throttled: boolean;
 }
 
-/** Pure decision function. Denied requests are not counted, so a client is never locked out. */
 export function applyRateLimit(
   previous: RateLimitState | null,
   policy: RateLimitPolicy,
@@ -67,15 +58,10 @@ export function applyRateLimit(
   };
 }
 
-/** Where counters live. Must apply `applyRateLimit` atomically per key. */
 export interface RateLimitStore {
   consume(key: string, policy: RateLimitPolicy, now: Date): Promise<RateLimitDecision>;
 }
 
-/**
- * Process-local store for development and tests. Atomic because JavaScript runs each
- * `consume` to completion. NOT for staging/production (each server instance would count separately).
- */
 export function createMemoryRateLimitStore(): RateLimitStore {
   const states = new Map<string, RateLimitState>();
   return {

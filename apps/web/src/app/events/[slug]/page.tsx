@@ -10,7 +10,6 @@ import { publicAlbumForEvent } from "@/server/gallery";
 import { getSignedInUser } from "@/server/session";
 import { RegisterButton } from "./register-button";
 
-// Unknown, draft or deleted slug → the 404 page (a soft 404 while streaming; see /news/[slug]).
 export const instant = false;
 
 const find = async (slug: string) => (isValidSlug(slug) ? publicEventBySlug(slug) : null);
@@ -44,7 +43,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
   return (
     <main className="site-event">
       {event.bannerImage && (
-        // Full-bleed banner: flush with the header and the page edges (design hero, user).
         // eslint-disable-next-line @next/next/no-img-element -- Storage serves sized WebP
         <img
           className="site-event__banner"
@@ -54,8 +52,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
           alt=""
         />
       )}
-      {/* Hero: the header block — title, meta and the Register button as one unit,
-          left-aligned and identical on every event (only the content differs, user). */}
       <div className="site-event__inner">
         <header className="site-event__head">
           <h1 className="site-event__title">{event.title}</h1>
@@ -73,8 +69,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
             {formatEventTimeRange(event.startsAt, event.endsAt, event.timezone)}
           </p>
 
-          {/* Registration decision (flowchart): open → register; closed → a disabled
-              button (same layout everywhere; only the content differs), album if any. */}
           <div className="site-event__actions">
             {!open ? (
               <>
@@ -116,7 +110,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
                 }}
               />
             ) : (
-              // Design: a "Register Now" button; guests land on sign-in, keeping where they started.
               <a
                 className="site-event__button"
                 href={`/login?next=${encodeURIComponent(`/events/${event.slug}`)}`}
@@ -127,13 +120,9 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
           </div>
         </header>
 
-        {/* Design: "About" with the description and schedule; "Guest Speaker" beside it.
-            The schedule lives in the About column so its black lines match the About
-            boundaries (user). */}
         <div className={event.speakers.length > 0 ? "site-event__columns" : undefined}>
           <section className="site-event__about">
             <h2 className="site-event__heading">{t.events.about}</h2>
-            {/* One <p> per paragraph; margins collapsed to 0 so there is no gap (user). */}
             <div className="site-event__text">
               {event.description.split(/\n{2,}/).map((paragraph, i) => (
                 <p key={i}>{paragraph}</p>
@@ -142,7 +131,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
             {event.schedule.length > 0 && (
               <section className="site-event__schedule">
                 <h2 className="site-event__heading">{t.events.schedule}</h2>
-                {/* Plain rows, no list bullets, no line above the first row (user). */}
                 {event.schedule.map((row, i) => (
                   <div className="site-event__schedule-row" key={i}>
                     {row.time && <strong>{row.time}</strong>}
@@ -173,7 +161,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
           )}
         </div>
 
-        {/* Design keeps the heading on every event; logos render only when present. */}
         <section className="site-event__partners">
           <h2 className="site-event__heading">{t.events.sponsors}</h2>
           {event.sponsors.length > 0 && (

@@ -19,11 +19,6 @@ import { publicAlbums } from "@/server/gallery";
 
 export const metadata: Metadata = { title: "Gallery" };
 
-// Design (Figma "GALLERY PUBLIC"): cream page, Poppins title + Inter tagline, and the
-// same dark filter bar as the events list — date range, Country, search, category pills
-// with a count and a clear link (user: "sama persis dengan event"). The bar filters the
-// albums' event snapshots (type / startsAt / location saved with the album). Static
-// shell (title); the album list streams in (cached albums + language cookie).
 export default function GalleryPage({ searchParams }: PageProps<"/gallery">) {
   return (
     <main className="site-lists site-lists--gallery">
@@ -68,14 +63,11 @@ async function AlbumList({ searchParams }: Pick<PageProps<"/gallery">, "searchPa
                   name="time"
                   defaultValue={query.time ?? "upcoming"}
                 >
-                  {TIME_RANGES.filter(
-                    (range) => range !== "custom",
-                  ) /* "Menyesuaikan" removed (user) */
-                    .map((range) => (
-                      <option key={range} value={range}>
-                        {t.events.periodOptions[range]}
-                      </option>
-                    ))}
+                  {TIME_RANGES.filter((range) => range !== "custom").map((range) => (
+                    <option key={range} value={range}>
+                      {t.events.periodOptions[range]}
+                    </option>
+                  ))}
                 </SubmitOnChangeSelect>
               </span>
             </span>

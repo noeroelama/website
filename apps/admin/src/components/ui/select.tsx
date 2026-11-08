@@ -13,26 +13,17 @@ import {
 import { filterOptions, needsSearch, optionsFrom } from "@/components/fields-model";
 import { Icon } from "./icon";
 
-/**
- * Open state and position of a dropdown panel. The panel is fixed to the window under its button
- * (or above it when there is more room there), so a popup's scroll area does not cut it off; in
- * the right half of the window it lines up with the button's right edge so it stays on screen; it
- * follows scrolling and resizing, and a click outside `box` closes it. Give the panel `position`
- * as its style (with `.admin-combo__panel`).
- */
 export function useDropdown<T extends HTMLElement>() {
   const trigger = useRef<T>(null);
   const box = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<CSSProperties>({});
 
-  /** Under the button, or above it when there is more room there. */
   const place = () => {
     const rect = trigger.current?.getBoundingClientRect();
     if (!rect) return;
     const below = window.innerHeight - rect.bottom;
     const above = below < 280 && rect.top > below;
-    // The page's own width (without its scrollbar gutter), which is what `right` counts from.
     const pageWidth = document.documentElement.getBoundingClientRect().width;
     setPosition({
       ...(rect.left > pageWidth / 2 ? { right: pageWidth - rect.right } : { left: rect.left }),
@@ -69,13 +60,6 @@ export function useDropdown<T extends HTMLElement>() {
   };
 }
 
-/**
- * Admin dropdown: use it like `<select>` (same props, `<option>` children). It opens the same
- * cream menu as the Newsletter status filter (`.admin-row-menu__panel`), with a search box when
- * there are more than 5 options. The native `<select>` stays in the page (hidden), so `name`,
- * `value`/`defaultValue`, `onChange`, `required` and GET forms keep working. `prefix` is shown
- * inside the button before the value (a short label or an icon), so the whole pill opens the menu.
- */
 export function Select({
   id,
   className,
@@ -90,7 +74,6 @@ export function Select({
   const listId = useId();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  // Uncontrolled selects (defaultValue, GET forms): the shown option follows the native select.
   const [picked, setPicked] = useState(String(rest.defaultValue ?? options[0]?.value ?? ""));
   const current = rest.value === undefined ? picked : String(rest.value);
   const searchable = needsSearch(options);
@@ -113,13 +96,11 @@ export function Select({
     hide();
     trigger.current?.focus();
     if (!select || select.value === value) return;
-    // Set the value the way the browser does, so React's onChange and form submits see it.
     select.value = value;
     select.dispatchEvent(new Event("change", { bubbles: true }));
     setPicked(value);
   };
 
-  // Keys while the menu is open (focus on the search box, or on the button without one).
   const onOpenKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();

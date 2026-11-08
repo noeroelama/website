@@ -33,13 +33,11 @@ const lines = (value: string) =>
     .map((l) => l.trim())
     .filter(Boolean);
 
-/** Chapter records (H1-H3): officers with terms, the quarterly report, the risk signal. */
 export function ChapterRecordsPage(props: {
   chapter: { id: string; name: string };
   signal: { signal: ChapterSignal; reason: string } | null;
   officers: Officer[];
   reports: Report[];
-  /** The current quarter and the two before it (a future quarter is refused). */
   quarters: string[];
   canEdit: boolean;
 }) {

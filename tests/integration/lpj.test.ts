@@ -29,7 +29,6 @@ const pic2 = staff("pic2", ["programs.read", "lpj.review_secretariat"]);
 const sekjen = staff("sekjen", ["programs.approve", "lpj.approve"]);
 const sekre = staff("sekre", ["lpj.review_secretariat"]);
 const bendahara = staff("bendahara", ["lpj.review_treasurer"]);
-// Holds every desk: still only one per LPJ.
 const allDesks = staff("all", ["lpj.review_secretariat", "lpj.review_treasurer", "lpj.approve"]);
 
 let fake: ReturnType<typeof fakeDb>;
@@ -66,7 +65,6 @@ async function ok<T = { version: number; status: string }>(
   return r.data as T;
 }
 
-/** A programme taken from proposal to finished; returns its id (= the LPJ id). */
 async function finished() {
   const { id } = await ok<{ id: string }>(
     programActions().save(...as(director))({
@@ -96,7 +94,6 @@ const report = {
   realized: [{ amountMinor: 42000, currency: "JPY" }],
 };
 
-/** Written and submitted by the first PIC; returns the LPJ version. */
 async function submittedLpj(id: string) {
   let v = (await ok(lpjActions().save(...as(pic))({ id, version: 1, ...report }))).version;
   v = (await ok(lpjActions().submit(...as(pic))({ id, version: v }))).version;
@@ -196,7 +193,6 @@ describe("LPJ desks: separation of duties", () => {
     expect(outsider).toMatchObject({ ok: false, error: "refused" });
     let v = await submittedLpj(id);
 
-    // The submitter never reviews, even with the desk permission.
     const own = await lpjActions().reviewSecretariat(
       ...as(staff("pic", ["lpj.review_secretariat"])),
     )({ id, version: v });
@@ -204,7 +200,6 @@ describe("LPJ desks: separation of duties", () => {
       ok: false,
       issues: ["The submitter cannot review their own LPJ."],
     });
-    // A co-PIC who did not submit may hold the secretariat desk (only the submitter is excluded).
     const noDesk = await lpjActions().reviewTreasurer(...as(sekre))({ id, version: v });
     expect(noDesk).toMatchObject({ ok: false, error: "forbidden" });
 
@@ -260,10 +255,8 @@ describe("LPJ desks: separation of duties", () => {
       revisionRound: 1,
       returnNote: "Add the receipts",
     });
-    // The plan stayed frozen through every write.
     expect(stored?.plan.budgets).toEqual([{ amountMinor: 50000, currency: "JPY" }]);
     v = (await ok(lpjActions().submit(...as(pic2))({ id, version: back.version }))).version;
-    // pic2 submitted this round: now pic2 cannot review, the first PIC may not either (no desk).
     const self = await lpjActions().reviewSecretariat(...as(pic2))({ id, version: v });
     expect(self).toMatchObject({ ok: false, error: "refused" });
   });
@@ -360,13 +353,11 @@ describe("LPJ PDF, rendered at download time", () => {
 
 describe("period report card, computed on request (E5)", () => {
   it("counts programmes and LPJs, totals budgets per currency, never stores anything", async () => {
-    // 1: finished with an approved LPJ (JPY 50,000 planned, 42,000 spent).
     const { id } = await finished();
     let v = await submittedLpj(id);
     v = (await ok(lpjActions().reviewSecretariat(...as(sekre))({ id, version: v }))).version;
     v = (await ok(lpjActions().reviewTreasurer(...as(bendahara))({ id, version: v }))).version;
     await ok(lpjActions().approve(...as(sekjen))({ id, version: v }));
-    // 2: finished, its LPJ still a draft (overdue on 1 December); 3: approved, at risk (AUD).
     await finished();
     const running = await ok<{ id: string }>(
       programActions().save(...as(director))({
@@ -390,7 +381,6 @@ describe("period report card, computed on request (E5)", () => {
         reason: "No mentors yet",
       }),
     );
-    // 4: a proposal with an IDR budget: not a promise, not in the planned totals.
     await ok(
       programActions().save(...as(director))({
         version: null,

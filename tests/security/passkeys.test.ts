@@ -209,7 +209,7 @@ describe("passkey sign-in", () => {
     expect(await res.json()).toEqual({ customToken: "custom-token-for-alice" });
     expect(ctx.createCustomToken).toHaveBeenCalledWith("alice");
     expect((await ctx.store.findById(authenticator.id))?.counter).toBe(1);
-    expect(res.headers.get("set-cookie")).toContain("Max-Age=0"); // challenge cookie cleared
+    expect(res.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 
   it("a challenge can be used only once, even by concurrent requests (no replay, no race)", async () => {
@@ -244,7 +244,7 @@ describe("passkey sign-in", () => {
       (c: string) => authenticator.authenticate(c, { origin: "https://evil.example" }),
       (c: string) => authenticator.authenticate(c, { userHandle: "bWFsbG9yeQ" }),
       (c: string) => authenticator.authenticate(c, { counter: 5 }),
-      (c: string) => authenticator.authenticate(c, { counter: 3 }), // counter went backwards → clone
+      (c: string) => authenticator.authenticate(c, { counter: 3 }),
       () => ({ id: authenticator.id }),
     ];
     const statuses: number[] = [];

@@ -1,14 +1,4 @@
 #!/usr/bin/env node
-/**
- * Bootstrap: gives the built-in `superadmin` role (global) to an existing account, found by e-mail.
- * Run once, locally, with the admin service account. Dry run unless --apply is given.
- *
- *   node --experimental-strip-types --import ./infrastructure/scripts/ts-register.mjs \
- *     --env-file=apps/admin/.env.local infrastructure/scripts/grant-superadmin.mjs --email you@example.org [--apply]
- *
- * The person must have signed in on web once (that creates users/{uid}). Later superadmins are
- * granted on the admin Users page. Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
- */
 import { createRequire } from "node:module";
 import { parseArgs } from "node:util";
 
@@ -30,7 +20,6 @@ if (missing.length > 0) {
   process.exit(2);
 }
 
-// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
 const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -44,7 +33,6 @@ const app = initializeApp({
   }),
 });
 const account = await getAuth(app).getUserByEmail(values.email);
-// Loaded after the checks above (needs the ts-register hook from the usage line).
 const { getDatabase } = await import("../../packages/db/src/sql/store.ts");
 const db = getDatabase({ url: process.env.DATABASE_URL });
 const ref = db.collection("users").doc(account.uid);
@@ -57,8 +45,6 @@ const result = await db.runTransaction(async (tx) => {
     return "already";
   }
   if (values.apply) {
-    // Same shape as the Role Manager writes (packages/db/src/users.ts plainAssignments), and
-    // roleIds too: Role Manager lists and the last-superadmin guard query by roleIds.
     const roleAssignments = [
       ...assignments,
       {

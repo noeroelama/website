@@ -5,7 +5,6 @@ import type { RegistrationResult } from "@/server/registrations";
 import { captchaToken } from "@/lib/captcha-client";
 import { registerForEventAction } from "./actions";
 
-/** Internal registration for a signed-in member (the server re-checks everything). */
 export function RegisterButton(props: {
   slug: string;
   labels: {

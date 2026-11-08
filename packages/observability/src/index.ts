@@ -1,7 +1,3 @@
-/**
- * Structured JSON logging with secret redaction. Ship stdout to the log drain;
- * error tracking (Sentry) is wired per app later.
- */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 const ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 
@@ -59,7 +55,6 @@ export function createLogger(options: {
   };
 }
 
-/** Accept an inbound request ID only if it is safe; otherwise mint one. */
 export function resolveRequestId(inbound: string | null | undefined): string {
   if (inbound && /^[A-Za-z0-9._-]{8,128}$/.test(inbound)) return inbound;
   return crypto.randomUUID();
@@ -79,7 +74,6 @@ export interface SecurityEvent {
   readonly details?: Record<string, unknown>;
 }
 
-/** Security events go to a dedicated, alertable log stream. */
 export function logSecurityEvent(logger: Logger, event: SecurityEvent): void {
   logger.warn("security_event", {
     securityEvent: event.type,

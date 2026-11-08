@@ -45,7 +45,6 @@ interface Row {
   requester: string;
   joinUrl: string | null;
   roomError: string | null;
-  /** Archive state of the recording (F3), null = nothing recorded. */
   recording: string | null;
   decisionNote: string | null;
   invitation: string | null;
@@ -64,7 +63,6 @@ interface SettingsView {
   hostKeySet: boolean;
 }
 
-/** Invitation text and its QR (the join link), ready to copy. Never the Host Key. */
 function Invitation({ row, onClose }: { row: Row; onClose: () => void }) {
   const [qr, setQr] = useState<string | null>(null);
   useEffect(() => {
@@ -90,7 +88,6 @@ function Invitation({ row, onClose }: { row: Row; onClose: () => void }) {
   );
 }
 
-/** Zoom bookings (F1): request, approve or reject, cancel, invitation, settings. */
 export function ZoomPage({
   rows,
   canRequest,
@@ -99,7 +96,6 @@ export function ZoomPage({
 }: {
   rows: Row[];
   canRequest: boolean;
-  /** null = the viewer may not change the settings. */
   settings: SettingsView | null;
   rules: { approvalRequired: boolean; minNoticeHours: number; maxDurationMinutes: number };
 }) {

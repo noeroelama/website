@@ -7,7 +7,6 @@ import type { Dictionary } from "@/i18n/dictionaries";
 
 type Labels = Dictionary["account"];
 
-/** Header chip for signed-out visitors (also the prerendered shell). */
 export function LoginChip(props: { t: Labels }) {
   return (
     <a className="site-account-chip" href="/login">
@@ -16,10 +15,6 @@ export function LoginChip(props: { t: Labels }) {
   );
 }
 
-/**
- * Signed-in user in the header: photo (or initials), name (shortName) and an arrow that opens
- * the same menu as the admin side panel's account menu — Profile, Account, Log out.
- */
 export function SiteAccount(props: {
   name: string;
   initials: string;
@@ -59,15 +54,13 @@ export function SiteAccount(props: {
     }
   }
 
-  // Plain fetch (as the admin menu does): src/lib/auth-client.ts would load the Firebase SDK
-  // on every public page.
   async function signOut() {
     setSignOutFailed(false);
     try {
       const response = await fetch("/api/session", { method: "DELETE" });
       if (!response.ok) throw new Error(String(response.status));
       setOpen(false);
-      router.refresh(); // the header streams in again, now with the Log in chip
+      router.refresh();
     } catch {
       setSignOutFailed(true);
     }

@@ -7,10 +7,6 @@ import type { GatewayDeps } from "./types";
 
 const gatewayEnvSchema = baseEnv.extend(gatewayEnv.shape).extend(rateLimitEnv.shape);
 
-/**
- * Composition root. Development/test use in-memory adapters; staging/production refuse
- * to start until real adapters are wired (fail closed rather than serve fake data).
- */
 export function createDepsFromEnv(
   source: Readonly<Record<string, string | undefined>>,
 ): GatewayDeps {

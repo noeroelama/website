@@ -102,13 +102,11 @@ describe("WhatsApp chatbot (C4)", () => {
     expect(replies[4]).toContain("1. PPI Jepang");
     expect(replies[5]).toContain("Balas dengan nomor");
     expect(replies[7]).toContain("1. The University of Tokyo\n2. Tokyo Institute of Technology");
-    // A number outside the list is a new search.
     expect(replies[8]).toContain("tidak ditemukan");
     expect(replies[10]).toContain("Rina Putri\nrina@example.org\nThe University of Tokyo");
     expect(replies[11]).toContain("Balas *ya*");
     expect(replies[12]).toContain("Akun dibuat untuk rina@example.org");
     expect(accounts).toEqual(["rina@example.org:Rina Putri", "record:uid-new:rina@example.org"]);
-    // The conversation is over.
     expect(fake.docs.has("whatsappConversations/h6281234567890")).toBe(false);
   });
 
@@ -127,7 +125,6 @@ describe("WhatsApp chatbot (C4)", () => {
     expect((await say("daftar", "Budi", "budi@example.org", "1", "Todai"))[4]).toContain(
       "tidak ditemukan",
     );
-    // A chapter without approved campuses never asks the matcher.
     expect((await say("daftar", "Budi", "budi@example.org", "2", "UNSW"))[4]).toContain(
       "tidak ditemukan",
     );

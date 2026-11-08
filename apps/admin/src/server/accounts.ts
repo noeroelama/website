@@ -28,7 +28,6 @@ export interface AccountDeps {
   readonly passkeys: Pick<PasskeyStore, "listByUser">;
   readonly authAdmin: AccountAdmin;
   readonly logger: Logger;
-  /** E-mails the invite (after the invite is stored); the result is the messenger status. */
   readonly sendInvite: (invite: Invite, roleName: string) => Promise<unknown>;
 }
 
@@ -49,14 +48,12 @@ const RoleChangeInput = z
     version: z.number().int().min(0),
     roleId: safeId,
     scope: ScopeInput,
-    /** Board period the role is for; null/absent = independent of periods. */
     periodId: safeId.nullable().optional(),
   })
   .strict();
 const StatusInput = z
   .object({ uid: safeId, version: z.number().int().min(0), status: z.enum(["active", "inactive"]) })
   .strict();
-/** "Email or Name" of Add New People: an e-mail (has "@") or an account's exact name. */
 const PersonInput = z
   .object({
     person: safeText(120).refine(
@@ -68,7 +65,6 @@ const PersonInput = z
   .strict();
 const InviteRef = z.object({ email: z.email().max(254) }).strict();
 
-/** Same role, same place and same period (a revoked assignment no longer counts). */
 const sameAssignment = (a: RoleAssignment, b: RoleAssignment) =>
   a.roleId === b.roleId &&
   sameScope(a.scope, b.scope) &&
@@ -76,10 +72,8 @@ const sameAssignment = (a: RoleAssignment, b: RoleAssignment) =>
   !a.revokedAt &&
   !b.revokedAt;
 
-/** A role that opens admin pages needs two sign-in methods on the account first (B2). */
 const isStaffRole = (role: RoleDefinition) => role.permissions.length > 0;
 
-/** Audit entry for an account change; role changes go through these rules, never through revert. */
 const accountAudit =
   (audit: AuditBuilder) =>
   (change: AuditChange, current: UserSummary): AuditEvent =>
@@ -93,7 +87,6 @@ const accountAudit =
       revertible: false,
     });
 
-/** Role Manager people actions. Wired with the real stores in ./wiring.ts (server actions). */
 export function createAccountActions(deps: AccountDeps) {
   const refuse = (reason: AccountChangeRefusal | null) => {
     if (reason) throw new RuleViolationError(REFUSAL_MESSAGE[reason]);
@@ -103,7 +96,6 @@ export function createAccountActions(deps: AccountDeps) {
     if (!role) throw new RuleViolationError("This role does not exist.");
     return role;
   };
-  /** After the commit: the account must sign in again so the new roles/status apply everywhere. */
   const afterChange = async (actor: Principal, target: UserSummary, details: object) => {
     await deps.authAdmin.revokeSessions(target.uid);
     logSecurityEvent(deps.logger, {
@@ -113,11 +105,6 @@ export function createAccountActions(deps: AccountDeps) {
     });
   };
 
-  /**
-   * Gives a role to an existing account (all checks; shared by the role popup and Add New People).
-   * A website role replaces the one the account has (one per account); removing it needs the
-   * same rights as giving it.
-   */
   const give = async (
     input: z.infer<typeof RoleChangeInput>,
     principal: Principal,
@@ -143,12 +130,10 @@ export function createAccountActions(deps: AccountDeps) {
       revokedAt: null,
     };
     const website = isWebsiteRole(added);
-    // Read before the transaction (no network calls inside it); a newer account fails its version check.
     const account = website ? await deps.accounts.get(input.uid) : null;
     const replacedIds = (account?.roleAssignments ?? [])
       .filter((a) => isWebsiteRole(a) && a.roleId !== role.id)
       .map((a) => a.roleId);
-    // A deleted role grants nothing, so removing it needs no rights.
     const replaced = (await Promise.all(replacedIds.map((id) => deps.roles.get(id)))).filter(
       (r) => r !== null,
     );
@@ -201,11 +186,6 @@ export function createAccountActions(deps: AccountDeps) {
     handler: give,
   });
 
-  /**
-   * Role Manager → Add New People: the account with this e-mail or exact name gets the role (all
-   * chapters, any period); an e-mail without an account is invited instead (stored, e-mailed,
-   * applied when that e-mail signs in — see `recordSignIn`).
-   */
   const addPerson = createGuardedAction({
     permission: "users.edit",
     input: PersonInput,
@@ -243,7 +223,7 @@ export function createAccountActions(deps: AccountDeps) {
             resourceId: id,
             title: person.toLowerCase(),
             ...change,
-            revertible: false, // an e-mail goes out; cancel the invite instead
+            revertible: false,
           }),
         new Date(),
       );
@@ -252,10 +232,6 @@ export function createAccountActions(deps: AccountDeps) {
     },
   });
 
-  /**
-   * Add New People suggestions while typing (debounced in the browser): name and e-mail of up to
-   * 8 accounts whose e-mail or name starts with the text. Only for staff who may add people.
-   */
   const findPeople = createGuardedAction({
     permission: "users.edit",
     input: z.object({ query: safeText(120).pipe(z.string().min(2)) }).strict(),
@@ -267,7 +243,6 @@ export function createAccountActions(deps: AccountDeps) {
       })),
   });
 
-  /** Cancels a pending invite (Role Manager, the invited row's popup). */
   const cancelInvite = createGuardedAction({
     permission: "users.edit",
     input: InviteRef,
@@ -291,10 +266,6 @@ export function createAccountActions(deps: AccountDeps) {
     },
   });
 
-  /**
-   * The person popup: sign-in methods of one account (Firebase Auth + passkeys), read on demand.
-   * `users.read` for the account's chapter, like the list (A2).
-   */
   const personDetails = createGuardedAction({
     permission: "users.read",
     input: z.object({ uid: safeId }).strict(),
@@ -337,7 +308,6 @@ export function createAccountActions(deps: AccountDeps) {
               superadminsAfter,
             }),
           );
-          // PPIDK: a role from an appointment ends with the appointment, so both tell one story.
           if (
             current.roleAssignments.some(
               (a) => a.source === "appointment" && sameAssignment(a, removed),
@@ -375,7 +345,6 @@ export function createAccountActions(deps: AccountDeps) {
         { status: input.status },
         accountAudit(audit),
       );
-      // Firebase Auth: a deactivated account cannot sign in again; its sessions end now.
       await deps.authAdmin.setDisabled(input.uid, input.status === "inactive");
       await afterChange(principal, updated, { status: input.status });
       return { version: updated.version };

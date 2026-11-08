@@ -37,7 +37,6 @@ const image = {
   width: 1200,
   height: 800,
 };
-/** Every field the form marks with * (featured image, publish date, URL, summary) is filled. */
 const article = {
   title: "Simposium Berakhir Sukses",
   slug: "simposium-berakhir-sukses",
@@ -131,7 +130,6 @@ describe("News CMS: save draft, publish, schedule", () => {
     });
     expect(edited).toMatchObject({ ok: true, data: { version: 2, slug: "simposium-2026" } });
     expect(auditEntries().at(-1)).toMatchObject({ action: "UPDATE", revertible: false });
-    // The old URL is free again.
     expect(
       await actions().save(...as(editor))({ ...article, version: null, intent: "draft" }),
     ).toMatchObject({ ok: true });
@@ -257,7 +255,6 @@ describe("News CMS: articles saved before the image and date were required", () 
       intent: "draft",
     });
     const id = created.ok ? created.data.id : "";
-    // An older article: no featured image and no publish date in Firestore.
     const path = `content/${id}`;
     fake.docs.set(path, { ...fake.docs.get(path), featuredImage: null, publishAt: null });
     expect(
@@ -295,7 +292,6 @@ describe("content store reads", () => {
     expect(await store.get("missing")).toBeNull();
     expect(await store.findPublishedBySlug("news", "bad/slug", now)).toBeNull();
     expect(await store.findPublishedBySlug("news", "missing", now)).toBeNull();
-    // A slug pointer whose article is gone.
     fake.docs.delete(`content/${second.ok ? second.data.id : ""}`);
     expect(await store.findPublishedBySlug("news", "kedua", now)).toBeNull();
     expect(

@@ -12,8 +12,6 @@ import {
 } from "firebase/auth";
 import { clientAuth } from "./firebase-client";
 
-/** Browser-side sign-in flows. Every flow ends with our HttpOnly session cookie. */
-
 async function postJson(
   url: string,
   body?: unknown,
@@ -28,7 +26,6 @@ async function postJson(
   return response;
 }
 
-/** Exchanges the fresh Firebase sign-in for a session cookie, then forgets it in the browser. */
 async function startSession(user: User): Promise<void> {
   try {
     await postJson("/api/session", { idToken: await user.getIdToken() });
@@ -37,7 +34,6 @@ async function startSession(user: User): Promise<void> {
   }
 }
 
-/** Sign up or sign in with Google (the same action for both). */
 export async function continueWithGoogle(): Promise<void> {
   const { user } = await signInWithPopup(await clientAuth(), new GoogleAuthProvider());
   await startSession(user);
@@ -54,7 +50,6 @@ export async function signInWithEmail(email: string, password: string): Promise<
   await startSession(user);
 }
 
-/** Firebase emails a reset link. Unknown emails are not reported (no account enumeration). */
 export async function sendPasswordReset(email: string): Promise<void> {
   try {
     await sendPasswordResetEmail(await clientAuth(), email, {
@@ -76,7 +71,6 @@ export async function signInWithPasskey(): Promise<void> {
   await startSession(user);
 }
 
-/** Adds a passkey to the signed-in account (requires a sign-in in the last 15 minutes). */
 export async function addPasskey(): Promise<void> {
   const options = (await (
     await postJson("/api/passkeys/register-options", undefined, "passkey/reauthenticate")

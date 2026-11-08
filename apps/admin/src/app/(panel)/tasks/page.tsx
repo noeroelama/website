@@ -5,10 +5,8 @@ import { requireAdminViewer } from "@/server/context";
 import { visibleTask } from "@/server/tasks";
 import { adminReads, tasks } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** My Tasks (G1): my follow-ups, dispositions and milestones; links to unit boards. */
 export default async function MyTasksPage() {
   const viewer = await requireAdminViewer("/tasks");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;

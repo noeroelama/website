@@ -93,7 +93,6 @@ describe("organisation structure (org units)", () => {
       title: "Bidang Desain",
     });
 
-    // A Media director (orgUnit scope) covers Media and Desain, never a sibling directorate.
     const finance = await create("Direktorat Keuangan", "FIN", koor);
     const director: Principal = {
       ...staff([]),
@@ -110,7 +109,6 @@ describe("organisation structure (org units)", () => {
     expect(can(director, "events.edit", { orgUnitPath: orgUnitPath(designUnit!) })).toBe(true);
     expect(can(director, "events.edit", { orgUnitPath: orgUnitPath(financeUnit!) })).toBe(false);
 
-    // Descendants are one array-contains query.
     expect((await units.descendants(koor)).map((u) => u.code).sort()).toEqual([
       "FIN",
       "MED",
@@ -154,7 +152,6 @@ describe("organisation structure (org units)", () => {
         version: 1,
       }),
     ).toMatchObject({ ok: true, data: { version: 2 } });
-    // The old code is free again.
     expect(await create("Direktorat Media Baru", "MED", koor)).toBeTruthy();
   });
 
@@ -180,7 +177,6 @@ describe("organisation structure (org units)", () => {
     expect(await pathOf(staffUnit)).toEqual([koor, sekjen, media, design]);
     expect(auditEntries().at(-1)).toMatchObject({ action: "UPDATE", resourceId: media });
 
-    // To the top level, and a stale version is refused.
     expect(
       await actions().move(...as(secretary))({ id: media, version: 2, parentId: null }),
     ).toMatchObject({ ok: true });
@@ -211,7 +207,6 @@ describe("organisation structure (org units)", () => {
     const id = saved.ok ? saved.data.id : "";
     expect(await units.get(id)).toMatchObject({ members, divisions });
     expect(auditEntries().at(-1)?.["after"]).toMatchObject({ members, divisions });
-    // Units saved before members existed read as empty.
     fake.docs.set(`orgUnits/${id}`, {
       ...fake.docs.get(`orgUnits/${id}`),
       members: undefined,
@@ -236,7 +231,6 @@ describe("organisation structure (org units)", () => {
     const deleted = auditEntries().at(-1);
     expect(deleted).toMatchObject({ action: "DELETE", resourceType: "orgUnit", revertible: true });
     expect((await units.listForPeriod(periodId)).map((u) => u.code)).toEqual(["KOOR"]);
-    // With its only unit gone, the coordinator can be deleted too.
     expect(await actions().remove(...as(secretary))({ id: koor, version: 1 })).toMatchObject({
       ok: true,
     });

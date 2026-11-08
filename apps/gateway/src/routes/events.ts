@@ -8,7 +8,6 @@ import {
 import { isRegistrationOpen, type EventEntity } from "@website/domain/events";
 import type { GatewayDeps, GatewayVariables } from "../types";
 
-/** Explicit mapping: domain entity → public DTO. Internal fields are dropped by construction. */
 export function toEventDto(event: EventEntity, now: Date): EventDto {
   return {
     id: event.id,

@@ -12,7 +12,6 @@ import {
 } from "@website/domain/content";
 import { createSluggedStore, toDate } from "./slugged";
 
-/** Fields a write may set (the store fills id, version and timestamps). */
 export type ContentFields = Omit<ContentItem, "id" | "version" | "createdAt" | "updatedAt">;
 
 function toItem(id: string, data: Record<string, unknown>): ContentItem {
@@ -37,10 +36,6 @@ function toItem(id: string, data: Record<string, unknown>): ContentItem {
   };
 }
 
-/**
- * What the audit log keeps (and a revert writes back). `publishAt` is stored as an ISO string
- * both here and in the database, so a reverted value has the same type as a saved one.
- */
 export function contentSnapshot(item: ContentFields): Snapshot {
   return {
     title: item.title,
@@ -56,7 +51,6 @@ export function contentSnapshot(item: ContentFields): Snapshot {
   };
 }
 
-/** `content/{id}` (news, articles, pages); URLs unique per kind (`contentSlugs/{kind}_{slug}`). */
 export function createSqlContentStore(db: Database) {
   const store = createSluggedStore<ContentItem>(db, {
     collection: "content",
@@ -67,7 +61,6 @@ export function createSqlContentStore(db: Database) {
   });
 
   return {
-    /** Admin list: newest change first, trash excluded (small collections; filtered in code). */
     async listForAdmin(kind: ContentKind, limit = 500): Promise<ContentItem[]> {
       const snapshot = await store.docs
         .where("kind", "==", kind)
@@ -86,17 +79,12 @@ export function createSqlContentStore(db: Database) {
       return item && isPubliclyVisible(item, now) ? item : null;
     },
 
-    /** See createSluggedStore().write. */
     write: store.write,
   };
 }
 
 export type SqlContentStore = ReturnType<typeof createSqlContentStore>;
 
-/**
- * Public news for the website (role web_ro): visible items only, as public DTOs. The list holds
- * the newest `limit` items by publish date; the site filters and pages them (cached minutes).
- */
 export function createSqlNewsReader(db: Database) {
   const store = createSqlContentStore(db);
   return {

@@ -1,6 +1,5 @@
 import { isRecruitmentOpen, type Recruitment } from "@website/domain/recruitment";
 
-/** A recruitment row of the Recruitment page, mapped on the server. */
 export interface RecruitmentItem {
   id: string;
   version: number;
@@ -8,7 +7,6 @@ export interface RecruitmentItem {
   periodName: string;
   title: string;
   description: string;
-  /** ISO (UTC). */
   opensAt: string;
   closesAt: string;
   maxChoices: number;
@@ -17,7 +15,6 @@ export interface RecruitmentItem {
   formVersion: number;
   pactTemplateUrl: string | null;
   published: boolean;
-  /** Published and inside the window right now. */
   open: boolean;
   units: {
     orgUnitId: string;
@@ -54,20 +51,16 @@ export function toRecruitmentItem(
   };
 }
 
-/** One unit line of the editor (every unit of the period is listed; `offered` ticks it). */
 export interface UnitDraft {
   orgUnitId: string;
   name: string;
-  /** Indent in the tree. */
   depth: number;
   offered: boolean;
   quota: string;
   portfolioRequired: boolean;
-  /** Seats already accepted (the quota cannot go below). */
   filled: number;
 }
 
-/** Editor lines for a period's units, with the recruitment's current settings. */
 export function unitDrafts(
   units: readonly { id: string; name: string; path: readonly string[] }[],
   current: RecruitmentItem["units"],
@@ -86,7 +79,6 @@ export function unitDrafts(
   });
 }
 
-/** The ticked lines as the save action expects them (the server validates). */
 export const unitsInput = (drafts: readonly UnitDraft[]) =>
   drafts
     .filter((d) => d.offered)

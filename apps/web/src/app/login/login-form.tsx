@@ -12,7 +12,6 @@ import {
   useAuthAction,
 } from "@/components/auth-form";
 
-/** `next`: where to go after sign-in, already validated on the server (or null). */
 export function LoginForm({ next }: { next: string | null }) {
   const email = useAuthAction(next);
   const passkey = useAuthAction(next);

@@ -34,19 +34,15 @@ interface Row {
   status: ProgramStatus;
   progress: number;
   health: HealthStatus | null;
-  /** The viewer is a PIC of it. */
   mine: boolean;
   milestones: Array<{ title: string; dueOn: string | null; done: boolean }>;
 }
 
-/** What the plan form offers: the units the viewer may plan for, the period's key results. */
 export interface PlanOptions {
   units: Array<{ id: string; name: string }>;
-  /** `objectiveId:keyResultId` → "Objective → Key result". */
   keyResults: Array<{ value: string; label: string }>;
 }
 
-/** The current plan, when editing. */
 export interface PlanValues {
   id: string;
   version: number;
@@ -62,7 +58,6 @@ export interface PlanValues {
   picEmails: string[];
 }
 
-/** Add / edit a programme plan (one form for both). */
 export function PlanForm({
   open,
   onClose,
@@ -168,7 +163,6 @@ export function PlanForm({
   );
 }
 
-/** Programmes (E2): the period's programmes with status, progress and health. */
 export function ProgramsPage({
   period,
   periods,
@@ -178,7 +172,6 @@ export function ProgramsPage({
   period: { id: string; name: string; status: PeriodStatus } | null;
   periods: Array<{ id: string; name: string }>;
   rows: Row[];
-  /** null = the viewer cannot propose here. */
   plan: PlanOptions | null;
 }) {
   const [adding, setAdding] = useState(false);

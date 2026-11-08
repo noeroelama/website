@@ -16,7 +16,6 @@ import {
 } from "react";
 import type { NavItem } from "../navigation";
 
-/** Display data only. Which items exist was decided on the server (see navigation.ts). */
 export interface SidebarUser {
   readonly name: string;
   readonly email: string | null;
@@ -24,7 +23,6 @@ export interface SidebarUser {
 }
 
 const ORGANISATION = "PPI Dunia Kawasan Asia-Oseania";
-/** Must match the desktop breakpoint in app/globals.css. */
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
 function subscribeToViewport(onChange: () => void) {
@@ -37,14 +35,9 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/**
- * Admin side panel. Desktop: fixed column on the left. Mobile: off-canvas drawer opened from the
- * top bar, closed by the backdrop, Escape or following a link.
- */
 export function AdminSidebar(props: {
   items: readonly NavItem[];
   user: SidebarUser;
-  /** Public website (WEB_URL): the logo links there. Unset (e.g. CI) → the logo is not a link. */
   webUrl: string | undefined;
   children: ReactNode;
 }) {
@@ -59,15 +52,12 @@ export function AdminSidebar(props: {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const drawerVisible = isDesktop || drawerOpen;
-  // The server sends the pages in display order, each group's pages together.
   const groups: { label: string; items: NavItem[] }[] = [];
   for (const item of props.items) {
     const last = groups.at(-1);
     if (last?.label === item.group) last.items.push(item);
     else groups.push({ label: item.group, items: [item] });
   }
-  // unoptimized: the Next dev image optimizer returns 500 for this webp; the plain <img> path is
-  // proven to work (see tools-page QR logo). The logo image already contains the organisation name.
   const logo = (
     <Image
       src="/logo.webp"
@@ -79,17 +69,15 @@ export function AdminSidebar(props: {
     />
   );
 
-  // Every note field (textarea) on every admin page grows with its text, a line at a time; the
-  // CSS transition on `height` (globals.css) adds the spring.
   useEffect(() => {
     const grow = (event: Event) => {
       const field = event.target;
       if (!(field instanceof HTMLTextAreaElement)) return;
       const from = field.offsetHeight;
-      field.style.height = "auto"; // measure: never smaller than its rows
+      field.style.height = "auto";
       const to = field.scrollHeight + field.offsetHeight - field.clientHeight;
       field.style.height = `${from}px`;
-      void field.offsetHeight; // start the transition from the current height
+      void field.offsetHeight;
       field.style.height = `${to}px`;
     };
     document.addEventListener("input", grow);
@@ -102,7 +90,6 @@ export function AdminSidebar(props: {
 
   useEffect(() => {
     if (isDesktop || !drawerOpen) return;
-    // Move focus into the drawer and stop the page behind it from scrolling.
     panelRef.current?.querySelector<HTMLElement>("a, button")?.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -168,7 +155,6 @@ export function AdminSidebar(props: {
 
         <nav className="admin-nav" aria-label="Menu">
           {groups.map((group, i) => (
-            // A group collapses from its label (native <details>); every group starts open.
             <details key={group.label} className="admin-nav-group" open>
               <summary id={`${drawerId}-group-${i}`} className="admin-menu-label">
                 {group.label}
@@ -204,7 +190,6 @@ export function AdminSidebar(props: {
         </div>
       </aside>
 
-      {/* Navigations are transitions, so the browser crossfades the old page into the new one. */}
       <ViewTransition>
         <main id="main" className="admin-main admin-dark-page">
           {props.children}
@@ -214,7 +199,6 @@ export function AdminSidebar(props: {
   );
 }
 
-/** Account menu. Profile and Account are pages of the public website (same session). */
 function UserMenu(props: {
   user: SidebarUser;
   webUrl: string | undefined;
@@ -242,7 +226,7 @@ function UserMenu(props: {
     const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? [])];
     const index = items.indexOf(document.activeElement as HTMLElement);
     if (event.key === "Escape") {
-      event.stopPropagation(); // close the menu, not the whole drawer
+      event.stopPropagation();
       setOpen(false);
       buttonRef.current?.focus();
     } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -259,8 +243,8 @@ function UserMenu(props: {
     try {
       const response = await fetch("/api/session", { method: "DELETE" });
       if (!response.ok) throw new Error(String(response.status));
-      router.push("/"); // the page sends signed-out visitors to the web sign-in
-      router.refresh(); // drop server components rendered with the old session
+      router.push("/");
+      router.refresh();
     } catch {
       setSignOutFailed(true);
     }
@@ -338,7 +322,6 @@ function UserMenu(props: {
   );
 }
 
-// Inline icons (no icon dependency). Decorative: the visible text is the label.
 function Svg(props: { children: ReactNode }) {
   return (
     <svg

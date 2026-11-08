@@ -9,13 +9,8 @@ import { label, PROGRAM_STATUS_LABELS } from "@/labels";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/**
- * Period report card (E5): computed on every request, nothing stored. Totals of the whole
- * period (programmes are open to every officer, DECISIONS §24); budgets per currency.
- */
 export default async function ReportCardPage({
   searchParams,
 }: {

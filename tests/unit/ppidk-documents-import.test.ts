@@ -8,7 +8,6 @@ import { fakeDb } from "../support/fake-db";
 
 const now = new Date("2026-11-04T00:00:00Z");
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
-/** `mysql --batch` output of these rows: missing columns are NULL, line breaks escaped. */
 const table = (rows: Array<Record<string, string>>) => {
   const header = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   const cell = (value: string | undefined) =>
@@ -19,7 +18,6 @@ const table = (rows: Array<Record<string, string>>) => {
   );
 };
 
-/** PPIDK `SidikSurat::kanonik` (keys in Indonesian, PPIDK user ids). */
 const ppidkDigest = (l: Record<string, string>, typeCode: string) =>
   sha(
     [
@@ -147,7 +145,6 @@ const tables: PpidkDocumentTables = {
       cancel_reason: "Salah tanggal",
       pdf_path: "surat/3/101.pdf",
     },
-    // Stored text changed after issue: PPIDK shows it to nobody, and neither does the platform.
     { ...l102, content_digest: ppidkDigest({ ...l102, body: "<p>asli</p>" }, "SKet") },
     {
       ...issued,
@@ -297,7 +294,6 @@ const plan = mapPpidkDocuments(tables, {
 const doc = (path: string) => plan.writes.find((w) => w.path === path)?.data;
 const reasons = plan.skipped.map((s) => `${s.table}/${s.id}: ${s.reason}`);
 
-/** The plan written to a database, read through the public verification page. */
 const verify = (code: string, typedName: string | null = null) => {
   const fake = fakeDb();
   for (const w of plan.writes) fake.docs.set(w.path, w.data);
@@ -322,7 +318,6 @@ describe("PPIDK documents import (step 4.10)", () => {
         { name: "Ana Putri", desk: "Sekretariat Jenderal", position: "Sekretaris Jenderal" },
       ],
     });
-    // Before signature snapshots: rebuilt from the account, as PPIDK did.
     expect(await verify("ABCDE-FGHJK")).toMatchObject({
       cancelled: true,
       cancelReason: "Salah tanggal",
@@ -354,7 +349,6 @@ describe("PPIDK documents import (step 4.10)", () => {
     expect(await verify("SHEET-22222")).toMatchObject({
       number: "001.001/SERT/LKMM/PPIDK-ASIANIA/IX/2026",
     });
-    // Not issued in PPIDK either: no answer.
     expect(await verify("WAKTS-22222")).toBeNull();
   });
 
@@ -388,7 +382,6 @@ describe("PPIDK documents import (step 4.10)", () => {
 
   it("counters continue from the last PPIDK number", () => {
     expect(doc("letterCounters/ppidk-period-3_ppidk-lettertype-5")).toEqual({ last: 12 });
-    // No sequence row: the highest number used.
     expect(doc("letterCounters/ppidk-period-3_ppidk-lettertype-7")).toEqual({ last: 2 });
     expect(doc("letterCounters/ppidk-period-3_ppidk-lettertype-6")).toEqual({ last: 1 });
     expect(doc("certificateCounters/ppidk-letter-104")).toEqual({ last: 4 });

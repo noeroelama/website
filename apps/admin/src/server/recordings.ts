@@ -34,20 +34,14 @@ export interface RecordingArchiveDeps {
     | "sessionTrashed"
     | "readSettings"
   >;
-  /** null = Zoom or Drive not set up: the job does nothing. */
   readonly client: Pick<ZoomClient, "get" | "download" | "trashRecording"> | null;
   readonly drive: Pick<DriveClient, "folder" | "file" | "startUpload" | "putChunk"> | null;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
   readonly now: () => Date;
 }
 
-/** After this many failed calls a file stops being retried (shown as failed). */
 export const MAX_ATTEMPTS = 5;
 
-/**
- * cron "recording-archive" (F3): lists up to 3 new sessions, then moves ONE chunk of ONE file
- * from Zoom to Drive and stores the progress, so every call stays short on shared hosting.
- */
 export function createRecordingArchive(deps: RecordingArchiveDeps) {
   async function listSessions(): Promise<number> {
     const client = deps.client as NonNullable<RecordingArchiveDeps["client"]>;
@@ -71,7 +65,6 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
             bookingId: booking.id,
             sessionUuid: session.uuid,
             ...file,
-            // Zoom gives the size of every completed file.
             size: f.file_size,
             ...archiveNames(booking, file),
             status: "pending",
@@ -88,7 +81,6 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
     return sessions.length;
   }
 
-  /** The download URL is listed again each time (Zoom's URLs are not kept). */
   async function downloadUrl(file: RecordingFile): Promise<string | null> {
     const client = deps.client as NonNullable<RecordingArchiveDeps["client"]>;
     const list = await client.get<ZoomRecordingList>(
@@ -106,7 +98,6 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
       const folderId = await drive.folder(file.folderName);
       const existing = await drive.file(file.fileName, folderId);
       if (existing) {
-        // Same name and size = already archived; a different size is a clash, never overwritten.
         if (existing.size !== file.size) {
           deps.logError("recording archive clash", { fileId: file.id, name: file.fileName });
         }
@@ -151,7 +142,6 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
       : { ...next, uploaded: sent.uploaded, error: null, updatedAt: now };
   }
 
-  /** With the switch on: a session whose files are all in Drive goes to the Zoom trash. */
   async function trashIfDone(file: RecordingFile, settings: ZoomSettings): Promise<boolean> {
     if (!settings.autoDeleteRecordings || file.status !== "done") return false;
     if (await deps.zoom.sessionTrashed(file.sessionUuid)) return false;

@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { eventActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/events.ts (createGuardedAction).
 export async function saveEventAction(input: unknown) {
   const result = await eventActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/events", "layout");

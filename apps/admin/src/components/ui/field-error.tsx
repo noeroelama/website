@@ -27,20 +27,6 @@ const stateOf = (control: Control): FieldState => ({
 
 const same = (a: Requirement[], b: Requirement[]) => JSON.stringify(a) === JSON.stringify(b);
 
-/**
- * Feedback under a form field — put it last inside the field's `.admin-field` wrapper (outside a
- * wrapper it only shows `message`).
- *
- * - `message`: the server's error for this field (from a guarded action's `fields`). It stays
- *   until the value is edited.
- * - The field's own requirements come from its HTML attributes (`required`, `type`, `minLength`,
- *   `min`/`max`, `pattern` + `title`; rules in `components/fields-model.ts`). They show once the
- *   field has been left (or a submit found it invalid), then update while typing: a warning
- *   triangle while unmet, a tick once met; several requirements are listed.
- * - `hint`: help text shown until the field is checked.
- *
- * While something is unmet the control gets `aria-invalid` (red border).
- */
 export function FieldError({
   id,
   message,
@@ -54,7 +40,6 @@ export function FieldError({
   const control = useRef<Control | null>(null);
   const [touched, setTouched] = useState(false);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
-  // A server message is about the value that was saved: it goes once the value is edited.
   const [edited, setEdited] = useState(false);
   const [shownMessage, setShownMessage] = useState(message);
   if (message !== shownMessage) {
@@ -62,7 +47,6 @@ export function FieldError({
     setEdited(false);
   }
 
-  // Find the control of this field and follow it: leaving the field, typing, a failed submit.
   useEffect(() => {
     const field = ref.current?.closest<HTMLElement>(".admin-field");
     const input = field?.querySelector<Control>(CONTROL) ?? null;
@@ -82,7 +66,7 @@ export function FieldError({
       read();
     };
     const onInvalid = (event: Event) => {
-      event.preventDefault(); // our message instead of the browser bubble
+      event.preventDefault();
       setTouched(true);
       read();
     };
@@ -104,7 +88,6 @@ export function FieldError({
   ];
   const invalid = items.some((item) => !item.met);
 
-  // Red border while something is unmet; the feedback is announced with the field.
   useEffect(() => {
     const input = control.current;
     if (!input || items.length === 0) return;

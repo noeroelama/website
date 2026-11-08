@@ -10,13 +10,10 @@ import { LetterSectionTabs, LettersPage, type LetterSection } from "@/components
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** The newest letters of the active period the viewer covers (unit-scoped staff: their units). */
 const LIMIT = 300;
 
-/** Outgoing, incoming letters and letter types in one page (`?tab=incoming|types`). */
 export default async function AdminLettersPage({
   searchParams,
 }: {
@@ -32,7 +29,6 @@ export default async function AdminLettersPage({
       : []),
   ];
   const tab = (await searchParams)["tab"];
-  // Letter types opens from a button, not a tab: with it open, neither tab is highlighted.
   const active: LetterSection =
     tab === "types" && canInSomeScope(principal, "letter_types.read")
       ? "types"

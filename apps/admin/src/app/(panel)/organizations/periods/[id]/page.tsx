@@ -7,10 +7,8 @@ import { toPeriodItem } from "@/components/periods-model";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Organizations → Period → Structure: the units of one board period. */
 export default async function PeriodStructureRoute({
   params,
 }: {

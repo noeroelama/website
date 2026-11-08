@@ -5,11 +5,6 @@ import { Button } from "./button";
 import type { IconName } from "./icon";
 import { Modal } from "./modal";
 
-/**
- * Confirmation for destructive or account-changing actions, in the shared popup look (Back + the
- * action at the bottom right). Records are never removed for good (soft delete), so the default
- * wording is "Move to trash" (DEC-16); list pages use `DELETE_HINT` as the message.
- */
 export function ConfirmDialog({
   open,
   title,
@@ -26,7 +21,6 @@ export function ConfirmDialog({
   children: ReactNode;
   confirmLabel?: string;
   tone?: "danger" | "success" | "primary";
-  /** Icon of the action button (e.g. "trash"). */
   icon?: IconName;
   pending?: boolean;
   onConfirm: () => void;
@@ -55,6 +49,5 @@ export function ConfirmDialog({
   );
 }
 
-/** Message of a soft delete on the content list pages (revertible on the Audit Log). */
 export const DELETE_HINT =
   "They disappear from the public page now. You can revert deletion on the admin log before 14 days.";

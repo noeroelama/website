@@ -10,11 +10,6 @@ export interface InterviewDeps {
   readonly now: () => Date;
 }
 
-/**
- * Interview times (C3-I, `recruitment.review`): a day plan in the committee's time zone becomes
- * UTC slots with a capacity; a time somebody booked is never deleted. Not revertible (bookings
- * may follow at once).
- */
 export function createInterviewActions(deps: InterviewDeps) {
   const createPlan = createGuardedAction({
     permission: "recruitment.review",
@@ -28,7 +23,6 @@ export function createInterviewActions(deps: InterviewDeps) {
             module: "recruitment",
             action: "CREATE",
             resourceType: "interviewSlot",
-            // One entry per plan, filed under the recruitment.
             resourceId: recruitmentId,
             title: `${title}: ${slots.length} interview times on ${plan.date}`,
             before: null,

@@ -2,12 +2,6 @@ import type { IncomingLetter } from "../documents";
 import type { ActionItem } from "../meetings";
 import type { Program } from "../programs";
 
-/**
- * My Tasks and unit task boards (G1), ported from PPIDK `Tugas/*`: a READ MODEL (no tasks
- * collection) over meeting action items, incoming-letter dispositions and programme milestones.
- * Work is completed in the source module; "overdue" is computed at read time.
- */
-
 export type TaskKind = "action" | "disposition" | "milestone";
 export const TASK_KIND_LABELS: Record<TaskKind, string> = {
   action: "Meeting follow-up",
@@ -19,16 +13,12 @@ export interface Task {
   readonly id: string;
   readonly kind: TaskKind;
   readonly title: string;
-  /** Where it comes from ("Rapat kerja", "042/AG/VIII/2026", "Webinar"). */
   readonly source: string;
   readonly due: string | null;
   readonly done: boolean;
   readonly overdue: boolean;
-  /** The admin page that completes it; shown only to viewers who may open that page. */
   readonly href: string;
-  /** Scope of the source record (who may open the link). */
   readonly orgUnitPath: readonly string[];
-  /** The module permission that opens `href`. */
   readonly page: "meetings" | "incoming" | "programs";
 }
 
@@ -50,7 +40,6 @@ export function actionTasks(items: readonly ActionItem[], today: string): Task[]
   }));
 }
 
-/** Dispositions addressed to the person, or to one of the units (unit boards). */
 export function dispositionTasks(
   letters: readonly IncomingLetter[],
   to: { userId?: string; orgUnitIds: readonly string[] },
@@ -79,7 +68,6 @@ export function dispositionTasks(
   );
 }
 
-/** Milestones of running or approved programmes. */
 export function milestoneTasks(programs: readonly Program[], today: string): Task[] {
   return programs
     .filter((p) => p.status === "approved" || p.status === "running")
@@ -99,7 +87,6 @@ export function milestoneTasks(programs: readonly Program[], today: string): Tas
     );
 }
 
-/** Open first, then by due date (no date last), then title. */
 export function sortTasks(tasks: readonly Task[]): Task[] {
   return [...tasks].sort(
     (a, b) =>
@@ -109,6 +96,5 @@ export function sortTasks(tasks: readonly Task[]): Task[] {
   );
 }
 
-/** `taskBoardShares/{orgUnitId}_{uid}`: a unit board shared with one person, view only. */
 export const boardShareId = (orgUnitId: string, uid: string) => `${orgUnitId}_${uid}`;
 export * from "./calendar";

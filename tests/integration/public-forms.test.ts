@@ -75,7 +75,6 @@ const auditEntries = () =>
   [...fake.docs.entries()].filter(([p]) => p.startsWith("auditLogs/")).map(([, d]) => d);
 const responses = () => [...fake.docs.keys()].filter((p) => p.startsWith("formResponses/"));
 
-/** A published public form; returns its id, entity version and public token. */
 const published = async (extra: Record<string, unknown> = {}) => {
   const saved = await actions().save(...as(owner))({ ...formInput(extra), version: null });
   if (!saved.ok) throw new Error(JSON.stringify(saved));
@@ -112,7 +111,6 @@ describe("publishing a form (forms.publish)", () => {
     expect(await actions().close(...as(owner))({ id, version: 2 })).toMatchObject({ ok: true });
     expect(await store.get(id)).toMatchObject({ status: "closed" });
     expect(auditEntries().at(-1)).toMatchObject({ action: "UNPUBLISH", revertible: false });
-    // Re-opening keeps the printed link working: same token.
     expect(await actions().publish(...as(owner))({ id, version: 3 })).toMatchObject({
       data: { publicToken: "token00000000000000000001" },
     });
@@ -157,7 +155,6 @@ describe("answering at /f/{token} (C2)", () => {
     expect(JSON.stringify(await reader()(publicToken))).not.toContain(id);
     expect(await reader()("tokenUnknown0000000000000")).toBeNull();
     expect(await reader()("../forms")).toBeNull();
-    // A recruitment form that somehow has a token is still not reachable here.
     fake.docs.set(`forms/${id}`, { ...fake.docs.get(`forms/${id}`), usage: "recruitment" });
     expect(await reader()(publicToken)).toBeNull();
   });
@@ -181,7 +178,6 @@ describe("answering at /f/{token} (C2)", () => {
     });
     expect(await store.getVersion(id, 1)).toMatchObject({ answered: true });
     expect(await store.get(id)).toMatchObject({ responseCount: 1, version: 2 });
-    // The next edit of the questions is version 2; the first response keeps version 1.
     const edited = await actions().save(...as(owner))({
       ...formInput({ questions: [question({ id: name, label: "Name" })] }),
       id,
@@ -229,7 +225,6 @@ describe("answering at /f/{token} (C2)", () => {
       }),
     ).toMatchObject({ ok: false, error: "answers", fields: { form: "Unknown question." } });
     expect(responses()).toHaveLength(0);
-    // The questions changed since the page was opened: reload.
     expect(await submit({ token: publicToken, version: 9, answers: {}, captcha: "human" })).toEqual(
       { ok: false, error: "changed" },
     );
@@ -280,7 +275,6 @@ describe("missing or malformed data", () => {
     expect(await submit({ token: publicToken, version: 1, answers: {}, captcha: "human" })).toEqual(
       { ok: false, error: "not_found" },
     );
-    // Without its questions a form cannot be published again.
     await actions().close(...as(owner))({ id, version: 2 });
     expect(await actions().publish(...as(owner))({ id, version: 3 })).toMatchObject({
       error: "refused",

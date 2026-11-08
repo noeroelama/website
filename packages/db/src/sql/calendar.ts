@@ -5,10 +5,6 @@ import { safeId } from "@website/security/validation";
 import { createSqlAuditWriter } from "./audit";
 import type { Database } from "./store";
 
-/**
- * Calendar data (G2): `holidays/{id}` (date, name) and `calendarFeeds/{uid}` (the feed version;
- * bumping it revokes every .ics link given before).
- */
 export function createSqlCalendarStore(db: Database) {
   const holidays = db.collection("holidays");
   const feeds = db.collection("calendarFeeds");
@@ -20,7 +16,6 @@ export function createSqlCalendarStore(db: Database) {
         .map((d) => ({ id: d.id, date: d.get("date") as string, name: d.get("name") as string }))
         .sort((a, b) => a.date.localeCompare(b.date));
     },
-    /** Adds (id null) or removes a holiday, with its audit entry in the same transaction. */
     async saveHoliday(
       id: string | null,
       input: HolidayInput | null,
@@ -38,7 +33,6 @@ export function createSqlCalendarStore(db: Database) {
     async feedVersion(uid: string): Promise<number> {
       return ((await feeds.doc(safeId.parse(uid)).get()).get("version") as number | undefined) ?? 1;
     },
-    /** A new version: every link with the old one stops working. */
     async revokeFeed(uid: string, now: Date): Promise<number> {
       const ref = feeds.doc(safeId.parse(uid));
       return db.runTransaction(async (tx) => {

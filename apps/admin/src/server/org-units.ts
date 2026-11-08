@@ -18,11 +18,6 @@ const MoveInput = z
   .object({ id: safeId, version: z.number().int().min(1), parentId: safeId.nullable() })
   .strict();
 
-/**
- * Audit entry for one unit change (module `structure`, resource `orgUnit`). Not revertible: a
- * revert would bring back an old path without rewriting the units below it. A DELETE is
- * revertible (only units with nothing below them are deleted, so no path is involved).
- */
 const unitAudit =
   (audit: AuditBuilder, deleting = false) =>
   (
@@ -44,7 +39,6 @@ const unitAudit =
       revertible: deleting,
     });
 
-/** Organizations → Period → Structure actions: save (add/edit), move and delete (soft). */
 export function createOrgUnitActions(deps: OrgUnitDeps) {
   const save = createGuardedAction({
     permission: "structure.edit",

@@ -146,7 +146,6 @@ describe("universities master and campus proposals (A3)", () => {
         },
       );
     }
-    // The same campus name in another country is a different campus.
     expect(
       await picker().propose(member("siti"), {
         name: "University of Tokyo",
@@ -200,7 +199,6 @@ describe("universities master and campus proposals (A3)", () => {
         fields: { universityId: "Choose your campus from the list of your PPI country." },
       });
     }
-    // Without a pick, the typed name is kept (e.g. before the ROR import).
     expect(
       await own().save(member("budi"), { version: null, profile: profileInput(null) }),
     ).toMatchObject({
@@ -259,7 +257,6 @@ describe("universities master and campus proposals (A3)", () => {
     const pending = await universities.listPending();
     expect(pending.map((u) => u.name)).toEqual(["Tokyo Univ"]);
 
-    // Merge target must be an approved campus of the same country.
     expect(
       await review().review(...as(reviewer))({
         id: dupId,
@@ -294,7 +291,6 @@ describe("universities master and campus proposals (A3)", () => {
       title: "Tokyo Univ",
       revertible: false,
     });
-    // A decided proposal cannot be decided again.
     expect(
       await review().review(...as(reviewer))({
         id: dupId,
@@ -303,7 +299,6 @@ describe("universities master and campus proposals (A3)", () => {
       }),
     ).toMatchObject({ error: "refused" });
 
-    // Reject: the member's profile no longer points at it.
     const odd = await picker().propose(member("budi"), {
       name: "Odd Academy",
       countryCode: "JP",
@@ -324,7 +319,6 @@ describe("universities master and campus proposals (A3)", () => {
       reviewNote: "Not a higher-education institution.",
     });
 
-    // Approve: listed for everyone in that country.
     const fine = await picker().propose(member("budi"), {
       name: "Fine Institute",
       countryCode: "JP",

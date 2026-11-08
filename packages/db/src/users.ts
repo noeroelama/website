@@ -16,28 +16,16 @@ import {
 import type { AuditEvent, Snapshot } from "@website/audit";
 import { safeId } from "@website/security/validation";
 
-/**
- * Accounts (`users/{uid}`) and custom roles (`roles/{id}`). Roles are data (DEC-11): built-in
- * roles come from code and always win over a stored document with the same id.
- */
 export type UserStatus = AccountStatus;
 
-/** Who signed in, taken from the verified session (never from request input). */
 export interface SignInIdentity {
   readonly uid: string;
   readonly email: string | null;
   readonly name?: string | null | undefined;
-  /** Only a verified e-mail can accept an invite. */
   readonly emailVerified?: boolean | undefined;
 }
 
-/** web: records its own sign-ins (creates `users/{uid}` on the first one). */
 export interface SignInRecorder {
-  /**
-   * Returns the account's role ids (e.g. to log staff sign-ins as security events). Applies a
-   * pending invite of the (verified) e-mail; `twoSignInMethods` is asked only when an invited
-   * role opens admin pages (B2: staff roles need two sign-in methods).
-   */
   recordSignIn(
     identity: SignInIdentity,
     now: Date,
@@ -45,10 +33,8 @@ export interface SignInRecorder {
   ): Promise<{ roleIds: string[] }>;
 }
 
-/** Role Manager → Add New People for an e-mail without an account (`invites/{sha256(email)}`). */
 export interface Invite {
   readonly email: string;
-  /** Roles still to give (global scope); emptied when accepted or cancelled. */
   readonly roleIds: readonly string[];
   readonly status: "pending" | "accepted" | "cancelled";
   readonly invitedBy: string;
@@ -56,25 +42,21 @@ export interface Invite {
   readonly version: number;
 }
 
-/** admin: maps a verified uid to the account's status and resolved role assignments. */
 export interface UserDirectory {
   findPrincipalByUid(uid: string): Promise<Principal | null>;
 }
 
 export interface RoleReader {
-  /** Built-in roles first (code order), then stored custom roles by id. */
   list(): Promise<RoleDefinition[]>;
   get(id: string): Promise<RoleDefinition | null>;
   getMany(ids: readonly string[]): Promise<Map<string, RoleDefinition>>;
 }
 
-/** One account as the admin Role Manager sees it (no personal data beyond e-mail and name). */
 export interface UserSummary {
   readonly uid: string;
   readonly email: string | null;
   readonly name: string | null;
   readonly status: UserStatus;
-  /** The member's PPI chapter (from the member profile); null until it is known. */
   readonly chapterId: string | null;
   readonly roleAssignments: readonly RoleAssignment[];
   readonly createdAt: Date | null;
@@ -82,17 +64,14 @@ export interface UserSummary {
   readonly version: number;
 }
 
-/** A custom role as read from `roles/{id}`: it always has a colour. */
 export interface CustomRole extends RoleDefinition {
   readonly color: RoleColor;
 }
 
-/** A custom role as stored (built-in roles are never stored). */
 export interface StoredRole extends CustomRole {
   readonly version: number;
 }
 
-/** Audit snapshots handed to the caller's audit builder (see createGuardedAction). */
 export interface AuditChange {
   readonly before: Snapshot | null;
   readonly after: Snapshot | null;
@@ -100,10 +79,8 @@ export interface AuditChange {
   readonly versionAfter: number | null;
 }
 
-/** Builds the audit entry for a change; the store appends it in the same transaction. */
 export type AuditFactory = (change: AuditChange) => AuditEvent;
 
-/** What an account change may set; assignments are computed from the record read in the transaction. */
 export interface AccountChange {
   readonly roleAssignmentsFrom?: (current: UserSummary) => readonly RoleAssignment[];
   readonly status?: UserStatus;
@@ -127,14 +104,9 @@ const parseScope = (scope: Record<string, unknown>): Scope | null => {
   return scope["type"] === "orgUnit" ? { type: "orgUnit", orgUnitId: id } : null;
 };
 
-/** The default role every account has (Visitor), as one plain assignment. */
 const isDefaultAssignment = (a: RoleAssignment) =>
   a.roleId === SYSTEM_ROLES.visitor.id && a.scope.type === "global" && !a.periodId && !a.revokedAt;
 
-/**
- * Keeps only well-formed stored assignments (fail closed on anything unexpected). Every account
- * is a Visitor: the default role is added when missing (the next account change stores it).
- */
 export function parseAssignments(value: unknown): RoleAssignment[] {
   const parsed = (Array.isArray(value) ? value : []).flatMap((item: unknown): RoleAssignment[] => {
     if (!isRecord(item) || !isRecord(item["scope"])) return [];
@@ -148,7 +120,6 @@ export function parseAssignments(value: unknown): RoleAssignment[] {
         ? item["appointmentId"]
         : null;
     const revokedAt = toDate(item["revokedAt"]);
-    // A revoked assignment that cannot be read as revoked would grant again: refuse it.
     if (item["revokedAt"] !== undefined && item["revokedAt"] !== null && !revokedAt) return [];
     return [{ roleId, scope, periodId, source, revokedAt, appointmentId }];
   });
@@ -164,7 +135,6 @@ const plainDefault = (): RoleAssignment[] =>
     appointmentId: null,
   }));
 
-/** A stored custom role, or null when it is deleted, malformed or uses a built-in id. */
 export function parseCustomRole(id: string, data: unknown): CustomRole | null {
   if (isSystemRoleId(id) || !isRecord(data) || data["deletedAt"]) return null;
   const { name, permissions, color } = data;
@@ -180,7 +150,6 @@ export function parseCustomRole(id: string, data: unknown): CustomRole | null {
 export const systemRole = (id: string): RoleDefinition | null =>
   isSystemRoleId(id) ? SYSTEM_ROLES[id] : null;
 
-/** Custom role ids an account refers to (the ones that must be read from `roles`). */
 export const customRoleIds = (assignments: readonly RoleAssignment[]): string[] => [
   ...new Set(assignments.map((a) => a.roleId).filter((id) => !isSystemRoleId(id))),
 ];
@@ -220,19 +189,16 @@ export function toUserSummary(uid: string, data: Record<string, unknown>): UserS
   };
 }
 
-/** Role ids stored next to the assignments so lists and counts can query by role. */
 export const roleIdsOf = (assignments: readonly RoleAssignment[]): string[] => [
   ...new Set(assignments.map((a) => a.roleId)),
 ];
 
-/** True for an active account that holds superadmin globally. */
 export const isActiveSuperadmin = (user: UserSummary): boolean =>
   user.status === "active" &&
   user.roleAssignments.some(
     (a) => a.roleId === "superadmin" && a.scope.type === "global" && !a.revokedAt && !a.periodId,
   );
 
-/** Assignments as stored in the database: every field present (null when unset). */
 export const plainAssignments = (assignments: readonly RoleAssignment[]) =>
   assignments.map((a) => ({
     roleId: a.roleId,
@@ -243,7 +209,6 @@ export const plainAssignments = (assignments: readonly RoleAssignment[]) =>
     appointmentId: a.appointmentId ?? null,
   }));
 
-/** What an account change looks like in the audit log (roles and status only). */
 export const accountSnapshot = (
   user: Pick<UserSummary, "roleAssignments" | "status">,
 ): Snapshot => ({

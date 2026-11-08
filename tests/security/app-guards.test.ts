@@ -5,8 +5,6 @@ import { createSqlRateLimitStore, getDatabaseForRole } from "@website/db/sql";
 import { normalizePermissions, resolveAssignments, type Principal } from "@website/permissions";
 import type * as WebGuardModule from "../../apps/web/src/server/request-guard";
 
-// Staging/production use the shared database store; here it is replaced by a failing fake
-// to check the wiring (role, project, fail-open logging) without a real database.
 vi.mock("@website/db/sql", () => ({
   getDatabaseForRole: vi.fn(() => ({})),
   createSqlRateLimitStore: vi.fn(() => ({
@@ -14,7 +12,6 @@ vi.mock("@website/db/sql", () => ({
   })),
 }));
 
-// Each Next.js app wires the shared guard in src/server/request-guard.ts (used by src/proxy.ts).
 const apps = ["web", "admin", "shop"] as const;
 const roles = { web: "web_ro", admin: "admin_rw", shop: "shop_rw" } as const;
 type GuardModule = typeof WebGuardModule;
@@ -75,8 +72,6 @@ describe.each(apps)("%s request guard wiring", (app) => {
   });
 });
 
-// With Cache Components a page's redirect() is streamed (200 + client-side redirect), so each
-// proxy sends signed-out visitors of login-required pages to sign-in itself, with a real 307.
 describe("sign-in redirect before the page renders (proxy)", () => {
   const signedIn = { headers: { cookie: `theme=dark; ${SESSION_COOKIE}=token` } };
 
@@ -105,14 +100,11 @@ describe("sign-in redirect before the page renders (proxy)", () => {
     );
     expect(signInRedirect(new Request("https://admin.example/events", signedIn))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/api/session"))).toBeNull();
-    // Uptime checks have no session: the health route is never sent to sign-in.
     expect(signInRedirect(new Request("https://admin.example/health"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/certificates/pickup?t=x"))).toBeNull();
-    // Cron calls and provider webhooks carry their own secret/signature, never a session.
     expect(signInRedirect(new Request("https://admin.example/cron/noop"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/webhooks/zoom"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/cronjobs"))).not.toBeNull();
-    // The signed calendar feed has no session; the calendar page itself does.
     expect(signInRedirect(new Request("https://admin.example/calendar/uid.sig.ics"))).toBeNull();
     expect(signInRedirect(new Request("https://admin.example/calendar"))).not.toBeNull();
     expect(signInRedirect(new Request("https://admin.example/calendar/x"))).not.toBeNull();
@@ -127,14 +119,10 @@ describe("sign-in redirect before the page renders (proxy)", () => {
   });
 });
 
-// Admin page gate (apps/admin/src/server/context.ts): the session cookie and the user's roles are
-// faked; redirect()/forbidden() throw like the real Next.js functions. Next.js is mocked at the
-// copy admin imports (the repository root does not depend on `next`).
 const adminSession = vi.hoisted(
   (): {
     cookie: string | undefined;
     principal: Principal | null;
-    /** Consent version of the staff member's profile (null = no profile yet). */
     profileConsent: string | null;
   } => ({ cookie: undefined, principal: null, profileConsent: "2026-10-18" }),
 );
@@ -178,7 +166,6 @@ vi.mock("../../apps/admin/src/server/user-directory", () => ({
 }));
 
 describe("admin page gate (requireAdminViewer)", () => {
-  // A custom staff role with another page only (system roles superadmin/member resolve by id).
   const roles = new Map([
     [
       "writer",
@@ -233,7 +220,6 @@ describe("admin page gate (requireAdminViewer)", () => {
         `redirect https://web.example/account/profile?next=${encodeURIComponent("https://admin.example/events")}`,
       );
     }
-    // Actions are refused too (createGuardedAction gets no principal).
     expect(await getPrincipal()).toBeNull();
   });
 });

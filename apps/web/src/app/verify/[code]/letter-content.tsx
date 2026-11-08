@@ -6,10 +6,6 @@ import { openLetterAction } from "./actions";
 
 type Content = "shown" | "changed" | "needs_name" | "none";
 
-/**
- * The content part of /verify/<code>: shown, refused (changed), or the recipient-name gate. The
- * typed name is sent by a server action (never in the URL) and again with the download form.
- */
 export function LetterContent(props: {
   code: string;
   content: Content;
@@ -68,7 +64,6 @@ export function LetterContent(props: {
       )}
       {state.content === "shown" && state.bodyHtml !== null && (
         <>
-          {/* Sanitized on the server (allowlist) when saved and again before it was sent. */}
           <div className="site-letter" dangerouslySetInnerHTML={{ __html: state.bodyHtml }} />
           <p className="site-muted">{t.compare}</p>
         </>

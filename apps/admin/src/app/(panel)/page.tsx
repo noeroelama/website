@@ -15,7 +15,6 @@ const ICONS = {
   subscribers: "newsletter",
 } as const;
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
 export default async function AdminDashboardPage() {

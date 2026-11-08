@@ -8,10 +8,8 @@ import { requireAdminViewer } from "@/server/context";
 import { visibleTask } from "@/server/tasks";
 import { adminReads, tasks } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** A unit's task board (G1): tasks.read for the unit, or shared with the viewer (view only). */
 export default async function UnitBoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/tasks/unit/${id}`);

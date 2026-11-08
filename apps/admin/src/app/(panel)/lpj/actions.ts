@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { lpjActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/lpj.ts (createGuardedAction).
 type Name = keyof ReturnType<typeof lpjActions>;
 const run = async (name: Name, input: unknown) => {
   const result = await lpjActions()[name](getPrincipal, getAuditContext)(input);

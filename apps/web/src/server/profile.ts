@@ -14,12 +14,10 @@ import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/sh
 
 export interface ProfileDeps {
   readonly profiles: MemberProfileRepository & Pick<SqlMemberProfileStore, "setGraduation">;
-  /** The picked campus is checked and its name used (A3). */
   readonly universities: Pick<SqlUniversityStore, "get">;
   readonly now: () => Date;
 }
 
-/** Who is signed in (from the verified session cookie; never from the form). */
 export interface ProfileOwner {
   readonly uid: string;
   readonly email: string | null;
@@ -31,7 +29,6 @@ export type ProfileSaveResult =
   | {
       ok: false;
       error: "signin" | "verify" | "invalid" | "consent" | "conflict";
-      /** invalid: first message per field (top-level name, e.g. "addressIndonesia"). */
       fields?: Record<string, string>;
     };
 
@@ -39,11 +36,6 @@ const Envelope = z
   .object({ version: z.number().int().min(1).nullable(), profile: z.unknown() })
   .strict();
 
-/**
- * The member's own profile (/account/profile, profile.read_own / profile.write_own): always keyed
- * by the session's uid, so nobody reads or writes another member's profile from the website.
- * Saving needs a verified e-mail (it is copied into the profile).
- */
 export function createOwnProfile(deps: ProfileDeps) {
   return {
     load: (owner: ProfileOwner | null): Promise<MemberProfile | null> =>
@@ -63,7 +55,6 @@ export function createOwnProfile(deps: ProfileDeps) {
         }
         return { ok: false, error: "invalid", fields };
       }
-      // A picked campus must be approved (or the member's own proposal) in the PPI country.
       const { universityId } = parsed.data;
       const campus = universityId ? await deps.universities.get(universityId) : null;
       const usable =
@@ -97,10 +88,6 @@ export function createOwnProfile(deps: ProfileDeps) {
       }
     },
 
-    /**
-     * Graduation (B5): the member marks or corrects their own date at once (it gives rights
-     * up); cancelling only a mark they set themselves (§67). Errors: a message for the member.
-     */
     async setGraduation(
       owner: ProfileOwner | null,
       raw: unknown,

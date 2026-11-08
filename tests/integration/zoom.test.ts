@@ -152,7 +152,6 @@ describe("zoom bookings (F1)", () => {
     expect(results.find((r) => !r.ok)).toMatchObject({
       issues: ["Every Zoom licence is booked at that time. Choose another time."],
     });
-    // Back to back is fine (end is exclusive).
     const after = await actions().request(...as(requester))({
       ...input,
       startsAtLocal: "2026-11-10T20:30",
@@ -246,7 +245,6 @@ describe("zoom bookings (F1)", () => {
     expect(errors).toEqual(["zoom room failed"]);
     const held = (await store().get(booked.data.id)) as ZoomRequest;
     expect(held.roomError).toContain("zoom_429");
-    // The same failure again writes nothing new.
     expect(await actions().retryRooms()).toEqual({ tried: 1, created: 0 });
     expect(((await store().get(booked.data.id)) as ZoomRequest).version).toBe(held.version);
     expect(await actions(false).retryRooms()).toEqual({ tried: 1, created: 0 });

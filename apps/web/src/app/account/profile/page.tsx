@@ -14,12 +14,10 @@ import { ProfileForm, type ProfileFormValues } from "./profile-form";
 
 export const metadata: Metadata = { title: "Member profile", robots: { index: false } };
 
-// Depends on the session: no static shell. Signed-out visitors already got a 307 from proxy.ts.
 export const instant = false;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-/** What the form shows: the stored answers (the consent is given again on every save). */
 const toFormValues = (p: MemberProfile | null): ProfileFormValues | null =>
   p && {
     fullName: p.fullName,
@@ -49,7 +47,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
     searchParams,
   ]);
   const t = DICTIONARIES[languageFrom(jar.get(LANG_COOKIE)?.value)].profile;
-  // After saving, go back where the gate sent the member from (e.g. the admin app).
   const urls = getAppUrls();
   const allowed = [urls.WEB_URL, urls.ADMIN_URL, urls.SHOP_URL].filter(
     (url): url is string => url !== undefined,
@@ -62,7 +59,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
         <p role="alert">{t.verifyFirst}</p>
       ) : (
         <ProfileForm
-          // Remount after a graduation change so the form sends the new version.
           key={profile?.version ?? 0}
           t={t}
           initial={toFormValues(profile)}

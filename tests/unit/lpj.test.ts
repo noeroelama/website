@@ -114,7 +114,6 @@ describe("opening the LPJ (E4)", () => {
     (source.pics as string[]).push("someone");
     expect(opened.plan.budgets[0]?.amountMinor).toBe(50000);
     expect(opened.plan.pics).toEqual(["pic"]);
-    // The PICs' writes never touch the plan either.
     expect(editLpj(lpj(), { ...filled, participantCount: 3, realized: [] }).plan).toEqual(
       lpj().plan,
     );
@@ -185,7 +184,6 @@ describe("return clears every desk", () => {
       approval: null,
     });
     expect(() => returnLpj(back, "again")).toThrow("Only a submitted");
-    // Editable and submittable again; the note goes when re-submitted.
     expect(
       submitLpj(editLpj(back, { ...filled, participantCount: 1, realized: [] }), "pic", now),
     ).toMatchObject({ status: "submitted", returnNote: null });

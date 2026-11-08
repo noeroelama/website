@@ -51,19 +51,11 @@ import {
 } from "./forms-model";
 import { moveItem } from "./list-model";
 
-/* ==================================================================
-   Forms — list (tabs, search) + builder (settings + questions).
-   Questions are versioned on the server (domain/forms): an answered
-   version is frozen and a changed question list becomes version n+1.
-   ================================================================== */
-
-/** The editor's IANA time zone: the answer window is typed on this clock. */
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 type SortKey = "title" | "status" | "modified";
 const sortValue = (f: FormItem, key: SortKey): string =>
   key === "title" ? f.title.toLowerCase() : key === "status" ? f.status : f.modifiedAt;
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (f: FormItem, key: SortKey): string =>
   key === "title"
     ? f.title
@@ -82,7 +74,6 @@ interface FormDraft {
   title: string;
   description: string;
   usage: FormUsage;
-  /** datetime-local values on the editor's clock. */
   opensAt: string;
   closesAt: string;
   questions: QuestionDraft[];
@@ -114,20 +105,15 @@ type DeleteConfirm = { kind: "one"; form: FormItem } | { kind: "many"; count: nu
 interface FormsPageProps {
   initial: FormItem[];
   canEdit: boolean;
-  /** forms.publish: Publish / Close. */
   canPublish: boolean;
-  /** forms.responses: the Responses page. */
   canSeeResponses: boolean;
-  /** WEB_URL, for "Copy Link" (/f/{token}). */
   publicBase: string;
 }
 
-/** Public form path on the web app (apps/web /f/[token]). */
 const FORM_PATH = "/f/";
 
 export function FormsPage(props: FormsPageProps) {
   const pathname = usePathname();
-  // Remounted on every visit so search and tabs start empty (same as the other list pages).
   return <FormsList key={pathname} {...props} />;
 }
 
@@ -143,7 +129,7 @@ function FormsList({
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
   const [tab, setTab] = useState<FormTab>("all");
   const [query, setQuery] = useState("");
-  const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
+  const [searchKey, setSearchKey] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   const [view, setView] = useState<"list" | "form">("list");
@@ -409,10 +395,7 @@ function FormsList({
           </div>
         </div>
 
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="form-title">
@@ -652,7 +635,6 @@ function FormsList({
   );
 }
 
-/** One question of the builder: label, type, help text and the type's own settings. */
 function QuestionEditor({
   index: i,
   question: q,

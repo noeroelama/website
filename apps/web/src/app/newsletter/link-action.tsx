@@ -3,10 +3,6 @@
 import { useState } from "react";
 import { confirmAction, unsubscribeAction } from "./actions";
 
-/**
- * Confirm / unsubscribe run from a button (POST), not from the plain GET of the e-mail link, so
- * mail scanners that open links do not confirm or unsubscribe on someone's behalf.
- */
 function ActionButton(props: { label: string; run: () => Promise<string> }) {
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

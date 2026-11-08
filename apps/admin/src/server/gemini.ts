@@ -1,9 +1,5 @@
 import "server-only";
 
-/**
- * Optional free-text campus matcher (X4): Gemini picks which of the approved names the typed
- * campus means, ONLY after the deterministic search found nothing. Answers an index or null.
- */
 export function geminiCampusMatcher(apiKey: string, fetchImpl: typeof fetch) {
   return async (typed: string, names: readonly string[]): Promise<number | null> => {
     const prompt =

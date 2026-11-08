@@ -43,7 +43,6 @@ const SOURCE_LABELS: Record<MinutesSource, string> = {
   ai_zoom: "Drafted from the Zoom transcript, then edited",
 };
 
-/** Minutes (F5): notes per agenda item, quorum, approval, PDF, action items. */
 export function MinutesPanel({
   meetingId,
   version,
@@ -61,10 +60,8 @@ export function MinutesPanel({
   minutes: MinutesView | null;
   items: ActionItemView[];
   participants: Array<{ uid: string; name: string }>;
-  /** The viewer runs the meeting (writes minutes, manages follow-ups). */
   runs: boolean;
   canApprove: boolean;
-  /** More buttons in the header (the machine draft, F6). */
   extra?: ReactNode;
 }) {
   const router = useRouter();

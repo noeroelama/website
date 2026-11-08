@@ -12,10 +12,8 @@ import { canApproveMinutes } from "@/server/minutes";
 import { getAdminEnv } from "@/server/env";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** One meeting (F4): details, room, attendance (code screen and manual ticks). */
 export default async function MeetingRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/meetings/${id}`, "meetings.read");

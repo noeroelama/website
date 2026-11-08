@@ -33,30 +33,15 @@ import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { type AlbumEventOption, type AlbumItem } from "./gallery-model";
 import { Select } from "@/components/ui/select";
 
-/* ==================================================================
-   Gallery — album list (search, filters, bulk actions) + create/edit
-   form. Matches the Figma "GALLERY ADMIN" screens (dark page).
-
-   The dark table / form rules are shared by every admin page (globals.css
-   "Dark admin pages").
-   The header reuses the `.admin-events-header` controls (cream Add /
-   Filters buttons, outlined search). Colours come from the shared design
-   tokens, no hex values outside globals.css.
-   ================================================================== */
-
-/** Public album path on the web app (apps/web /gallery/[slug]). */
 const ALBUM_PATH = "/gallery/";
 
-/** Thumbnails shown per row before the "N+" tile. */
 const STACK_SIZE = 4;
 
-/** Sortable album-table columns (checkbox and actions are never sorted). */
 type SortKey = "title" | "date";
 
 const sortValue = (a: AlbumItem, key: SortKey): string =>
   key === "title" ? a.event.toLowerCase() : a.modifiedAt;
 
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (a: AlbumItem, key: SortKey): string =>
   key === "title" ? a.event : formatInZone(a.modifiedAt, "UTC", false);
 
@@ -65,32 +50,23 @@ interface AlbumForm {
   total: string;
   albumLink: string;
   url: string;
-  /** Featured images (1 to 10), uploaded with the "gallery" preset. */
   photos: FeaturedImage[];
 }
 
 const EMPTY_FORM: AlbumForm = { eventId: "", total: "", albumLink: "", url: "", photos: [] };
 
-/** Pending delete action shown in the dark confirm modal (one album or many). */
 type DeleteConfirm = { kind: "one"; album: AlbumItem } | { kind: "many"; count: number };
 
 interface GalleryListProps {
-  /** Rows from the server (src/app/(panel)/gallery/page.tsx); refreshed after every change. */
   initial: AlbumItem[];
-  /** Published events an album can belong to. */
   events: AlbumEventOption[];
   canEdit: boolean;
-  /** WEB_URL, for "Copy Link". */
   publicBase: string;
 }
 
 export function GalleryPage(props: GalleryListProps) {
   const pathname = usePathname();
 
-  /* Re-keying the whole screen on the current path remounts it whenever the
-     gallery route is (re)entered, so navigating away and back starts from a
-     clean state — empty searchbox, all data, first page, no filters — without
-     needing to reset state in an effect. */
   return <GalleryList key={pathname} {...props} />;
 }
 
@@ -98,22 +74,18 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   const toast = useToastMessage();
   const router = useRouter();
   const upload = useImageUpload("gallery");
-  /* Server validation messages per field (GuardedResult `fields`). */
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
-  /* ---- list state (sorting, paging and selection: useListTable) ---- */
-  const [query, setQuery] = useState(""); // applied on Search / Enter
-  const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
+  const [query, setQuery] = useState("");
+  const [searchKey, setSearchKey] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
-  /* ---- form view state ---- */
   const [view, setView] = useState<"list" | "form">("list");
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AlbumForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return albums.filter(
@@ -124,7 +96,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
-  /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
   type Failure = Parameters<typeof actionMessage>[0];
   const fail = (result: Failure) => {
     setFieldErrors(result.fields ?? {});
@@ -159,7 +130,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setDeleteConfirm({ kind: "many", count: selected.size });
   };
 
-  /* Deletes are confirmed in the popup first. Soft delete: the images stay in Storage. */
   const doDelete = () => {
     if (!deleteConfirm) return;
     const ids = deleteConfirm.kind === "one" ? [deleteConfirm.album.id] : Array.from(selected);
@@ -176,7 +146,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     toast.show(`Link for "${a.event}" copied`);
   };
 
-  /* ---- form open / save ---- */
   const toForm = (mode: "create" | "edit", a?: AlbumItem) => {
     setFormMode(mode);
     setEditingId(a?.id ?? null);
@@ -195,7 +164,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setView("form");
   };
 
-  /* Save draft / Publish. Rule: an event and at least one image (server-checked too). */
   const save = async (publish: boolean) => {
     const current = albums.find((a) => a.id === editingId);
     const total = form.total.trim();
@@ -222,7 +190,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setView("list");
   };
 
-  /* Uploads one image (preset "gallery") in place of tile `index`. */
   const replacePhoto = async (file: File, index: number) => {
     const image = await upload.upload(file);
     const photo = image ? publicImage(image) : null;
@@ -230,7 +197,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     setForm((f) => ({ ...f, photos: f.photos.map((p, i) => (i === index ? photo : p)) }));
   };
 
-  /* Uploads the picked or dropped images one by one and appends them (only as many as fit). */
   const addPhotos = async (files: FileList | null) => {
     const room = ALBUM_MAX_IMAGES - form.photos.length;
     const picked = Array.from(files ?? []);
@@ -238,19 +204,16 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     for (const file of picked.slice(0, room)) {
       const image = await upload.upload(file);
       const photo = image ? publicImage(image) : null;
-      if (!photo) return; // stop so the upload error stays on screen
+      if (!photo) return;
       setForm((f) => ({ ...f, photos: [...f.photos, photo] }));
     }
   };
 
-  /* Red field + message for a server validation error. */
   const errorProps = (field: string) =>
     fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `album-${field}-error` } : {};
   const errorFor = (field: string) => (
     <FieldError id={`album-${field}-error`} message={fieldErrors[field]} />
   );
-
-  /* ---- table columns ---- */
 
   const checkboxCol: Column<AlbumItem> = {
     key: "check",
@@ -280,7 +243,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
       header: table.header("title", "Gallery"),
       width: "38%",
       render: (r) => {
-        /* Four thumbnails, then a dark tile counting the photos not shown ("48+"). */
         const thumbs = r.images.slice(0, STACK_SIZE);
         const more = r.photoCount - thumbs.length;
         return (
@@ -357,7 +319,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
           <RowMenu>
             {canEdit ? (
               <>
-                {/* Both always listed (as in the design); the current state is disabled. */}
                 <MenuItem
                   icon="globeSimple"
                   disabled={busy || r.status === "published"}
@@ -395,11 +356,9 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
     },
   ];
 
-  /* "Delete 10 Albums" / "Delete Album": the delete modal's title (+ "?") and its button. */
   const deleteCount = deleteConfirm?.kind === "many" ? deleteConfirm.count : 1;
   const deleteLabel = deleteCount === 1 ? "Delete Album" : `Delete ${deleteCount} Albums`;
 
-  /* A changed filter starts again at page 1. */
   const filterBy =
     <T,>(set: (value: T) => void) =>
     (value: T) => {
@@ -430,12 +389,8 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
           </div>
         </div>
 
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
-            {/* Event */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-event">
                 Event *
@@ -460,7 +415,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               {errorFor("eventId")}
             </div>
 
-            {/* Total Photos/Videos */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-total">
                 Total Photos/Videos *
@@ -481,7 +435,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               {errorFor("totalPhotos")}
             </div>
 
-            {/* Album Link */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-link">
                 Album Link *
@@ -499,7 +452,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
               {errorFor("albumUrl")}
             </div>
 
-            {/* URL */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="album-url">
                 URL
@@ -575,8 +527,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
             </div>
           </div>
 
-          {/* footer actions — spans the full grid (the line above reaches the
-              card edges) and pushes Save draft/Publish to the far right. */}
           <div className="admin-form-actions admin-form-grid__full">
             <Button variant="outline" size="sm" icon="chevronLeft" onClick={() => setView("list")}>
               Back
@@ -706,7 +656,6 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
   );
 }
 
-/** Uploaded banner images, five per row with a red remove button; click an image to replace it. */
 function PhotoGrid({
   photos,
   onPick,

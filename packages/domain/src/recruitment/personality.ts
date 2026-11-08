@@ -1,16 +1,8 @@
 import { z } from "zod";
 
-/**
- * 16-type personality test (feature C5), ported from PPIDK `TesKepribadian`. Items are adapted
- * from the public-domain International Personality Item Pool (IPIP) and mapped to 5 axes; the
- * 4 letters of the first axes make one of 16 types, the 5th axis is a suffix. Not affiliated
- * with any brand and not a clinical tool. Scoring happens on the server only.
- */
-
 export const AXES = ["mind", "energy", "nature", "tactics", "identity"] as const;
 export type Axis = (typeof AXES)[number];
 
-/** `pos` = the pole an item with key +1 pushes towards. */
 export const AXIS_POLES = {
   mind: { pos: "E", neg: "I" },
   energy: { pos: "N", neg: "S" },
@@ -21,7 +13,6 @@ export const AXIS_POLES = {
 
 const CODE_ORDER = ["mind", "energy", "nature", "tactics"] as const;
 
-/** [Indonesian, English, key]: key +1 when "agree" pushes towards the positive pole. */
 type Item = readonly [id: string, en: string, key: 1 | -1];
 
 const RAW: Record<Axis, readonly Item[]> = {
@@ -152,7 +143,6 @@ const RAW: Record<Axis, readonly Item[]> = {
 export const ITEMS_PER_AXIS = 12;
 
 export interface PersonalityItem {
-  /** 1..60, stable. */
   readonly no: number;
   readonly id: string;
   readonly en: string;
@@ -160,7 +150,6 @@ export interface PersonalityItem {
   readonly key: 1 | -1;
 }
 
-/** The 60 items, axes interleaved, with stable numbers (PPIDK `pertanyaan`). */
 export const PERSONALITY_ITEMS: readonly PersonalityItem[] = Array.from(
   { length: ITEMS_PER_AXIS },
   (_, i) =>
@@ -172,34 +161,26 @@ export const PERSONALITY_ITEMS: readonly PersonalityItem[] = Array.from(
   .flat()
   .map((item, i) => ({ ...item, no: i + 1 }));
 
-/** 60 answers from -3 (disagree strongly) to 3 (agree strongly), in item order; all required. */
 export const PersonalityAnswersSchema = z
   .array(z.number().int().min(-3).max(3))
   .length(PERSONALITY_ITEMS.length, "Answer every statement.");
 
 export interface AxisScore {
   readonly letter: string;
-  /** 50..100: how clearly the answers lean to that letter. */
   readonly pct: number;
-  /** -1..1 (positive = the positive pole). */
   readonly lean: number;
 }
 
 export interface PersonalityScore {
-  /** 4 letters, e.g. "ENFJ". */
   readonly code: string;
-  /** "A" or "T". */
   readonly identity: string;
-  /** e.g. "ENFJ-A". */
   readonly full: string;
   readonly axes: Readonly<Record<Axis, AxisScore>>;
 }
 
-/** Scores 60 answers (validate them with `PersonalityAnswersSchema` first). */
 export function scorePersonality(answers: readonly number[]): PersonalityScore {
   const sums: Record<Axis, number> = { mind: 0, energy: 0, nature: 0, tactics: 0, identity: 0 };
   PERSONALITY_ITEMS.forEach((item, i) => {
-    // `PersonalityAnswersSchema` guarantees one answer per item.
     sums[item.axis] += item.key * (answers[i] as number);
   });
   const max = ITEMS_PER_AXIS * 3;
@@ -221,7 +202,6 @@ export function scorePersonality(answers: readonly number[]): PersonalityScore {
   return { code, identity: axes.identity.letter, full: `${code}-${axes.identity.letter}`, axes };
 }
 
-/** Data of the signed 7-day test link (purpose-bound: no other signed link opens the test). */
 export const PERSONALITY_LINK_DAYS = 7;
 export const personalityLinkData = (uid: string) => ({ purpose: "personality", uid });
 export function personalityLinkUser(data: Readonly<Record<string, string>> | null): string | null {

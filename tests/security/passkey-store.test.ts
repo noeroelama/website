@@ -17,7 +17,6 @@ const credential = (over: Partial<PasskeyCredential> = {}): PasskeyCredential =>
   ...over,
 });
 
-// The same contract must hold for the development store and the Firestore store.
 describe.each([
   ["memory", () => createMemoryPasskeyStore()],
   ["firestore", () => createSqlPasskeyStore(fakeDb().db as unknown as Firestore)],
@@ -61,7 +60,7 @@ describe.each([
     expect(await store.consumeChallenge("c1", now)).toBeNull();
     await store.saveChallenge("c2", { challenge: "def", userId: null, expiresAt });
     expect(await store.consumeChallenge("c2", new Date(expiresAt.getTime() + 1))).toBeNull();
-    expect(await store.consumeChallenge("c2", now)).toBeNull(); // removed even when expired
+    expect(await store.consumeChallenge("c2", now)).toBeNull();
   });
 
   it("rejects ids that could address other documents", async () => {

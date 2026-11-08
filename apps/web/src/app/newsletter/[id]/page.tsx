@@ -8,12 +8,10 @@ import { ArticleView } from "@website/ui";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { newsletter } from "@/server/newsletter-wiring";
 
-// Public archive of a campaign that went out (admin "Copy Link"). Not cached: a campaign deleted
-// in admin disappears at once. Unknown, draft or deleted id → the 404 page.
 export const instant = false;
 
 const find = async (params: PageProps<"/newsletter/[id]">["params"]) => {
-  await connection(); // read per request, never prerendered at build
+  await connection();
   return newsletter().publicCampaign((await params).id);
 };
 

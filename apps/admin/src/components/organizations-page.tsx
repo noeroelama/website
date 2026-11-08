@@ -28,38 +28,24 @@ import type { PeriodItem } from "./periods-model";
 import { Select } from "@/components/ui/select";
 import { ReviewQueue, type ProposalRow } from "./university-review-queue";
 
-/* ==================================================================
-   Organizations — Period list and the PPI chapters list, ported from
-   the Figma "ORGANIZATIONS ADMIN" screens. A period's structure is its
-   own page (/organizations/periods/[id], org-structure-page.tsx).
-   ================================================================== */
-
-/** Page subtitle on every Organizations screen (the Figma's "GALLERY" caption is a copy-paste
-    leftover from the Gallery artboard, so the section name is corrected here). */
 export const ORG_SUBTITLE =
   "Manage the board periods, their structure and the PPI chapters shown on the public site.";
 
-/** The lists of the Organizations page (`?view=ppi` / `?view=universities` open the others). */
 export type OrgView = "period" | "ppi" | "universities";
 
-/** Universities tab: approved campuses of one PPI country and the campuses members requested. */
 export interface UniversitiesTabData {
   country: string;
   countries: { code: string; name: string }[];
   approved: { id: string; name: string; city: string | null; source: "ror" | "manual" }[];
   requests: ProposalRow[];
-  /** universities.edit: add campuses and decide requests. */
   canEdit: boolean;
 }
 
-/** Create/Edit Period popup. */
 type PeriodModalState = { mode: "create" } | { mode: "edit"; item: PeriodItem } | null;
 
-/** What waits for the delete confirmation. */
 type DeleteState =
   { kind: "period"; item: PeriodItem } | { kind: "ppis"; items: ChapterItem[] } | null;
 
-/** Period / PPI / Universities tabs under the page title. On the Structure page they are links back. */
 export function OrgTabs({
   view,
   onSelect,
@@ -67,7 +53,6 @@ export function OrgTabs({
   showUniversities = false,
 }: {
   view: OrgView;
-  /** Switch in place; without it the tabs link to /organizations. */
   onSelect?: (view: OrgView) => void;
   showPeriod?: boolean;
   showUniversities?: boolean;
@@ -92,7 +77,6 @@ export function OrgTabs({
   );
 }
 
-/** Dark delete confirmation (same as the Events page): "Delete N PPIS?", Back / Delete. */
 export function OrgDeleteDialog({
   open,
   title,
@@ -134,51 +118,35 @@ export function OrgDeleteDialog({
   );
 }
 
-/** Columns of the Period table that can be sorted. */
 type PeriodSortKey = "name" | "status";
 
-/** Columns of the PPI table that can be sorted. */
 type PpiSortKey = "name" | "country" | "memberCount";
 
 const periodSortValue = (r: PeriodItem, key: PeriodSortKey) => r[key];
 const ppiSortValue = (r: ChapterItem, key: PpiSortKey) => r[key];
-/** A cell's text in its column's filter checklist. */
 const periodFilterText = (r: PeriodItem, key: PeriodSortKey) =>
   key === "status" ? (r.status === "active" ? "Active" : "Inactive") : r.name;
 const ppiFilterText = (r: ChapterItem, key: PpiSortKey) => String(r[key]);
-/** The universities list is not sorted by a column (paging only). */
 const universitySortValue = (r: { name: string }, key: "name") => r[key];
 
-/** Cream pill (Figma status chip). The design shows Active / Inactive only. */
 const statusChip = (text: string) => <span className="admin-status-badge">{text}</span>;
 
 interface OrganizationsProps {
-  /** PPI chapters from the database. */
   chapters: ChapterItem[];
-  /** H2 signal per chapter id (computed on read; inactive chapters absent). */
   signals: Record<string, string>;
-  /** organizations.edit: add, edit, activate/deactivate and delete chapters. */
   canEdit: boolean;
-  /** Chapters whose contact details this chapter admin may edit (organizations.edit there). */
   contactEditIds: string[];
-  /** Board periods from the database; null without periods.read (the Period tab is hidden). */
   periods: PeriodItem[] | null;
-  /** periods.edit: add, edit, activate and delete periods. */
   canEditPeriods: boolean;
-  /** Universities tab data; null without universities.read (the tab is hidden). */
   universities: UniversitiesTabData | null;
-  /** List shown first (`?view=ppi`). */
   initialView: OrgView;
 }
 
 export function OrganizationsPage(props: OrganizationsProps) {
   const pathname = usePathname();
-  // key={pathname} remounts the list when the organizations route is (re)entered,
-  // so pagination / selection / tab state start fresh on every visit.
   return <OrganizationsList key={pathname} {...props} />;
 }
 
-/** Organizations screens (all state lives here; remounted on navigation). */
 function OrganizationsList({
   chapters: ppis,
   signals,
@@ -192,12 +160,10 @@ function OrganizationsList({
   const periods = useMemo(() => periodList ?? [], [periodList]);
   const toast = useToastMessage();
   const router = useRouter();
-  /** Next free badge number on /map's country table, suggested for a new chapter. */
   const nextMapNo = useMemo(
     () => ppis.reduce((max, c) => Math.max(max, c.mapNo ?? 0), 0) + 1,
     [ppis],
   );
-  /* Chapter add/edit popup: null = closed, "new" = add, otherwise the chapter. */
   const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<OrgView>(
@@ -209,10 +175,8 @@ function OrganizationsList({
   const [universityErrors, setUniversityErrors] = useState<Readonly<Record<string, string>>>({});
   const [periodModal, setPeriodModal] = useState<PeriodModalState>(null);
   const [periodErrors, setPeriodErrors] = useState<Readonly<Record<string, string>>>({});
-  /* Period waiting for the "Set as Active" confirmation. */
   const [activating, setActivating] = useState<PeriodItem | null>(null);
   const [deleting, setDeleting] = useState<DeleteState>(null);
-  /* Sorting, column filters, paging and the PPI selection (useListTable). */
   const periodTable = useListTable(periods, periodSortValue, undefined, periodFilterText);
   const ppiTable = useListTable(ppis, ppiSortValue, undefined, ppiFilterText);
   const universityRows = useMemo(() => universities?.approved ?? [], [universities]);
@@ -220,7 +184,6 @@ function OrganizationsList({
   const { selected } = ppiTable;
   const switchView = (next: OrgView) => setView(next);
 
-  /* ---- actions ---- */
   const exportPeriodsCsv = () => {
     downloadCsv("periods", [
       ["Period", "Cabinet", "Start", "End", "Status"],
@@ -298,7 +261,6 @@ function OrganizationsList({
     toast.show("Campus added");
   };
 
-  /** Deletes one period or the selected chapters (soft; revertible in the Audit Log). */
   const confirmDelete = async () => {
     if (!deleting) return;
     setBusy(true);
@@ -373,10 +335,6 @@ function OrganizationsList({
       onConfirm={() => void confirmDelete()}
     />
   );
-
-  /* ================================================================
-     PERIOD LIST
-     ================================================================ */
 
   if (view === "period") {
     const columns: Column<PeriodItem>[] = [
@@ -479,8 +437,6 @@ function OrganizationsList({
           </CardBody>
         </Card>
 
-        {/* Create/Edit Period popup: Period (its years, which set the dates) and Cabinet.
-            Cancel keeps the list. */}
         <Modal
           asForm
           open={periodModal !== null}
@@ -507,7 +463,6 @@ function OrganizationsList({
         >
           {(
             [
-              // Same rules as PeriodFormSchema (the server checks them again).
               [
                 "name",
                 "Period *",
@@ -557,10 +512,6 @@ function OrganizationsList({
       </div>
     );
   }
-
-  /* ================================================================
-     UNIVERSITIES LIST (approved campuses of one country; requests in a popup)
-     ================================================================ */
 
   if (view === "universities" && universities) {
     const countryName =
@@ -661,7 +612,6 @@ function OrganizationsList({
         >
           {(
             [
-              // Same rules as UniversityProposalSchema (the server checks them again).
               ["name", "Campus name *", "e.g. Kyoto University", true, 3, 200],
               ["city", "City", "e.g. Kyoto", false, 0, 100],
             ] as const
@@ -699,10 +649,6 @@ function OrganizationsList({
       </div>
     );
   }
-
-  /* ================================================================
-     PPI LIST
-     ================================================================ */
 
   const checkbox = (labelText: string, checked: boolean, onChange: () => void, some = false) => (
     <label className="admin-checkbox">
@@ -849,7 +795,6 @@ function OrganizationsList({
           <DataTable columns={columns} rows={ppiTable.pageRows} rowKey={(r) => r.id} />
 
           {selected.size > 0 ? (
-            /* Bulk action bar (Figma: floats above the pagination while rows are selected). */
             <div className="admin-bulkbar admin-org-bulkbar">
               <span className="admin-bulkbar__summary">
                 {checkbox("Select all PPIs", allSelected, ppiTable.toggleAll, true)}

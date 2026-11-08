@@ -9,7 +9,6 @@ export interface UniversityPickerDeps {
   readonly now: () => Date;
 }
 
-/** One choice of the university picker; `pending` marks the member's own proposal. */
 export interface UniversityChoice {
   readonly id: string;
   readonly name: string;
@@ -22,20 +21,13 @@ export type ProposalResult =
   | { ok: false; error: "signin" | "verify" | "invalid" }
   | { ok: false; error: "duplicate"; message: string };
 
-/**
- * University picker on /account/profile (A3): the approved campuses of the chosen PPI country
- * (the browser filters them as the member types) plus the member's own pending proposals — never
- * anyone else's. "+" proposes a campus that is not listed.
- */
 export function createUniversityPicker(deps: UniversityPickerDeps) {
   return {
-    /** Approved campuses of one country (the same for everyone: cacheable). */
     async approved(countryCode: string): Promise<UniversityChoice[]> {
       const approved = await deps.universities.listApproved(countryCode);
       return approved.map((u) => ({ id: u.id, name: u.name, aliases: u.aliases, pending: false }));
     },
 
-    /** The signed-in member's own proposals in that country that wait for review. */
     async ownPending(owner: ProfileOwner | null, countryCode: string): Promise<UniversityChoice[]> {
       if (!owner) return [];
       const mine = await deps.universities.listOwnPending(owner.uid);

@@ -1,7 +1,3 @@
-/**
- * Error handling without information exposure: clients get a stable code and a generic
- * message only. Details belong in server logs, never in responses.
- */
 export type PublicErrorCode =
   "invalid_input" | "unauthenticated" | "forbidden" | "conflict" | "rate_limited" | "internal";
 
@@ -23,7 +19,6 @@ const MESSAGE: Record<PublicErrorCode, string> = {
   internal: "Something went wrong.",
 };
 
-/** Error class names (from zod, @website/permissions, @website/domain) → public codes. */
 const BY_NAME: Record<string, PublicErrorCode> = {
   ZodError: "invalid_input",
   UnauthenticatedError: "unauthenticated",

@@ -44,7 +44,6 @@ const actions = () => {
       ...createSqlSubscriberReader(db),
       ...createSqlSubscriberStore(db),
     },
-    // Like the messenger: a key is claimed once; a repeat answers "duplicate".
     send: vi.fn((message: Message, key: string) => {
       if (crashAfter !== null && mails.length >= crashAfter) throw new Error("crash");
       if (sentKeys.has(key)) return Promise.resolve("duplicate" as const);
@@ -123,7 +122,6 @@ describe("newsletter campaigns", () => {
     expect(mails[0]?.message.html).toContain("unsubscribe?t=signed-");
     expect(mails[0]?.message.text).toContain("Unsubscribe: https://");
     expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ status: "sent", sentCount: 3 });
-    // A sent campaign can no longer be changed or sent again.
     expect(
       await actions().save(...as(editor))({
         id,
@@ -253,7 +251,6 @@ describe("newsletter campaigns", () => {
     expect(html).toMatch(
       new RegExp(`<img src="https://ppiasiania.id/newsletter/o\\?t=open-${id}-c0+1"`),
     );
-    // The unsubscribe link is never wrapped.
     expect(html).toContain('href="https://ppiasiania.id/newsletter/unsubscribe?t=signed-');
   });
 
@@ -307,7 +304,6 @@ describe("newsletter campaigns", () => {
       revertible: false,
     });
     expect(JSON.stringify(entry)).not.toContain("sari@example.org");
-    // Already pending (live link): nothing new is sent.
     expect(await add({ email: "sari@example.org" })).toMatchObject({
       ok: true,
       data: { outcome: "exists" },
@@ -316,7 +312,6 @@ describe("newsletter campaigns", () => {
     const gone = "hgoneexampleorg".padEnd(64, "0");
     await store.startOptIn(gone, "gone@example.org", "x", now, now);
     await store.unsubscribe(gone, now);
-    // Someone who unsubscribed is never re-mailed by staff (they can sign up again themselves).
     expect(await add({ email: "gone@example.org" })).toMatchObject({
       ok: true,
       data: { outcome: "unsubscribed" },
@@ -384,7 +379,6 @@ describe("newsletter campaigns", () => {
     expect(await reader.listForAdmin()).toHaveLength(2);
 
     await actions().removeSubscriber(...as(editor))({ id });
-    // A subscriber stored before name, PPI and version existed can be deleted too.
     const legacy = "l".padEnd(64, "0");
     fake.docs.set(`subscribers/${legacy}`, {
       subscriberId: legacy,
@@ -425,7 +419,6 @@ describe("open and click tracking (web routes) and the public archive", () => {
     expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ openCount: 1, clickCount: 1 });
     expect(await web.track("open", "missing", sid, now)).toBe(false);
     expect(await web.findPublic(id)).toMatchObject({ id, subject: "Edisi Oktober" });
-    // Deleting hides the archive page and stops counting.
     await actions().remove(...as(editor))({ id, version: 2 });
     expect(await web.findPublic(id)).toBeNull();
     expect(await web.track("open", id, sid, now)).toBe(false);

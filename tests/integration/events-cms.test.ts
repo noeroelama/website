@@ -182,7 +182,6 @@ describe("Events CMS: save, publish, delete", () => {
     expect(auditEntries().map((e) => e["action"])).toEqual(["CREATE", "PUBLISH"]);
     expect((await store.listForAdmin()).map((e) => e.id)).toEqual([id]);
     expect(await store.get("bad/id")).toBeNull();
-    // Events imported from PPIDK (block J) may have no banner.
     const saved = await store.get(id);
     expect(eventSnapshot({ ...saved!, bannerImage: null })["bannerImage"]).toBeNull();
   });

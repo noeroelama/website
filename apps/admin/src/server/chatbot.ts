@@ -5,13 +5,11 @@ import type { Conversation, SqlConversationStore } from "@website/db/sql";
 import { normalizeUniversityName } from "@website/domain/members";
 import { readBodyLimited } from "@website/security";
 
-/** A conversation is forgotten after 30 minutes without a message. */
 export const CONVERSATION_TTL_MS = 30 * 60_000;
 const MAX_OPTIONS = 9;
 
 export interface ChatbotDeps {
   readonly conversations: Pick<SqlConversationStore, "get" | "save">;
-  /** keyedHash of the E.164 number: the conversation id (the number is never stored). */
   readonly phoneId: (phone: string) => string;
   readonly chapters: () => Promise<
     ReadonlyArray<{ id: string; name: string; countryCode: string }>
@@ -19,11 +17,9 @@ export interface ChatbotDeps {
   readonly universities: (
     countryCode: string,
   ) => Promise<ReadonlyArray<{ id: string; name: string }>>;
-  /** Optional free-text campus matcher (Gemini, X4); null = off. Index into `names` or null. */
   readonly matchCampus:
     ((typed: string, names: readonly string[]) => Promise<number | null>) | null;
   readonly ensureAccount: (email: string, name: string) => Promise<string>;
-  /** `users/{uid}` (the same record a first sign-in makes). */
   readonly recordUser: (uid: string, email: string, name: string) => Promise<void>;
   readonly openRecruitments: () => Promise<ReadonlyArray<{ id: string; title: string }>>;
   readonly webUrl: string;
@@ -51,13 +47,6 @@ const pick = (text: string, count: number): number | null => {
 };
 const Email = z.email().max(254);
 
-/**
- * WhatsApp chatbot (C4), ported from PPIDK `Wa/*`: keywords `daftar`, `menu`, `bantuan`,
- * `batal`, `oprec`; a sign-up dialogue (name → e-mail → chapter → campus search → pick →
- * confirm → account) whose state lives in `whatsappConversations` with a 30-minute life.
- * Campus names are matched deterministically first; the optional machine matcher only when
- * nothing matches. Answers are plain text with numbered choices.
- */
 export function createChatbot(deps: ChatbotDeps) {
   async function step(
     convo: Conversation | null,
@@ -177,7 +166,6 @@ export function createChatbot(deps: ChatbotDeps) {
     }
   }
 
-  /** One incoming text → the reply; the conversation is saved (or cleared) with a fresh TTL. */
   return async function handle(phone: string, text: string): Promise<string> {
     const id = deps.phoneId(phone);
     const now = deps.now();
@@ -188,7 +176,6 @@ export function createChatbot(deps: ChatbotDeps) {
   };
 }
 
-/** Meta WhatsApp Cloud API text reply (inside the 24-hour window). Throws on failure. */
 export function cloudApiReply(
   config: { phoneNumberId: string; token: string } | null,
   fetchImpl: typeof fetch,
@@ -227,11 +214,6 @@ interface CloudPayload {
   }>;
 }
 
-/**
- * /webhooks/whatsapp (C4): GET = Meta's verify-token handshake; POST = `X-Hub-Signature-256`
- * (HMAC-SHA256 of the body with the app secret) → each text message de-duplicated by its id →
- * the chatbot → the reply via the Cloud API. Status updates and media are acknowledged only.
- */
 export function createWhatsappWebhook(deps: {
   readonly verifyToken: string | undefined;
   readonly appSecret: string | undefined;

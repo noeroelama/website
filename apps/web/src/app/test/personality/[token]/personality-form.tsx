@@ -9,7 +9,6 @@ type Labels = Dictionary["personality"];
 const AXIS_ORDER: readonly Axis[] = ["mind", "energy", "nature", "tactics", "identity"];
 const SCALE = [-3, -2, -1, 0, 1, 2, 3] as const;
 
-/** The result: type, name, description and the five axes (no raw answers are kept). */
 export function PersonalityResultView(props: {
   result: { code: string; identity: string; full: string; axes: Readonly<Record<Axis, AxisScore>> };
   labels: Labels;
@@ -38,7 +37,6 @@ export function PersonalityResultView(props: {
   );
 }
 
-/** The 60 statements on a 7-step agree scale; the server scores them. */
 export function PersonalityForm(props: {
   token: string;
   items: { no: number; text: string }[];

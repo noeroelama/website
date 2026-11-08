@@ -10,32 +10,20 @@ import type { Column } from "@/components/ui/data-table";
 import { ListCard, ListEmpty, useListTable } from "@/components/ui/list-controls";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 
-/* ==================================================================
-   Certificate batch (D5) — participants pasted from a spreadsheet
-   (one per line; a note and an e-mail after TAB ; or |, never a
-   comma; the e-mail is stored only as a keyed hash). Each gets
-   a sheet number and its own verification code; the sheets are
-   rendered on demand. Removing one never renumbers the others.
-   ================================================================== */
-
 interface Sheet {
   id: string;
   seq: number;
   name: string;
   note: string | null;
-  /** Once the batch is issued. */
   number: string | null;
   code: string | null;
-  /** An e-mail was pasted: the holder can download the sheet on the website (/certificates). */
   hasEmail: boolean;
 }
 
 interface Props {
   batch: { id: string; subject: string; number: string | null; statusLabel: string };
   sheets: Sheet[];
-  /** letters.edit in the batch's unit, and the batch is still a draft or under review. */
   canEdit: boolean;
-  /** Bulk sending (issued batches): the panel, or null. */
   send: ReactNode;
 }
 
@@ -151,10 +139,7 @@ export function ParticipantsPage({ batch, sheets, canEdit, send }: Props) {
       </div>
       {send}
       {canEdit ? (
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <label className="admin-field">
             <span className="admin-field__label">
               Paste participants: one per line; a note (Narasumber, Juara 1) and the e-mail used at

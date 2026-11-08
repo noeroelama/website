@@ -25,7 +25,6 @@ const context = () =>
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 const editor = staff(["tools.edit"]);
 
-/** A fake provider HTTP API: records calls, answers from a script. */
 function api(answers: Array<{ status: number; body?: unknown } | "network">) {
   const calls: Array<{ url: string; method: string; body: unknown; auth: string }> = [];
   const fetchImpl = ((url: string, init: RequestInit) => {

@@ -10,7 +10,6 @@ import {
   type ImagePresetName,
 } from "@website/domain/shared";
 
-/** What POST /api/uploads/<preset> answers. URLs are null for private presets. */
 export interface UploadedImage {
   readonly path: string;
   readonly thumbPath: string;
@@ -20,18 +19,12 @@ export interface UploadedImage {
   readonly height: number;
 }
 
-/** Stored form of an upload from a public preset (both URLs set); null for a private preset. */
 export function publicImage(image: UploadedImage): FeaturedImage | null {
   if (!image.url || !image.thumbUrl) return null;
   const { url, thumbUrl, path, thumbPath, width, height } = image;
   return { url, thumbUrl, path, thumbPath, width, height };
 }
 
-/**
- * Shrinks the image in the browser before upload (WebP, inside the preset's size) with the
- * native canvas — no library. `createImageBitmap` applies the EXIF orientation. Browsers that
- * cannot encode WebP give another type; the server re-encodes either way, so keep the smaller.
- */
 async function compress(file: File, maxPx: number): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height));
@@ -47,10 +40,6 @@ async function compress(file: File, maxPx: number): Promise<Blob> {
   return blob.size < file.size ? blob : file;
 }
 
-/**
- * Flowchart section 2 in the browser: type and 5 MB checks first (nothing is uploaded when
- * they fail), compression, then POST to the server, which checks everything again.
- */
 export function useImageUpload(preset: ImagePresetName) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

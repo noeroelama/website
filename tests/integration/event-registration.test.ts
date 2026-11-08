@@ -11,7 +11,6 @@ import { fakeDb } from "../support/fake-db";
 type Db = Parameters<typeof createSqlEventStore>[0];
 const now = new Date("2026-10-18T05:00:00Z");
 let auditSeq = 0;
-/** Minimal audit entry: these tests are about reading and registering, not auditing. */
 const auditStub = (): AuditEvent => ({
   id: `audit-${++auditSeq}`,
   occurredAt: now,
@@ -141,7 +140,6 @@ describe("event registration (internal)", () => {
     expect(first?.status).toBe("confirmed");
     expect(first?.event.slug).toBe("simposium");
     expect(await registrations.listByUser("nobody")).toEqual([]);
-    // Deleted (or missing) events drop out of the member's list; newest event first.
     const later = await create({ slug: "later", startsAt: new Date("2026-12-24T00:00:00Z") });
     const gone = await create({ slug: "gone" });
     await registrations.register(later.id, "u1", now);

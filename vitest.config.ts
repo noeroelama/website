@@ -5,7 +5,6 @@ const serverOnlyStub = fileURLToPath(new URL("./tests/support/server-only.ts", i
 
 export default defineConfig({
   test: {
-    // Security code must be fully covered: `pnpm test` fails below 100%.
     coverage: {
       provider: "v8",
       include: [

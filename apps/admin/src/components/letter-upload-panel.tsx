@@ -7,20 +7,12 @@ import { actionMessage } from "@/components/action-message";
 import { Button } from "@/components/ui/button";
 import type { LetterItem } from "./letters-model";
 
-/* ==================================================================
-   Upload path (D3): after "Take number" the author types the number
-   into their own document, uploads the PDF (the number is checked
-   when the PDF has text) and says where the signatures and the QR
-   go. "Preview PDF" shows the stamped file exactly as it will be kept.
-   ================================================================== */
-
 type Spot = { page: number; xMm: number; yMm: number };
 type Key = "qr" | "secretary" | "coordinator";
 type Field = keyof Spot | "sizeMm";
 const SPOT_FIELDS: readonly Field[] = ["page", "xMm", "yMm"];
 const QR_FIELDS: readonly Field[] = [...SPOT_FIELDS, "sizeMm"];
 
-// PPIDK's defaults: signature lower right of page 1, the QR in the bottom-right corner.
 const DEFAULTS: Record<Key, Spot & { sizeMm?: number }> = {
   qr: { page: 1, xMm: 175, yMm: 255, sizeMm: 22 },
   secretary: { page: 1, xMm: 130, yMm: 230 },
@@ -34,7 +26,6 @@ const LABELS: Record<Key, string> = {
 
 export function LetterUploadPanel(props: {
   letter: LetterItem;
-  /** Shows a message and reloads (the letter's version changed). */
   onDone: (message: string) => void;
   onError: (message: string) => void;
 }) {

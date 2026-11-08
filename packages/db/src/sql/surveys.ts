@@ -18,14 +18,9 @@ const toSurvey = (id: string, d: Record<string, unknown>): Survey => ({
   votedAt: toDate(d["votedAt"]),
 });
 
-/**
- * `surveys/{sha256(source:sourceId:uid)}` (J3): one satisfaction poll per source event and person,
- * with its options frozen (label → stars). Votes find it by the poll's WAHA message id.
- */
 export function createSqlSurveyStore(db: Database) {
   const docs = db.collection("surveys");
   return {
-    /** Creates the survey unless it exists: the new survey, or null (already asked). */
     async claim(
       source: SurveySource,
       sourceId: string,
@@ -58,7 +53,6 @@ export function createSqlSurveyStore(db: Database) {
       });
     },
 
-    /** Records the latest vote on the survey of that poll; false when the poll is unknown. */
     async vote(
       pollMessageId: string,
       stars: (survey: Survey) => number | null,
@@ -75,7 +69,6 @@ export function createSqlSurveyStore(db: Database) {
       });
     },
 
-    /** Surveys sent since `from` (admin summary). */
     async since(from: Date): Promise<Survey[]> {
       const snapshot = await docs.where("sentAt", ">=", from).get();
       return snapshot.docs.map((d) => toSurvey(d.id, d.data()));

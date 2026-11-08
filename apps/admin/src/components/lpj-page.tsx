@@ -38,11 +38,9 @@ interface Row {
   status: LpjStatus;
   dueOn: string;
   overdue: boolean;
-  /** Desks signed (of 3). */
   desks: number;
 }
 
-/** LPJ desks: the period's LPJs, overdue first in red. */
 export function LpjListPage({
   period,
   periods,
@@ -139,7 +137,6 @@ const SIGN: Record<LpjDesk, (input: unknown) => Promise<ActionResult>> = {
   approval: approveLpjAction,
 };
 
-/** One LPJ: the frozen plan beside the PICs' report, and the three desks. */
 export function LpjReportPage({ lpj, can }: ReportProps) {
   const router = useRouter();
   const toast = useToastMessage();

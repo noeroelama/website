@@ -17,16 +17,11 @@ export interface PollDeps {
   readonly surveys: Pick<SqlSurveyStore, "claim" | "setPollMessage" | "vote">;
   readonly contacts: (uids: readonly string[]) => Promise<Map<string, Contact>>;
   readonly sendPoll: ReturnType<typeof wahaPoll>;
-  /** The same rules as messages: log mode never sends, test environments only to testers. */
   readonly delivery: { mode: MessagingMode; appEnv: string; testRecipients: readonly string[] };
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
   readonly now: () => Date;
 }
 
-/**
- * Satisfaction polls (J3): after selected notifications, a 1-5 star WhatsApp poll to people
- * with a WhatsApp number, once per source event and person (`surveys`). Never throws.
- */
 export function createPolls(deps: PollDeps) {
   return {
     async ask(uids: readonly string[], source: SurveySource, sourceId: string): Promise<number> {
@@ -62,11 +57,6 @@ const MAX_BODY = 64 * 1024;
 const reply = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-/**
- * POST /webhooks/waha (J3): WAHA's HMAC (`X-Webhook-Hmac`, SHA-512 hex of the body with
- * WAHA_WEBHOOK_SECRET) → de-duplication by the vote's message id → the vote is stored on the
- * survey of that poll by its frozen options. Other events are acknowledged and ignored.
- */
 export function createWahaWebhookRoute(deps: {
   readonly secret: string | undefined;
   readonly record: (provider: string, eventId: string, now: Date) => Promise<boolean>;
@@ -100,7 +90,6 @@ export function createWahaWebhookRoute(deps: {
       return reply({ error: "invalid_input" }, 400);
     }
     const now = deps.now();
-    // A changed vote keeps its id in WAHA: the choice and time are part of the event.
     const eventId = createHash("sha256")
       .update(`${voteId}:${JSON.stringify(selected)}:${String(body.payload?.vote?.["timestamp"])}`)
       .digest("hex");

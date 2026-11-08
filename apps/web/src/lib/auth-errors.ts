@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-/**
- * User-facing messages for Firebase Auth / WebAuthn errors. Sign-in failures share one message so
- * the form never reveals whether an email has an account; unknown errors never show details.
- * An empty string means "the user cancelled — show nothing".
- */
 const MESSAGES = new Map<string, string>(
   Object.entries({
     "auth/wrong-password": "Email or password is incorrect.",
@@ -19,7 +14,7 @@ const MESSAGES = new Map<string, string>(
     "auth/popup-blocked": "Allow pop-ups for this site to continue with Google.",
     "auth/popup-closed-by-user": "",
     "auth/cancelled-popup-request": "",
-    NotAllowedError: "", // passkey prompt dismissed or timed out
+    NotAllowedError: "",
     "passkey/failed": "Passkey sign-in didn't work. Try again or use another sign-in method.",
     "passkey/reauthenticate": "For your security, sign in again before adding a passkey.",
   }),

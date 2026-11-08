@@ -1,5 +1,3 @@
-# Reports the local Windows toolchain. Read-only: installs and changes nothing.
-# Usage (PowerShell, from V:\platform):  powershell -ExecutionPolicy Bypass -File scripts\doctor.ps1
 
 function Show-Version($label, $command, $cmdArgs) {
     $cmd = Get-Command $command -ErrorAction SilentlyContinue

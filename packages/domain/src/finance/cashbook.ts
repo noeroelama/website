@@ -3,13 +3,6 @@ import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError } from "../shared";
 import { FINANCE_CURRENCIES, type FinanceFile, type FinanceRequest } from "./requests";
 
-/**
- * Cash book (I2) and cash report (I3), ported from PPIDK `BukuKasService`. Money gets into the
- * book two ways only: a request marked paid (`cashEntries/{requestId}`, written in the same
- * transaction, at most one per request; budget requests move no money and write nothing) or a
- * manual treasurer entry (opening balance, dues, donations, bank interest, petty cash). Entries
- * from requests are never edited here: the request is their source of truth.
- */
 export const CASH_KINDS = ["in", "out"] as const;
 export type CashKind = (typeof CASH_KINDS)[number];
 
@@ -23,7 +16,6 @@ export const ALL_CASH_CATEGORIES: readonly CashCategory[] = [
   ...CASH_CATEGORIES.out,
 ];
 
-/** Printed names (PPIDK `KATEGORI_MASUK` / `KATEGORI_KELUAR`). */
 export const CASH_CATEGORY_LABELS: Readonly<Record<CashCategory, string>> = {
   opening_balance: "Opening balance",
   dues: "Member dues",
@@ -38,7 +30,6 @@ export const CASH_CATEGORY_LABELS: Readonly<Record<CashCategory, string>> = {
   other_out: "Other spending",
 };
 
-/** Manual entry (finance.cashbook). */
 export const CashEntryInputSchema = z
   .object({
     date: z.iso.date(),
@@ -66,7 +57,6 @@ export interface CashEntry extends CashEntryInput {
   readonly createdAt: Date;
 }
 
-/** Request category → cash book line; budget is a plan, not a money movement. */
 const FROM_REQUEST = {
   receipt: { kind: "in", category: "receipt" },
   disbursement: { kind: "out", category: "disbursement" },
@@ -74,10 +64,6 @@ const FROM_REQUEST = {
   budget: null,
 } as const;
 
-/**
- * The line a paid request writes (id = request id), or null for budget requests. The amount is
- * what was actually paid; the date is the payment day (UTC).
- */
 export function cashEntryFromRequest(request: FinanceRequest): CashEntry | null {
   const line = FROM_REQUEST[request.category];
   const payment = request.payment;
@@ -111,7 +97,6 @@ export type ReportRange = z.infer<typeof ReportRangeSchema>;
 
 export interface CurrencyReport {
   readonly currency: string;
-  /** Everything before `from`: the range continues from the real balance, not from zero. */
   readonly opening: number;
   readonly totalIn: number;
   readonly totalOut: number;
@@ -127,10 +112,6 @@ const safe = (n: number) => {
   return n;
 };
 
-/**
- * The report for a date range (both ends inclusive, either may be open), recomputed from the
- * entries, one section per currency (never added together), rows by date then creation.
- */
 export function cashReport(entries: readonly CashEntry[], range: ReportRange): CurrencyReport[] {
   const currencies = [...new Set(entries.map((e) => e.currency))].sort();
   return currencies.map((currency) => {

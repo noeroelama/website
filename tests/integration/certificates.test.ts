@@ -400,7 +400,7 @@ describe("certificate pickup download (D5-P)", () => {
     const { id } = await batch();
     await actions().add(...as(secretariat))({ batchId: id, text: "Arif", titleCase: false });
     const { verificationCode: code } = (await sheets().list(id))[0] as Certificate;
-    expect((await pickupRoute()(token(code))).status).toBe(404); // draft: not issued yet
+    expect((await pickupRoute()(token(code))).status).toBe(404);
     await walk((await letters().get(id)) as Letter);
     const ok = await pickupRoute()(token(code));
     expect([ok.status, ok.headers.get("content-disposition")]).toEqual([

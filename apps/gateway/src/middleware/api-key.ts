@@ -4,7 +4,6 @@ import { DEFAULT_RATE_LIMIT } from "@website/security";
 import { problem } from "../http/problem";
 import type { GatewayDeps, GatewayVariables } from "../types";
 
-/** Authenticates the API key (Authorization: Bearer <key>) and applies its rate limit. */
 export function requireApiKey(deps: GatewayDeps) {
   return createMiddleware<{ Variables: GatewayVariables }>(async (c, next) => {
     const header = c.req.header("authorization") ?? "";
@@ -23,7 +22,6 @@ export function requireApiKey(deps: GatewayDeps) {
       });
       return problem(c, "unauthorized");
     }
-    // Per-key limit on top of the per-IP limit (same policy shape, key-specific minute limit).
     const perMinute = result.key.rateLimitPerMinute ?? deps.defaultRateLimitPerMinute;
     const rate = await deps.rateLimitStore.consume(
       `key_${result.key.keyId}`,

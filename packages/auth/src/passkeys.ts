@@ -13,16 +13,9 @@ import { jsonError } from "@website/security";
 import { readCookie } from "./session-routes";
 import { isRecentSignIn, SESSION_COOKIE, type IdentityProvider } from "./session";
 
-/**
- * Passkeys (WebAuthn). Firebase Auth has no passkey support, so the server verifies the passkey
- * itself and then issues a Firebase custom token; the browser exchanges it for a normal Firebase
- * sign-in and the usual session cookie (POST /api/session). Credentials live in our database.
- */
 export interface PasskeyCredential {
-  /** Credential id (base64url). */
   readonly id: string;
   readonly userId: string;
-  /** COSE public key (base64url). */
   readonly publicKey: string;
   readonly counter: number;
   readonly transports: readonly string[];
@@ -32,28 +25,22 @@ export interface PasskeyCredential {
 
 export interface PasskeyChallenge {
   readonly challenge: string;
-  /** Set for registration (the signed-in user); null for sign-in. */
   readonly userId: string | null;
   readonly expiresAt: Date;
 }
 
-/** Storage port. Implemented in @website/db (MySQL and in-memory). */
 export interface PasskeyStore {
   listByUser(userId: string): Promise<PasskeyCredential[]>;
   findById(credentialId: string): Promise<PasskeyCredential | null>;
-  /** Must fail if the credential id already exists. */
   add(credential: PasskeyCredential): Promise<void>;
-  /** Atomic. Accepts only an increasing counter (or 0 → 0); false means replay/clone or unknown. */
   recordUse(credentialId: string, newCounter: number, usedAt: Date): Promise<boolean>;
   saveChallenge(id: string, challenge: PasskeyChallenge): Promise<void>;
-  /** Atomic read-and-delete: each challenge works once. Null when missing or expired. */
   consumeChallenge(id: string, now: Date): Promise<PasskeyChallenge | null>;
 }
 
 export const PASSKEY_CHALLENGE_COOKIE = "__Host-passkey-challenge";
 const CHALLENGE_TTL_SECONDS = 300;
 
-/** Only the shape is checked here; the WebAuthn library verifies the content. */
 const CredentialResponse = z.object({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,1400}$/),
   rawId: z.string(),
@@ -72,7 +59,6 @@ export function createPasskeyRoutes(options: {
   store: PasskeyStore;
   identity: IdentityProvider;
   rpName: string;
-  /** The site's origin, e.g. https://web.example.org. Passkeys are bound to its hostname. */
   origin: string;
   now?: () => Date;
 }) {
@@ -107,7 +93,6 @@ export function createPasskeyRoutes(options: {
   };
 
   return {
-    /** POST — signed-in user asks to add a passkey. */
     async registerOptions(request: Request): Promise<Response> {
       const user = await signedInUser(request);
       if (!user || !isRecentSignIn(user, now().getTime() / 1000))
@@ -126,7 +111,6 @@ export function createPasskeyRoutes(options: {
       return Response.json(creationOptions, { headers: { ...noStore, "Set-Cookie": cookie } });
     },
 
-    /** POST — verify the new passkey and store it. */
     async registerVerify(request: Request): Promise<Response> {
       const user = await signedInUser(request);
       if (!user) return jsonError("unauthenticated");
@@ -159,7 +143,6 @@ export function createPasskeyRoutes(options: {
       return done(new Response(null, { status: 204, headers: noStore }));
     },
 
-    /** POST — start a passkey sign-in (no session needed). */
     async loginOptions(_request?: Request): Promise<Response> {
       const requestOptions = await generateAuthenticationOptions({
         rpID,
@@ -169,11 +152,10 @@ export function createPasskeyRoutes(options: {
       return Response.json(requestOptions, { headers: { ...noStore, "Set-Cookie": cookie } });
     },
 
-    /** POST — verify the passkey and return a Firebase custom token for its owner. */
     async loginVerify(request: Request): Promise<Response> {
       const challenge = await takeChallenge(request);
       const parsed = await body(request);
-      const denied = () => done(jsonError("unauthenticated")); // never says why
+      const denied = () => done(jsonError("unauthenticated"));
       if (!challenge || challenge.userId !== null || !parsed.success) return denied();
       const stored = await store.findById(parsed.data.id);
       if (!stored) return denied();

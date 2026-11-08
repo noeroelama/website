@@ -2,10 +2,6 @@ import { z } from "zod";
 import { safeId } from "@website/security/validation";
 import { CursorQuerySchema, pageOf } from "../pagination";
 
-/**
- * Public event DTO. Explicit fields only — internal fields (audit metadata,
- * capacity internals, draft state, author IDs) must never appear here.
- */
 export const EventDtoSchema = z
   .object({
     id: z.string(),
@@ -25,7 +21,6 @@ export type EventDto = z.infer<typeof EventDtoSchema>;
 
 export const ListEventsQuerySchema = CursorQuerySchema.extend({
   chapterId: safeId.optional(),
-  /** For polling integrations: only events changed after this instant. */
   updatedSince: z.iso.datetime().optional(),
 });
 export type ListEventsQuery = z.infer<typeof ListEventsQuerySchema>;

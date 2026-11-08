@@ -5,7 +5,6 @@ import { isValidSlug, type EntityMeta } from "../shared";
 export type ContentKind = "news" | "article" | "page";
 export type ContentStatus = "draft" | "scheduled" | "published" | "archived";
 
-/** News categories (Figma flowchart); labels live in the apps' label maps. */
 export const NEWS_CATEGORIES = [
   "general",
   "academic",
@@ -15,7 +14,6 @@ export const NEWS_CATEGORIES = [
 ] as const;
 export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
 
-/** An uploaded image as returned by the image pipeline (public preset). */
 export interface FeaturedImage {
   readonly url: string;
   readonly thumbUrl: string;
@@ -29,24 +27,17 @@ export interface ContentItem extends EntityMeta {
   readonly kind: ContentKind;
   readonly slug: string;
   readonly title: string;
-  /** Sanitised rich text (HTML allowlist, `@website/security/html`). */
   readonly body: string;
   readonly status: ContentStatus;
   readonly publishAt: Date | null;
   readonly chapterId: string | null;
-  /** Byline as typed by staff (the staff account is in the audit log). */
   readonly author: string;
   readonly category: NewsCategory;
   readonly summary: string;
-  /** Lower-case keywords; drive the related articles. */
   readonly tags: readonly string[];
   readonly featuredImage: FeaturedImage | null;
 }
 
-/**
- * Scheduled publishing is a read-time rule, not a cron job:
- * an item is public once it is scheduled/published and publishAt has passed.
- */
 export function isPubliclyVisible(
   item: Pick<ContentItem, "status" | "publishAt" | "deletedAt">,
   now: Date,
@@ -57,7 +48,6 @@ export function isPubliclyVisible(
   return false;
 }
 
-/** What the editor asked for: keep as draft, or publish (now, or scheduled for a future date). */
 export type PublishIntent = "draft" | "publish";
 
 export function publishState(
@@ -70,7 +60,6 @@ export function publishState(
   return { status: "published", publishAt: publishAt ?? now };
 }
 
-/** URL slug from a title: lower case, accents removed, words joined by dashes, ≤ 120 chars. */
 export function slugify(text: string): string {
   return text
     .normalize("NFKD")
@@ -82,7 +71,6 @@ export function slugify(text: string): string {
     .replace(/-+$/g, "");
 }
 
-/** Publish date as shown on the site and the admin preview, e.g. "18 Oktober 2026" (UTC). */
 export function formatNewsDate(date: Date, language: "id" | "en"): string {
   return new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-GB", {
     dateStyle: "long",
@@ -94,7 +82,6 @@ export function normalizeTags(tags: readonly string[]): string[] {
   return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
 }
 
-/** https only; http://localhost is allowed so uploads work in local development (WEB_URL). */
 const httpsUrl = z
   .url({ protocol: /^https?$/ })
   .max(2000)
@@ -115,7 +102,6 @@ export const FeaturedImageSchema = z
   })
   .strict();
 
-/** The News form (add + edit). The body is sanitised by the server before it is stored. */
 export const NewsInputSchema = z
   .object({
     title: safeText(200).pipe(z.string().min(3, "Enter a title (at least 3 characters).")),
@@ -127,7 +113,6 @@ export const NewsInputSchema = z
       .refine(isValidSlug, "Use lower-case letters, numbers and dashes."),
     author: safeText(120).pipe(z.string().min(2, "Enter the author.")),
     category: z.enum(NEWS_CATEGORIES, { error: "Choose a category." }),
-    // `.nullable()` lets null reach the refine with a clear message (coerce would turn it into 1970).
     publishAt: z.coerce
       .date()
       .nullable()
@@ -148,7 +133,6 @@ export const NewsInputSchema = z
   .strict();
 export type NewsInput = z.infer<typeof NewsInputSchema>;
 
-/** What visitors may see of a news item (list cards); the detail page adds the body. */
 export interface PublicNews {
   readonly slug: string;
   readonly title: string;
@@ -156,12 +140,10 @@ export interface PublicNews {
   readonly category: NewsCategory;
   readonly summary: string;
   readonly tags: readonly string[];
-  /** When it went public (for published items saved without a date: the last change). */
   readonly publishAt: Date;
   readonly featuredImage: FeaturedImage | null;
 }
 export interface PublicNewsDetail extends PublicNews {
-  /** Stored sanitised HTML; sanitise again when rendering. */
   readonly body: string;
 }
 
@@ -178,7 +160,6 @@ export function toPublicNews(item: ContentItem): PublicNews {
   };
 }
 
-/** Related articles: up to `limit` others with the same category or a shared tag, newest first. */
 export function relatedNews(
   current: PublicNews,
   all: readonly PublicNews[],
@@ -194,11 +175,9 @@ export function relatedNews(
     .slice(0, limit);
 }
 
-/** Repository port — implemented in @website/db. */
 export interface ContentReader {
   findPublishedBySlug(kind: ContentKind, slug: string, now: Date): Promise<ContentItem | null>;
 }
 export interface ContentWriter extends ContentReader {
-  /** Must fail with ConcurrencyConflictError when expectedVersion is stale. */
   save(item: ContentItem, expectedVersion: number | null): Promise<ContentItem>;
 }

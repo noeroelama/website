@@ -14,7 +14,6 @@ import { createGuardedAction } from "./guarded-action";
 
 const printed = (now: Date) => `Printed ${now.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
-/** The period report card (E5) as a printable sheet: the same numbers as /programs/report. */
 export function reportCardSheet(
   card: PeriodReportCard,
   periodName: string,
@@ -64,7 +63,6 @@ export function reportCardSheet(
   };
 }
 
-/** GET /api/programs/report?period=<id> (default the active period): the report card as PDF. */
 export function createReportCardFileRoute(deps: {
   periods: () => Promise<ReadonlyArray<{ id: string; name: string; status: string }>>;
   card: (periodId: string) => Promise<PeriodReportCard>;
@@ -103,10 +101,6 @@ export function createReportCardFileRoute(deps: {
   };
 }
 
-/**
- * Exports of personal data built in the browser from rows already on the page (M8) are logged
- * as `data.export` security events; the page's read permission is required to log.
- */
 export function createExportLog(deps: {
   logExport: (actorId: string, details: Record<string, unknown>) => void;
 }) {

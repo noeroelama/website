@@ -62,7 +62,6 @@ describe("personal signatures (D4)", () => {
     expect(response.status).toBe(201);
     const path = "members/signatures/ari_00000001.enc";
     const stored = files.get(path) as Uint8Array;
-    // Never the image itself in Storage.
     expect(Buffer.from(stored).includes(Buffer.from(png.slice(1, 4)))).toBe(false);
     expect(decryptField(new TextDecoder().decode(stored), KEY)).toEqual(png);
     expect(await own().settings(ari)).toEqual({
@@ -75,11 +74,9 @@ describe("personal signatures (D4)", () => {
     expect(view.headers.get("content-type")).toBe("image/png");
     expect(view.headers.get("cache-control")).toBe("private, no-store");
     expect(new Uint8Array(await view.arrayBuffer())).toEqual(png);
-    // Keyed by the session's uid only: nobody else has one.
     expect((await own().view({ uid: "rina" })).status).toBe(404);
     expect(await own().settings({ uid: "rina" })).toBeNull();
 
-    // Replacing stores the new file first, then removes the old one.
     expect((await upload(ari, JPEG)).status).toBe(201);
     expect([...files.keys()]).toEqual(["members/signatures/ari_00000002.enc"]);
     expect((await own().view(ari)).headers.get("content-type")).toBe("image/jpeg");

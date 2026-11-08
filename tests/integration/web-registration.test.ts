@@ -52,7 +52,6 @@ describe("event registration from the website", () => {
       ok: false,
       error: "captcha",
     });
-    // Member-only: the profile must be complete first (B3).
     expect(
       await run(
         { uid: "new", email: "new@example.org" },

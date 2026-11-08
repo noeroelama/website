@@ -12,13 +12,8 @@ import { minorDigits } from "@website/domain/programs";
 
 const FieldMessages = createContext<Readonly<Record<string, string>>>({});
 
-/** What a server action returns (GuardedResult, as seen by the browser). */
 export type ActionResult = { ok: true } | ActionFailure;
 
-/**
- * The popup form of the OKR, Programmes and LPJ pages: plain fields read with FormData, one
- * server action on submit, its refusal shown at the bottom; success closes and refreshes.
- */
 export function FormModal({
   open,
   title,
@@ -73,7 +68,6 @@ export function FormModal({
   );
 }
 
-/** One labelled control with its requirements (`FieldError`); `rows` makes a textarea. */
 export function Field({
   label,
   name,
@@ -95,7 +89,6 @@ export function Field({
   maxLength?: number;
   pattern?: string;
   inputMode?: "numeric" | "decimal" | "email" | "url" | "tel";
-  /** "off" for secrets the browser must not offer to save or fill. */
   autoComplete?: string;
 }) {
   const message = useContext(FieldMessages)[name];
@@ -116,7 +109,6 @@ export function Field({
   );
 }
 
-/** A dropdown field (`Select`) with a label. */
 export function ChoiceField({
   label,
   name,
@@ -145,7 +137,6 @@ export function ChoiceField({
   );
 }
 
-/** The board period shown (`?period=<id>`), as a dropdown in the page header. */
 export function PeriodSwitch({
   path,
   current,
@@ -172,21 +163,15 @@ export function PeriodSwitch({
   );
 }
 
-/** FormData text (trimmed, "" when missing). */
 export const text = (form: FormData, name: string): string => {
   const value = form.get(name);
   return typeof value === "string" ? value.trim() : "";
 };
-/** FormData number (NaN when empty: the server refuses it with a message). */
 export const num = (form: FormData, name: string): number => {
   const value = text(form, name);
   return value === "" ? Number.NaN : Number(value);
 };
 
-/**
- * Budget lines typed one per line in major units ("JPY 50000", "AUD 12.50") → integer minor
- * units. A line that is not "<CODE> <amount>" becomes NaN, which the server refuses.
- */
 export function parseBudgets(value: string): Array<{ amountMinor: number; currency: string }> {
   return value
     .split("\n")
@@ -200,6 +185,5 @@ export function parseBudgets(value: string): Array<{ amountMinor: number; curren
     });
 }
 
-/** The inverse of `parseBudgets`, for the form's default value. */
 export const budgetText = (budgets: ReadonlyArray<{ amountMinor: number; currency: string }>) =>
   budgets.map((b) => `${b.currency} ${b.amountMinor / 10 ** minorDigits(b.currency)}`).join("\n");

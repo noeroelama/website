@@ -43,12 +43,8 @@ export interface LetterDeps {
   >;
   readonly types: Pick<SqlLetterTypeStore, "save">;
   readonly settings: Pick<SqlLetterSettingsStore, "get" | "save">;
-  /** After the issue transaction: renders and archives the PDF (errors are logged there; the
-   *  preview route archives a letter that has none yet). */
   readonly afterIssue: (letter: Letter) => Promise<void>;
-  /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
-  /** Upload path (D3): private files, and the stamping shared with the preview. */
   readonly storage: {
     save(
       path: string,
@@ -58,7 +54,6 @@ export interface LetterDeps {
     remove(path: string): Promise<void>;
   };
   readonly files: Pick<LetterPdf, "stampUpload" | "saveFile">;
-  /** After a desk step committed: tells whoever acts next (J2; never throws). */
   readonly afterStep: (letter: Letter) => Promise<void>;
   readonly now: () => Date;
   readonly uuid: () => string;
@@ -70,7 +65,6 @@ const SaveLetter = LetterInputSchema.and(
     .object({
       id: safeId.optional(),
       version: z.number().int().min(1).nullable(),
-      /** New letters only: typed here, the author's own PDF (D3) or a certificate batch (D5). */
       source: z.enum(["editor", "upload", "certificate"]).optional(),
     })
     .strict(),
@@ -92,18 +86,10 @@ const letterAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // A workflow step (or a number) is never undone by a revert; return or cancel instead.
       revertible: false,
     });
 
-/**
- * Outgoing letters (D1, D2). Scope: an org-unit assignment covers its unit's letters only (and
- * units below it); a global assignment covers every letter. Desk actions are
- * separate permissions: review (secretariat), sign (Secretary-General), sign_coordinator,
- * issue (number), cancel.
- */
 export function createLetterActions(deps: LetterDeps) {
-  /** The letter's place in the structure, read on the server (never from the input). */
   const scopeOf = async ({ id }: { id: string }): Promise<ResourceContext> => {
     const letter = await deps.letters.get(id);
     return { orgUnitPath: letter?.orgUnitPath ?? [] };
@@ -120,7 +106,6 @@ export function createLetterActions(deps: LetterDeps) {
   const save = createGuardedAction({
     permission: "letters.edit",
     input: SaveLetter,
-    // New letter: the chosen unit; existing letter: where it is now (the new unit is checked below).
     resource: (input) => (input.id ? scopeOf({ id: input.id }) : unitScope(input.orgUnitId)),
     handler: async ({ id, version, source, ...input }, principal, audit) => {
       const now = deps.now();
@@ -205,8 +190,6 @@ export function createLetterActions(deps: LetterDeps) {
         letterAudit(audit, "PUBLISH"),
         deps.now(),
       );
-      // The upload path is only numbered here ("Take number"); its file comes later.
-      // Certificate batches have no letter PDF: their sheets are rendered on demand.
       if (issued.status === "issued" && issued.source === "editor") await deps.afterIssue(issued);
       return {
         status: issued.status,
@@ -267,7 +250,6 @@ export function createLetterActions(deps: LetterDeps) {
     }),
   });
 
-  /** POST /api/letters/<id>/file?version=<n>: the final PDF of an upload letter (≤ 10 MB). */
   const upload = createGuardedAction({
     permission: "letters.edit",
     input: Ref.extend({ request: z.instanceof(Request) }).strict(),
@@ -280,7 +262,6 @@ export function createLetterActions(deps: LetterDeps) {
       if (letter?.status !== "awaiting_file") {
         throw new RuleViolationError("This letter is not waiting for its file.");
       }
-      // openPdf throws only UnreadablePdfError (locked, damaged, no pages).
       await openPdf(bytes).catch((error: UnreadablePdfError) => {
         throw new RuleViolationError(error.message);
       });
@@ -314,7 +295,6 @@ export function createLetterActions(deps: LetterDeps) {
     },
   });
 
-  /** awaiting_file → issued: the stamped PDF (as previewed) becomes the archive. */
   const issueFile = createGuardedAction({
     permission: "letters.issue",
     input: Ref,
@@ -325,7 +305,6 @@ export function createLetterActions(deps: LetterDeps) {
         throw new RuleViolationError("Upload the final PDF first (or reload the page).");
       }
       const stampedFrom = letter.upload.sha256;
-      // Refuses an upload whose stored bytes no longer match their checksum.
       const archive = await deps.files.saveFile(letter, await deps.files.stampUpload(letter));
       const now = deps.now();
       const saved = await deps.letters.transition(
@@ -339,7 +318,6 @@ export function createLetterActions(deps: LetterDeps) {
     },
   });
 
-  /** Route form of `upload`: version from the query, body = the PDF. */
   const uploadFile =
     (getPrincipal: () => Promise<Principal | null>, getAuditContext: () => Promise<AuditContext>) =>
     async (id: string, request: Request): Promise<Response> => {

@@ -6,13 +6,8 @@ import { toCashSections } from "@/components/finance-model";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/**
- * The cash book of the active period (I2) for `?from=&to=`, recomputed on every request. The book
- * is the organisation's: only global holders of finance.cashbook or finance.export see it.
- */
 export default async function AdminCashbookPage({
   searchParams,
 }: {

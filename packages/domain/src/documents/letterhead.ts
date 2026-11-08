@@ -1,15 +1,8 @@
 import { z } from "zod";
 import { safeText } from "@website/security/validation";
 
-/**
- * Letterhead of every letter (PPIDK `Kop`, settings `surat.*`): full-width images designed
- * outside (letterhead, footer, watermark) or, when there is no letterhead image, a text
- * letterhead with the emblem. Stored in `settings/letters` and FROZEN on each letter at issue,
- * so a new design never changes letters already issued.
- */
 export const LETTERHEAD_FOLDER = "letters/letterhead/";
 
-/** An uploaded letterhead image (preset `letterhead`); the path must be in its folder. */
 export const LetterheadImageSchema = z
   .object({
     path: z
@@ -32,9 +25,7 @@ export const LetterheadSchema = z
     footer: LetterheadImageSchema.nullable().default(null),
     watermark: LetterheadImageSchema.nullable().default(null),
     emblem: LetterheadImageSchema.nullable().default(null),
-    /** Percent, 2-40: a darker watermark makes the letter hard to read. */
     watermarkOpacity: z.number().int().min(2).max(40).default(8),
-    /** A small "Paraf" box above the footer. */
     initialsBox: z.boolean().default(false),
   })
   .strict();
@@ -45,10 +36,8 @@ export const DEFAULT_LETTERHEAD: Letterhead = LetterheadSchema.parse({
   mainName: "PPIDK ASIA-OSEANIA",
 });
 
-/** Dates on letters are written in the organisation's zone (WIB), in Indonesian. */
 export const ORGANISATION_TIME_ZONE = "Asia/Jakarta";
 
-/** "2026-11-02" or an instant → "2 November 2026". */
 export function formatLetterDate(value: string | Date): string {
   const instant = typeof value === "string" ? new Date(`${value}T00:00:00Z`) : value;
   return new Intl.DateTimeFormat("id-ID", {
@@ -59,10 +48,6 @@ export function formatLetterDate(value: string | Date): string {
   }).format(instant);
 }
 
-/**
- * The address printed as QR and text under a letter: `https://<VERIFICATION_HOST>/<CODE>` (the
- * short form PPIDK printed: verif.ppiasiania.id/8F3KM-QRTVW), else `<WEB_URL>/verify/<CODE>`.
- */
 export function verificationUrl(
   code: string,
   where: { readonly host: string | null; readonly webUrl: string | null },

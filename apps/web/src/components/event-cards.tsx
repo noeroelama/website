@@ -2,10 +2,6 @@ import type { PublicEvent } from "@website/domain/events";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { cityOf, formatEventDate } from "@/lib/event-time";
 
-/**
- * Event cards (/events): banner, type, title, meta line with dot separators
- * (date · location · type, as the design card), description excerpt.
- */
 export function EventCards({ items, t }: { items: readonly PublicEvent[]; t: Dictionary }) {
   return (
     <ul className="site-cards">

@@ -23,7 +23,6 @@ function toCampaign(id: string, data: Record<string, unknown>): Campaign {
     cursor: data["cursor"] as string | null,
     sentCount: data["sentCount"] as number,
     sentAt: toDate(data["sentAt"]),
-    // Campaigns from before tracking have no counters.
     openCount: (data["openCount"] as number | undefined) ?? 0,
     clickCount: (data["clickCount"] as number | undefined) ?? 0,
     version: data["version"] as number,
@@ -45,10 +44,6 @@ export function campaignSnapshot(c: CampaignFields): Snapshot {
   };
 }
 
-/**
- * `campaigns/{id}`. Staff changes go through `write` (version check + audit); the cron job moves a
- * campaign forward with `progress` (system bookkeeping: cursor, count, sent).
- */
 export function createSqlCampaignStore(db: Database) {
   const store = createSluggedStore<Campaign>(db, {
     collection: "campaigns",
@@ -74,7 +69,6 @@ export function createSqlCampaignStore(db: Database) {
     get: store.get,
     write: store.write,
 
-    /** Scheduled or sending campaigns (the cron job picks the due ones). */
     async listActive(): Promise<Campaign[]> {
       const snapshot = await store.docs.where("status", "in", ["scheduled", "sending"]).get();
       return snapshot.docs
@@ -82,7 +76,6 @@ export function createSqlCampaignStore(db: Database) {
         .filter((c) => c.deletedAt === null);
     },
 
-    /** After one batch: remember where it stopped; `done` marks the campaign sent. */
     progress(
       id: string,
       update: { cursor: string | null; sent: number; done: boolean },
@@ -106,12 +99,6 @@ export function createSqlCampaignStore(db: Database) {
 
 export type SqlCampaignStore = ReturnType<typeof createSqlCampaignStore>;
 
-/**
- * The website's side of campaigns: the public archive page and open/click tracking. A tracking
- * marker `campaignTracking/{kind}_{campaignId}_{subscriberId}` is written once per subscriber, and
- * the campaign's `openCount` / `clickCount` grow only when a marker is new (one transaction). A
- * click also counts as an open (images may be blocked).
- */
 export function createSqlCampaignWebStore(db: Database) {
   const campaigns = db.collection("campaigns");
   const markers = db.collection("campaignTracking");
@@ -125,7 +112,6 @@ export function createSqlCampaignWebStore(db: Database) {
       return isPublicCampaign(campaign) ? campaign : null;
     },
 
-    /** False when the campaign is unknown, not public (deleted) or the ids are invalid. */
     track(
       kind: TrackingKind,
       campaignId: string,

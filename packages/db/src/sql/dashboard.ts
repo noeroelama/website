@@ -1,6 +1,5 @@
 import type { Database, Query } from "./store";
 
-/** What the admin dashboard counts (COUNT queries). */
 export type DashboardCounter = "events" | "albums" | "articles" | "subscribers";
 
 export function createSqlDashboardCounts(db: Database) {

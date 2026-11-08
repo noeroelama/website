@@ -3,14 +3,6 @@ import { safeId, safeText } from "@website/security/validation";
 import { canChangePeriod, type Period } from "../organizations";
 import { RuleViolationError, type EntityMeta } from "../shared";
 
-/**
- * OKR (E1), ported from PPIDK `Objective` / `KeyResult`: a period's vision and mission (stored on
- * the period) → objectives → key results. An objective belongs to one unit of the period, or to
- * nobody (`orgUnitId` null: the whole region); its key results are numbers, always (baseline →
- * target with a unit). An archived period is history: its OKR no longer changes.
- */
-
-/** "up" = achieved by growing; "down" = by shrinking (e.g. days to process a letter). */
 export const KEY_RESULT_DIRECTIONS = ["up", "down"] as const;
 export type KeyResultDirection = (typeof KEY_RESULT_DIRECTIONS)[number];
 
@@ -19,7 +11,6 @@ const amount = z.number().finite().min(-1e12).max(1e12);
 export const KeyResultInputSchema = z
   .object({
     title: safeText(200).pipe(z.string().min(2, "Enter the key result.")),
-    /** "people", "events", "%" (empty = a plain count). */
     unit: safeText(32, { allowEmpty: true }).default(""),
     baseline: amount.default(0),
     target: amount,
@@ -32,7 +23,6 @@ export type KeyResultInput = z.infer<typeof KeyResultInputSchema>;
 
 export interface KeyResult extends KeyResultInput {
   readonly id: string;
-  /** When `current` last changed (null = never measured). */
   readonly measuredAt: Date | null;
 }
 
@@ -40,7 +30,6 @@ export const ObjectiveInputSchema = z
   .object({
     title: safeText(200).pipe(z.string().min(2, "Enter the objective.")),
     description: safeText(2000, { multiline: true, allowEmpty: true }).default(""),
-    /** null = an objective of the whole region. */
     orgUnitId: safeId.nullable(),
     sort: z.number().int().min(0).max(999).default(0),
   })
@@ -49,12 +38,10 @@ export type ObjectiveInput = z.infer<typeof ObjectiveInputSchema>;
 
 export interface Objective extends ObjectiveInput, EntityMeta {
   readonly periodId: string;
-  /** The unit and its ancestors (scope checks); [] for a region objective. */
   readonly orgUnitPath: readonly string[];
   readonly keyResults: readonly KeyResult[];
 }
 
-/** The period's vision and mission (OKR page; the period form keeps them as they are). */
 export const VisionInputSchema = z
   .object({
     vision: safeText(2000, { multiline: true, allowEmpty: true }),
@@ -62,10 +49,8 @@ export const VisionInputSchema = z
   })
   .strict();
 
-/** At most this many key results per objective (keeps one document small). */
 export const MAX_KEY_RESULTS = 20;
 
-/** Refuses any OKR change in an archived (or missing) period. */
 export function assertOkrWritable(period: Pick<Period, "status" | "deletedAt"> | null): void {
   if (!period || period.deletedAt) throw new RuleViolationError("This period does not exist.");
   if (!canChangePeriod(period.status)) {
@@ -73,11 +58,6 @@ export function assertOkrWritable(period: Pick<Period, "status" | "deletedAt"> |
   }
 }
 
-/**
- * Achievement 0-100: where `current` sits between baseline and target, the same formula for both
- * directions, clamped (a negative or 180% result would distort the objective's average). A target
- * equal to the baseline means "keep it": 100 unless it moved the wrong way.
- */
 export function keyResultPercent(
   kr: Pick<KeyResult, "baseline" | "target" | "current" | "direction">,
 ): number {
@@ -90,14 +70,12 @@ export function keyResultPercent(
   return Math.round(Math.max(0, Math.min(100, percent)));
 }
 
-/** Plain average of its key results (no weights: none were ever agreed); none = 0. */
 export function objectivePercent(objective: Pick<Objective, "keyResults">): number {
   const krs = objective.keyResults;
   if (krs.length === 0) return 0;
   return Math.round(krs.reduce((sum, kr) => sum + keyResultPercent(kr), 0) / krs.length);
 }
 
-/** A key result added or edited: `measuredAt` moves only when the value changed. */
 export function upsertKeyResult(
   objective: Objective,
   id: string,

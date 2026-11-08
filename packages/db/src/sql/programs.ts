@@ -77,14 +77,12 @@ export function objectiveSnapshot(o: ObjectiveFields): Snapshot {
   };
 }
 
-/** The period, which must exist and not be archived (read in the write's transaction). */
 async function readWritablePeriod(db: Database, tx: Transaction, periodId: string) {
   const snapshot = await tx.get(db.collection("periods").doc(safeId.parse(periodId)));
   const period = snapshot.data() as Pick<Period, "status" | "deletedAt"> | undefined;
   assertOkrWritable(period ? { status: period.status, deletedAt: toDate(period.deletedAt) } : null);
 }
 
-/** `orgUnitPath` of a live unit of the period ([] for none); refuses a unit of another period. */
 export async function readUnitPath(
   db: Database,
   tx: Transaction,
@@ -100,11 +98,6 @@ export async function readUnitPath(
   return orgUnitPath({ id: snapshot.id, path: unit.path });
 }
 
-/**
- * `objectives/{id}` (E1) with their key results inside (at most 20, so one document). Every write
- * is ONE transaction that reads the period and refuses an archived one, then writes the
- * objective and its audit entry. Deleted softly.
- */
 export function createSqlObjectiveStore(db: Database) {
   const store = createSluggedStore<Objective>(db, {
     collection: "objectives",
@@ -120,7 +113,6 @@ export function createSqlObjectiveStore(db: Database) {
   return {
     get: store.get,
 
-    /** The live objectives of a period, in order. */
     async listForPeriod(periodId: string): Promise<Objective[]> {
       const snapshot = await store.docs
         .where("periodId", "==", periodId)
@@ -145,7 +137,6 @@ export function createSqlObjectiveStore(db: Database) {
       );
     },
 
-    /** Edits the fields (the period stays); moving to another unit re-reads its path. */
     update(id: string, version: number, input: ObjectiveInput, audit: ObjectiveAudit, now: Date) {
       return store.write(
         id,
@@ -161,7 +152,6 @@ export function createSqlObjectiveStore(db: Database) {
       );
     },
 
-    /** A change decided by a pure domain function (key results, delete). */
     change(
       id: string,
       version: number,
@@ -186,8 +176,6 @@ export function createSqlObjectiveStore(db: Database) {
 
 export type SqlObjectiveStore = ReturnType<typeof createSqlObjectiveStore>;
 
-/* ---- Work programmes (E2) and weekly check-ins (E3) ---- */
-
 export type ProgramFields = Omit<Program, Meta>;
 export type ProgramAudit = (
   before: Snapshot | null,
@@ -195,7 +183,6 @@ export type ProgramAudit = (
   current: Program | null,
   next: Program,
 ) => AuditEvent;
-/** Audit of a check-in (`before` null for the week's first one). */
 export type CheckinAudit = (
   before: Snapshot | null,
   after: Snapshot,
@@ -243,7 +230,6 @@ export const toProgram = (id: string, data: Record<string, unknown>): Program =>
   };
 };
 
-/** Audit snapshot: the plan and the state (milestones as title, weight and done). */
 export function programSnapshot(p: ProgramFields): Snapshot {
   return {
     orgUnitId: p.orgUnitId,
@@ -269,7 +255,6 @@ export function programSnapshot(p: ProgramFields): Snapshot {
   };
 }
 
-/** Everything stored besides the snapshot (the snapshot has lossy forms of some fields). */
 const stored = (p: Program) => ({
   periodId: p.periodId,
   orgUnitPath: p.orgUnitPath,
@@ -286,7 +271,6 @@ const stored = (p: Program) => ({
   createdBy: p.createdBy,
 });
 
-/** The key result must be one of an objective of the same period (or none). */
 async function checkKeyResult(
   db: Database,
   tx: Transaction,
@@ -326,13 +310,6 @@ const checkinSnapshot = (c: CheckinInput): Snapshot => ({
   nextPlan: c.nextPlan,
 });
 
-/**
- * `programs/{id}` (E2): plan writes and workflow steps through the versioned-document
- * transaction (read, version check, rule, write + audit). Milestones live in the programme, so a
- * milestone change and the recomputed `progressPercent` are one write. Check-ins
- * (`programCheckins/{programId}_{weekStartUtc}`) are one per programme per UTC week: sending
- * again updates that week's report.
- */
 export function createSqlProgramStore(db: Database) {
   const store = createSluggedStore<Program>(db, {
     collection: "programs",
@@ -346,7 +323,6 @@ export function createSqlProgramStore(db: Database) {
   return {
     get: store.get,
 
-    /** Every live programme of a period, newest first (a period has a few hundred at most). */
     async listForPeriod(periodId: string): Promise<Program[]> {
       const snapshot = await store.docs
         .where("periodId", "==", periodId)
@@ -356,7 +332,6 @@ export function createSqlProgramStore(db: Database) {
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data()));
     },
 
-    /** A proposal of a unit, in a period that is not archived. */
     create(
       periodId: string,
       input: ProgramInput,
@@ -397,7 +372,6 @@ export function createSqlProgramStore(db: Database) {
       );
     },
 
-    /** Plan edits (until it is finished or cancelled); the status stays. */
     update(
       id: string,
       version: number,
@@ -421,7 +395,6 @@ export function createSqlProgramStore(db: Database) {
       );
     },
 
-    /** A step decided by a pure domain function (status, health, milestones). */
     transition(
       id: string,
       version: number,
@@ -432,7 +405,6 @@ export function createSqlProgramStore(db: Database) {
       return store.write(id, version, (current) => step(current as Program), auditFor, now);
     },
 
-    /** This week's check-in (created, or updated when the week already has one). */
     checkIn(
       programId: string,
       weekStart: string,
@@ -483,11 +455,6 @@ export function createSqlProgramStore(db: Database) {
       });
     },
 
-    /**
-     * running → finished AND `lpjReports/{programId}` opened, in ONE transaction: the plan is
-     * frozen into the LPJ and its due date comes from the period's `lpjDeadlineDays`. Both writes
-     * are audited; a failure leaves neither.
-     */
     finish(
       id: string,
       version: number,
@@ -533,7 +500,6 @@ export function createSqlProgramStore(db: Database) {
           updatedAt: now,
           deletedAt: null,
         });
-        // `create`: a second LPJ for the same programme fails the whole transaction.
         tx.create(lpjRef, { ...lpjStored(lpj), version: 1, createdAt: now, updatedAt: now });
         log.append(
           auditProgram(programSnapshot(current), programSnapshot(program), current, program),
@@ -543,7 +509,6 @@ export function createSqlProgramStore(db: Database) {
       });
     },
 
-    /** A programme's check-ins, newest week first. */
     async listCheckins(programId: string): Promise<Checkin[]> {
       const snapshot = await checkins.where("programId", "==", programId).get();
       return snapshot.docs
@@ -554,8 +519,6 @@ export function createSqlProgramStore(db: Database) {
 }
 
 export type SqlProgramStore = ReturnType<typeof createSqlProgramStore>;
-
-/* ---- LPJ (E4) ---- */
 
 export type LpjAudit = (
   before: Snapshot | null,
@@ -603,7 +566,6 @@ export function toLpj(id: string, data: Record<string, unknown>): LpjReport {
   };
 }
 
-/** Audit snapshot: the PICs' part and the workflow (the frozen plan never changes). */
 export function lpjSnapshot(l: Omit<LpjReport, Meta>): Snapshot {
   return {
     status: l.status,
@@ -637,11 +599,6 @@ const lpjStored = (l: LpjReport) => ({
   deletedAt: l.deletedAt,
 });
 
-/**
- * `lpjReports/{programId}` (E4): created only by `createSqlProgramStore().finish`; every later
- * change (the PICs' text, submit, desks, return, due date) is one versioned transaction with its
- * audit entry. Never deleted.
- */
 export function createSqlLpjStore(db: Database) {
   const store = createSluggedStore<LpjReport>(db, {
     collection: "lpjReports",
@@ -653,7 +610,6 @@ export function createSqlLpjStore(db: Database) {
   return {
     get: store.get,
 
-    /** The LPJs of a period, by due date. */
     async listForPeriod(periodId: string): Promise<LpjReport[]> {
       const snapshot = await store.docs.where("periodId", "==", periodId).get();
       return snapshot.docs
@@ -661,7 +617,6 @@ export function createSqlLpjStore(db: Database) {
         .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
     },
 
-    /** A change decided by a pure domain function. */
     transition(
       id: string,
       version: number,
@@ -676,15 +631,6 @@ export function createSqlLpjStore(db: Database) {
 
 export type SqlLpjStore = ReturnType<typeof createSqlLpjStore>;
 
-/* ---- Period report card (E5) ---- */
-
-/**
- * The report card of a period, computed on request (E5): programme and LPJ numbers are COUNT
- * queries (overdue too: `dueOn` before today and not approved); OKR achievement and budget
- * totals read the documents they average or add.
- * shortcut: budgets are added in code (the store has COUNT, no SUM, and amounts are per
- * currency in arrays); a period has a few hundred programmes — add a SUM query if that grows.
- */
 export function createSqlPeriodReport(db: Database) {
   const programs = db.collection("programs");
   const lpj = db.collection("lpjReports");
@@ -694,7 +640,6 @@ export function createSqlPeriodReport(db: Database) {
     async card(periodId: string, now: Date): Promise<PeriodReportCard> {
       const live = programs.where("periodId", "==", periodId).where("deletedAt", "==", null);
       const reports = lpj.where("periodId", "==", periodId);
-      // Overdue = due before today (UTC), i.e. due on yesterday or earlier.
       const yesterday = addDaysUtc(now, -1);
       const [okr, statusCounts, troubled, promised, approvedLpj, submitted, overdue] =
         await Promise.all([
@@ -721,7 +666,6 @@ export function createSqlPeriodReport(db: Database) {
         ) as Record<ProgramStatus, number>,
         troubled,
         plannedBudgets: promised.docs.map((d) => d.data()["budgets"] as Program["budgets"]),
-        // An approved LPJ always has money spent (the treasurer refuses one without).
         realized: approvedLpj.docs.map((d) => d.data()["realized"] as Program["budgets"]),
         lpj: { submitted, approved: approvedLpj.docs.length, overdue },
       });

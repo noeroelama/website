@@ -12,10 +12,6 @@ const toSignature = (uid: string, data: Record<string, unknown>): UserSignature 
   updatedAt: toDate(data["updatedAt"]) as Date,
 });
 
-/**
- * `userSignatures/{uid}` (D4): where a person's encrypted signature file is, and how it is
- * printed. Written only for the session's own uid (web) and read by letter rendering (admin).
- */
 export function createSqlSignatureStore(db: Database) {
   const docs = db.collection("userSignatures");
   const ref = (uid: string) => docs.doc(safeId.parse(uid));
@@ -25,7 +21,6 @@ export function createSqlSignatureStore(db: Database) {
       const snapshot = await ref(uid).get();
       return snapshot.exists ? toSignature(uid, snapshot.data() as Record<string, unknown>) : null;
     },
-    /** Stores the new file's record; returns the previous file to remove (or null). */
     replace(
       uid: string,
       file: { path: string; type: UserSignature["type"] } & SignatureSettings,
@@ -37,7 +32,6 @@ export function createSqlSignatureStore(db: Database) {
         return previous.exists ? (previous.get("path") as string) : null;
       });
     },
-    /** Width and rotation only; false when there is no signature. */
     configure(uid: string, settings: SignatureSettings, now: Date): Promise<boolean> {
       return db.runTransaction(async (tx) => {
         const current = await tx.get(ref(uid));
@@ -46,7 +40,6 @@ export function createSqlSignatureStore(db: Database) {
         return true;
       });
     },
-    /** Deletes the record; returns the file to remove (or null). */
     remove(uid: string): Promise<string | null> {
       return db.runTransaction(async (tx) => {
         const current = await tx.get(ref(uid));

@@ -3,11 +3,6 @@ import type { JsonValue, Snapshot } from "./types";
 const same = (a: JsonValue | undefined, b: JsonValue | undefined) =>
   canonicalJson(a ?? null) === canonicalJson(b ?? null);
 
-/**
- * What an audit entry stores: only the top-level fields that changed. A field missing on one
- * side is recorded as null there, so a revert can clear it again. Create (before = null) keeps
- * the whole `after`; delete (after = null) keeps the whole `before`.
- */
 export function onlyChangedFields(
   before: Snapshot | null,
   after: Snapshot | null,
@@ -20,10 +15,6 @@ export function onlyChangedFields(
   return { before: pick(before), after: pick(after) };
 }
 
-/**
- * Deterministic JSON for hashing: object keys sorted, Dates as ISO strings, undefined dropped.
- * Used for the audit hash chain (`hash = sha256(prevHash + canonicalJson(event))`).
- */
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(normalize(value));
 }

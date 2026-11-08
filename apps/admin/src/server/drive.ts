@@ -2,16 +2,12 @@ import "server-only";
 import { createSign } from "node:crypto";
 
 export interface DriveCredentials {
-  /** Service account with domain-wide delegation for the Drive scope. */
   readonly clientEmail: string;
   readonly privateKey: string;
-  /** The Workspace user the files belong to (impersonated). */
   readonly impersonate: string;
-  /** The folder the "[YYYY-MM-DD] Topic" folders go into. */
   readonly folderId: string;
 }
 
-/** A Drive API failure (status + Google's message, never the token). */
 export class DriveApiError extends Error {
   override readonly name = "DriveApiError";
   readonly status: number;
@@ -22,15 +18,9 @@ export class DriveApiError extends Error {
 }
 
 const b64url = (value: string | Buffer) => Buffer.from(value).toString("base64url");
-/** Drive query strings quote with ' and escape \ and '. */
 const quote = (text: string) => `'${text.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 const FOLDER = "application/vnd.google-apps.folder";
 
-/**
- * Google Drive v3 for the recording archive (F3), standard library only: a service-account JWT
- * (RS256) exchanged for an access token (cached per process until a minute before expiry),
- * folder and file lookups, resumable uploads one chunk per call. Works in shared drives.
- */
 export function createDriveClient(
   credentials: DriveCredentials,
   fetchImpl: typeof fetch,
@@ -97,7 +87,6 @@ export function createDriveClient(
   }
 
   return {
-    /** The meeting's folder under the archive folder (made when missing). */
     async folder(name: string): Promise<string> {
       const found = await findOne(name, credentials.folderId, true);
       if (found) return found.id;
@@ -112,10 +101,8 @@ export function createDriveClient(
       return ((await response.json()) as { id: string }).id;
     },
 
-    /** A file of that name in the folder (its size decides "done" or "clash"). */
     file: (name: string, folderId: string) => findOne(name, folderId, false),
 
-    /** Starts a resumable upload; the answer's Location is the session URL. */
     async startUpload(name: string, folderId: string, size: number): Promise<string> {
       const response = await send(
         "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true",
@@ -134,10 +121,6 @@ export function createDriveClient(
       return location;
     },
 
-    /**
-     * Sends bytes [start, start + chunk.length) of `total`. 308 = more to come (Drive says how
-     * much it has); 200/201 = the file exists.
-     */
     async putChunk(
       sessionUrl: string,
       chunk: Uint8Array,

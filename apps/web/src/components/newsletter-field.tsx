@@ -5,7 +5,6 @@ import { subscribeAction } from "@/app/newsletter/actions";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { captchaToken } from "@/lib/captcha-client";
 
-/** Newsletter field (Home and footer): required, pattern-checked e-mail; double opt-in on the server. */
 export function NewsletterField({ t }: { t: Dictionary["newsletter"] }) {
   const messageId = useId();
   const [busy, setBusy] = useState(false);

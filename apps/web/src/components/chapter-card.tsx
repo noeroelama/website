@@ -1,7 +1,6 @@
 import type { PublicChapter } from "@website/domain/organizations";
 import type { Dictionary } from "@/i18n/dictionaries";
 
-/** One member council: logo, name, public contact person and links (map card and list). */
 export function ChapterCard({ chapter: c, t }: { chapter: PublicChapter; t: Dictionary["map"] }) {
   const instagram = c.instagram?.startsWith("http")
     ? c.instagram

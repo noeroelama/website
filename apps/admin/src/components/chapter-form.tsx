@@ -21,9 +21,7 @@ import { Select } from "@/components/ui/select";
 interface Form {
   name: string;
   countryCode: string;
-  /** "" = hidden from the /map table; the groups of the side.svg design otherwise. */
   region: string;
-  /** "" = no badge number on the /map table. */
   mapNo: string;
   timezone: string;
   logo: FeaturedImage | null;
@@ -40,13 +38,11 @@ interface Form {
   longitude: string;
   slug: string;
   memberCount: string;
-  /** One condition per line. */
   conditions: string;
   risk: ChapterRisk;
   active: boolean;
 }
 
-/** A new chapter starts with the next free badge number (suggestedMapNo). */
 const fromChapter = (c: ChapterItem | null, suggestedMapNo?: number): Form => ({
   name: c?.name ?? "",
   countryCode: c?.countryCode ?? "",
@@ -72,17 +68,9 @@ const fromChapter = (c: ChapterItem | null, suggestedMapNo?: number): Form => ({
   active: c?.active ?? true,
 });
 
-/**
- * Add / edit a PPI chapter (feature A2), styled like the Create Period popup. The contact person
- * is entered with the contact the chapter wants published only. Members, conditions and the risk
- * badge are the national board's own notes (admin list only). Saved with a version check; a
- * changed Status is saved right after through activate/deactivate.
- */
 export function ChapterForm(props: {
   chapter: ChapterItem | null;
-  /** Next free badge number, suggested for a new chapter (edit leaves it alone). */
   suggestedMapNo?: number;
-  /** Chapter admin: only the contact fields can change (the server enforces it too). */
   contactOnly?: boolean;
   onClose: () => void;
   onSaved: (message: string) => void;
@@ -97,7 +85,6 @@ export function ChapterForm(props: {
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  /** `rules`: the field's requirements (required, min/max, pattern …), shown under it. */
   const field = (
     key: keyof Form,
     label: string,
@@ -146,7 +133,6 @@ export function ChapterForm(props: {
       setMessage(actionMessage(result));
       return;
     }
-    // New chapters start active; only a changed status needs the second action.
     if (active !== (props.chapter?.active ?? true)) {
       const status = await setChapterActiveAction({
         id: props.chapter?.id ?? result.data.id,

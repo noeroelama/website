@@ -1,4 +1,3 @@
-/** `%PDF-` at the start: the only format of private document uploads (portfolios, pacts, letters). */
 export const isPdf = (bytes: Uint8Array) =>
   bytes.length > 4 &&
   bytes[0] === 0x25 &&

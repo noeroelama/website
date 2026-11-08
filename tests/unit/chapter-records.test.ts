@@ -23,7 +23,6 @@ describe("chapter records (H1-H3)", () => {
   });
 
   it("risk signal: from Q3 2026 only, consecutive misses, inactive not rated", () => {
-    // Q3 2026 still running: nothing is late yet (no retroactive penalty for Q2).
     expect(chapterSignal(true, new Set(), "2026-09-01")).toMatchObject({ signal: "active" });
     expect(chapterSignal(true, new Set(), "2026-11-07")).toEqual({
       signal: "needs_checking",
@@ -32,7 +31,6 @@ describe("chapter records (H1-H3)", () => {
     expect(chapterSignal(true, new Set(["2026Q3"]), "2026-11-07")).toMatchObject({
       signal: "active",
     });
-    // Across the year boundary: Q3 and Q4 2026 missed.
     expect(chapterSignal(true, new Set(), "2027-01-15")).toEqual({
       signal: "at_risk",
       reason: "No report for 2026Q3, 2026Q4.",

@@ -1,9 +1,5 @@
 import { passkeyRoutes } from "@/server/passkeys";
 
-/**
- * POST /api/passkeys/register-options | register-verify  (signed-in user adds a passkey)
- * POST /api/passkeys/login-options    | login-verify     (sign in with a passkey)
- */
 export async function POST(request: Request, context: { params: Promise<{ action: string }> }) {
   const routes = passkeyRoutes();
   switch ((await context.params).action) {

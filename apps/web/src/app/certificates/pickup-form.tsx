@@ -6,7 +6,6 @@ import { captchaToken } from "@/lib/captcha-client";
 import type { PickupResult } from "@/server/verification";
 import { findCertificatesAction } from "./actions";
 
-/** The e-mail field of /certificates and the sheets found for it (exact match only). */
 export function PickupForm(props: { labels: Dictionary["verification"]; locale: string }) {
   const t = props.labels;
   const [email, setEmail] = useState("");

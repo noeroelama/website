@@ -294,7 +294,6 @@ describe("PPIDK import of meetings, Zoom, short links and messages (step 7.12)",
   const plan = mapPpidkMeetings(tables, { uidOf, now });
   const fake = fakeDb();
   const db = fake.db as unknown as Parameters<typeof createSqlMeetingStore>[0];
-  // Written the way the script writes them (stored dates come back as timestamps).
   const loaded = Promise.all(
     plan.writes.map((w) => {
       const [collection, id] = w.path.split("/") as [string, string];

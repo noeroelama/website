@@ -9,18 +9,12 @@ import { publicEvents } from "@/server/events";
 import { publicNews } from "@/server/news";
 import { logger } from "@/server/session";
 
-/** One feature card on the home page (Figma "HOME PUBLIC"): title, short text, link. */
 interface FeaturedCard {
   title: string;
   desc: string;
   href: string;
 }
 
-/**
- * Sponsor logos in the dark band — each brand appears twice in sequence (Figma frame 2400).
- * eBay and amazon are the PNG logos the client uploaded; AJIO stays a plain text wordmark
- * (regular weight), as the design itself sets it as text in frame 2400.
- */
 const HOME_LOGOS: ReadonlyArray<{ src?: string; alt: string }> = [
   { src: "/home/ebay.png", alt: "eBay" },
   { src: "/home/amazon.png", alt: "amazon" },
@@ -30,10 +24,6 @@ const HOME_LOGOS: ReadonlyArray<{ src?: string; alt: string }> = [
   { alt: "AJIO" },
 ];
 
-/**
- * Latest 3 events as design cards (streams in). "/" must always answer for a guest, so a failing
- * read is logged and the section falls back to placeholder cards from the dictionary.
- */
 async function LatestEvents() {
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
@@ -69,7 +59,6 @@ async function LatestEvents() {
   );
 }
 
-/** Latest 3 news as design cards; same fallback behaviour as the events section. */
 async function LatestNews() {
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
@@ -105,8 +94,6 @@ async function LatestNews() {
   );
 }
 
-// Prerendered (Indonesian shell; the `lang` cookie version streams in). "/" never redirects:
-// Google's OAuth review fetches it as a guest and must find the purpose and the data notice.
 export default function HomePage() {
   return (
     <main>
@@ -134,7 +121,6 @@ export default function HomePage() {
                     <p key={paragraph.slice(0, 40)}>{paragraph}</p>
                   ))}
                 </div>
-                {/* Only the name, no role line below (user). */}
                 <p className="home-welcome__name">{t.home.welcomeName}</p>
               </div>
             </div>
@@ -165,12 +151,9 @@ export default function HomePage() {
       <Suspense fallback={null}>
         <LatestEvents />
       </Suspense>
-      {/* Empty page the size of the Secretary General's welcome (user: blank, no content). */}
       <section className="home-blank" aria-hidden="true" />
       <Localized
         render={(t) => (
-          // Dark band (Figma frame 2400): each sponsor wordmark loaded twice, in sequence,
-          // so six logos in total. No logo assets yet — the marks are styled text.
           <section className="home-logos" aria-label={t.home.sponsorLabel}>
             <ol className="home-logos__list">
               {HOME_LOGOS.map((logo, index) => (

@@ -8,10 +8,8 @@ import { formatUtc } from "@/components/format";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads, chapterRecords } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** One chapter's officers, quarterly reports and risk signal (H1-H3). */
 export default async function ChapterRecordsRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/organizations/chapters/${id}`, "organizations.read");

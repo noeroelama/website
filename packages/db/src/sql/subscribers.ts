@@ -11,7 +11,6 @@ import { safeId } from "@website/security/validation";
 import { createSqlAuditWriter } from "./audit";
 import { toDate } from "./slugged";
 
-/** Audit snapshot of a subscriber: no address and no name (the title carries a masked address). */
 export function subscriberSnapshot(data: {
   status: SubscriptionStatus;
   chapterId: string | null;
@@ -19,14 +18,6 @@ export function subscriberSnapshot(data: {
   return { status: data.status, chapterId: data.chapterId };
 }
 
-/**
- * Newsletter subscribers: `subscribers/{emailHash}` (HMAC of the normalised address, so the id
- * never reveals it). Holds the address (needed to send), status, confirmedAt, the SHA-256 of the
- * current confirmation token and its expiry, how many opt-in e-mails were sent (`optIns`, part of
- * the message key), and — when staff added the person — `name` and `chapterId`. `version` and
- * `deletedAt` make a staff deletion revertible on the Audit Log. Every change is one transaction
- * and moves `version` on (so an old deletion is never reverted over a newer change).
- */
 export function createSqlSubscriberStore(db: Database) {
   const subscribers = db.collection("subscribers");
   const audit = createSqlAuditWriter(db);
@@ -46,7 +37,6 @@ export function createSqlSubscriberStore(db: Database) {
       : null;
   type Current = ReturnType<typeof read>;
 
-  /** A new or restarted opt-in (pending, fresh token); keeps an existing name and PPI. */
   const pending = (
     id: string,
     email: string,
@@ -73,7 +63,6 @@ export function createSqlSubscriberStore(db: Database) {
   });
 
   return {
-    /** Sign-up: returns the opt-in number to send, or null when nothing was written. */
     startOptIn(
       id: string,
       email: string,
@@ -100,11 +89,6 @@ export function createSqlSubscriberStore(db: Database) {
       });
     },
 
-    /**
-     * Staff "Add New Subscriber" / "Import CSV": the same opt-in (pending + confirmation e-mail)
-     * with name and PPI, plus an audit entry in the same transaction. Nothing is written when the
-     * address is already subscribed or pending, or when the person unsubscribed.
-     */
     staffAdd(
       id: string,
       email: string,
@@ -136,7 +120,6 @@ export function createSqlSubscriberStore(db: Database) {
       });
     },
 
-    /** Staff delete (soft): hidden from the list and never mailed; revertible on the Audit Log. */
     remove(
       id: string,
       now: Date,
@@ -167,7 +150,6 @@ export function createSqlSubscriberStore(db: Database) {
       });
     },
 
-    /** Confirmation link: single use (the token is cleared). */
     confirm(id: string, tokenHash: string, now: Date) {
       return db.runTransaction(async (tx) => {
         const snapshot = await tx.get(ref(id));
@@ -187,7 +169,6 @@ export function createSqlSubscriberStore(db: Database) {
       });
     },
 
-    /** Signed unsubscribe link from a campaign: always ends as unsubscribed (idempotent). */
     unsubscribe(id: string, now: Date): Promise<boolean> {
       return db.runTransaction(async (tx) => {
         const snapshot = await tx.get(ref(id));
@@ -206,7 +187,6 @@ export function createSqlSubscriberStore(db: Database) {
   };
 }
 
-/** A subscriber row for the admin list and the campaign sender. */
 export interface SubscriberRow {
   readonly id: string;
   readonly email: string;
@@ -229,20 +209,14 @@ const toRow = (data: Record<string, unknown>): SubscriberRow => ({
   deletedAt: toDate(data["deletedAt"]),
 });
 
-/** Admin list and campaign delivery (role admin_rw). */
 export function createSqlSubscriberReader(db: Database) {
   const subscribers = db.collection("subscribers");
   return {
-    /** Live (not deleted) subscribers, newest first. */
     async listForAdmin(limit = 2000): Promise<SubscriberRow[]> {
       const snapshot = await subscribers.orderBy("createdAt", "desc").limit(limit).get();
       return snapshot.docs.map((doc) => toRow(doc.data())).filter((row) => !row.deletedAt);
     },
 
-    /**
-     * The next `limit` confirmed subscribers after `cursor` (stable id order, for batches). Deleted
-     * ones are included (the batch size must stay stable); the sender skips them.
-     */
     async confirmedAfter(cursor: string | null, limit: number): Promise<SubscriberRow[]> {
       let query = subscribers.where("status", "==", "confirmed").orderBy("subscriberId");
       if (cursor) query = query.startAfter(cursor);

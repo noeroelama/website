@@ -14,21 +14,13 @@ import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 
-/* ==================================================================
-   Recruitment → Interviews (C3-I): the interviewer's day view (times
-   on the viewer's clock, with who booked them) and the day plan that
-   creates interview times (stored in UTC).
-   ================================================================== */
-
 export interface SlotItem {
   id: string;
-  /** ISO (UTC). */
   startsAt: string;
   durationMinutes: number;
   capacity: number;
   booked: number;
   location: string;
-  /** Names of the applicants who booked it. */
   applicants: string[];
 }
 

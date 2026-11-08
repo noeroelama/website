@@ -19,7 +19,6 @@ interface Item {
   id: string;
   kind: CalendarKind;
   title: string;
-  /** UTC day of a timed item, or the plain date of an all-day one. */
   day: string;
   time: string | null;
   href: string | null;
@@ -28,7 +27,6 @@ interface Item {
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-/** The month as weeks (Monday first) of "YYYY-MM-DD" or null for padding. */
 function weeks(month: string): Array<Array<string | null>> {
   const first = new Date(`${month}-01T00:00:00Z`);
   const days = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
@@ -47,7 +45,6 @@ const shift = (month: string, by: number) => {
   return d.toISOString().slice(0, 7);
 };
 
-/** Calendar (G2): month grid, the day list, the feed link and holidays. */
 export function CalendarPage({
   month,
   items,
@@ -57,7 +54,6 @@ export function CalendarPage({
   month: string;
   items: Item[];
   feedUrl: string | null;
-  /** null = the viewer may not manage holidays. */
   holidays: Array<{ id: string; date: string; name: string }> | null;
 }) {
   const router = useRouter();

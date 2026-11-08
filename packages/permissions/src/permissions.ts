@@ -1,12 +1,3 @@
-/**
- * Permission vocabulary.
- *
- * - Self-service permissions (`*_own`) belong to every active account, for its own data only.
- * - Admin permissions come from ADMIN PAGES: every page has `<page>.read` and `<page>.edit`
- *   (edit includes read) and, where needed, named extras (e.g. `members.pii`). Adding a page is
- *   a reviewed code change; WHICH roles get which page permissions is data, edited in the admin
- *   Role Manager (roles are database documents).
- */
 export const SELF_SERVICE_PERMISSIONS = [
   "profile.read_own",
   "profile.write_own",
@@ -19,9 +10,7 @@ export const SELF_SERVICE_PERMISSIONS = [
 export type SelfServicePermission = (typeof SELF_SERVICE_PERMISSIONS)[number];
 
 interface AdminPageDefinition {
-  /** Shown in Role Manager. */
   readonly label: string;
-  /** Extra permissions beyond read/edit: key → label shown as a checkbox. */
   readonly extras?: Readonly<Record<string, string>>;
 }
 
@@ -137,7 +126,6 @@ export type PagePermission = {
 }[AdminPageId];
 export type Permission = PagePermission | SelfServicePermission;
 
-/** Every admin-page permission, page by page (read, edit, extras). */
 export const PAGE_PERMISSIONS: readonly PagePermission[] = Object.entries(ADMIN_PAGES).flatMap(
   ([page, definition]: [string, AdminPageDefinition]) =>
     [
@@ -152,10 +140,6 @@ export function isPagePermission(value: string): value is PagePermission {
   return PAGE_PERMISSION_SET.has(value);
 }
 
-/**
- * Cleans a permission list before it is stored on a role: unknown entries and self-service
- * permissions are dropped, and `edit` or any extra adds `read` of the same page.
- */
 export function normalizePermissions(values: Iterable<string>): PagePermission[] {
   const result = new Set<PagePermission>();
   for (const value of values) {
@@ -168,10 +152,6 @@ export function normalizePermissions(values: Iterable<string>): PagePermission[]
   return [...result];
 }
 
-/**
- * Badge colours a role can have (Role Manager → Create Role). Display only: a colour never
- * changes what a role may do. Stored roles read without a known colour get `DEFAULT_ROLE_COLOR`.
- */
 export const ROLE_COLORS = [
   "#D9534F",
   "#2E9FC9",
@@ -191,23 +171,15 @@ export function isRoleColor(value: unknown): value is RoleColor {
   return (ROLE_COLORS as readonly unknown[]).includes(value);
 }
 
-/** A role: built-in (code) or custom (database `roles/{id}`, edited in the admin Role Manager). */
 export interface RoleDefinition {
   readonly id: string;
   readonly name: string;
   readonly permissions: readonly PagePermission[];
-  /** Badge colour (display only); roles read from the database always have one. */
   readonly color?: RoleColor;
 }
 
 export const SUPERADMIN_ROLE_ID = "superadmin";
 
-/**
- * Built-in roles. They cannot be created, edited or deleted in the Role Manager, and a stored role
- * document with the same id is ignored.
- * - superadmin: every admin page (keep 2-3 people)
- * - visitor: the default role of every account, no admin pages.
- */
 export const SYSTEM_ROLES = {
   [SUPERADMIN_ROLE_ID]: {
     id: SUPERADMIN_ROLE_ID,

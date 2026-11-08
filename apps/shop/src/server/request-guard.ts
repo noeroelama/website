@@ -1,10 +1,8 @@
-// Used by src/proxy.ts. No "server-only" import: the proxy is not a React Server Component.
 import { baseEnv, databaseEnv, lazyEnv, loadEnv, rateLimitEnv } from "@website/config/env";
 import { createSqlRateLimitStore, getDatabaseForRole } from "@website/db/sql";
 import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 
-// `next dev` without a .env.local runs as development; deployments must set APP_ENV.
 const getEnv = lazyEnv(() =>
   loadEnv(baseEnv.extend(rateLimitEnv.shape), {
     APP_ENV: process.env["NODE_ENV"] === "development" ? "development" : undefined,
@@ -20,7 +18,6 @@ const getGuard = lazyEnv(() => {
     secret: env.RATE_LIMIT_SECRET,
     mode: "same-site",
     privatePrefixes: ["/api/", "/account", "/cart", "/checkout"],
-    // Staging/production: counters shared by all server instances (MySQL, pooled).
     sharedStore: () => {
       const db = loadEnv(baseEnv.extend(databaseEnv.shape), process.env);
       return createSqlRateLimitStore(
@@ -35,7 +32,6 @@ const getGuard = lazyEnv(() => {
   });
 });
 
-/** Origin check + per-IP rate limit + private caching headers for every request. */
 export function guardRequest(request: Request): Promise<GuardResult> {
   return getGuard()(request);
 }

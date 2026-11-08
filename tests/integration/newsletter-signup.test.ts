@@ -61,18 +61,17 @@ describe("newsletter sign-up with double opt-in", () => {
   it("new, pending and confirmed addresses all get the same answer (no enumeration)", async () => {
     const answer = () => newsletter.subscribe({ email: " Sari@Example.org ", token: "good" }, "en");
     expect(await answer()).toEqual({ ok: true });
-    expect(await answer()).toEqual({ ok: true }); // pending: nothing new is sent
+    expect(await answer()).toEqual({ ok: true });
     expect(send).toHaveBeenCalledTimes(1);
     const [message, key] = mail();
     expect(message.to).toBe("sari@example.org");
     const { s, t } = linkParams();
     expect(key).toBe(`newsletter:${s}:optin:1`);
-    // The e-mail address appears in no URL and no key: the id is a keyed hash.
     expect(message.text).not.toMatch(/confirm\S*sari/);
     expect(key).not.toContain("sari");
     expect(s).toMatch(/^[0-9a-f]{64}$/);
     expect(await newsletter.confirm({ s, t })).toBe("confirmed");
-    expect(await answer()).toEqual({ ok: true }); // confirmed: still the same answer
+    expect(await answer()).toEqual({ ok: true });
     expect(send).toHaveBeenCalledTimes(1);
     expect(fake.docs.get(`subscribers/${s}`)).toMatchObject({ status: "confirmed" });
   });
@@ -83,7 +82,6 @@ describe("newsletter sign-up with double opt-in", () => {
     expect(await newsletter.confirm({ s: first.s, t: "wrong" })).toBe("invalid");
     now = new Date("2026-10-20T00:00:01Z");
     expect(await newsletter.confirm(first)).toBe("expired");
-    // Expired: subscribing again sends a fresh link (opt-in #2), the old one stays dead.
     await newsletter.subscribe({ email: "budi@example.org", token: "good" }, "id");
     expect(mail(1)[1]).toBe(`newsletter:${first.s}:optin:2`);
     const second = linkParams(1);
@@ -104,10 +102,8 @@ describe("newsletter sign-up with double opt-in", () => {
     expect(await newsletter.unsubscribe("garbage")).toBe(false);
     expect(await newsletter.unsubscribe(token)).toBe(true);
     expect(fake.docs.get(`subscribers/${s}`)).toMatchObject({ status: "unsubscribed" });
-    // A link for a subscriber that does not exist does nothing.
     const ghost = new URL(newsletter.unsubscribeUrl("0".repeat(64))).searchParams.get("t") ?? "";
     expect(await newsletter.unsubscribe(ghost)).toBe(false);
-    // Unsubscribed people may sign up again (a new opt-in).
     await newsletter.subscribe({ email: "sari@example.org", token: "good" }, "id");
     expect(send).toHaveBeenCalledTimes(2);
   });
@@ -115,7 +111,6 @@ describe("newsletter sign-up with double opt-in", () => {
 
 describe("campaign open/click tracking and the public archive", () => {
   const sid = "a".repeat(64);
-  // A campaign stored before tracking existed (no openCount / clickCount yet).
   const campaign = (status: string, deletedAt: string | null = null) =>
     fake.docs.set("campaigns/c1", {
       subject: "Edisi Oktober",
@@ -144,7 +139,6 @@ describe("campaign open/click tracking and the public archive", () => {
     const click = token(trackingLinkData("click", "c1", sid, "https://ppi.id/a"));
     expect(await newsletter.trackClick(click)).toBe("https://ppi.id/a");
     expect(fake.docs.get("campaigns/c1")).toMatchObject({ openCount: 1, clickCount: 1 });
-    // An open token is not a redirect; a changed token is refused.
     expect(await newsletter.trackClick(open)).toBeNull();
     expect(await newsletter.trackClick(`${click}x`)).toBeNull();
     expect(trackErrors).toEqual([]);

@@ -6,13 +6,11 @@ import {
   type UnitMember,
 } from "@website/domain/organizations";
 
-/** A unit row of Organizations → Period → Structure, mapped on the server from `orgUnits/{id}`. */
 export interface OrgUnitItem {
   id: string;
   version: number;
   periodId: string;
   parentId: string | null;
-  /** Ancestor ids, root first (its length is the indent in the tree). */
   path: string[];
   name: string;
   code: string;
@@ -22,7 +20,6 @@ export interface OrgUnitItem {
   active: boolean;
   members: UnitMember[];
   divisions: UnitDivision[];
-  /** Core members plus every division's members ("4 People"). */
   people: number;
 }
 

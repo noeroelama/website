@@ -80,7 +80,6 @@ import { createCalendar } from "./calendar";
 import { createZoomClient } from "./zoom-client";
 import { encryptField } from "@website/security";
 
-/** Role Manager actions with the real stores (server actions call these). */
 export const accountActions = lazyEnv(() =>
   createAccountActions({
     ...adminStores(),
@@ -92,7 +91,6 @@ export const accountActions = lazyEnv(() =>
   }),
 );
 
-/** The e-mail of Role Manager → Add New People for an address without an account. */
 function inviteMessage(to: string, roleName: string, webUrl: string): Message {
   const login = `${webUrl}/login`;
   const body =
@@ -116,17 +114,14 @@ export const roleActions = lazyEnv(() =>
   createRoleActions({ roles: adminStores().roles, now: () => new Date() }),
 );
 
-/** Article page (News) actions. */
 export const newsActions = lazyEnv(() =>
   createNewsActions({ content: adminStores().content, now: () => new Date() }),
 );
 
-/** Event page actions. */
 export const eventActions = lazyEnv(() =>
   createEventActions({ events: adminStores().events, now: () => new Date(), uuid: randomUUID }),
 );
 
-/** Gallery page actions. */
 export const galleryActions = lazyEnv(() =>
   createGalleryActions({
     albums: adminStores().galleries,
@@ -135,12 +130,10 @@ export const galleryActions = lazyEnv(() =>
   }),
 );
 
-/** Organizations → PPI (chapters) actions. */
 export const chapterActions = lazyEnv(() =>
   createChapterActions({ chapters: adminStores().chapters, now: () => new Date() }),
 );
 
-/** Chapter officers, quarterly reports and the risk signal (H1-H3). */
 export const chapterRecords = lazyEnv(() =>
   createChapterRecords({
     records: adminStores().chapterRecords,
@@ -149,17 +142,14 @@ export const chapterRecords = lazyEnv(() =>
   }),
 );
 
-/** Organizations → Period (board periods) actions. */
 export const periodActions = lazyEnv(() =>
   createPeriodActions({ periods: adminStores().periods, now: () => new Date() }),
 );
 
-/** Organizations → Period → Structure (org units) actions. */
 export const orgUnitActions = lazyEnv(() =>
   createOrgUnitActions({ units: adminStores().orgUnits, now: () => new Date() }),
 );
 
-/** Forms page: the form builder (versioned questions). */
 export const formActions = lazyEnv(() =>
   createFormActions({
     forms: adminStores().forms,
@@ -171,7 +161,6 @@ export const formActions = lazyEnv(() =>
   }),
 );
 
-/** Incoming letters page (D6): agenda book, scans, dispositions. */
 export const incomingActions = lazyEnv(() =>
   createIncomingActions({
     letters: adminStores().incoming,
@@ -186,7 +175,6 @@ export const incomingActions = lazyEnv(() =>
   }),
 );
 
-/** Letter PDFs (D9): rendering and the private archive. */
 export const letterPdf = lazyEnv(() => {
   const env = getAdminEnv();
   return createLetterPdf({
@@ -200,7 +188,6 @@ export const letterPdf = lazyEnv(() => {
   });
 });
 
-/** What rendering a letter needs: its type, unit, period, the desks' names, the letterhead. */
 export async function letterContext(
   letter: Letter,
 ): Promise<{ context: LetterContext; period: string | null } | null> {
@@ -221,7 +208,6 @@ export async function letterContext(
   };
 }
 
-/** GET /api/letters/<id>/pdf (src/app/api/letters/[id]/pdf/route.ts). */
 export const letterFile = lazyEnv(() =>
   createLetterFileRoute({
     getLetter: (id) => adminStores().letters.get(id),
@@ -231,12 +217,10 @@ export const letterFile = lazyEnv(() =>
   }),
 );
 
-/** Certificate batches (D5): participants (pasted lists, removals). */
 export const certificateActions = lazyEnv(() =>
   createCertificateActions({
     certificates: adminStores().certificates,
     getLetter: (id) => adminStores().letters.get(id),
-    // Only a pasted e-mail column needs it (the same secret as apps/web, for the pickup page).
     hashEmail: (email) => {
       const secret = getAdminEnv().SUBSCRIBER_HASH_SECRET;
       if (!secret) throw new Error("SUBSCRIBER_HASH_SECRET is required for e-mail columns.");
@@ -246,7 +230,6 @@ export const certificateActions = lazyEnv(() =>
   }),
 );
 
-/** Certificate bulk sending (D5): pickup-page links by WhatsApp or e-mail. */
 export const certificateSending = lazyEnv(() =>
   createCertificateSending({
     getLetter: (id) => adminStores().letters.get(id),
@@ -270,7 +253,6 @@ export const certificateSending = lazyEnv(() =>
   }),
 );
 
-/** GET /api/letters/<id>/certificates/<sheetId> (one sheet, rendered on demand). */
 export const certificateFile = lazyEnv(() =>
   createCertificateFileRoute({
     getLetter: (id) => adminStores().letters.get(id),
@@ -281,7 +263,6 @@ export const certificateFile = lazyEnv(() =>
   }),
 );
 
-/** GET /certificates/pickup?t=… (D5-P): the link signed by the website's pickup page. */
 export const certificatePickupFile = lazyEnv(() =>
   createCertificatePickupRoute({
     find: (code) => adminStores().verification.find(code),
@@ -293,7 +274,6 @@ export const certificatePickupFile = lazyEnv(() =>
   }),
 );
 
-/** Letters page (D1, D2): drafts, desks, issue; Letter types page and letterhead. */
 export const letterActions = lazyEnv(() =>
   createLetterActions({
     letters: adminStores().letters,
@@ -303,7 +283,6 @@ export const letterActions = lazyEnv(() =>
       const unit = await adminStores().orgUnits.get(id);
       return unit ? orgUnitPath(unit) : null;
     },
-    // The archive is made right after issue; if that fails the preview route makes it later.
     afterIssue: async (letter) => {
       try {
         const loaded = await letterContext(letter);
@@ -323,12 +302,10 @@ export const letterActions = lazyEnv(() =>
   }),
 );
 
-/** Recruitment page: set-up (window, units and seats, form). */
 export const recruitmentActions = lazyEnv(() =>
   createRecruitmentActions({ recruitments: adminStores().recruitments, now: () => new Date() }),
 );
 
-/** Recruitment → Applications: the selection queue (review, offers, files). */
 export const applicationActions = lazyEnv(() =>
   createApplicationActions({
     applications: adminStores().applications,
@@ -357,17 +334,14 @@ export const applicationActions = lazyEnv(() =>
   }),
 );
 
-/** Recruitment → Interviews: interview times (day plans) and the day view. */
 export const interviewActions = lazyEnv(() =>
   createInterviewActions({ interviews: adminStores().interviews, now: () => new Date() }),
 );
 
-/** Organizations → Universities tab: add and review campuses. */
 export const universityActions = lazyEnv(() =>
   createUniversityActions({ universities: adminStores().universities, now: () => new Date() }),
 );
 
-/** Structure page: appointments and the roles they give. */
 export const appointmentActions = lazyEnv(() => {
   const stores = adminStores();
   return createAppointmentActions({
@@ -377,7 +351,6 @@ export const appointmentActions = lazyEnv(() => {
   });
 });
 
-/** POST /api/uploads/<preset> (src/app/api/uploads/[preset]/route.ts). */
 export const imageUploads = lazyEnv(() =>
   createImageUploads({
     storage: imageStorage(),
@@ -387,7 +360,6 @@ export const imageUploads = lazyEnv(() =>
   }),
 );
 
-/** Audit Log page: revert status per entry and the revert action. */
 export const auditLogActions = lazyEnv(() =>
   createAuditLogActions({
     audit: adminStores().auditLog,
@@ -398,7 +370,6 @@ export const auditLogActions = lazyEnv(() =>
   }),
 );
 
-/** GET /cron/<job> (src/app/cron/[job]/route.ts). */
 export const cronRoute = lazyEnv(() =>
   createCronRoute({
     secret: getAdminEnv().CRON_SECRET,
@@ -418,10 +389,6 @@ export const cronRoute = lazyEnv(() =>
   }),
 );
 
-/**
- * Outgoing messages from admin (docs: apps/admin/docs/messaging.md). Call
- * `messenger().send(message, key)` AFTER the transaction that caused the message commits.
- */
 export const messenger = lazyEnv(() => {
   const env = getAdminEnv();
   return createMessenger({
@@ -443,7 +410,6 @@ export const messenger = lazyEnv(() => {
     now: () => new Date(),
   });
 });
-/** Notification sources (J2): applicants and letter desk holders, on their own channel. */
 export const notices = lazyEnv(() =>
   createNotices({
     contacts: adminStores().contacts,
@@ -456,7 +422,6 @@ export const notices = lazyEnv(() =>
   }),
 );
 
-/** Satisfaction polls (J3) over WAHA. */
 export const polls = lazyEnv(() => {
   const env = getAdminEnv();
   return createPolls({
@@ -477,7 +442,6 @@ export const polls = lazyEnv(() => {
   });
 });
 
-/** POST /webhooks/waha (J3): poll votes. */
 export const wahaWebhook = lazyEnv(() =>
   createWahaWebhookRoute({
     secret: getAdminEnv().WAHA_WEBHOOK_SECRET,
@@ -490,7 +454,6 @@ export const wahaWebhook = lazyEnv(() =>
 
 const userDirectoryStore = lazyEnv(() => createSqlUserStore(adminDb()));
 
-/** /webhooks/whatsapp (C4): the chatbot, replies via the Cloud API. */
 export const whatsappWebhook = lazyEnv(() => {
   const env = getAdminEnv();
   const hashSecret = env.SUBSCRIBER_HASH_SECRET;
@@ -545,7 +508,6 @@ export const whatsappWebhook = lazyEnv(() => {
   });
 });
 
-/** A signed link on the website (newsletter pages); needs LINK_SIGNING_SECRET and WEB_URL. */
 function webLink(path: string, data: Record<string, string>): string {
   const secret = getAdminEnv().LINK_SIGNING_SECRET;
   const web = getAppUrls().WEB_URL;
@@ -553,11 +515,6 @@ function webLink(path: string, data: Record<string, string>): string {
   return `${web}${path}?t=${signLink(data, secret)}`;
 }
 
-/**
- * Newsletter page actions and the "newsletter-send" cron job. Unsubscribe, open and click links
- * need LINK_SIGNING_SECRET and staff-added subscribers SUBSCRIBER_HASH_SECRET (the same values as
- * apps/web), plus WEB_URL.
- */
 export const newsletterActions = lazyEnv(() =>
   createNewsletterActions({
     campaigns: adminStores().campaigns,
@@ -592,7 +549,6 @@ export const newsletterActions = lazyEnv(() =>
 
 export const messageActions = lazyEnv(() => createMessageActions({ messenger: messenger() }));
 
-/** Dashboard: counters for the pages the viewer can read, newest audit entries with audit.read. */
 export const dashboard = lazyEnv(() =>
   createDashboard({
     counts: adminStores().dashboardCounts,
@@ -613,7 +569,6 @@ export const dashboard = lazyEnv(() =>
   }),
 );
 
-/** OKR page (E1): objectives, key results, the period's vision and mission. */
 export const okrActions = lazyEnv(() =>
   createOkrActions({
     objectives: adminStores().objectives,
@@ -627,7 +582,6 @@ export const okrActions = lazyEnv(() =>
   }),
 );
 
-/** Programmes page (E2, E3): plans, approval, milestones, health, weekly check-ins. */
 export const programActions = lazyEnv(() =>
   createProgramActions({
     programs: adminStores().programs,
@@ -642,7 +596,6 @@ export const programActions = lazyEnv(() =>
   }),
 );
 
-/** LPJ (E4): the PICs' part, submit, three desks, return, due date. */
 export const lpjActions = lazyEnv(() =>
   createLpjActions({
     lpj: adminStores().lpj,
@@ -651,7 +604,6 @@ export const lpjActions = lazyEnv(() =>
   }),
 );
 
-/** GET /api/lpj/<id>/pdf (src/app/api/lpj/[id]/pdf/route.ts), rendered at download time. */
 export const lpjFile = lazyEnv(() =>
   createLpjFileRoute({
     getLpj: (id) => adminStores().lpj.get(id),
@@ -665,7 +617,6 @@ export const lpjFile = lazyEnv(() =>
   }),
 );
 
-/** Finance page (I1): requests, desks, private documents and proof of transfer. */
 export const financeActions = lazyEnv(() =>
   createFinanceActions({
     requests: adminStores().finance,
@@ -689,7 +640,6 @@ export const financeActions = lazyEnv(() =>
   }),
 );
 
-/** Meetings page (F4): schedule, room, attendance codes, cancel; reminders (cron). */
 export const meetingActions = lazyEnv(() =>
   createMeetingActions({
     meetings: adminStores().meetings,
@@ -709,7 +659,6 @@ export const meetingActions = lazyEnv(() =>
   }),
 );
 
-/** Minutes (F5): notes, approval, action items. */
 export const minutesActions = lazyEnv(() =>
   createMinutesActions({
     meetings: adminStores().meetings,
@@ -731,13 +680,11 @@ export const minutesActions = lazyEnv(() =>
   }),
 );
 
-/** Display names of accounts (name, else e-mail, else uid). */
 async function accountNames(uids: readonly string[]): Promise<ReadonlyMap<string, string>> {
   const people = await adminStores().accounts.getMany(uids);
   return new Map([...people].map(([uid, u]) => [uid, u.name ?? u.email ?? uid]));
 }
 
-/** GET /api/meetings/<id>/minutes (PDF at download time). */
 export const minutesFile = lazyEnv(() =>
   createMinutesFileRoute({
     getMeeting: (id) => adminStores().meetings.get(id),
@@ -748,7 +695,6 @@ export const minutesFile = lazyEnv(() =>
   }),
 );
 
-/** GET /api/programs/report: the period report card as PDF (M8). */
 export const reportCardFile = lazyEnv(() =>
   createReportCardFileRoute({
     periods: () => adminStores().periods.listForAdmin(),
@@ -759,7 +705,6 @@ export const reportCardFile = lazyEnv(() =>
   }),
 );
 
-/** Browser-built CSV exports of personal data, logged as data.export (M8). */
 export const exportLog = lazyEnv(() =>
   createExportLog({
     logExport: (actorId, details) =>
@@ -767,7 +712,6 @@ export const exportLog = lazyEnv(() =>
   }),
 );
 
-/** Short links (K1): Tools page (interactive) and `shorten` for automatic links (silent). */
 export const linkActions = lazyEnv(() => {
   const env = getAdminEnv();
   return createLinkActions({
@@ -786,7 +730,6 @@ export const linkActions = lazyEnv(() => {
   });
 });
 
-/** The Zoom API client, or null while ZOOM_* are not set. */
 export const zoomClient = lazyEnv(() => {
   const env = getAdminEnv();
   return env.ZOOM_ACCOUNT_ID && env.ZOOM_CLIENT_ID && env.ZOOM_CLIENT_SECRET && env.ZOOM_HOST_USER
@@ -802,7 +745,6 @@ export const zoomClient = lazyEnv(() => {
     : null;
 });
 
-/** Zoom page (F1): bookings, approval, settings; cron "zoom-rooms". */
 export const zoomActions = lazyEnv(() => {
   const env = getAdminEnv();
   const key = env.FIELD_ENCRYPTION_KEY;
@@ -821,7 +763,6 @@ export const zoomActions = lazyEnv(() => {
   });
 });
 
-/** cron "recording-archive" (F3): Zoom recordings → Google Drive, one chunk per call. */
 export const recordingArchive = lazyEnv(() => {
   const env = getAdminEnv();
   return createRecordingArchive({
@@ -847,7 +788,6 @@ export const recordingArchive = lazyEnv(() => {
   });
 });
 
-/** POST /webhooks/zoom (F2): signed Zoom events about OUR meetings. */
 export const zoomWebhook = lazyEnv(() =>
   createZoomWebhookRoute({
     secret: getAdminEnv().ZOOM_WEBHOOK_SECRET_TOKEN,
@@ -863,13 +803,11 @@ export const zoomWebhook = lazyEnv(() =>
   }),
 );
 
-/** The active board period, or null. */
 async function activePeriod(): Promise<{ id: string; name: string } | null> {
   const active = (await adminStores().periods.listForAdmin()).find((p) => p.status === "active");
   return active ? { id: active.id, name: active.name } : null;
 }
 
-/** cron "deadline-reminders" (M6): interviews, milestones, LPJs. */
 export const deadlineReminders = lazyEnv(() =>
   createDeadlineReminders({
     applications: adminStores().applications,
@@ -888,7 +826,6 @@ export const deadlineReminders = lazyEnv(() =>
   }),
 );
 
-/** My Tasks and unit task boards (G1). */
 export const tasks = lazyEnv(() =>
   createTasks({
     activePeriod,
@@ -908,7 +845,6 @@ export const tasks = lazyEnv(() =>
   }),
 );
 
-/** Calendar (G2): items per person, holidays, the signed .ics feed. */
 export const calendar = lazyEnv(() =>
   createCalendar({
     meetings: (from, to) => adminStores().meetings.listBetween(from, to),
@@ -930,7 +866,6 @@ export const calendar = lazyEnv(() =>
   }),
 );
 
-/** Reads for the admin pages. Callers check the page's `.read` permission first. */
 export const adminReads = {
   listRoleHolders: (roleIds: readonly string[], chapterIds?: readonly string[]) =>
     adminStores().accounts.listRoleHolders(roleIds, chapterIds),
@@ -1013,7 +948,6 @@ export const adminReads = {
   listHolidays: () => adminStores().calendar.listHolidays(),
   sharedBoards: (uid: string) => adminStores().taskShares.listForUser(uid),
   boardShares: (orgUnitId: string) => adminStores().taskShares.listForUnit(orgUnitId),
-  /** Satisfaction polls (J3) of the last 365 days. */
   surveysLastYear: () => adminStores().surveys.since(new Date(Date.now() - 365 * 86_400_000)),
   recordingFiles: (bookingIds: readonly string[]) =>
     adminStores().zoom.filesForBookings(bookingIds),

@@ -1,7 +1,3 @@
-/**
- * Reads a request body, refusing (null) as soon as it passes `maxBytes` - by the declared
- * Content-Length or while streaming - so an oversized upload is never held in memory.
- */
 export async function readBodyLimited(
   request: Request,
   maxBytes: number,
@@ -10,7 +6,6 @@ export async function readBodyLimited(
   if (declared > maxBytes) return null;
   const chunks: Uint8Array[] = [];
   let size = 0;
-  // Typed stream: Node's lib types a body chunk as `any`.
   const reader = (request.body as ReadableStream<Uint8Array> | null)?.getReader();
   for (let next = await reader?.read(); next && !next.done; next = await reader?.read()) {
     const chunk = next.value;

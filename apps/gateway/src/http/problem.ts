@@ -26,7 +26,6 @@ const STATUS: Record<ProblemKey, 400 | 401 | 403 | 404 | 429 | 500> = {
   internal: 500,
 };
 
-/** RFC 9457 response. Never includes stack traces or internal identifiers. */
 export function problem(
   c: Context<{ Variables: GatewayVariables }>,
   key: ProblemKey,

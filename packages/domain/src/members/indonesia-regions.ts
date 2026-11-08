@@ -1,13 +1,3 @@
-/**
- * Indonesian provinces and their regencies/cities (kabupaten/kota): 38 provinces (incl. the 2022
- * Papua provinces), 514 regencies, per the latest Kepmendagri. Pick-lists for the address in
- * Indonesia on the member profile; the chosen names are stored as text (schema unchanged).
- *
- * Generated once from the npm package idn-area-data@4.0.1 (data/provinces.csv, regencies.csv;
- * https://github.com/fityannugroho/idn-area-data). PPIDK imports the same Kepmendagri list from
- * wilayah.id. Data licence: Open Database License (ODbL) 1.0 — keep this attribution, and this
- * list stays under the ODbL. Regenerate only when the regulation changes.
- */
 export const INDONESIA_PROVINCES: ReadonlyArray<{
   readonly name: string;
   readonly regencies: readonly string[];

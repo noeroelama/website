@@ -381,7 +381,6 @@ describe("PPIDK forms import (step 5.8)", () => {
       ["q_tautan", "short_text"],
       ["q_satuopsi", "short_text"],
     ]);
-    // The same field key keeps its question id in every version; guest forms keep name + e-mail.
     const v2 = doc("formVersions/ppidk-form-11_2") as { questions: Question[] };
     expect(v2.questions.map((q) => q.id)).toEqual([
       "q_kesan",
@@ -389,7 +388,6 @@ describe("PPIDK forms import (step 5.8)", () => {
       "q_respondentname",
       "q_respondentemail",
     ]);
-    // The imported questions pass the platform's own builder rules.
     expect(parseAnswers(v2.questions, { q_kesan: "ok", q_nilai: "Baik" })).toMatchObject({
       ok: true,
     });
@@ -518,7 +516,6 @@ describe("PPIDK recruitment import (step 5.8)", () => {
       location: "https://meet.example/a",
       deletedAt: null,
     });
-    // Closed and never booked: not bookable any more.
     expect(doc("interviewSlots/ppidk-slot-601")).toMatchObject({ booked: 0, deletedAt: now });
     expect(doc("interviewSlots/ppidk-slot-602")).toBeUndefined();
     expect(doc("personalityResults/firebase-ana")).toEqual({

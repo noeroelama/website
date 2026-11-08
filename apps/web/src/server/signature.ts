@@ -20,7 +20,6 @@ export interface SignatureDeps {
     read(path: string): Promise<Uint8Array | null>;
     remove(path: string): Promise<void>;
   };
-  /** FIELD_ENCRYPTION_KEY; null = signatures are off. */
   readonly key: () => string | null;
   readonly now: () => Date;
   readonly uuid: () => string;
@@ -29,17 +28,11 @@ export interface SignatureDeps {
 export type SignatureOwner = { readonly uid: string } | null;
 
 const noStore = { "Cache-Control": "private, no-store" };
-/** Error codes the page turns into its own words. */
 type Refusal = "off" | "settings" | "too_large" | "not_image";
 const refused = (error: Refusal, status = 400) =>
   Response.json({ ok: false, error }, { status, headers: noStore });
 
-/**
- * The signed-in person's own signature (/account/signature, D4). Always keyed by the session's
- * uid: nobody — not even a superadmin — can see or replace another person's signature here.
- */
 export function createOwnSignature(deps: SignatureDeps) {
-  /** The current settings (and a version for the preview's address), null when there is none. */
   async function settings(
     owner: SignatureOwner,
   ): Promise<(SignatureSettings & { version: number }) | null> {
@@ -54,7 +47,6 @@ export function createOwnSignature(deps: SignatureDeps) {
     );
   }
 
-  /** POST /api/account/signature?widthMm=&rotation= with the PNG or JPEG as the body (≤ 2 MB). */
   async function upload(owner: SignatureOwner, request: Request): Promise<Response> {
     if (!owner) return jsonError("unauthenticated");
     const key = deps.key();
@@ -69,7 +61,6 @@ export function createOwnSignature(deps: SignatureDeps) {
     if (bytes === null) return refused("too_large", 413);
     const type = detectImageType(bytes);
     if (type !== "image/png" && type !== "image/jpeg") return refused("not_image");
-    // New file first, the old one removed afterwards: a failed upload never loses the signature.
     const path = signaturePath(owner.uid, deps.uuid());
     await deps.storage.save(path, new TextEncoder().encode(encryptField(bytes, key)), {
       visibility: "private",
@@ -84,7 +75,6 @@ export function createOwnSignature(deps: SignatureDeps) {
     return Response.json({ ok: true }, { status: 201, headers: noStore });
   }
 
-  /** GET /api/account/signature: the owner's own image (decrypted), for the preview only. */
   async function view(owner: SignatureOwner): Promise<Response> {
     if (!owner) return jsonError("unauthenticated");
     const key = deps.key();
@@ -100,7 +90,6 @@ export function createOwnSignature(deps: SignatureDeps) {
     });
   }
 
-  /** Width / rotation without a new upload. */
   async function configure(owner: SignatureOwner, raw: unknown) {
     if (!owner) return { ok: false as const, error: "signin" as const };
     const parsed = SignatureSettingsSchema.safeParse(raw);

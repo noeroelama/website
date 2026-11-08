@@ -3,11 +3,6 @@ import { safeId } from "@website/security/validation";
 
 const CHUNK = 100;
 
-/**
- * Loads many documents by id in one round trip per 100 ids (avoids the N+1 query problem:
- * never call `doc(id).get()` inside a loop). Duplicate ids are fetched once; the result keeps
- * input order and maps missing documents to null.
- */
 export async function getDocumentsByIds<T>(
   db: Database,
   collection: string,

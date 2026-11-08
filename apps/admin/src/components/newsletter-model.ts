@@ -7,38 +7,29 @@ import {
 } from "@website/domain/newsletter";
 import type { Author } from "./authors";
 
-/** A campaign row of the Newsletter page, mapped on the server from `campaigns/{id}`. */
 export interface CampaignItem {
   id: string;
   version: number;
   subject: string;
-  /** Sanitised HTML (shown in Preview and seeded into the composer). */
   body: string;
   status: CampaignStatus;
-  /** ISO: scheduled or started time. */
   sendAt: string | null;
   sentAt: string | null;
   sentCount: number;
   openCount: number;
   clickCount: number;
-  /** 0–1, null before anything was sent. */
   openRate: number | null;
   clickRate: number | null;
   modifiedAt: string;
-  /** Whoever made the newest change (audit log), shown under the date. */
   author: Author | null;
 }
 
-/** A subscriber row; address and name are hidden unless the viewer has newsletter.edit. */
 export interface SubscriberItem {
   id: string;
   email: string;
-  /** Set by staff (Add / Import); null when unknown or hidden. */
   name: string | null;
-  /** The PPI (chapter) name, set by staff. */
   ppi: string | null;
   status: SubscriptionStatus;
-  /** ISO sign-up date. */
   subscribed: string;
   confirmedAt: string | null;
 }

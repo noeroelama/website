@@ -98,7 +98,6 @@ describe("audit", () => {
         { title: "New", tags: ["a"], body: "same", meta: { x: 2 }, summary: "added" },
       ),
     ).toEqual({
-      // A field that did not exist is recorded as null, so a revert can clear it again.
       before: { title: "Old", meta: { x: 1 }, summary: null },
       after: { title: "New", meta: { x: 2 }, summary: "added" },
     });

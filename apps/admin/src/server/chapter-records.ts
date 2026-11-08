@@ -20,11 +20,6 @@ export interface ChapterRecordDeps {
   readonly now: () => Date;
 }
 
-/**
- * Chapter officers (H1), quarterly reports (H3) and the risk signal (H2). A chapter admin
- * (organizations.edit for that chapter) acts for its own chapter; the secretariat/Sekjen (global)
- * for any, and their report is marked `filledByCentre`.
- */
 export function createChapterRecords(deps: ChapterRecordDeps) {
   const today = () => deps.now().toISOString().slice(0, 10);
   const live = async (id: string) => {
@@ -71,7 +66,6 @@ export function createChapterRecords(deps: ChapterRecordDeps) {
           ...input,
           submittedBy: principal.userId,
           submittedAt: deps.now(),
-          // Decided now, from the submitter's scope: a global holder reports on behalf.
           filledByCentre: can(principal, "organizations.edit"),
         },
         (id, before) =>
@@ -100,7 +94,6 @@ export function createChapterRecords(deps: ChapterRecordDeps) {
     },
   });
 
-  /** The H2 signal of each chapter (inactive ones: null). */
   async function signals(chapters: readonly Chapter[]) {
     const reported = await deps.records.reportedSince(REPORTS_FROM);
     return new Map(

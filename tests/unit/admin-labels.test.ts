@@ -9,7 +9,6 @@ describe("admin label maps", () => {
         expect(labels[key]?.id, `${key} (id)`).toMatch(/\S/);
         expect(labels[key]?.en, `${key} (en)`).toMatch(/\S/);
       }
-      // No stale labels for keys that no longer exist.
       expect(Object.keys(labels).sort()).toEqual([...keys].sort());
     },
   );

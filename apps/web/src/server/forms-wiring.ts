@@ -9,15 +9,10 @@ import { createFormSubmission, createPublicFormReader } from "./forms";
 
 const store = lazyEnv(() => createSqlFormWebStore(webDb()));
 
-/**
- * /f/{token}. Read per request (not cached): the answer window and the current version must be
- * the ones the answers are checked against.
- */
 export const publicFormByToken = lazyEnv(() =>
   createPublicFormReader({ find: (token) => store().findPublic(token, new Date()) }),
 );
 
-/** Published public forms for the home highlights (cached for minutes under the tag "forms"). */
 export async function publishedPublicForms() {
   "use cache";
   cacheTag("forms");
@@ -25,7 +20,6 @@ export async function publishedPublicForms() {
   return store().listPublished();
 }
 
-/** Submit button of /f/{token} (src/app/f/[token]/actions.ts). */
 export const submitPublicForm = lazyEnv(() => {
   const env = getWebEnv();
   const verifier = env.RECAPTCHA_SECRET_KEY

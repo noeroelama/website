@@ -19,7 +19,6 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 export interface OkrDeps {
   readonly objectives: Pick<SqlObjectiveStore, "get" | "create" | "update" | "change">;
   readonly periods: Pick<SqlPeriodStore, "write">;
-  /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   readonly now: () => Date;
   readonly uuid: () => string;
@@ -29,7 +28,6 @@ const version = z.number().int().min(1);
 const SaveObjective = ObjectiveInputSchema.extend({
   id: safeId.optional(),
   version: version.nullable(),
-  /** New objectives only: the period they belong to. */
   periodId: safeId,
 }).strict();
 const Ref = z.object({ id: safeId, version }).strict();
@@ -54,15 +52,9 @@ const objectiveAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // Achievement is history: a revert could rewrite measured values of an archived period.
       revertible: false,
     });
 
-/**
- * OKR page (E1). Scope: a unit assignment of `okr.edit` covers that unit's objectives (and the
- * units below it); region objectives (no unit) and the vision/mission need a global one. Every
- * write refuses an archived period (in the store's transaction).
- */
 export function createOkrActions(deps: OkrDeps) {
   const scopeOf = async ({ id }: { id: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.objectives.get(id))?.orgUnitPath ?? [],
@@ -151,7 +143,6 @@ export function createOkrActions(deps: OkrDeps) {
     },
   });
 
-  /** The period's vision and mission (global okr.edit; not in an archived period). */
   const saveVision = createGuardedAction({
     permission: "okr.edit",
     input: SaveVision,

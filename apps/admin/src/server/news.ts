@@ -28,7 +28,6 @@ const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).stri
 const PUBLISH_NEEDED =
   "You can save drafts; publishing needs the Publish permission on the Article page.";
 
-/** Audit entry for one news change (module `articles`, resource `content`). */
 const newsAudit =
   (
     audit: AuditBuilder,
@@ -54,7 +53,6 @@ const newsAudit =
       revertible,
     });
 
-/** Admin News (Article page) actions: save (draft / publish / schedule), publish toggle, trash. */
 export function createNewsActions(deps: NewsDeps) {
   const save = createGuardedAction({
     permission: "articles.edit",
@@ -75,7 +73,6 @@ export function createNewsActions(deps: NewsDeps) {
           if (current) {
             const wasPublic = isPubliclyVisible(current, now) || current.status === "scheduled";
             action = input.intent === "publish" && !wasPublic ? "PUBLISH" : "UPDATE";
-            // A changed URL would leave the slug index behind on revert: never revertible.
             revertible = current.slug === slug;
           }
           return {
@@ -112,7 +109,6 @@ export function createNewsActions(deps: NewsDeps) {
         version,
         (current) => ({
           ...(current as ContentItem),
-          // Immediate: publishing shows it now; unpublishing turns it back into a draft.
           ...(published ? { status: "published", publishAt: now } : { status: "draft" }),
         }),
         newsAudit(audit, published ? "PUBLISH" : "UNPUBLISH"),

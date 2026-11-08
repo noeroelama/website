@@ -32,28 +32,9 @@ import { Card, CardBody } from "./card";
 import { DataTable, Pagination, SortHeader, sortChoices, type Column } from "./data-table";
 import { Icon, type IconName } from "./icon";
 
-/*
- * The common parts of the dark list pages (Event, Gallery, Article, Newsletter, Audit Log):
- * header search box, tabs, the list card (table with sort-and-filter column headers, bulk bar or
- * pagination), row checkbox, row "more" menu, empty message, plus the hooks for the table state
- * and the bulk server actions. Table, pagination and sortable headers are in `data-table.tsx`;
- * the rules are in `../list-model.ts`.
- *
- * Components that change often while you work (the search text, an open row menu) keep their
- * own state, so typing or opening a menu re-renders only that part, not the whole table.
- */
-
-/**
- * State of one dark list table (rules in `../list-model.ts`): the sorted column, the column
- * filters, the page and rows per page, and the selected rows (by id). `rows` are the rows of the
- * page (after its tab and search); `sortValue` and `filterText` must not change between renders
- * (declare them outside the component). `filterText` is a cell's text in its column's filter
- * checklist (default: the sort value).
- */
 export function useListTable<T extends { id: string }, K extends string>(
   rows: readonly T[],
   sortValue: (row: T, key: K) => string | number,
-  /** Sorted column before the first header click (default: the rows' own order). */
   initialSort: SortState<K> = { key: null, dir: "asc" },
   filterText: (row: T, key: K) => string = (row, key) => String(sortValue(row, key)),
 ) {
@@ -63,7 +44,6 @@ export function useListTable<T extends { id: string }, K extends string>(
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
-  // sortValue and filterText are module-level functions (see above).
   /* eslint-disable react-hooks/exhaustive-deps */
   const shown = useMemo(() => filterRows(rows, filters, filterText), [rows, filters]);
   const sorted = useMemo(() => {
@@ -79,7 +59,6 @@ export function useListTable<T extends { id: string }, K extends string>(
   return {
     sort,
     onSort: (key: K) => setSort((current) => nextSort(current, key)),
-    /** Header of a sortable column: sort it and filter it by its values. */
     header: (key: K, label: string) => (
       <SortHeader
         label={label}
@@ -101,14 +80,12 @@ export function useListTable<T extends { id: string }, K extends string>(
       />
     ),
     sorted,
-    /** How many columns are filtered, and a reset (for "Clear Filters"). */
     filterCount: Object.values(filters).filter((hidden) => (hidden as ReadonlySet<string>).size > 0)
       .length,
     clearFilters: () => setFilters({}),
     page: view.page,
     setPage,
     pageSize,
-    /** A new page size starts again at page 1. */
     setPageSize: (size: number) => {
       setPageSize(size);
       setPage(1);
@@ -117,9 +94,7 @@ export function useListTable<T extends { id: string }, K extends string>(
     selected,
     clearSelection: () => setSelected(new Set()),
     toggle: (id: string) => setSelected((current) => toggled(current, id)),
-    /** Header checkbox: select (or unselect) the rows of this page. */
     togglePage: () => setSelected((current) => withIds(current, pageIds, !pageAll)),
-    /** Bulk bar: select (or unselect) every row that matches the filters. */
     toggleAll: () =>
       setSelected((current) =>
         withIds(
@@ -134,16 +109,10 @@ export function useListTable<T extends { id: string }, K extends string>(
   };
 }
 
-/**
- * Row and bulk server actions of a list page: runs one action per row (`runEach`), then
- * re-reads the page and reports "3 events published" — or the first refusal.
- */
 export function useBulkActions(options: {
-  /** Singular noun for the message ("event" → "3 events deleted"). */
   noun: string;
   show: (text: string) => void;
   onFailure: (failure: ActionFailure) => void;
-  /** Runs after every batch (e.g. clear the selection). */
   onFinish: () => void;
 }) {
   const router = useRouter();
@@ -152,7 +121,6 @@ export function useBulkActions(options: {
   const run = async <T,>(
     rows: readonly T[],
     action: (row: T) => Promise<{ ok: true } | ActionFailure>,
-    /** "deleted" → "3 events deleted", or the whole message from the count. */
     done: string | ((count: number) => string),
   ) => {
     setBusy(true);
@@ -170,10 +138,6 @@ export function useBulkActions(options: {
   return { busy, setBusy, run };
 }
 
-/**
- * Header search: the text is applied on Search / Enter (`onSearch`); emptying the box clears
- * the search at once. Give it a new `key` to empty it from outside (e.g. "Clear filters").
- */
 export function SearchBox({
   placeholder,
   label,
@@ -213,7 +177,6 @@ export function SearchBox({
   );
 }
 
-/** Tabs above the table (All / Upcoming / …), each with an optional count. */
 export function Tabs<K extends string>({
   label,
   tabs,
@@ -225,8 +188,6 @@ export function Tabs<K extends string>({
   active: K;
   onSelect: (key: K) => void;
 }) {
-  // Mouse drag scrolls the row sideways (touch and trackpads scroll natively). A drag of more
-  // than a few pixels is not a click, so letting go over a tab does not select it.
   const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
   return (
     <div
@@ -276,7 +237,6 @@ export function Tabs<K extends string>({
   );
 }
 
-/** Row / header checkbox; `indeterminate` shows the dash of a partial selection. */
 export function SelectCheckbox({
   label,
   checked,
@@ -305,10 +265,6 @@ export function SelectCheckbox({
   );
 }
 
-/**
- * Row "more" menu (⋯). Choosing an entry closes it; so does a click outside. The entries are
- * always in the page: closed they are hidden, but on a phone the card shows them as its buttons.
- */
 export function RowMenu({
   children,
   icon = "more",
@@ -340,7 +296,6 @@ export function RowMenu({
           if ((event.target as HTMLElement).closest("[role=menuitem]")) setOpen(false);
         }}
       >
-        {/* --i = the entry's index: entries come in one after another (globals.css). */}
         {menuEntries(children).map((child, i) => (
           <div
             key={i}
@@ -356,7 +311,6 @@ export function RowMenu({
   );
 }
 
-/** A menu's entries in order, with the entries inside fragments (`<>…</>`) counted one by one. */
 function menuEntries(nodes: ReactNode): ReactNode[] {
   return Children.toArray(nodes).flatMap((node) =>
     isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment
@@ -365,7 +319,6 @@ function menuEntries(nodes: ReactNode): ReactNode[] {
   );
 }
 
-/** "Status <value>" dropdown in a list header (Newsletter, Letter). */
 export function StatusMenu<K extends string>({
   options,
   value,
@@ -419,7 +372,6 @@ export function StatusMenu<K extends string>({
   );
 }
 
-/** One entry of a `RowMenu`. */
 export function MenuItem({
   icon,
   danger = false,
@@ -430,11 +382,9 @@ export function MenuItem({
   children,
 }: {
   icon: IconName;
-  /** Extra class (e.g. `admin-row-menu__item--phone`, shown on a phone only). */
   className?: string;
   danger?: boolean;
   disabled?: boolean;
-  /** Tooltip, e.g. why the entry is disabled. */
   title?: string | undefined;
   onClick: () => void;
   children: ReactNode;
@@ -453,13 +403,8 @@ export function MenuItem({
   );
 }
 
-/** Line above the destructive entry of a `RowMenu`. */
 export const MenuDivider = () => <div className="admin-row-menu__divider" role="separator" />;
 
-/**
- * Bar shown instead of the pagination while rows are selected: "3 selected", "Select all N
- * …" and the page's bulk buttons (`children`).
- */
 export function BulkBar({
   count,
   total,
@@ -494,10 +439,6 @@ export function BulkBar({
   );
 }
 
-/**
- * Empty table message: why it is empty (search, filters, no records yet), "Clear Filters"
- * while something is filtered, and the page's Add button.
- */
 export function ListEmpty({
   noun,
   query,
@@ -512,7 +453,6 @@ export function ListEmpty({
   filters: number;
   emptyHint: string;
   onClear: () => void;
-  /** Omit (or no `onAdd`) when the viewer cannot add. */
   addLabel?: string;
   onAdd?: (() => void) | null;
 }) {
@@ -537,10 +477,6 @@ export function ListEmpty({
   );
 }
 
-/**
- * Phone only (`globals.css` "Mobile list cards"; on a wide screen the column headers do this):
- * the sortable columns as a row of the same sort-and-filter menus, under the search box.
- */
 export function SortMenu<T>({ columns }: { columns: Column<T>[] }) {
   const choices = sortChoices(columns);
   if (choices.length === 0) return null;
@@ -553,10 +489,6 @@ export function SortMenu<T>({ columns }: { columns: Column<T>[] }) {
   );
 }
 
-/**
- * Phone only (hidden on a wide screen): "112 events · Newest first", and "Select" (this page) /
- * "Unselect" + "Select all" while rows are selected ("3 of 5 selected").
- */
 function ListSummary<T extends { id: string }>({
   table,
   total,
@@ -602,11 +534,6 @@ function ListSummary<T extends { id: string }>({
   );
 }
 
-/**
- * The list card: the table (fills the screen height; the empty message sits in its middle),
- * then the bulk bar while rows are selected, else the pagination. The column headers made with
- * `table.header()` sort and filter it.
- */
 export function ListCard<T extends { id: string }>({
   table,
   noun,
@@ -616,7 +543,6 @@ export function ListCard<T extends { id: string }>({
   expandedRow,
   children,
 }: {
-  /** From `useListTable`. */
   table: Pick<
     ReturnType<typeof useListTable<T, string>>,
     | "pageRows"
@@ -634,13 +560,11 @@ export function ListCard<T extends { id: string }>({
   noun: string;
   columns: Column<T>[];
   empty: ReactNode;
-  /** Buttons of the bulk bar; without them the list has no bulk bar. */
   bulkActions?: ReactNode;
   expandedRow?: (row: T) => ReactNode;
-  /** Shown under the pagination (e.g. a note). */
   children?: ReactNode;
 }) {
-  const total = table.sorted.length; // rows left after the tab, search and column filters
+  const total = table.sorted.length;
   return (
     <Card className="admin-events-card admin-list-card">
       <CardBody flush>

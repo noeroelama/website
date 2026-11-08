@@ -4,10 +4,6 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 
-/** Small square photo uploader used in the guest/speaker, sponsor and unit
- *  member panels. With `onFile` the picked file goes to the caller (upload it with
- *  `useImageUpload`); otherwise it is read as a data-URL (max 5 MB). The well
- *  shows the image once set, with a small clear button on the corner. */
 export function PhotoDrop({
   value,
   label,

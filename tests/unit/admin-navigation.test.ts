@@ -10,7 +10,6 @@ import {
 } from "@website/permissions";
 import { ADMIN_NAVIGATION, navigationFor } from "../../apps/admin/src/navigation";
 
-// Custom roles as created in the admin Roles page.
 const roles = new Map(
   [
     {

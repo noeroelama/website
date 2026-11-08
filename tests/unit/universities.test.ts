@@ -8,7 +8,6 @@ import {
 
 describe("university names (A3, PPIDK DECISIONS §6)", () => {
   it("normalises conservatively: case, punctuation, spacing and common short forms only", () => {
-    // PPIDK regression: dropping "national"/"university" collapsed NUS into "singapore".
     const nus = normalizeUniversityName("National University of Singapore");
     expect(nus).not.toBe(normalizeUniversityName("Singapore Management University"));
     expect(nus).toContain("national");
@@ -78,7 +77,6 @@ describe("ROR dump rows (DECISIONS §7, §7b)", () => {
     expect(universityRowsFromRor({ ...tokyo, id: 7 }, countries)).toEqual([]);
     expect(universityRowsFromRor(tokyo, new Set(["KR"]))).toEqual([]);
     expect(universityRowsFromRor(null, countries)).toEqual([]);
-    // No display name: the first name; no website link: null; no city: null.
     const [row] = universityRowsFromRor(
       {
         id: "https://ror.org/x1",
@@ -104,7 +102,6 @@ describe("merge candidates for a submitted campus", () => {
     expect(
       mergeCandidates({ name: "Tokyo Univ", countryCode: "JP" }, approved).map((u) => u.id),
     ).toEqual(["a", "b"]);
-    // Generic words alone ("University of") are no hint.
     expect(mergeCandidates({ name: "University of", countryCode: "JP" }, approved)).toEqual([]);
   });
 });

@@ -15,14 +15,12 @@ export interface GalleryDeps {
 const SaveInput = AlbumInputSchema.extend({
   id: safeId.optional(),
   version: z.number().int().min(1).nullable(),
-  /** true = Publish, false = Save draft. */
   publish: z.boolean(),
 }).strict();
 const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).strict();
 
 type Action = "CREATE" | "UPDATE" | "PUBLISH" | "UNPUBLISH" | "DELETE";
 
-/** Audit entry for one album change (module `gallery`, resource `album`). */
 const albumAudit =
   (audit: AuditBuilder, action: Action, revertible = true) =>
   (
@@ -44,7 +42,6 @@ const albumAudit =
       revertible,
     });
 
-/** Admin Gallery page actions: save (draft / publish), publish toggle, trash. */
 export function createGalleryActions(deps: GalleryDeps) {
   const save = createGuardedAction({
     permission: "gallery.edit",
@@ -63,15 +60,12 @@ export function createGalleryActions(deps: GalleryDeps) {
           const slug = input.slug || current?.slug || event.slug;
           if (current) {
             action = input.publish && !current.published ? "PUBLISH" : "UPDATE";
-            // A changed URL would leave the slug index behind on revert: never revertible.
             revertible = current.slug === slug;
           }
           return {
             slug,
             eventId: event.id,
             eventTitle: event.title,
-            // Snapshots of the linked event — the /gallery filter bar and the cards
-            // read these without loading the events.
             eventType: event.type,
             eventStartsAt: event.startsAt,
             eventTimezone: event.timezone,

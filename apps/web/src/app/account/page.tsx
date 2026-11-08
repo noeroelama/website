@@ -14,8 +14,6 @@ import { AccountActions } from "./account-actions";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
 
-// No static shell (allowed to block): everything here depends on the session. A visitor without
-// a session cookie already got a real 307 to /login from src/proxy.ts; this check verifies it.
 export const instant = false;
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -25,8 +23,7 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 export default async function AccountPage() {
   const user = await getSignedInUser();
-  if (!user) redirect(signInUrl("", "/account")); // → /login?next=%2Faccount, then back here
-  // Own registrations only (registrations.read_own): the query is keyed by the session's uid.
+  if (!user) redirect(signInUrl("", "/account"));
   const [methods, mine, jar, profile] = await Promise.all([
     ownSignInMethods(user.uid),
     registrations().listByUser(user.uid),

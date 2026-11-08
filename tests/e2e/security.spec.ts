@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-// Runs against every app (see playwright.config.ts): request-level checks, no browser needed.
 test("HTTPS-only (HSTS) and rate-limit headers on every app", async ({ request }) => {
   const response = await request.get("/");
   expect(response.headers()["strict-transport-security"]).toMatch(/max-age=\d+/);

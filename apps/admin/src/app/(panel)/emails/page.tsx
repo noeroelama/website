@@ -12,10 +12,8 @@ import { RetryButton } from "./retry-button";
 
 export const metadata: Metadata = { title: "Email", robots: { index: false } };
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** E-mails the system could not send, with Retry (was the Messages page). */
 export default async function EmailPage({
   searchParams,
 }: {
@@ -57,8 +55,7 @@ export default async function EmailPage({
                     <span className="admin-table__title">{row.subject}</span>
                     <span className="admin-table__sub">
                       {row.channel === "whatsapp"
-                        ? // A WhatsApp number is restricted personal data: only its end is shown.
-                          `WhatsApp ••••${(row.to ?? "").slice(-4)}`
+                        ? `WhatsApp ••••${(row.to ?? "").slice(-4)}`
                         : row.to}{" "}
                       · {row.key}
                     </span>

@@ -37,25 +37,19 @@ export interface LetterPdfDeps {
     ): Promise<unknown>;
   };
   readonly letters: Pick<SqlLetterStore, "setArchive">;
-  /** Uploaded images are WebP; pdf-lib embeds PNG (sharp in the app). */
   readonly toPng: (bytes: Uint8Array) => Promise<Uint8Array>;
-  /** VERIFICATION_HOST (e.g. verif.ppiasiania.id) and WEB_URL. */
   readonly verification: { readonly host: string | null; readonly webUrl: string | null };
   readonly uuid: () => string;
-  /** Personal signatures (4.6): their records and FIELD_ENCRYPTION_KEY (null = none printed). */
   readonly signatures: Pick<SqlSignatureStore, "get">;
   readonly signatureKey: () => string | null;
 }
 
 type PrintedSignature = LetterDesk["signature"];
 
-/** What the renderer needs besides the letter. */
 export interface LetterContext {
   readonly type: LetterType;
   readonly unitName: string;
-  /** Names of the desks' signers for letters not issued yet (uid → name). */
   readonly names: ReadonlyMap<string, string>;
-  /** The current letterhead (drafts); issued letters use their frozen one. */
   readonly letterhead: Letterhead;
 }
 
@@ -63,7 +57,6 @@ export class ArchiveDamagedError extends Error {
   override readonly name = "ArchiveDamagedError";
 }
 
-/** The desks as printed: Coordinator left, Secretary-General (or the unit) right. */
 export function letterDesks(
   letter: Letter,
   context: LetterContext,
@@ -75,7 +68,6 @@ export function letterDesks(
   return order.map((desk) => {
     const signature = letter[desk];
     const label = deskLabel(desk, context.type, context.unitName);
-    // Issued: the names frozen at issue (`signers` keeps the desk label).
     const frozen = letter.signers.find((s) => s.desk === label && signature !== null);
     return {
       label,
@@ -86,16 +78,13 @@ export function letterDesks(
   });
 }
 
-/** PDF and archive of letters (D1, D9; PPIDK `RenderSurat`). */
 export function createLetterPdf(deps: LetterPdfDeps) {
   const image = async (art: LetterheadImage | null): Promise<PdfImage | null> => {
     if (!art) return null;
     const bytes = await deps.storage.read(art.path);
-    // A lost image falls back to the text letterhead: a letter is never blocked by its art.
     return bytes ? { bytes: await deps.toPng(bytes), type: "png" } : null;
   };
 
-  /** The signer's image, decrypted; null when there is none or it cannot be read. */
   async function signatureOf(uid: string): Promise<PrintedSignature> {
     const key = deps.signatureKey();
     const stored = key ? await deps.signatures.get(uid) : null;
@@ -113,7 +102,6 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     }
   }
 
-  /** Signatures of the desks already signed (issued letters freeze them in the archive). */
   async function signaturesOf(letter: Letter) {
     const uids = [letter.coordinator?.uid, letter.secretary?.uid].filter(
       (uid): uid is string => uid !== undefined,
@@ -144,7 +132,6 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     };
   }
 
-  /** The QR address of a code (null = not numbered yet: drafts print no QR). */
   function verificationOf(code: string | null) {
     if (code === null) return null;
     const verification = verificationUrl(code, deps.verification);
@@ -154,7 +141,6 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     return { ...verification, code };
   }
 
-  /** Renders the letter now: drafts without number and QR, cancelled letters with the stamp. */
   async function render(letter: Letter, context: LetterContext, period: string | null) {
     const verification = verificationOf(letter.verificationCode);
     return renderLetterPdf({
@@ -173,10 +159,6 @@ export function createLetterPdf(deps: LetterPdfDeps) {
     });
   }
 
-  /**
-   * The issued letter's archive, byte for byte: read and checked against its sha256, or (first
-   * time) rendered, stored privately and recorded. Throws ArchiveDamagedError on a mismatch.
-   */
   async function archive(
     letter: Letter,
     context: LetterContext,
@@ -197,19 +179,13 @@ export function createLetterPdf(deps: LetterPdfDeps) {
       sha256: sha256Hex(bytes),
       size: bytes.length,
     });
-    // Another request archived it first: serve that one (this render stays unused).
     return stored.path === path ? bytes : archive({ ...letter, archive: stored }, context, period);
   }
 
-  /**
-   * Upload path (D3): the author's PDF (sha256 checked) with the signatures of the signed desks
-   * and the QR stamped where `placement` says. ONE function for the preview and the archive.
-   */
   async function stampUpload(letter: Letter): Promise<Uint8Array> {
     const upload = letter.upload;
     const bytes = upload ? await deps.storage.read(upload.path) : null;
     if (!upload || !bytes || sha256Hex(bytes) !== upload.sha256) {
-      // Never stamped (nor issued) unseen: the preview and the issue both refuse.
       throw new RuleViolationError("The uploaded PDF is missing or changed: upload it again.");
     }
     const placement = letter.placement;
@@ -220,24 +196,18 @@ export function createLetterPdf(deps: LetterPdfDeps) {
       return spot && image ? [{ spot, ...image }] : [];
     });
     const qr = placement?.qr ?? null;
-    // A numbered letter always has its verification address (or verificationOf throws).
     const verification = verificationOf(letter.verificationCode) as NonNullable<
       ReturnType<typeof verificationOf>
     >;
     return stampPdf(bytes, { signatures, qr: qr && { spot: qr, ...qr, ...verification } });
   }
 
-  /** Stores a finished PDF privately under a fresh name (never overwriting one). */
   async function saveFile(letter: Letter, bytes: Uint8Array): Promise<LetterArchive> {
     const path = letterArchivePath(letter, deps.uuid());
     await deps.storage.save(path, bytes, { visibility: "private", contentType: "application/pdf" });
     return { path, sha256: sha256Hex(bytes), size: bytes.length };
   }
 
-  /**
-   * One sheet of a certificate batch (D5), rendered on demand from the batch (its letterhead and
-   * signers frozen at issue). Before issue: no number and no QR; a cancelled batch is stamped.
-   */
   async function renderCertificate(batch: Letter, sheet: Certificate, context: LetterContext) {
     const letterhead = batch.letterhead ?? context.letterhead;
     const verification = verificationOf(batch.verificationCode && sheet.verificationCode);
@@ -266,11 +236,6 @@ export type LetterPdf = ReturnType<typeof createLetterPdf>;
 const notFound = () =>
   Response.json({ error: "not_found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
-/**
- * GET /api/letters/<id>/pdf: the letter as PDF for staff who may read it (its unit in their
- * scope; others get 404, so ids reveal nothing). Issued letters: the archive (made now if it is
- * missing); drafts and cancelled letters: rendered now (cancelled ones with the stamp).
- */
 export function createLetterFileRoute(deps: {
   readonly getLetter: (id: string) => Promise<Letter | null>;
   readonly load: (
@@ -279,7 +244,6 @@ export function createLetterFileRoute(deps: {
   readonly pdf: Pick<LetterPdf, "render" | "archive" | "stampUpload">;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
 }) {
-  // Upload path before issue: the stamped preview once a file is in (nothing to show before).
   const previewUpload = (letter: Letter) =>
     letter.upload ? deps.pdf.stampUpload(letter) : Promise.resolve(null);
 
@@ -295,7 +259,6 @@ export function createLetterFileRoute(deps: {
       return notFound();
     }
     const loaded = letter.source === "certificate" ? null : await deps.load(letter);
-    // A certificate batch has no letter PDF: each sheet has its own route.
     if (!loaded) return notFound();
     try {
       const bytes =

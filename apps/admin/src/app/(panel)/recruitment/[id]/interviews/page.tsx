@@ -5,10 +5,8 @@ import { InterviewsPage } from "@/components/interviews-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Recruitment → Interviews: the day view and the day plans (C3-I). */
 export default async function InterviewsRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/recruitment/${id}/interviews`, "recruitment.read");

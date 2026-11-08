@@ -56,7 +56,6 @@ const version = (uid: string) => fake.docs.get(`applications/${appId(uid)}`)?.["
 const status = (uid: string) => fake.docs.get(`applications/${appId(uid)}`)?.["status"];
 const seats = (unit: string) => fake.docs.get(`seatCounters/${recruitmentId}_${unit}`)?.["filled"];
 
-/** A submitted application of `uid` choosing `units`. */
 const submitted = async (uid: string, units = ["finance"]) => {
   await applying().saveDraft({ uid }, { recruitmentId, choices: units, answers: { q_why: "Hi" } });
   const result = await applying().submit({ uid }, { recruitmentId });
@@ -165,7 +164,6 @@ describe("review (recruitment.review): revision rounds, fail, pass", () => {
       ok: true,
       status: "submitted",
     });
-    // Round 2 is a new document; round 1 keeps its request and gets the resubmission time.
     await decisions().requestRevision(...as(reviewer))({
       id: appId("ari"),
       version: version("ari"),
@@ -208,7 +206,6 @@ describe("review (recruitment.review): revision rounds, fail, pass", () => {
     expect(
       await decisions().pass(...as(reviewer))({ id: appId("budi"), version: version("budi") }),
     ).toMatchObject({ ok: true, data: { status: "interview" } });
-    // An audit entry per decision, never with the answers.
     const entries = [...fake.docs.entries()]
       .filter(([p]) => p.startsWith("auditLogs/"))
       .map(([, d]) => d)
@@ -250,7 +247,6 @@ describe("offers and seats (recruitment.offer; accept on the website)", () => {
       orgUnitId: "finance",
       expiresAt: new Date("2026-11-13T05:00:00Z"),
     });
-    // The seat is taken only when the applicant accepts.
     expect(seats("finance")).toBe(0);
     expect(
       await applying().respondOffer({ uid: "ari" }, { recruitmentId, accept: true }),
@@ -274,7 +270,6 @@ describe("offers and seats (recruitment.offer; accept on the website)", () => {
       { ok: false, error: "refused", message: "All seats of this unit are taken." },
     ]);
     expect(seats("finance")).toBe(1);
-    // A full unit cannot be offered again.
     await submitted("dodi");
     await decisions().pass(...as(reviewer))({ id: appId("dodi"), version: version("dodi") });
     expect(
@@ -309,7 +304,6 @@ describe("offers and seats (recruitment.offer; accept on the website)", () => {
         clock,
       ),
     ).toBe("ended");
-    // The committee may make a new offer (e.g. another unit).
     expect(
       await decisions().offer(...as(offerer))({
         id: appId("ari"),
@@ -360,7 +354,6 @@ describe("offers and seats (recruitment.offer; accept on the website)", () => {
     clock = new Date("2026-11-10T06:00:00Z");
     await submitted("budi", ["media"]);
     await applying().saveDraft({ uid: "cici" }, { recruitmentId, choices: [], answers: {} });
-    // A withdrawn draft was never submitted: listed first (no submission time).
     await applying().saveDraft({ uid: "eko" }, { recruitmentId, choices: [], answers: {} });
     await applying().withdraw({ uid: "eko" }, { recruitmentId });
     const store = createSqlApplicationStore(db());

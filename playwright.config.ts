@@ -1,9 +1,5 @@
 import { defineConfig } from "@playwright/test";
 
-/**
- * E2E smoke tests run against PRODUCTION BUILDS (`pnpm build` first) with APP_ENV=test.
- * No secrets are required.
- */
 const isCI = Boolean(process.env["CI"]);
 const testEnv = { APP_ENV: "test", API_KEY_PEPPER: "e2e-only-pepper-not-a-secret-0123456789" };
 

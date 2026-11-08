@@ -11,7 +11,6 @@ import { adminReads } from "@/server/wiring";
 
 export const instant = false;
 
-/** Admin-only preview of a saved news article (also drafts), in the public site's default language. */
 export default async function ArticlePreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/articles/${id}/preview`, "articles.read");

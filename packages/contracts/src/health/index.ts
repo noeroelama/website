@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** Deliberately minimal: no versions, hostnames, dependencies or config. */
 export const HealthResponseSchema = z
   .object({ status: z.literal("ok") })
   .meta({ id: "HealthResponse" });

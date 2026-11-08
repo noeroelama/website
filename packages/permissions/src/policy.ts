@@ -8,71 +8,44 @@ import {
   type RoleDefinition,
 } from "./permissions";
 
-/**
- * Where an assignment applies (DEC-2): everywhere, one chapter, or one unit of the organisation
- * structure together with every unit below it.
- */
 export type Scope =
   | { readonly type: "global" }
   | { readonly type: "chapter"; readonly chapterId: string }
   | { readonly type: "orgUnit"; readonly orgUnitId: string };
 
-/** `users/{uid}.status`: an inactive account can do nothing (and cannot sign in). */
 export const ACCOUNT_STATUSES = ["active", "inactive"] as const;
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 
-/** What is stored in `users/{uid}.roleAssignments`. */
 export interface RoleAssignment {
   readonly roleId: string;
   readonly scope: Scope;
-  /** Board period it belongs to; null/absent = independent of periods (B6). */
   readonly periodId?: string | null;
-  /** "appointment" = derived from an appointment (step 3.7) and revoked with it. */
   readonly source?: "appointment" | "manual";
-  /** The appointment that gave it (source "appointment"); ending it revokes exactly these. */
   readonly appointmentId?: string | null;
-  /** Set when revoked; revoked assignments grant nothing (kept for history). */
   readonly revokedAt?: Date | null;
 }
 
-/** An assignment with its role's permissions resolved on the server for this request. */
 export interface ResolvedAssignment extends RoleAssignment {
   readonly permissions: ReadonlySet<PagePermission>;
 }
 
-/**
- * The server-side view of who is acting. One shape for every account (staff, member,
- * customer). Built ONLY on the server from a verified session + the user record and role
- * documents in the database — never from client input, URL params, payload fields or token claims.
- */
 export interface Principal {
   readonly kind: "user";
-  /** Firebase Auth uid; also the document id in `users`. */
   readonly userId: string;
   readonly active: boolean;
   readonly assignments: readonly ResolvedAssignment[];
 }
 
 export interface ResourceContext {
-  /** Present when the resource belongs to a chapter; enables chapter-scoped assignments. */
   readonly chapterId?: string;
-  /** The resource's org unit and all its ancestors (`orgUnits/{id}.path` + id), built on the server. */
   readonly orgUnitPath?: readonly string[];
-  /** Present for user-owned resources; required by `*_own` permissions. */
   readonly ownerId?: string;
 }
 
-/** Roles every new account receives on first sign-in. */
 export const DEFAULT_ROLE_ASSIGNMENTS: readonly RoleAssignment[] = [
   { roleId: "visitor", scope: { type: "global" } },
 ];
 
-/**
- * The account's website role: given by hand in the Role Manager, everywhere and for any period.
- * An account has at most one besides the default role (a new one replaces it). Every other active
- * assignment (one chapter or unit, one board period, or from an appointment) is an
- * organizational role, changed where it comes from.
- */
 export const isWebsiteRole = (a: RoleAssignment): boolean =>
   a.scope.type === "global" &&
   !a.periodId &&
@@ -80,11 +53,6 @@ export const isWebsiteRole = (a: RoleAssignment): boolean =>
   !a.revokedAt &&
   a.roleId !== SYSTEM_ROLES.visitor.id;
 
-/**
- * Turns stored assignments into resolved ones. Built-in roles always come from code; an
- * assignment to a role that no longer exists is dropped (fail closed), and so is a revoked one
- * or one of another board period than `activePeriodId` (read from `settings/activePeriod`).
- */
 export function resolveAssignments(
   stored: readonly RoleAssignment[],
   customRoles: ReadonlyMap<string, RoleDefinition>,
@@ -101,7 +69,6 @@ export function resolveAssignments(
   });
 }
 
-/** Same place: same type and the same chapter / org unit. */
 export function sameScope(a: Scope, b: Scope): boolean {
   if (a.type === "chapter" && b.type === "chapter") return a.chapterId === b.chapterId;
   if (a.type === "orgUnit" && b.type === "orgUnit") return a.orgUnitId === b.orgUnitId;
@@ -116,7 +83,6 @@ function scopeCovers(scope: Scope, resource: ResourceContext | undefined): boole
 
 const isOwnPermission = (permission: Permission) => permission.endsWith("_own");
 
-/** Deny by default. Inactive principals can do nothing. */
 export function can(
   principal: Principal | null,
   permission: Permission,
@@ -124,7 +90,6 @@ export function can(
 ): boolean {
   if (principal === null || !principal.active) return false;
   if (isOwnPermission(permission)) {
-    // Every active account has self-service permissions, for its OWN resources only.
     return resource?.ownerId !== undefined && resource.ownerId === principal.userId;
   }
   return principal.assignments.some(
@@ -134,21 +99,11 @@ export function can(
   );
 }
 
-/**
- * True when the principal holds the permission in at least one scope. For deciding what to SHOW
- * (e.g. which admin pages appear in the navigation); every action still checks `can()` with the
- * resource, so a chapter assignment only ever reaches its own chapter's data.
- */
 export function canInSomeScope(principal: Principal | null, permission: PagePermission): boolean {
   if (principal === null || !principal.active) return false;
   return principal.assignments.some((a) => a.permissions.has(permission));
 }
 
-/**
- * Which chapters' records a list may show for this permission (A2, PPIDK CakupanCabang): "all"
- * with a global assignment, otherwise the chapter ids of its chapter assignments (empty = none).
- * Repository queries filter by it, so a chapter admin's list never holds another chapter's people.
- */
 export function scopedChapterIds(
   principal: Principal | null,
   permission: PagePermission,
@@ -161,12 +116,6 @@ export function scopedChapterIds(
   ];
 }
 
-/**
- * Which org units' records a list may show (letters of a directorate, PPIDK CakupanSurat): "all"
- * with a global assignment, otherwise the unit ids of its org-unit assignments (each covers the
- * unit and everything below it: query `orgUnitPath array-contains-any`). Chapter scopes give no
- * unit.
- */
 export function scopedOrgUnitIds(
   principal: Principal | null,
   permission: PagePermission,
@@ -179,7 +128,6 @@ export function scopedOrgUnitIds(
   ];
 }
 
-/** True when the principal may enter the admin area at all (any admin-page permission). */
 export function canAccessAdmin(principal: Principal | null): boolean {
   if (principal === null || !principal.active) return false;
   return principal.assignments.some((a) => a.permissions.size > 0);
@@ -199,7 +147,6 @@ export class UnauthenticatedError extends Error {
   }
 }
 
-/** Throwing variant for server handlers. */
 export function requirePermission(
   principal: Principal | null,
   permission: Permission,
@@ -209,16 +156,10 @@ export function requirePermission(
   if (!can(principal, permission, resource)) throw new ForbiddenError(permission);
 }
 
-/** Holds every listed permission in a GLOBAL assignment (chapter assignments never grant). */
 function holdsGlobally(principal: Principal | null, permissions: readonly PagePermission[]) {
   return permissions.every((permission) => can(principal, permission));
 }
 
-/**
- * Creating or editing a custom role (Role Manager → Edit Role). Anti-escalation: `roles.edit`, and the editor
- * must hold globally every permission the role gets AND (when editing) every permission it had.
- * Built-in roles can never be saved.
- */
 export function canSaveRole(
   principal: Principal | null,
   role: RoleDefinition,
@@ -228,15 +169,10 @@ export function canSaveRole(
   return holdsGlobally(principal, [...role.permissions, ...(previous?.permissions ?? [])]);
 }
 
-/** Deleting a custom role: same rule as editing it. Built-in roles can never be deleted. */
 export function canDeleteRole(principal: Principal | null, role: RoleDefinition): boolean {
   return canSaveRole(principal, role);
 }
 
-/**
- * Assigning a role to a user: `users.edit` and every permission of that role (no granting what
- * you lack). Superadmin is assigned only by a superadmin.
- */
 export function canAssignRole(principal: Principal | null, role: RoleDefinition): boolean {
   if (!can(principal, "users.edit")) return false;
   if (role.id === SUPERADMIN_ROLE_ID) {
@@ -249,40 +185,22 @@ export function canAssignRole(principal: Principal | null, role: RoleDefinition)
   return holdsGlobally(principal, role.permissions);
 }
 
-/**
- * Giving a role through an appointment (B7): `appointments.edit` and, globally, every permission of
- * that role (no granting what you lack). Built-in roles are never given this way.
- */
 export function canAppointInto(principal: Principal | null, role: RoleDefinition): boolean {
   if (isSystemRoleId(role.id) || !can(principal, "appointments.edit")) return false;
   return holdsGlobally(principal, role.permissions);
 }
 
-/**
- * Ratifying a recruited officer (C3 step 9) gives the roles of the appointment: the Sekjen
- * (`recruitment.confirm`) may give a role only when holding all its permissions globally, never
- * a built-in role - the same anti-escalation rule as an appointment.
- */
 export function canRatifyInto(principal: Principal | null, role: RoleDefinition): boolean {
   if (isSystemRoleId(role.id) || !can(principal, "recruitment.confirm")) return false;
   return holdsGlobally(principal, role.permissions);
 }
 
-/** Why an account change is refused; null = allowed. */
 export type AccountChangeRefusal = "self" | "forbidden" | "last_superadmin";
 
-/**
- * Role Manager rules for adding/removing a role or changing an account's status:
- * nobody changes their own account; `users.edit` + `canAssignRole` for the role concerned
- * (you cannot add or remove what you could not grant; superadmin only by a superadmin);
- * the organisation never ends up without an active global superadmin.
- */
 export function accountChangeRefusal(input: {
   readonly actor: Principal | null;
   readonly targetUserId: string;
-  /** The role added or removed; omit for a status change. */
   readonly role?: RoleDefinition;
-  /** Active global superadmins once the change is applied (read in the same transaction). */
   readonly superadminsAfter: number;
 }): AccountChangeRefusal | null {
   const { actor, targetUserId, role, superadminsAfter } = input;

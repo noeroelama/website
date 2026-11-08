@@ -5,7 +5,7 @@ import { canManageProgram, createProgramActions } from "../../apps/admin/src/ser
 import { fakeDb } from "../support/fake-db";
 
 type Db = Parameters<typeof createSqlProgramStore>[0];
-let clock = new Date("2026-11-04T03:00:00Z"); // Wednesday
+let clock = new Date("2026-11-04T03:00:00Z");
 const staff = (
   userId: string,
   permissions: string[],
@@ -22,7 +22,6 @@ const as = (principal: Principal) => [() => Promise.resolve(principal), context]
 
 const director = staff("dir", ["programs.edit"], { type: "orgUnit", orgUnitId: "media" });
 const sekjen = staff("sekjen", ["programs.approve"]);
-// A staff member named PIC: reads programmes, may edit none.
 const pic = staff("pic", ["programs.read"]);
 const officer = staff("officer", ["programs.read"]);
 
@@ -210,7 +209,6 @@ describe("running a programme: the PIC rule", () => {
       actions().markMilestone(...as(pic))({ id, version: v, milestoneId: "m1", done: true }),
     );
     expect(step).toMatchObject({ status: "running", progress: 25 });
-    // Weight change: recomputed in the same write.
     step = await ok<Step>(
       actions().saveMilestone(...as(pic))({
         id,
@@ -292,7 +290,7 @@ describe("weekly check-in: one per programme per UTC week", () => {
       actions().checkIn(...as(pic))({ id, achievements: "Booked the venue" }),
     );
     expect(first).toEqual({ id: `${id}_2026-11-02`, weekStart: "2026-11-02" });
-    clock = new Date("2026-11-08T23:59:00Z"); // Sunday, still the same UTC week
+    clock = new Date("2026-11-08T23:59:00Z");
     await ok(
       actions().checkIn(...as(pic))({
         id,

@@ -39,7 +39,6 @@ export function periodSnapshot(p: PeriodFields): Snapshot {
   };
 }
 
-/** Audit entry for one status change of one period (same arguments as `write`'s audit). */
 export type PeriodStatusAudit = (
   before: Snapshot,
   after: Snapshot,
@@ -47,10 +46,6 @@ export type PeriodStatusAudit = (
   next: Period,
 ) => AuditEvent;
 
-/**
- * `periods/{id}` (deleted softly, never the active one) and `settings/activePeriod` ({ periodId }), which the principal
- * loader reads to decide which period-bound role assignments count.
- */
 export function createSqlPeriodStore(db: Database) {
   const store = createSluggedStore<Period>(db, {
     collection: "periods",
@@ -63,7 +58,6 @@ export function createSqlPeriodStore(db: Database) {
   const auditLog = createSqlAuditWriter(db);
 
   return {
-    /** Every period that is not deleted, newest first. */
     async listForAdmin(): Promise<Period[]> {
       const snapshot = await store.docs.orderBy("startsOn", "desc").get();
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((p) => !p.deletedAt);
@@ -71,11 +65,6 @@ export function createSqlPeriodStore(db: Database) {
     get: store.get,
     write: store.write,
 
-    /**
-     * ONE transaction: the draft becomes active, the period that was active becomes archived,
-     * `settings/activePeriod` points to the new one, and both changes are audited. Concurrent
-     * activations are serialized by the transaction on `settings/activePeriod`.
-     */
     activate(id: string, expectedVersion: number, audit: PeriodStatusAudit, now: Date) {
       const ref = store.docs.doc(safeId.parse(id));
       return db.runTransaction(async (tx) => {

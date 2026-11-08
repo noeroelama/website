@@ -9,15 +9,6 @@ import { activeChapters } from "@/server/chapters";
 
 export const metadata: Metadata = { title: "Map" };
 
-// Design (user): the map page borrows the news frame — black page, 74rem column,
-// cream title and tagline — then a two-column block: the region map image on the
-// left, and on the right the side.svg country table recreated from the chapters
-// data (user): the region groups of the design (OCEANIA … Others), one cream row
-// per chapter, numbered with the design's registry number and the alias (PERMITHA,
-// PERPIKA) on the same row. Only active chapters show; the group of each chapter
-// comes from its own region field, so moving a chapter to another group (or hiding
-// it) is a data change, not a code change.
-// Static shell (title); the language cookie and the list stream in.
 export default function MapPage() {
   return (
     <main className="site-lists site-lists--news">
@@ -30,7 +21,6 @@ export default function MapPage() {
   );
 }
 
-/** The chapter's badge number (its own mapNo), or "last", for sorting the rows of a group. */
 const rank = (c: PublicChapter): number => c.mapNo ?? Number.MAX_SAFE_INTEGER;
 
 function MapRow({ chapter, language }: { chapter: PublicChapter; language: Language }) {
@@ -38,7 +28,6 @@ function MapRow({ chapter, language }: { chapter: PublicChapter; language: Langu
   const alias = chapterAlias(chapter.name);
   return (
     <li className="site-map__item">
-      {/* The whole row links to the chapter's detail page (user); the row is the <a>. */}
       <Link className="site-map__row" href={`/map/${chapter.slug}`}>
         {no !== null && <span className="site-map__no">{no}</span>}
         <span className="site-map__label">{countryName(chapter.countryCode, language)}</span>

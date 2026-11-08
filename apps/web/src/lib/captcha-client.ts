@@ -3,7 +3,6 @@ type Grecaptcha = {
   execute(siteKey: string, options: { action: string }): Promise<string>;
 };
 
-/** Loads reCAPTCHA v3 once and returns a token for `action` ("" when no site key is set). */
 export async function captchaToken(action: string): Promise<string> {
   const siteKey = process.env["NEXT_PUBLIC_RECAPTCHA_SITE_KEY"];
   if (!siteKey) return "";

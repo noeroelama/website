@@ -1,28 +1,4 @@
 #!/usr/bin/env node
-/**
- * Imports forms and recruitment from PPIDK (block J, step 5.8): forms with their versions and
- * responses, recruitments, applications (latest per person, with choices, revision rounds and
- * interviews), interview slots and personality results. Run locally by the owner with the admin
- * service account AFTER the people import (step 3.9) and after freezing the PPIDK form and
- * recruitment screens. Dry run unless --apply is given; safe to run again (ids come from PPIDK).
- *
- *   1. Export each table from MariaDB as TSV into one folder, e.g.
- *        for t in users org_units forms form_versions form_responses recruitments \
- *                 recruitment_applications application_choices application_revisions \
- *                 interview_slots interviews personality_results; do
- *          mysql --batch -e "SELECT * FROM $t" asiania_my > ppidk/$t.tsv; done
- *   2. Optional: copy PPIDK's private storage folder (storage/app/private) next to it.
- *   3. node --experimental-strip-types --import ./infrastructure/scripts/ts-register.mjs \
- *        --env-file=apps/admin/.env.local infrastructure/scripts/import-ppidk-recruitment.mjs \
- *        --dir ./ppidk [--files ./ppidk-private] [--apply]
- *   4. Read the report (ppidk/import-recruitment-report.json): counts and every skipped row.
- *
- * Files: only real PDFs (checked by their first bytes) found under --files are referenced and
- * copied privately into FILE_STORAGE_DIR; without --files no file is referenced. Run it where
- * FILE_STORAGE_DIR is (cPanel Terminal) when --files is used.
- * Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY (and
- * FILE_STORAGE_DIR with --files).
- */
 import {
   closeSync,
   existsSync,
@@ -69,7 +45,6 @@ if (missing.length > 0) {
   process.exit(2);
 }
 
-// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
 const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -92,14 +67,12 @@ const tables = Object.fromEntries(
   ]),
 );
 
-// Org units and periods come from the people import: refuse to run before it.
 const periods = await db.collection("periods").get();
 if (!periods.docs.some((doc) => doc.id.startsWith("ppidk-"))) {
   console.error("Run the people import first (import-ppidk-people.mjs).");
   process.exit(1);
 }
 
-// Same accounts as the people import: existing ones by e-mail, otherwise ppidk-<id>.
 const existing = new Map();
 const emails = tables.users.map((u) => u.email?.trim().toLowerCase()).filter(Boolean);
 for (let i = 0; i < emails.length; i += 100) {
@@ -109,7 +82,6 @@ for (let i = 0; i < emails.length; i += 100) {
 const emailOf = new Map(tables.users.map((u) => [u.id, u.email?.trim().toLowerCase()]));
 const uidOf = (ppidkId) => existing.get(emailOf.get(ppidkId)) ?? `ppidk-${ppidkId}`;
 
-/** A PPIDK path inside --files (never outside it), or null. */
 const localPath = (ppidkPath) => {
   if (!values.files) return null;
   const root = resolve(values.files);
@@ -117,7 +89,6 @@ const localPath = (ppidkPath) => {
   const inside = relative(root, full);
   return inside && !inside.startsWith("..") ? full : null;
 };
-/** Size of a real PDF (starts with "%PDF-"), else null. */
 const fileSize = (ppidkPath) => {
   const full = localPath(ppidkPath);
   if (!full || !existsSync(full) || !statSync(full).isFile()) return null;
@@ -144,7 +115,6 @@ if (!values.apply) {
   process.exit(0);
 }
 
-// Files first: a document never points to a file that is not uploaded.
 if (plan.files.length > 0) {
   const storage = createDiskFileStorage({
     root: process.env.FILE_STORAGE_DIR,

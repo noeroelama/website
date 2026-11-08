@@ -1,12 +1,3 @@
-/**
- * MySQL 8 document store: the only place `mysql2` is imported (lint-enforced).
- *
- * Every collection is a table `(id, data JSON, dates JSON)`. The API is the small document API the
- * repositories in this folder use (documents, simple queries, transactions), so moving off
- * Firestore did not change any repository logic. Dates are stored as ISO strings (they sort and
- * compare correctly in JSON) and their paths are kept in `dates`, so reads give them back as
- * timestamps with `toDate()`.
- */
 import { createPool, type Pool, type PoolConnection, type RowDataPacket } from "mysql2/promise";
 import { COLLECTIONS } from "./collections";
 
@@ -15,7 +6,6 @@ type Op = "==" | "in" | "array-contains" | "array-contains-any" | "<" | "<=" | "
 type Direction = "asc" | "desc";
 type Runner = Pick<PoolConnection, "query">;
 
-/** A stored date, read back like a Firestore Timestamp. */
 export class StoredTimestamp {
   private readonly ms: number;
   constructor(ms: number) {
@@ -29,7 +19,6 @@ export class StoredTimestamp {
   }
 }
 
-/** Errors carry the gRPC-style codes callers already check (6 = exists, 5 = missing, 10 = aborted). */
 const storeError = (message: string, code: 5 | 6 | 10) =>
   Object.assign(new Error(message), { code });
 
@@ -38,7 +27,6 @@ const isPlainObject = (value: object): boolean => {
   return proto === Object.prototype || proto === null;
 };
 
-/** Value → JSON-safe value; collects the paths of dates. */
 function encode(
   value: unknown,
   path: Array<string | number>,
@@ -71,7 +59,6 @@ function encodeDoc(data: Data): { json: string; dates: string } {
   return { json: JSON.stringify(encoded), dates: JSON.stringify(dates) };
 }
 
-/** JSON value used as a query parameter. */
 const encodeValue = (value: unknown) => JSON.stringify(encode(value, [], []));
 
 function decodeDoc(data: Data, dates: Array<Array<string | number>>): Data {
@@ -84,7 +71,6 @@ function decodeDoc(data: Data, dates: Array<Array<string | number>>): Data {
   return data;
 }
 
-/** "offer.expiresAt" → `$."offer"."expiresAt"` (bound as a parameter, never concatenated). */
 const jsonPath = (field: string) =>
   `$${field
     .split(".")
@@ -101,7 +87,6 @@ export interface DocumentSnapshot {
   data(): Data | undefined;
   get(field: string): unknown;
 }
-/** A document returned by a query always exists. */
 export interface QueryDocumentSnapshot extends DocumentSnapshot {
   data(): Data;
 }
@@ -257,7 +242,6 @@ export class Query {
     return new Query(this.engine, this.table, this.filters, this.order, this.cursor, n);
   }
 
-  /** WHERE clause and its parameters, pushed in placeholder order (paths and values are bound). */
   private where_(): { sql: string; params: unknown[] } {
     const parts: string[] = [];
     const params: unknown[] = [];
@@ -287,12 +271,10 @@ export class Query {
         params.push(path, encodeValue(value));
         parts.push(`${FIELD} = ${VALUE}`);
       } else {
-        // Ranges never match a null field (Firestore compares only values of the same type).
         params.push(path, encodeValue(value), path);
         parts.push(`${FIELD} ${op} ${VALUE} AND JSON_TYPE(${FIELD}) <> 'NULL'`);
       }
     }
-    // Like Firestore, ordering by a field leaves out documents without it.
     for (const { field } of this.order) {
       params.push(jsonPath(field));
       parts.push(`${FIELD} IS NOT NULL`);
@@ -379,10 +361,6 @@ async function applyWrite(runner: Runner, write: Write) {
   await writeSet(runner, write.ref, { ...current.data(), ...write.data });
 }
 
-/**
- * Like a Firestore transaction: reads lock the rows they read (`FOR UPDATE`), every read comes
- * before the first write, and the writes are applied together at the end.
- */
 export class Transaction {
   readonly writes: Write[] = [];
   private readonly connection: PoolConnection;
@@ -416,7 +394,6 @@ export class Transaction {
   }
 }
 
-/** Deadlock (1213) and lock wait timeout (1205): retried like Firestore retries contention. */
 const RETRYABLE = new Set([1205, 1213]);
 const ATTEMPTS = 5;
 
@@ -445,11 +422,9 @@ async function runTransaction<T>(engine: Engine, fn: (tx: Transaction) => Promis
 
 export interface Database {
   collection(name: string): CollectionReference;
-  /** `doc("users/u1")` (ops scripts). */
   doc(path: string): DocumentReference;
   getAll(...refs: DocumentReference[]): Promise<DocumentSnapshot[]>;
   runTransaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T>;
-  /** Writes without reads, applied together (ops scripts). */
   batch(): {
     set(ref: DocumentReference, data: Data): void;
     update(ref: DocumentReference, data: Data): void;
@@ -466,7 +441,6 @@ const DDL = (table: string) =>
     dates JSON NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`;
 
-/** Creates missing tables (one table per collection in ./collections.ts). */
 async function ensureTables(pool: Pool) {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
@@ -476,18 +450,12 @@ async function ensureTables(pool: Pool) {
 }
 
 export interface DatabaseConfig {
-  /** `mysql://user:password@host:3306/database` */
   readonly url: string;
-  /** Connections per server process (shared hosting: keep it small). */
   readonly connectionLimit?: number | undefined;
 }
 
 const databases = new Map<string, Database>();
 
-/**
- * One pool per database URL per server process, reused for every request (never one connection
- * per request). Tables are created on first use.
- */
 export function getDatabase(config: DatabaseConfig): Database {
   const cached = databases.get(config.url);
   if (cached) return cached;
@@ -502,7 +470,7 @@ export function getDatabase(config: DatabaseConfig): Database {
     pool,
     ready: () => {
       ready ??= ensureTables(pool).catch((error: unknown) => {
-        ready = null; // try again on the next call
+        ready = null;
         throw error;
       });
       return ready;

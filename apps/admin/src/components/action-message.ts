@@ -1,4 +1,3 @@
-/** What a staff member sees after a server action fails (GuardedResult errors). */
 export type ActionFailure = {
   readonly ok: false;
   readonly error:

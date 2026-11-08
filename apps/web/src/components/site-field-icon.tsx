@@ -1,7 +1,3 @@
-/** The design bar's field logos (datetime picker, location pin, search, count grid),
- * drawn as transparent stroke SVGs in the site's icon style; color comes from CSS
- * (cream on the panel for the labels, ink inside the boxes). Shared by the events,
- * gallery and news list pages. */
 export const BAR_ICONS = {
   date: (
     <>
@@ -22,15 +18,12 @@ export const BAR_ICONS = {
       <path d="m21 21-4.35-4.35" />
     </>
   ),
-  /* Tag — the news list's category filter field. */
   tag: (
     <>
       <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3.4 13.4A2 2 0 0 1 3 12V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8z" />
       <circle cx="7.5" cy="7.5" r="1" />
     </>
   ),
-  /* Four squares (left-right, top-bottom) — the design's logo beside the counter,
-     same glyph as the shared icon set's "grid". */
   count: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1" />

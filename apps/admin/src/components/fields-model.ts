@@ -1,23 +1,11 @@
-/**
- * Pure rules behind the field feedback (`ui/field-error.tsx`) and the searchable dropdown
- * (`ui/select.tsx`). The requirements come from the control's own HTML attributes (`required`,
- * `type`, `minLength`, `min`/`max`, `pattern` + `title`) and the browser's `validity` flags, so a
- * form declares its rules once, on the input. The server still checks everything on save.
- */
-
-/** What the browser knows about one form control (read from the element). */
 export interface FieldState {
   value: string;
-  /** Input type (`text`, `email`, `number`, …), or `select-one` / `textarea`. */
   type: string;
   required: boolean;
-  /** 0 = no minimum. */
   minLength: number;
-  /** "" = no limit. */
   min: string;
   max: string;
   hasPattern: boolean;
-  /** The control's `title`: describes its pattern. */
   patternHint: string | null;
   badInput: boolean;
   typeMismatch: boolean;
@@ -33,11 +21,9 @@ export interface Requirement {
 
 const DATE_TYPES = new Set(["date", "datetime-local", "time", "month", "week"]);
 
-/** Every requirement of the field, each met or unmet. Empty when there is nothing to check. */
 export function fieldRequirements(field: FieldState): Requirement[] {
   const filled = field.value.trim() !== "";
   const list: Requirement[] = field.required ? [{ text: "Required", met: filled }] : [];
-  // An empty optional field is fine; a number box with letters in it reads as "" + badInput.
   if (!filled && !field.badInput) return list;
 
   if (field.type === "email") {
@@ -91,7 +77,6 @@ interface ElementLike {
 const isElement = (node: unknown): node is ElementLike =>
   typeof node === "object" && node !== null && "type" in node && "props" in node;
 
-/** Plain text of an option's children (`"Role "`, `1` → `"Role 1"`). */
 const textOf = (node: unknown): string =>
   Array.isArray(node)
     ? node.map(textOf).join("")
@@ -99,10 +84,6 @@ const textOf = (node: unknown): string =>
       ? String(node)
       : "";
 
-/**
- * The `<option>` elements among a `<select>`'s children (React elements), through mapped arrays,
- * fragments and other wrappers. Text, null and booleans are skipped like React does.
- */
 export function optionsFrom(children: unknown): OptionItem[] {
   if (Array.isArray(children)) return children.flatMap(optionsFrom);
   if (!isElement(children)) return [];
@@ -113,10 +94,8 @@ export function optionsFrom(children: unknown): OptionItem[] {
   return [{ value: text, label, disabled: disabled === true }];
 }
 
-/** Dropdowns with more than 5 options get a search box. */
 export const needsSearch = (options: readonly OptionItem[]): boolean => options.length > 5;
 
-/** Lower case, without accents and surrounding spaces ("Türkiye" → "turkiye"). */
 const fold = (text: string) =>
   text
     .normalize("NFD")
@@ -124,7 +103,6 @@ const fold = (text: string) =>
     .toLowerCase()
     .trim();
 
-/** Options whose label contains the search text. */
 export function filterOptions(options: readonly OptionItem[], query: string): OptionItem[] {
   const q = fold(query);
   return options.filter((option) => fold(option.label).includes(q));

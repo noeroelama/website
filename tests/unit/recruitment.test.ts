@@ -166,11 +166,9 @@ describe("applying (C3 steps 1-2)", () => {
     for (const s of ["admin_rejected", "declined", "rejected", "withdrawn"] as const) {
       expect(at(s)).toBe("ended");
     }
-    // After the window a draft or a revision can no longer be sent.
     const after = new Date("2026-11-21T00:00:00Z");
     expect(nextAction(window, { status: "draft", offer: null }, after)).toBe("closed");
     expect(nextAction(window, { status: "revision", offer: null }, after)).toBe("closed");
-    // An expired offer ends at read time (no job).
     expect(offerExpired(offer, offer.expiresAt)).toBe(true);
     expect(offerExpired(offer, now)).toBe(false);
     expect(offerExpired(null, now)).toBe(false);
@@ -194,7 +192,6 @@ describe("interview slots (C3-I)", () => {
   });
 
   it("generates UTC times from a day plan in the committee's zone, skipping breaks", () => {
-    // 09:00, 09:40, (10:20 overlaps the break) → 11:00 (11:40 would end after 12:00).
     expect(slotTimes(plan).map((d) => d.toISOString())).toEqual([
       "2026-11-15T00:00:00.000Z",
       "2026-11-15T00:40:00.000Z",

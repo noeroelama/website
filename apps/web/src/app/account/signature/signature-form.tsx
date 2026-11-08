@@ -7,7 +7,6 @@ import { configureSignatureAction, removeSignatureAction } from "./actions";
 
 type Current = { widthMm: number; rotation: number; version: number } | null;
 
-/** Upload (POST /api/account/signature), printed width and rotation, removal. */
 export function SignatureForm(props: { t: Dictionary["signature"]; current: Current }) {
   const { t, current } = props;
   const router = useRouter();

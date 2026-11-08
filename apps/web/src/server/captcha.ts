@@ -1,10 +1,6 @@
 import "server-only";
 import type { CaptchaVerifier } from "@website/domain/newsletter";
 
-/**
- * Google reCAPTCHA v3 over plain fetch (no SDK). A token passes when Google accepts it, it was
- * made for `expectedAction` and its score is at least `minScore`. Network errors fail closed.
- */
 export function createRecaptchaVerifier(options: {
   secret: string;
   fetchImpl: typeof fetch;
@@ -34,11 +30,6 @@ export function createRecaptchaVerifier(options: {
   };
 }
 
-/**
- * The check a public form runs. `verifier` is null when no secret key is set: development and
- * test then skip the check (no Google keys locally); staging and production refuse every token
- * (fail closed).
- */
 export async function passesCaptcha(
   verifier: CaptchaVerifier | null,
   config: { minScore: number; appEnv: string },

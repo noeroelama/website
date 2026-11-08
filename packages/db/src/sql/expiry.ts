@@ -1,6 +1,5 @@
 import type { Database } from "./store";
 
-/** Rows that carry `expiresAt` and are useless afterwards (Firestore deleted them by TTL policy). */
 export const EXPIRING_COLLECTIONS = [
   "rateLimits",
   "webauthnChallenges",
@@ -9,10 +8,6 @@ export const EXPIRING_COLLECTIONS = [
   "whatsappConversations",
 ] as const;
 
-/**
- * Deletes up to `limit` expired rows per collection: the admin cron job `expire` (one bounded,
- * idempotent batch per call). Returns how many rows went per collection.
- */
 export async function deleteExpired(
   db: Database,
   now: Date,

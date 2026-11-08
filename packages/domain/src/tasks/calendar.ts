@@ -4,12 +4,6 @@ import type { Meeting } from "../meetings";
 import type { LpjReport, Program } from "../programs";
 import type { ZoomRequest } from "../zoom";
 
-/**
- * Calendar (G2), ported from PPIDK `Kalender/*`: a READ MODEL over meetings, Zoom bookings,
- * programme milestones, LPJ due dates and holidays, shown as a month and exported as an .ics
- * feed with the SAME items and filters.
- */
-
 export type CalendarKind = "meeting" | "zoom" | "milestone" | "lpj" | "holiday";
 export const CALENDAR_KIND_LABELS: Record<CalendarKind, string> = {
   meeting: "Meeting",
@@ -23,12 +17,10 @@ export interface CalendarItem {
   readonly id: string;
   readonly kind: CalendarKind;
   readonly title: string;
-  /** Timed items: UTC instants; all-day items: a plain date in `day` (end exclusive). */
   readonly start: Date | null;
   readonly end: Date | null;
   readonly day: string | null;
   readonly href: string | null;
-  /** Warnings shown next to the item (holiday clash, Zoom full). */
   readonly warnings: readonly string[];
 }
 
@@ -43,22 +35,15 @@ export interface Holiday extends HolidayInput {
   readonly id: string;
 }
 
-/** The plain date of an instant on the clock of `timeZone`. */
 const dayIn = (instant: Date, timeZone: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone }).format(instant);
 
-/**
- * The calendar's items. A holiday clash is judged in the zone of the one who scheduled it (the
- * meeting's or booking's own zone); a Zoom warning only for a meeting without a Zoom room at a
- * time when every licence is already booked.
- */
 export function calendarItems(input: {
   readonly meetings: readonly Meeting[];
   readonly zoom: readonly ZoomRequest[];
   readonly programs: readonly Program[];
   readonly lpj: readonly LpjReport[];
   readonly holidays: readonly Holiday[];
-  /** licences × concurrent per licence. */
   readonly zoomCapacity: number;
 }): CalendarItem[] {
   const holidayOn = new Map(input.holidays.map((h) => [h.date, h.name]));
@@ -67,7 +52,6 @@ export function calendarItems(input: {
     return name ? [`Holiday: ${name}`] : [];
   };
   const approved = input.zoom.filter((z) => z.status === "approved");
-  /** A meeting without a Zoom room at a time when every licence is already booked. */
   const zoomFull = (m: Meeting) =>
     m.room.zoomRequestId === null &&
     approved.filter((o) => o.startsAt < m.endsAt && m.startsAt < o.endsAt).length >=
@@ -140,8 +124,6 @@ export function calendarItems(input: {
   ];
 }
 
-/* ---------------------------------------------------------------- .ics (RFC 5545) */
-
 const escapeText = (text: string) =>
   text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 const utcStamp = (d: Date) =>
@@ -156,16 +138,13 @@ const nextDay = (day: string) => {
   return d.toISOString().slice(0, 10);
 };
 
-/** Folds a content line at 75 octets without splitting a UTF-8 character. */
 export function foldLine(line: string): string {
   const parts: string[] = [];
   let current = "";
   let size = 0;
   for (const char of line) {
     const code = char.codePointAt(0) as number;
-    // UTF-8 length of one character (the domain has no TextEncoder).
     const bytes = code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
-    // The first line holds 75 octets; continuation lines start with a space (74 more).
     if (size + bytes > (parts.length === 0 ? 75 : 74)) {
       parts.push(current);
       current = "";
@@ -178,7 +157,6 @@ export function foldLine(line: string): string {
   return parts.join("\r\n ");
 }
 
-/** The feed: CRLF lines, folded, escaped; all-day items as VALUE=DATE with an exclusive end. */
 export function toIcs(
   items: readonly CalendarItem[],
   options: { name: string; baseUrl: string; now: Date },

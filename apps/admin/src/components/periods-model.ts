@@ -1,12 +1,10 @@
 import type { Period, PeriodStatus } from "@website/domain/organizations";
 
-/** A board period row of Organizations → Period, mapped on the server from `periods/{id}`. */
 export interface PeriodItem {
   id: string;
   version: number;
   name: string;
   cabinet: string;
-  /** YYYY-MM-DD. */
   startsOn: string;
   endsOn: string;
   vision: string;

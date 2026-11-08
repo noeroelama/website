@@ -54,7 +54,6 @@ import {
 import { createLogger } from "@website/observability";
 import { getAdminEnv } from "./env";
 
-/** Admin's database (MySQL, role `admin_rw`, pooled). */
 export const adminDb = lazyEnv(() => {
   const env = getAdminEnv();
   return getDatabaseForRole({
@@ -64,7 +63,6 @@ export const adminDb = lazyEnv(() => {
   });
 });
 
-/** Uploads in the MySQL `files` collection; public URLs on WEB_URL. */
 export const imageStorage = lazyEnv(() => {
   const env = getAdminEnv();
   return createDbFileStorage({
@@ -84,7 +82,6 @@ export const adminStores = lazyEnv(() => {
     audit: createSqlAuditWriter(db),
     auditLog: createSqlAuditStore(db),
     messageLog: createSqlMessageLog(db),
-    /** E-mail + WhatsApp number and desk holders, for notifications (J1, J2). */
     contacts: createSqlContactReader(db),
     content: createSqlContentStore(db),
     events: createSqlEventStore(db),
@@ -99,7 +96,6 @@ export const adminStores = lazyEnv(() => {
     incoming: createSqlIncomingStore(db),
     signatures: createSqlSignatureStore(db),
     certificates: createSqlCertificateStore(db),
-    /** Verification codes → sheet + batch (certificate pickup downloads, D5-P). */
     verification: createSqlVerificationReader(db),
     galleries: createSqlGalleryStore(db),
     chapters: createSqlChapterStore(db),
@@ -134,7 +130,6 @@ export const adminStores = lazyEnv(() => {
     programs: createSqlProgramStore(db),
     lpj: createSqlLpjStore(db),
     periodReport: createSqlPeriodReport(db),
-    /** Finance requests (I1). */
     finance: createSqlFinanceStore(db),
   };
 });

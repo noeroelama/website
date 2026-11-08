@@ -51,7 +51,6 @@ function toEvent(id: string, data: Record<string, unknown>): EventEntity {
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
-/** Audit snapshot = the editable fields; dates as ISO strings (also stored that way). */
 export function eventSnapshot(e: EventFields): Snapshot {
   return {
     slug: e.slug,
@@ -74,10 +73,6 @@ export function eventSnapshot(e: EventFields): Snapshot {
   };
 }
 
-/**
- * `events/{id}` + `eventSlugs/{slug}`. Registrations live in `eventRegistrations` and are never
- * touched here: a soft-deleted event keeps its registrant list.
- */
 export function createSqlEventStore(db: Database) {
   const store = createSluggedStore<EventEntity>(db, {
     collection: "events",
@@ -88,7 +83,6 @@ export function createSqlEventStore(db: Database) {
   });
 
   return {
-    /** Admin list: newest change first, trash excluded. */
     async listForAdmin(limit = 500): Promise<EventEntity[]> {
       const snapshot = await store.docs.orderBy("updatedAt", "desc").limit(limit).get();
       return snapshot.docs
@@ -96,7 +90,6 @@ export function createSqlEventStore(db: Database) {
         .filter((e) => e.deletedAt === null);
     },
     get: store.get,
-    /** Live event by URL slug (published or not; callers decide what to show). */
     findBySlug: (slug: string) => store.findBySlugKey(slug),
     write: store.write,
   };
@@ -104,7 +97,6 @@ export function createSqlEventStore(db: Database) {
 
 export type SqlEventStore = ReturnType<typeof createSqlEventStore>;
 
-/** Published events for the website (role web_ro), newest first, as public DTOs. */
 export function createSqlEventReader(db: Database) {
   const store = createSqlEventStore(db);
   return {
@@ -130,11 +122,6 @@ export function createSqlEventReader(db: Database) {
 
 export type SqlEventReader = ReturnType<typeof createSqlEventReader>;
 
-/**
- * Internal registrations: `eventRegistrations/{eventId}_{uid}` (one per member and event) and
- * `eventCounters/{eventId}` { confirmed, waitlisted }, both written in the same transaction so
- * the capacity holds under concurrent sign-ups. No personal data is copied here.
- */
 export function createSqlRegistrationStore(db: Database) {
   const registrationsRef = db.collection("eventRegistrations");
   return {
@@ -170,7 +157,6 @@ export function createSqlRegistrationStore(db: Database) {
       });
     },
 
-    /** A member's own registrations with their (live) events, newest event first. */
     async listByUser(
       userId: string,
     ): Promise<Array<{ status: RegistrationStatus; event: PublicEvent }>> {

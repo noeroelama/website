@@ -9,7 +9,6 @@ import { answersFrom, EMPTY_VALUES, type FieldValues } from "@/lib/form-answers"
 import type { FormSubmitResult } from "@/server/forms";
 import { submitFormAction } from "./actions";
 
-/** The answering form of /f/{token}. The server re-checks everything (window, version, answers). */
 export function PublicFormClient(props: {
   token: string;
   version: number;
@@ -43,7 +42,6 @@ export function PublicFormClient(props: {
         answers: answersFrom(props.questions, value),
         captcha,
       });
-      // Server messages are in English: show the visitor's language instead.
       setErrors(
         !result.ok && result.error === "answers"
           ? Object.fromEntries(

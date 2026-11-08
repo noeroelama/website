@@ -20,7 +20,6 @@ export interface RoleDeps {
   readonly now: () => Date;
 }
 
-/** Role id from its name: "Chapter admin" → "chapter_admin". */
 export function roleIdFromName(name: string): string {
   return name
     .toLowerCase()
@@ -32,7 +31,6 @@ export function roleIdFromName(name: string): string {
 
 const SaveInput = z
   .object({
-    /** Absent when creating: the id is made from the name. */
     id: safeId.optional(),
     name: safeText(60).pipe(z.string().min(2, "Give the role a name (2–60 characters).")),
     color: z.enum(ROLE_COLORS, "Choose a colour."),
@@ -45,7 +43,6 @@ const DeleteInput = z.object({ id: safeId, version: z.number().int().min(1) }).s
 const ESCALATION =
   "You can only create or change roles with permissions you hold yourself (globally).";
 
-/** Role Manager → Edit Role actions (roles are data, DEC-11). */
 export function createRoleActions(deps: RoleDeps) {
   const save = async (
     role: CustomRole,
@@ -74,7 +71,7 @@ export function createRoleActions(deps: RoleDeps) {
           resourceId: role.id,
           title: role.name,
           ...change,
-          revertible: false, // permissions change only through these rules, never through revert
+          revertible: false,
         }),
       deps.now(),
     );

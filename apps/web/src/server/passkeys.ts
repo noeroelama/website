@@ -17,7 +17,6 @@ const passkeyStore = lazyEnv(() => {
   );
 });
 
-/** Passkeys are bound to WEB_URL's hostname; credentials are stored in the database. */
 export const passkeyRoutes = lazyEnv(() => {
   const env = getWebEnv();
   if (!env.WEB_URL) throw new Error("WEB_URL is required for passkeys.");
@@ -39,7 +38,6 @@ const accountAdmin = lazyEnv(() => {
   });
 });
 
-/** The signed-in user's own sign-in methods (account page). Never called with another uid. */
 export async function ownSignInMethods(uid: string): Promise<SignInMethods> {
   const [methods, passkeys] = await Promise.all([
     accountAdmin().signInMethods(uid),

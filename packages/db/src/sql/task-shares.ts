@@ -4,10 +4,6 @@ import type { AuditEvent } from "@website/audit";
 import { createSqlAuditWriter } from "./audit";
 import type { Database } from "./store";
 
-/**
- * `taskBoardShares/{orgUnitId}_{uid}` (G1): a unit board shared with one person, VIEW ONLY. A
- * share grants no permission: source links still need the viewer's own access.
- */
 export function createSqlTaskShareStore(db: Database) {
   const docs = db.collection("taskBoardShares");
   const audit = createSqlAuditWriter(db);
@@ -24,7 +20,6 @@ export function createSqlTaskShareStore(db: Database) {
       const snapshot = await docs.where("uid", "==", uid).get();
       return snapshot.docs.map((d) => d.get("orgUnitId") as string);
     },
-    /** Shares or unshares, with its audit entry in the same transaction. */
     async set(
       orgUnitId: string,
       uid: string,

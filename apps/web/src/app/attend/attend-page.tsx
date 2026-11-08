@@ -3,7 +3,6 @@ import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { getSignedInUser } from "@/server/session";
 import { AttendForm } from "./attend-form";
 
-/** Shared body of /attend and /attend/<code>; signed-out visitors get a sign-in link back here. */
 export async function AttendPage({ code }: { code: string }) {
   const [jar, user] = await Promise.all([cookies(), getSignedInUser()]);
   const t = DICTIONARIES[languageFrom(jar.get(LANG_COOKIE)?.value)].attend;

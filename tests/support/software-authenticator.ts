@@ -10,10 +10,6 @@ const u32 = (n: number) => {
   return b;
 };
 
-/**
- * A real (software) WebAuthn authenticator: ES256 key pair, "none" attestation, user presence +
- * verification flags. Lets tests exercise genuine passkey registration and sign-in end to end.
- */
 export function createSoftwareAuthenticator(origin: string, userId: string) {
   const rpIdHash = sha256(new URL(origin).hostname);
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
@@ -24,9 +20,9 @@ export function createSoftwareAuthenticator(origin: string, userId: string) {
 
   const coseKey = isoCBOR.encode(
     new Map<number, CBOR>([
-      [1, 2], // kty: EC2
-      [3, -7], // alg: ES256
-      [-1, 1], // crv: P-256
+      [1, 2],
+      [3, -7],
+      [-1, 1],
       [-2, isoBase64URL.toBuffer(jwk.x ?? "")],
       [-3, isoBase64URL.toBuffer(jwk.y ?? "")],
     ]),
@@ -41,9 +37,9 @@ export function createSoftwareAuthenticator(origin: string, userId: string) {
       idLength.writeUInt16BE(credentialId.length);
       const authData = Buffer.concat([
         rpIdHash,
-        Buffer.from([0x45]), // UP | UV | AT
+        Buffer.from([0x45]),
         u32(counter),
-        Buffer.alloc(16), // AAGUID
+        Buffer.alloc(16),
         idLength,
         credentialId,
         coseKey,
@@ -72,7 +68,7 @@ export function createSoftwareAuthenticator(origin: string, userId: string) {
       opts: { origin?: string; counter?: number; userHandle?: string } = {},
     ) {
       counter = opts.counter ?? counter + 1;
-      const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), u32(counter)]); // UP | UV
+      const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), u32(counter)]);
       const data = clientData("webauthn.get", challenge, opts.origin);
       const signature = sign("sha256", Buffer.concat([authData, sha256(data)]), privateKey);
       return {

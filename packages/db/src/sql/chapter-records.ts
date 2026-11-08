@@ -22,10 +22,6 @@ const toReport = (id: string, d: Record<string, unknown>): ChapterReport => ({
   filledByCentre: d["filledByCentre"] as boolean,
 });
 
-/**
- * Chapter records (H1, H3): `chapterOfficers/{chapterId}` and `chapterReports/{chapterId}_{quarter}`.
- * Every write carries its audit entry in the same transaction; reports are never deleted.
- */
 export function createSqlChapterRecordStore(db: Database) {
   const officers = db.collection("chapterOfficers");
   const reports = db.collection("chapterReports");
@@ -54,7 +50,6 @@ export function createSqlChapterRecordStore(db: Database) {
         .map((d) => toReport(d.id, d.data()))
         .sort((a, b) => b.quarter.localeCompare(a.quarter));
     },
-    /** chapterId → quarters reported from `from` on (for the risk signal). */
     async reportedSince(from: Quarter): Promise<Map<string, Set<Quarter>>> {
       const snapshot = await reports.where("quarter", ">=", from).get();
       const map = new Map<string, Set<Quarter>>();
@@ -64,7 +59,6 @@ export function createSqlChapterRecordStore(db: Database) {
       }
       return map;
     },
-    /** Creates or replaces the chapter's report for the quarter (one per quarter). */
     async submitReport(
       report: Omit<ChapterReport, "id">,
       auditFor: (id: string, before: ChapterReport | null) => AuditEvent,

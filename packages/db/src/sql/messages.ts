@@ -14,7 +14,6 @@ import { toPrincipal } from "../users";
 import { getDocumentsByIds } from "./batch";
 import { createSqlRoleStore } from "./users";
 
-/** Document id = sha256(key): keys may contain ":" and stay unique per message. */
 export const messageId = (key: string) => createHash("sha256").update(key).digest("hex");
 
 const toDate = (value: unknown): Date => (value as { toDate(): Date }).toDate();
@@ -26,11 +25,6 @@ const toEntry = (id: string, data: Record<string, unknown>): MessageLogEntry =>
     updatedAt: toDate(data["updatedAt"]),
   }) as MessageLogEntry;
 
-/**
- * `messageLog/{sha256(key)}`: key, channel, to, subject, text, html, status, attempts,
- * providerId, lastError, createdAt, updatedAt. Claiming a key is a create-if-absent
- * transaction, so the same message is never sent twice.
- */
 export function createSqlMessageLog(db: Database) {
   const collection = db.collection("messageLog");
   const store: MessageLogStore = {
@@ -55,7 +49,6 @@ export function createSqlMessageLog(db: Database) {
     finish(key, { status, providerId, lastError, attempted }, now) {
       const ref = collection.doc(messageId(key));
       return db.runTransaction(async (tx) => {
-        // Set to 0 by `claim`, which always runs first.
         const attempts = (await tx.get(ref)).get("attempts") as number;
         tx.update(ref, {
           status,
@@ -80,8 +73,6 @@ export function createSqlMessageLog(db: Database) {
 
   return {
     ...store,
-    /** Admin Email page: failed messages, newest first. */
-    /** Entries of these keys (missing keys are absent): progress views such as bulk sends. */
     async byKeys(keys: readonly string[]): Promise<Map<string, MessageLogEntry>> {
       const found = await getDocumentsByIds<Record<string, unknown>>(
         db,
@@ -119,11 +110,6 @@ export function createSqlMessageLog(db: Database) {
 
 export type SqlMessageLog = ReturnType<typeof createSqlMessageLog>;
 
-/**
- * Who to notify (J1, J2), read by the system only to deliver a message: the account e-mail and
- * the profile's WhatsApp number (restricted personal data: never shown, never logged), and the
- * accounts whose custom roles hold a desk permission (superadmins are not desk holders).
- */
 export function createSqlContactReader(db: Database) {
   const roles = createSqlRoleStore(db);
   return {
@@ -141,7 +127,6 @@ export function createSqlContactReader(db: Database) {
       );
     },
 
-    /** Active accounts that hold `permission` on `resource` through a custom role. */
     async holders(permission: PagePermission, resource: ResourceContext): Promise<string[]> {
       const holding = (await roles.list()).filter(
         (role) =>
@@ -149,7 +134,6 @@ export function createSqlContactReader(db: Database) {
       );
       if (holding.length === 0) return [];
       const ids = holding.map((role) => role.id);
-      // array-contains-any takes at most 30 values per query.
       const chunks: string[][] = [];
       for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
       const [period, ...snapshots] = await Promise.all([

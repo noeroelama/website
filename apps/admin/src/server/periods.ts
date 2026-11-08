@@ -22,11 +22,6 @@ const SaveInput = PeriodFormSchema.extend({
   version: z.number().int().min(1).nullable(),
 }).strict();
 
-/**
- * Audit entry for one period change (module `periods`, resource `period`). Not revertible: a
- * revert could bring back a second active period or change an archived one. A DELETE is
- * revertible (it only clears `deletedAt` again; the active period is never deleted).
- */
 const periodAudit =
   (audit: AuditBuilder, deleting = false) =>
   (
@@ -48,7 +43,6 @@ const periodAudit =
       revertible: deleting,
     });
 
-/** Organizations → Period actions: save (add/edit), activate and delete (soft, not the active one). */
 export function createPeriodActions(deps: PeriodDeps) {
   const save = createGuardedAction({
     permission: "periods.edit",
@@ -61,8 +55,6 @@ export function createPeriodActions(deps: PeriodDeps) {
           if (current && !canChangePeriod(current.status)) {
             throw new RuleViolationError("This period is archived and can no longer be changed.");
           }
-          // The form has only the years and the cabinet: the dates follow the years (kept when
-          // the years did not change, e.g. imported dates), the notes keep their values.
           const dates =
             current?.name === input.name
               ? { startsOn: current.startsOn, endsOn: current.endsOn }
@@ -84,7 +76,6 @@ export function createPeriodActions(deps: PeriodDeps) {
     },
   });
 
-  /** Makes a draft the active period; the period that was active is archived. */
   const activate = createGuardedAction({
     permission: "periods.edit",
     input: z.object({ id: safeId, version: z.number().int().min(1) }).strict(),

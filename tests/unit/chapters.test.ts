@@ -80,7 +80,6 @@ describe("chapters (PPI Negara, feature A2)", () => {
   });
 
   it("places markers on the Asia–Oceania map from latitude and longitude (percent of the box)", () => {
-    // Reference points of the PPIDK map (PetaKawasan): Astana, Tokyo, Wellington.
     const close = (p: { x: number; y: number }, x: number, y: number) => {
       expect(p.x).toBeCloseTo(x, 0);
       expect(p.y).toBeCloseTo(y, 0);

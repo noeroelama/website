@@ -21,15 +21,11 @@ export interface ZoomDeps {
     SqlZoomStore,
     "get" | "write" | "withoutRoom" | "readSettings" | "saveSettings"
   >;
-  /** null = ZOOM_* not set: bookings are held, rooms wait for the cron job once it is set. */
   readonly client: Pick<ZoomClient, "createMeeting" | "deleteMeeting"> | null;
-  /** Silent shortener (K1): the long URL when no provider works. */
   readonly shorten: (longUrl: string, title: string) => Promise<string>;
-  /** The requester's unit from their active appointment (+ its path); null = none (region). */
   readonly unitOf: (
     uid: string,
   ) => Promise<{ orgUnitId: string; orgUnitPath: readonly string[] } | null>;
-  /** encryptField with FIELD_ENCRYPTION_KEY; null when the key is not set. */
   readonly encrypt: ((plain: string) => string) | null;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
   readonly now: () => Date;
@@ -40,7 +36,6 @@ const Ref = z.object({ id: safeId, version }).strict();
 const Decide = Ref.extend({ note: safeText(500, { allowEmpty: true }).default("") }).strict();
 const Settings = ZoomSettingsInputSchema.extend({
   version: version.nullable(),
-  /** A new Host Key (6 digits); null = keep the stored one; "" = remove it. */
   hostKey: z
     .string()
     .regex(/^(\d{6})?$/, "The Host Key has 6 digits.")
@@ -60,11 +55,9 @@ const zoomAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // Capacity and the Zoom meeting moved with it; a revert would not move them back.
       revertible: false,
     });
 
-/** Entries of the system itself (cron job, webhooks): no staff actor. */
 export const systemZoomAudit =
   (actor: string): ZoomAudit =>
   (before, after, current, next): AuditEvent => ({
@@ -79,7 +72,6 @@ export const systemZoomAudit =
     operationId: randomUUID(),
     before,
     after,
-    // The cron job only updates existing bookings.
     versionBefore: (current as ZoomRequest).version,
     versionAfter: next.version,
     revertible: false,
@@ -89,7 +81,6 @@ export const systemZoomAudit =
     hash: null,
   });
 
-/** Who may cancel: the requester, or whoever may approve bookings of that unit. */
 export const canCancelZoom = (
   principal: Principal,
   request: Pick<ZoomRequest, "requestedBy" | "orgUnitPath">,
@@ -97,16 +88,11 @@ export const canCancelZoom = (
   request.requestedBy === principal.userId ||
   can(principal, "zoom.approve", { orgUnitPath: request.orgUnitPath });
 
-/** Zoom page (F1): request, approve/reject, cancel, settings; rooms created after the slot is held. */
 export function createZoomActions(deps: ZoomDeps) {
   const scopeOf = async ({ id }: { id: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.zoom.get(id))?.orgUnitPath ?? [],
   });
 
-  /**
-   * After a booking is approved: create the Zoom meeting, shorten its link (silent), store both.
-   * A failure keeps the slot and records the reason; cron "zoom-rooms" tries again.
-   */
   async function ensureRoom(request: ZoomRequest, audit: ZoomAudit): Promise<ZoomRequest> {
     if (request.status !== "approved" || request.joinUrl || !deps.client) return request;
     let room: { id: string; joinUrl: string; shortUrl: string } | null = null;
@@ -126,7 +112,6 @@ export function createZoomActions(deps: ZoomDeps) {
     } catch (error) {
       roomError = String(error).slice(0, 300);
       deps.logError("zoom room failed", { requestId: request.id, error: roomError });
-      // The same failure again (cron retries) is not written again.
       if (roomError === request.roomError) return request;
     }
     return deps.zoom.write(
@@ -230,7 +215,6 @@ export function createZoomActions(deps: ZoomDeps) {
       },
     });
 
-  /** Frees the slot; the Zoom meeting is deleted afterwards (a failure is logged only). */
   const cancel = createGuardedAction({
     permission: "zoom.read",
     inSomeScope: true,
@@ -263,7 +247,6 @@ export function createZoomActions(deps: ZoomDeps) {
     },
   });
 
-  /** settings/zoom: capacity, approval, notice, duration; the Host Key is stored encrypted. */
   const saveSettings = createGuardedAction({
     permission: "zoom.settings",
     input: Settings,
@@ -299,7 +282,6 @@ export function createZoomActions(deps: ZoomDeps) {
     },
   });
 
-  /** cron "zoom-rooms" (every 10 min): approved bookings without a room, 10 per call. */
   async function retryRooms(): Promise<{ tried: number; created: number }> {
     const waiting = await deps.zoom.withoutRoom(10);
     let created = 0;
@@ -319,11 +301,6 @@ export function createZoomActions(deps: ZoomDeps) {
   };
 }
 
-/**
- * The VTT transcript of a meeting's Zoom room (F2 → F6 "Pull Zoom transcript"): the booking's
- * cloud recording files, the TRANSCRIPT one downloaded with the API token. null when the meeting
- * has no Zoom room, Zoom is not set up, or there is no transcript (yet).
- */
 export function createZoomTranscript(deps: {
   readonly booking: (id: string) => Promise<Pick<ZoomRequest, "zoomMeetingId"> | null>;
   readonly client: Pick<ZoomClient, "get" | "download"> | null;

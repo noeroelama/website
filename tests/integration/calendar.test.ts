@@ -114,11 +114,9 @@ const cal = (secret: string | null = "calendar-secret-calendar-secret-123456") =
     meetings: () =>
       Promise.resolve([
         meeting("a", "2026-11-17T03:00:00Z"),
-        // 2026-11-17 23:30 UTC is already the 18th in Jakarta (a holiday there).
         meeting("b", "2026-11-17T23:30:00Z", { room: { zoomRequestId: "z1", externalUrl: null } }),
         meeting("c", "2026-11-19T03:00:00Z", { cancelledAt: now }),
         meeting("d", "2026-11-19T03:00:00Z", { participantIds: ["budi"], orgUnitPath: ["other"] }),
-        // Same start as the pending Zoom booking z2: ordered by title.
         meeting("e", "2026-11-20T00:00:00Z", { room: { zoomRequestId: "z9", externalUrl: null } }),
       ]),
     zoom: () =>

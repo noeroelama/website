@@ -19,13 +19,10 @@ export interface FormDeps {
   >;
   readonly now: () => Date;
   readonly uuid: () => string;
-  /** Public URL token: 128 random bits, base64url. */
   readonly token: () => string;
-  /** `data.export` security event (responses are personal data when they hold names/e-mails). */
   readonly logExport: (actorId: string, details: Record<string, unknown>) => void;
 }
 
-/** Most responses one export reads. */
 export const EXPORT_LIMIT = 10_000;
 
 const SaveInput = FormInputSchema.and(
@@ -35,11 +32,6 @@ const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).stri
 
 type Action = "CREATE" | "UPDATE" | "DELETE" | "PUBLISH" | "UNPUBLISH";
 
-/**
- * Audit entry for one form change (module `forms`, resource `form`). A CREATE (revert = trash)
- * and a DELETE (revert = restore) are revertible; an edit is not (it may have created a new
- * question version), nor is publishing or closing (the link is already out).
- */
 const formAudit =
   (audit: AuditBuilder, action: Action) =>
   (
@@ -61,7 +53,6 @@ const formAudit =
       revertible: action === "CREATE" || action === "DELETE",
     });
 
-/** Forms page actions: save (settings + questions, versioned) and delete (soft). */
 export function createFormActions(deps: FormDeps) {
   const save = createGuardedAction({
     permission: "forms.edit",
@@ -73,7 +64,6 @@ export function createFormActions(deps: FormDeps) {
         settings,
         withQuestionIds(questions, deps.uuid),
         (current, next) => {
-          // A published form stays publishable (e.g. no file question for guests).
           if (current?.status === "published") assertPublishable(current, next);
         },
         (before, after, current, next) =>
@@ -105,7 +95,6 @@ export function createFormActions(deps: FormDeps) {
     },
   });
 
-  /** Publishes a public form at /f/{token}; the token is created once and kept (re-opening). */
   const publish = createGuardedAction({
     permission: "forms.publish",
     input: RefInput,
@@ -126,7 +115,6 @@ export function createFormActions(deps: FormDeps) {
     },
   });
 
-  /** Stops answers; the link then shows "closed". */
   const close = createGuardedAction({
     permission: "forms.publish",
     input: RefInput,
@@ -148,10 +136,6 @@ export function createFormActions(deps: FormDeps) {
     },
   });
 
-  /**
-   * The responses as a table (header + rows, newest first) for the CSV download. Needs
-   * `forms.export` and is logged as a `data.export` security event.
-   */
   const exportResponses = createGuardedAction({
     permission: "forms.export",
     input: z.object({ id: safeId }).strict(),

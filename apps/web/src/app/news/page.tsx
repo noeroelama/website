@@ -13,10 +13,6 @@ import { publicNews } from "@/server/news";
 
 export const metadata: Metadata = { title: "News" };
 
-// Design (user): the news list gets the Events/Gallery look — the dark filter bar with
-// date range and search, category pills with a count, 3-up cards, numbered
-// pager — but with INVERTED colours: black page, cream filter panel. Static shell
-// (title); the filtered list streams in (cached news + language cookie).
 export default function NewsPage({ searchParams }: PageProps<"/news">) {
   return (
     <main className="site-lists site-lists--news">
@@ -98,7 +94,6 @@ async function NewsList({ searchParams }: Pick<PageProps<"/news">, "searchParams
         <hr className="site-lists__bar-divider" />
         <div className="site-lists__pills">
           <span className="site-lists__pills-label">{t.news.category}:</span>
-          {/* Category pills exactly like the events/gallery bar: clicking the active pill clears it. */}
           {[null, ...NEWS_CATEGORIES].map((category) => {
             const active = (query.category ?? null) === category;
             return (

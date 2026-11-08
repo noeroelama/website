@@ -2,12 +2,10 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# Install scripts are denied by default (supply-chain hardening). Explicit decisions only:
 allowBuilds:
-  esbuild: true # native binary for tsx/tsup/vite
-  sharp: true # native image library (Next.js image optimization)
-  "@firebase/util": false # postinstall only writes a defaults file; not needed server-side
-  protobufjs: false # postinstall is a version check; not needed
+  esbuild: true
+  sharp: true
+  "@firebase/util": false
+  protobufjs: false
 
-# Refuse to install packages published less than 24h ago (mitigates hijacked releases).
 minimumReleaseAge: 1440

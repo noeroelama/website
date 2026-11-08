@@ -28,16 +28,13 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface MeetingDeps {
   readonly meetings: Pick<SqlMeetingStore, "get" | "write" | "saveCode" | "dueForReminders">;
-  /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
-  /** The account uid of an e-mail (participants are named by e-mail), null when there is none. */
   readonly findUserId: (email: string) => Promise<string | null>;
   readonly contacts: (uids: readonly string[]) => Promise<Map<string, Contact>>;
   readonly send: Messenger["send"];
   readonly adminUrl: string;
   readonly webUrl: string;
   readonly randomBytes: (n: number) => Uint8Array;
-  /** A Zoom booking (F1), to attach it as the room. */
   readonly zoomBooking: (
     id: string,
   ) => Promise<{ status: string; meetingId: string | null } | null>;
@@ -45,10 +42,6 @@ export interface MeetingDeps {
   readonly uuid: () => string;
 }
 
-/**
- * Who runs a meeting (room, attendance, cancel, minutes): its chair and secretary, or whoever may
- * edit the meetings of its unit. A seat in the meeting is not a role (like a programme's PIC).
- */
 export function canRunMeeting(
   principal: Principal,
   meeting: Pick<Meeting, "participants" | "orgUnitPath">,
@@ -60,7 +53,6 @@ export function canRunMeeting(
   );
 }
 
-/** Who may see a meeting: its participants, or readers of its unit's meetings. */
 export const canSeeMeeting = (
   principal: Principal,
   meeting: Pick<Meeting, "participantIds" | "orgUnitPath">,
@@ -73,7 +65,6 @@ const Ref = z.object({ id: safeId, version }).strict();
 const SaveMeeting = MeetingInputSchema.extend({
   id: safeId.optional(),
   version: version.nullable(),
-  /** New meetings only: the period they belong to. */
   periodId: safeId,
   participants: z
     .array(
@@ -116,7 +107,6 @@ const meetingAudit =
 const both = (id: string, en: string) => `${id}\n\n${en}`;
 const escapeHtml = (text: string) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** Meetings page (F4): schedule, room, attendance codes, cancel; reminders (cron). */
 export function createMeetingActions(deps: MeetingDeps) {
   const unitScope = async (orgUnitId: string | null): Promise<ResourceContext> => {
     if (orgUnitId === null) return { orgUnitPath: [] };
@@ -142,7 +132,6 @@ export function createMeetingActions(deps: MeetingDeps) {
     return participants;
   };
 
-  /** A change by whoever runs the meeting (chair, secretary or the unit's meetings.edit). */
   const run = (
     principal: Principal,
     id: string,
@@ -190,7 +179,6 @@ export function createMeetingActions(deps: MeetingDeps) {
             throw new RuleViolationError("The start time has passed.");
           }
           const agenda = input.agenda.map((title, i) => ({
-            // Keep the ids of unchanged items (minutes are written per agenda item).
             id: current?.agenda.find((a) => a.title === title)?.id ?? `${i}-${deps.uuid()}`,
             title,
           }));
@@ -222,7 +210,6 @@ export function createMeetingActions(deps: MeetingDeps) {
     },
   });
 
-  /** External link, an approved Zoom booking made for this meeting, or none. */
   const saveRoom = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
@@ -265,7 +252,6 @@ export function createMeetingActions(deps: MeetingDeps) {
     },
   });
 
-  /** The chair or secretary ticks someone present (paper list) or removes a wrong tick. */
   const mark = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
@@ -288,7 +274,6 @@ export function createMeetingActions(deps: MeetingDeps) {
     },
   });
 
-  /** A new attendance code for the projector screen (valid 2 minutes; the screen renews it). */
   const openCode = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
@@ -306,10 +291,6 @@ export function createMeetingActions(deps: MeetingDeps) {
     },
   });
 
-  /**
-   * cron "meeting-reminders": start reminders (last 15 minutes before) and end reminders (first
-   * hour after) to every participant, once each (key meeting:{id}:start|end:{uid}).
-   */
   async function sendReminders(): Promise<{ meetings: number; messages: number }> {
     const now = deps.now();
     let messages = 0;

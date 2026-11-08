@@ -4,7 +4,6 @@ import { AttendPage } from "./attend-page";
 export const metadata: Metadata = { title: "Presensi", robots: { index: false, follow: false } };
 export const instant = false;
 
-/** /attend: manual code entry (F4). */
 export default function Page() {
   return <AttendPage code="" />;
 }

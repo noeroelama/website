@@ -8,6 +8,5 @@ export default defineConfig({
   outDir: "dist",
   clean: true,
   sourcemap: true,
-  // Bundle workspace packages (they ship TS source); keep third-party deps external.
   noExternal: [/^@website\//],
 });

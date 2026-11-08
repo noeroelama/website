@@ -3,10 +3,6 @@
 import { useRef } from "react";
 import { Icon } from "./icon";
 
-/**
- * Presentational drop zone: pick or drag ONE file. It does not check or upload anything —
- * pair it with `useImageUpload` (src/components/image-upload.ts) or another handler.
- */
 export function DropZone({
   label,
   hint,

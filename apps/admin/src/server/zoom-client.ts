@@ -4,7 +4,6 @@ export interface ZoomCredentials {
   readonly accountId: string;
   readonly clientId: string;
   readonly clientSecret: string;
-  /** The licensed user the meetings are created for (e-mail or id). */
   readonly hostUser: string;
 }
 
@@ -17,7 +16,6 @@ export interface ZoomMeetingInput {
   readonly joinBeforeHostMinutes: number;
 }
 
-/** A Zoom API failure: HTTP status and Zoom's own message (from JSON or XML bodies). */
 export class ZoomApiError extends Error {
   override readonly name = "ZoomApiError";
   readonly status: number;
@@ -27,7 +25,6 @@ export class ZoomApiError extends Error {
   }
 }
 
-/** Zoom answers errors as JSON `{ code, message }` or, on some gateways, XML `<message>…`. */
 export function zoomErrorMessage(body: string): string {
   try {
     const json = JSON.parse(body) as { message?: unknown };
@@ -39,11 +36,6 @@ export function zoomErrorMessage(body: string): string {
   return body.slice(0, 200) || "no message";
 }
 
-/**
- * Zoom Server-to-Server OAuth client (F1, F2). The access token is cached in this process until a
- * minute before it expires (Passenger may run several processes; each keeps its own, which is
- * fine). Every call has a 15 s timeout.
- */
 export function createZoomClient(
   credentials: ZoomCredentials,
   fetchImpl: typeof fetch,
@@ -84,7 +76,6 @@ export function createZoomClient(
   }
 
   return {
-    /** A scheduled meeting on the host's licence. */
     async createMeeting(input: ZoomMeetingInput): Promise<{ id: string; joinUrl: string }> {
       const response = await api(
         `/users/${encodeURIComponent(credentials.hostUser)}/meetings`,
@@ -107,12 +98,10 @@ export function createZoomClient(
       return { id: String(body.id), joinUrl: body.join_url };
     },
 
-    /** Partial update of a meeting (used to close it after it ends, F2). */
     async updateMeeting(id: string, patch: Record<string, unknown>): Promise<void> {
       await api(`/meetings/${encodeURIComponent(id)}`, "PATCH", patch);
     },
 
-    /** Deletes a meeting; a meeting Zoom no longer knows (404) counts as deleted. */
     async deleteMeeting(id: string): Promise<void> {
       try {
         await api(`/meetings/${encodeURIComponent(id)}`, "DELETE");
@@ -121,12 +110,10 @@ export function createZoomClient(
       }
     },
 
-    /** Raw GET for the recording and transcript calls of steps 7.7 and 7.8. */
     async get<T>(path: string): Promise<T> {
       return (await (await api(path, "GET")).json()) as T;
     },
 
-    /** A download URL with the access token (recording files); `range` = inclusive bytes. */
     async download(url: string, range?: { start: number; end: number }): Promise<Response> {
       return send(url, {
         method: "GET",
@@ -137,7 +124,6 @@ export function createZoomClient(
       });
     },
 
-    /** Moves one session's recording to the Zoom trash (F3 auto-delete). */
     async trashRecording(uuidPath: string): Promise<void> {
       await api(`/meetings/${uuidPath}/recordings?action=trash`, "DELETE");
     },

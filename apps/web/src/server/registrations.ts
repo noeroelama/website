@@ -12,11 +12,8 @@ export interface RegistrationDeps {
     userId: string,
     now: Date,
   ) => Promise<{ status: RegistrationStatus; created: boolean }>;
-  /** reCAPTCHA v3, action "event_register". */
   readonly captcha: (token: string) => Promise<boolean>;
-  /** Messenger send; called after the registration transaction committed. */
   readonly send: (message: Message, key: string) => Promise<unknown>;
-  /** Member-only: a complete profile (isProfileComplete) is required to register (B3). */
   readonly profileComplete: (userId: string) => Promise<boolean>;
   readonly now: () => Date;
 }
@@ -31,11 +28,6 @@ const Input = z
 
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/**
- * Internal event registration (flowchart: EVENT DETAIL → Register). Guests must sign in first;
- * the captcha is checked before anything is written; one registration per member and event; the
- * confirmation e-mail goes out once (key event:{id}:registered:{uid}).
- */
 export function createEventRegistration(deps: RegistrationDeps) {
   return async (
     user: { uid: string; email: string | null } | null,

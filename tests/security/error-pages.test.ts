@@ -7,7 +7,6 @@ import webConfig from "../../apps/web/next.config";
 
 const ROOT = join(import.meta.dirname, "../..");
 const CONFIGS = { web: webConfig, admin: adminConfig, shop: shopConfig };
-// Next.js file conventions: 404, 403, 401, error in a page, error in the root layout.
 const ERROR_FILES = ["not-found", "forbidden", "unauthorized", "error", "global-error"];
 const pages = Object.keys(CONFIGS).flatMap((app) =>
   ERROR_FILES.map((file) => `apps/${app}/src/app/${file}.tsx`),

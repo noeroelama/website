@@ -50,7 +50,6 @@ describe("Role Manager people rows", () => {
       createdAt: "2026-10-01T00:00:00.000Z",
       lastSignInAt: null,
       roleId: "bph",
-      // Chapter / unit / period roles and appointment roles are changed where they come from.
       orgRoleIds: ["it", "head"],
     });
     expect(personRow(account({ name: null })).name).toBe("ana@example.org");
@@ -93,7 +92,6 @@ describe("Role Manager people rows", () => {
       { id: "it", name: "IT" },
       { id: "head", name: "Head" },
     ];
-    // Roles nobody holds as website role get no tab; the default role never does.
     expect(roleTabs(rows, roles)).toEqual([
       { key: "all", label: "All", count: 3 },
       { key: "bph", label: "BPH", count: 2 },
@@ -120,7 +118,6 @@ describe("Role Manager roles", () => {
   it("picks the text colour with the higher contrast on the badge colour (WCAG)", () => {
     expect(roleInk("#F5A623")).toBe("dark");
     expect(roleInk("#D4B25A")).toBe("dark");
-    // 5.3:1 with dark text, 4.0:1 with white.
     expect(roleInk("#D9534F")).toBe("dark");
     expect(roleInk("#123D5E")).toBe("light");
     for (const color of ROLE_COLORS) expect(["dark", "light"]).toContain(roleInk(color));
@@ -154,7 +151,6 @@ describe("Role Manager roles", () => {
       value: "shop_orders.refund",
       label: "Shop Orders Refund",
     });
-    // Every permission is in exactly one group.
     expect(groups.flatMap((g) => g.permissions.map((p) => p.value))).toEqual(
       expect.arrayContaining([...PAGE_PERMISSIONS]),
     );
@@ -185,9 +181,7 @@ describe("Role Manager roles", () => {
     const pages = (query: string) =>
       filterPermissionGroups(groups, query).map((g) => [g.page, g.permissions.length]);
     expect(filterPermissionGroups(groups, "  ")).toEqual(groups);
-    // "audit log" matches the page label: Read, Edit and Revert stay.
     expect(pages("AUDIT LOG")).toEqual([["audit", 3]]);
-    // "revert" matches one permission only.
     expect(pages("revert")).toEqual([["audit", 1]]);
     expect(pages("shop_orders.refund")).toEqual([["shop_orders", 1]]);
     expect(pages("nothing like this")).toEqual([]);

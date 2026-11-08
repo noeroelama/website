@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Dictionary } from "@/i18n/dictionaries";
 
-/** Upload of the signed integrity pact (PDF, private); the application goes to pact review. */
 export function PactUpload(props: { recruitmentId: string; labels: Dictionary["recruitment"] }) {
   const router = useRouter();
   const t = props.labels;

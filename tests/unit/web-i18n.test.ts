@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DICTIONARIES, languageFrom, LANGUAGES } from "../../apps/web/src/i18n/dictionaries";
 
-/** Every leaf path of a nested dictionary, e.g. "nav.home". */
 function leaves(value: unknown, prefix = ""): string[] {
   if (typeof value === "string") return [prefix];
   if (Array.isArray(value)) return value.flatMap((item, i) => leaves(item, `${prefix}[${i}]`));

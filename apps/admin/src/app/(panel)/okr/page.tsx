@@ -6,10 +6,8 @@ import { OkrPage } from "@/components/okr-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** OKR (E1) of one period (`?period=`, default the active one). */
 export default async function AdminOkrPage({
   searchParams,
 }: {

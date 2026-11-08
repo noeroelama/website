@@ -3,7 +3,6 @@ import { embedTimes, INK, MM, MUTED, plain, printable, wrapRuns, type Fonts } fr
 import { drawTurned, tryEmbed, type LetterDesk, type PdfImage } from "./letter";
 import { qrPng } from "./qr";
 
-/** A4 landscape. */
 const PAGE = { width: 297 * MM, height: 210 * MM };
 const RED = rgb(0.54, 0.106, 0.106);
 const GOLD = rgb(0.79, 0.635, 0.153);
@@ -12,15 +11,11 @@ export interface CertificatePdfInput {
   readonly parentName: string;
   readonly mainName: string;
   readonly emblem: PdfImage | null;
-  /** The sheet's number; null before the batch is issued. */
   readonly number: string | null;
   readonly holderName: string;
   readonly note: string | null;
-  /** Plain lines under the name ("atas partisipasinya dalam kegiatan ..."). */
   readonly citation: string;
-  /** "Tokyo, 2 November 2026" */
   readonly placeAndDate: string | null;
-  /** One or two desks, printed right (Coordinator left of the Secretary-General). */
   readonly desks: readonly LetterDesk[];
   readonly verification: {
     readonly url: string;
@@ -30,7 +25,6 @@ export interface CertificatePdfInput {
   readonly cancelled: boolean;
 }
 
-/** Centred, wrapped lines; returns the y under the last one. */
 function centred(
   page: PDFPage,
   fonts: Fonts,
@@ -57,11 +51,6 @@ function centred(
   return line;
 }
 
-/**
- * One certificate sheet (D5, PPIDK `sertifikat/pdf.blade.php`): landscape, double frame, no
- * letterhead band (it would read as a letter) — the emblem and the names only. Rendered on
- * demand, never stored: the batch frozen at issue makes it the same years later.
- */
 export async function renderCertificatePdf(input: CertificatePdfInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Sertifikat ${input.holderName}`);
@@ -105,7 +94,6 @@ export async function renderCertificatePdf(input: CertificatePdfInput): Promise<
   if (input.note) y = centred(page, fonts, input.note, y - 1 * MM, { size: 10, color: RED });
   centred(page, fonts, input.citation, y - 2 * MM, { size: 11, width: PAGE.width - 80 * MM });
 
-  // Footer: QR and code left; place and date, then the desks, right.
   const bottom = 22 * MM;
   const write = (text: string, x: number, at: number, size: number, font = fonts.regular) =>
     page.drawText(printable(text), {
@@ -131,14 +119,12 @@ export async function renderCertificatePdf(input: CertificatePdfInput): Promise<
       write(input.placeAndDate, x, top + 3 * MM, 9.5);
     }
     write(desk.label, x, top - 1 * MM, 8.5);
-    // The signer's own image only once that desk signed; a broken one prints nothing.
     const image =
       desk.signedOn && desk.signature ? await tryEmbed(doc, desk.signature.image) : null;
     if (image && desk.signature) {
       drawTurned(page, image, {
         x,
         top: top - 3 * MM,
-        // At most 20 mm tall: the name is printed under it.
         width: Math.min(desk.signature.widthMm * MM, (20 * MM * image.width) / image.height),
         max: column - 4 * MM,
         rotation: desk.signature.rotation,

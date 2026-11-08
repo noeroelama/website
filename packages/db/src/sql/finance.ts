@@ -64,7 +64,6 @@ function toFinanceRequest(id: string, data: Record<string, unknown>): FinanceReq
   };
 }
 
-/** Audit snapshot: the request and its desks (files by name only). */
 export function financeSnapshot(r: FinanceFields): Snapshot {
   return {
     category: r.category,
@@ -120,7 +119,6 @@ const toCashEntry = (id: string, data: Record<string, unknown>): CashEntry => ({
   createdAt: toDate(data["createdAt"]) as Date,
 });
 
-/** Audit snapshot of a cash book line (its proof by name only). */
 export const cashEntrySnapshot = (e: CashEntry): Snapshot => ({
   periodId: e.periodId,
   orgUnitId: e.orgUnitId,
@@ -135,7 +133,6 @@ export const cashEntrySnapshot = (e: CashEntry): Snapshot => ({
   proof: e.proof?.name ?? null,
 });
 
-/** Everything stored for a cash book line (the id is the document id). */
 const storedEntry = (e: CashEntry) => ({
   ...cashEntrySnapshot(e),
   proof: e.proof,
@@ -143,7 +140,6 @@ const storedEntry = (e: CashEntry) => ({
   createdAt: e.createdAt,
 });
 
-/** One audit entry for a new cash book line (lines are never edited or deleted here). */
 export type CashAudit = (after: Snapshot, entry: CashEntry) => AuditEvent;
 
 export type FinanceAudit = (
@@ -155,19 +151,12 @@ export type FinanceAudit = (
 
 export interface FinanceListQuery {
   readonly periodId: string;
-  /** From `scopedOrgUnitIds`: "all", or the units (with everything below them) the viewer covers. */
   readonly orgUnitIds: "all" | readonly string[];
   readonly limit: number;
 }
 
-/** array-contains-any takes at most 30 values. */
 const MAX_SCOPE_UNITS = 30;
 
-/**
- * `financeRequests/{id}` (I1): drafts and the desk workflow, each change one versioned write
- * with its audit entry (slugged-store transaction, no slug). `cashEntries/{id}` (I2): the cash
- * book; a paid request writes its line (id = request id) in the payment's transaction.
- */
 export function createSqlFinanceStore(db: Database) {
   const cash = db.collection("cashEntries");
   const audit = createSqlAuditWriter(db);
@@ -179,7 +168,6 @@ export function createSqlFinanceStore(db: Database) {
     fixed: stored,
   });
 
-  /** The requesting unit, which must belong to the request's period. */
   const readUnit = async (tx: Transaction, unitId: string, periodId: string) => {
     const snapshot = await tx.get(db.collection("orgUnits").doc(safeId.parse(unitId)));
     const unit = snapshot.data() as Omit<OrgUnit, "id"> | undefined;
@@ -207,7 +195,6 @@ export function createSqlFinanceStore(db: Database) {
   return {
     get: store.get,
 
-    /** Newest first; a viewer with unit scopes sees only their units' requests. */
     async list(query: FinanceListQuery): Promise<FinanceRequest[]> {
       if (query.orgUnitIds !== "all" && query.orgUnitIds.length === 0) return [];
       let q: Query = store.docs
@@ -224,7 +211,6 @@ export function createSqlFinanceStore(db: Database) {
       return snapshot.docs.map((d) => store.read(d.id, d.data()));
     },
 
-    /** A new draft in the active period. */
     create(input: FinanceRequestInput, createdBy: string, auditFor: FinanceAudit, now: Date) {
       return store.write(
         null,
@@ -257,7 +243,6 @@ export function createSqlFinanceStore(db: Database) {
       );
     },
 
-    /** Edits the request fields (draft or revision only). */
     update(
       id: string,
       version: number,
@@ -278,18 +263,12 @@ export function createSqlFinanceStore(db: Database) {
       );
     },
 
-    /** Drafts and returned requests, softly. */
     remove(id: string, version: number, auditFor: FinanceAudit, now: Date) {
       return change(id, version, (r) => ({ ...editable(r), deletedAt: now }), auditFor, now);
     },
 
-    /** A workflow step decided by a pure domain function. */
     change,
 
-    /**
-     * authorized → paid AND its cash book line, in ONE transaction: a "paid" status without the
-     * line (or a line twice) would make the report lie. Budget requests write no line.
-     */
     pay(
       id: string,
       version: number,
@@ -329,7 +308,6 @@ export function createSqlFinanceStore(db: Database) {
       });
     },
 
-    /** A manual line (opening balance, dues, donations, interest ...) in the active period. */
     addEntry(input: CashEntryInput, createdBy: string, cashAuditFor: CashAudit, now: Date) {
       return db.runTransaction(async (tx) => {
         const active = await tx.get(db.collection("settings").doc("activePeriod"));
@@ -353,11 +331,6 @@ export function createSqlFinanceStore(db: Database) {
       });
     },
 
-    /**
-     * The period's whole cash book (the report is recomputed from it).
-     * shortcut: reads every line of the period (hundreds per board year); page by date if a
-     * period ever holds tens of thousands.
-     */
     async listEntries(periodId: string): Promise<CashEntry[]> {
       const snapshot = await cash.where("periodId", "==", periodId).get();
       return snapshot.docs.map((d) => toCashEntry(d.id, d.data()));

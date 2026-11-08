@@ -1,11 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDatabase, type Database } from "@website/db/sql";
 
-/**
- * Contract of the MySQL document store against a real MySQL 8 (CI starts one; locally set
- * TEST_DATABASE_URL=mysql://user:pass@127.0.0.1:3306/ppidk_test to run it). The repositories are
- * tested with tests/support/fake-db.ts, so the store must behave like that fake.
- */
 const url = process.env["TEST_DATABASE_URL"];
 
 describe.skipIf(!url)("MySQL document store", () => {
@@ -14,7 +9,6 @@ describe.skipIf(!url)("MySQL document store", () => {
 
   beforeAll(async () => {
     db = getDatabase({ url: url as string, connectionLimit: 4 });
-    // Every test starts from empty tables.
     const names = ["users", "events", "rateLimits", "eventCounters"];
     const found = await Promise.all(names.map((name) => db.collection(name).get()));
     const batch = db.batch();
@@ -43,7 +37,6 @@ describe.skipIf(!url)("MySQL document store", () => {
     expect(data["active"]).toBe(true);
     expect((await db.collection("users").doc("missing").get()).exists).toBe(false);
 
-    // A stored timestamp written back stays a date.
     await ref.set({ ...data, email: "b@x.org" });
     const again = (await ref.get()).data() as Record<string, unknown>;
     expect((again["createdAt"] as { toDate(): Date }).toDate()).toEqual(at);
@@ -82,7 +75,6 @@ describe.skipIf(!url)("MySQL document store", () => {
     expect(await ids(events.where("startsAt", "<=", at))).toEqual(["e1", "e2"]);
     expect(await ids(events.where("startsAt", "==", at))).toEqual(["e1"]);
     expect(await ids(events.where("startsAt", "==", null))).toEqual(["e3"]);
-    // orderBy skips documents without the field (e4), like Firestore.
     expect(await ids(events.orderBy("n", "desc"))).toEqual(["e2", "e3", "e1"]);
     expect(await ids(events.orderBy("n").startAfter(1).limit(1))).toEqual(["e3"]);
     expect(await ids(events.orderBy("status").orderBy("n", "desc").startAfter("draft", 2))).toEqual(
@@ -122,7 +114,6 @@ describe.skipIf(!url)("MySQL document store", () => {
       }),
     ).rejects.toThrow("reads before all writes");
 
-    // A failed create rolls back the writes before it.
     await db.collection("eventCounters").doc("taken").set({ x: 1 });
     await expect(
       db.runTransaction((tx) => {

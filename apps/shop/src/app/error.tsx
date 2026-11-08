@@ -1,11 +1,7 @@
-"use client"; // Error boundaries must be Client Components.
+"use client";
 
 import { ErrorPage } from "@website/ui";
 
-/**
- * Shown when a page throws. Next.js logs the error in the server terminal; the browser gets only
- * generic copy and the digest that identifies that log line (docs: packages/ui/docs/error-pages.md).
- */
 export default function PageError({
   error,
   retry,

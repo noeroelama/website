@@ -165,7 +165,6 @@ describe("selection queue model", () => {
       ],
       revisions: [{ round: 1, request: "More", resubmittedAt: null }],
     });
-    // Without a user record the uid stands in; drafts have no submission time.
     expect(
       toApplicationItem({ ...application, offer: null, submittedAt: null }, r, [], null, [], at),
     ).toMatchObject({
@@ -175,7 +174,6 @@ describe("selection queue model", () => {
       submittedAt: null,
       personality: null,
     });
-    // The committee sees the personality result (C5) with its five axes.
     const axis = (letter: string, pct: number) => ({ letter, pct, lean: 0 });
     expect(
       toApplicationItem(application, r, [], null, [], at, {

@@ -45,25 +45,14 @@ import {
 import { Select } from "@/components/ui/select";
 import { downloadCsv } from "@/components/csv";
 
-/* ==================================================================
-   Event — list (tabs, search, filters, bulk actions) + create/edit form.
-   Matches the Figma "EVENT ADMIN" screens (dark page, like every admin
-   page: globals.css "Dark admin pages"); colours come from the shared
-   design tokens, no hex values outside globals.css.
-   ================================================================== */
-
-/** Public event path on the web app (apps/web /events/[slug]). */
 const EVENT_PATH = "/events/";
 
-/** The browser's IANA time zone: the default for a new event. */
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-/** Small monogram chip standing in for the Figma row avatar. */
 function typeInitials(type: string): string {
   return type.trim().slice(0, 2).toUpperCase() || "EV";
 }
 
-/** Sortable event-table columns (Location, checkbox and actions are never sorted). */
 type SortKey = "title" | "date" | "status" | "registered";
 
 const sortValue = (e: EventItem, key: SortKey): string =>
@@ -75,7 +64,6 @@ const sortValue = (e: EventItem, key: SortKey): string =>
         ? e.status
         : e.modifiedAt;
 
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (e: EventItem, key: SortKey): string =>
   key === "title"
     ? e.title
@@ -94,21 +82,18 @@ const TABS = [
   { key: "drafts", label: "Drafts" },
 ] as const;
 
-/** One guest/speaker row: optional photo, name, and a short description. */
 interface GuestSpeakerItem {
   photo: EventImage | null;
   name: string;
   description: string;
 }
 
-/** One rundown row: single time plus a title and a description. */
 interface RundownItem {
   time: string;
   title: string;
   description: string;
 }
 
-/** One sponsor row: optional photo and a short tool-tip/tagline. */
 interface SponsorItem {
   photo: EventImage | null;
   tip: string;
@@ -117,10 +102,8 @@ interface SponsorItem {
 interface EventForm {
   title: string;
   type: EventType;
-  /** datetime-local values on the clock of `timezone`. */
   start: string;
   deadline: string;
-  /** Not shown in the form: the event's own zone, or the editor's browser zone for a new event. */
   timezone: string;
   location: string;
   url: string;
@@ -148,26 +131,19 @@ const EMPTY_FORM: EventForm = {
   sponsors: [],
 };
 
-/** Pending delete action shown in the dark confirm modal (one event or many). */
 type DeleteConfirm = { kind: "one"; event: EventItem } | { kind: "many"; count: number };
 
 interface EventsListProps {
-  /** Rows from the server (src/app/(panel)/events/page.tsx); refreshed after every change. */
   initial: EventItem[];
   canEdit: boolean;
-  /** WEB_URL, for "Copy Link". */
   publicBase: string;
 }
 
 export function EventsPage(props: EventsListProps) {
   const pathname = usePathname();
-  // key={pathname} remounts the page when the events route is (re)entered, so
-  // search/tabs/filters reset to their initial empty state on every visit
-  // (same pattern as Articles & Gallery).
   return <EventsList key={pathname} {...props} />;
 }
 
-/** Form values for an existing event (times on the event's own clock). */
 function formFrom(ev: EventItem): EventForm {
   return {
     title: ev.title,
@@ -188,32 +164,25 @@ function formFrom(ev: EventItem): EventForm {
   };
 }
 
-/** Events list + create/edit screen (all state lives here; remounted by
- *  EventsPage on navigation so it starts clean). */
 function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   const toast = useToastMessage();
   const router = useRouter();
   const bannerUpload = useImageUpload("banner");
-  /* Speaker photos and sponsor logos: the small "speaker" preset (1024 px, public). */
   const photoUpload = useImageUpload("speaker");
-  /* Server validation messages per field (GuardedResult `fields`). */
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
-  /* ---- list state (sorting, paging and selection: useListTable) ---- */
   const [today] = useState(() => new Date().toISOString());
   const [tab, setTab] = useState<EventTab>("all");
-  const [query, setQuery] = useState(""); // applied on Search / Enter
-  const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
+  const [query, setQuery] = useState("");
+  const [searchKey, setSearchKey] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
-  /* ---- form view state ---- */
   const [view, setView] = useState<"list" | "form">("list");
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events.filter(
@@ -234,7 +203,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
   const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
-  /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
   type Failure = Parameters<typeof actionMessage>[0];
   const fail = (result: Failure) => {
     setFieldErrors(result.fields ?? {});
@@ -269,7 +237,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     setDeleteConfirm({ kind: "many", count: selected.size });
   };
 
-  /* Deletes are confirmed in the popup first; the delete is soft (registrations are kept). */
   const doDelete = () => {
     if (!deleteConfirm) return;
     const ids = deleteConfirm.kind === "one" ? [deleteConfirm.event.id] : Array.from(selected);
@@ -286,7 +253,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     toast.show(`Link for "${e.title}" copied`);
   };
 
-  /* ---- form open / save ---- */
   const toForm = (mode: "create" | "edit", ev?: EventItem) => {
     setFormMode(mode);
     setEditingId(ev?.id ?? null);
@@ -295,7 +261,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     setView("form");
   };
 
-  /* Save draft / Publish now. Times are read on the event's clock (its time zone). */
   const save = async (publish: boolean) => {
     const current = events.find((e) => e.id === editingId);
     setBusy(true);
@@ -339,7 +304,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     return image ? publicImage(image) : null;
   };
 
-  /* ---- editable lists (Guest/Speakers detail, Rundown detail, Sponsors) ---- */
   const updateGuest = (idx: number, patch: Partial<GuestSpeakerItem>) => {
     setForm((f) => ({
       ...f,
@@ -383,7 +347,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     setForm((f) => ({ ...f, [key]: f[key].filter((_, i) => i !== idx) }));
   };
 
-  /** Move an item within one editable list (drag & drop / up / down). */
   const reorder = <K extends "guests" | "rundown" | "sponsors">(
     key: K,
     from: number,
@@ -392,14 +355,11 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     setForm((f) => ({ ...f, [key]: moveItem<EventForm[K][number]>(f[key], from, to) }));
   };
 
-  /* Red field + message for a server validation error (GuardedResult `fields`). */
   const errorProps = (field: string) =>
     fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `event-${field}-error` } : {};
   const errorFor = (field: string) => (
     <FieldError id={`event-${field}-error`} message={fieldErrors[field]} />
   );
-
-  /* ---- table columns ---- */
 
   const columns: Column<EventItem>[] = [
     {
@@ -520,7 +480,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
           <RowMenu>
             {canEdit ? (
               <>
-                {/* Both always listed (as in the design); the current state is disabled. */}
                 <MenuItem
                   icon="globeSimple"
                   className="admin-row-menu__item--wide"
@@ -537,7 +496,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                 >
                   Make Private
                 </MenuItem>
-                {/* The phone card has one Visibility button instead of the two above. */}
                 <MenuItem
                   icon="lock"
                   className="admin-row-menu__item--phone"
@@ -575,7 +533,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
     table.clearSelection();
   };
 
-  /* A changed filter starts again at page 1. */
   const filterBy =
     <T,>(set: (value: T) => void) =>
     (value: T) => {
@@ -583,11 +540,9 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
       table.setPage(1);
     };
 
-  /* "Delete 10 Events" / "Delete Event": the delete popup's title (+ "?") and its button. */
   const deleteCount = deleteConfirm?.kind === "many" ? deleteConfirm.count : 1;
   const deleteLabel = deleteCount === 1 ? "Delete Event" : `Delete ${deleteCount} Events`;
 
-  /* Gold "In 44 days" under the Event Date (nothing once the event has started). */
   const countdown = (startsAt: string) => {
     const text = countdownLabel(startsAt, Date.parse(today));
     return text ? <span className="admin-event-date__count">{text}</span> : null;
@@ -616,12 +571,8 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
           </div>
         </div>
 
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
-            {/* Title */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="event-title">
                 Title *
@@ -639,7 +590,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               {errorFor("title")}
             </div>
 
-            {/* Event Type */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="event-type">
                 Event Type *
@@ -660,7 +610,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               <FieldError id="event-type-error" message={fieldErrors["type"]} />
             </div>
 
-            {/* Event Date & Time + Registration Deadline */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="event-date">
                 Event Date &amp; Time *
@@ -692,7 +641,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               {errorFor("registrationClosesAt")}
             </div>
 
-            {/* Location + URL */}
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="event-location">
                 Location *
@@ -735,7 +683,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               {errorFor("slug")}
             </div>
 
-            {/* Description */}
             <div className="admin-field admin-form-grid__full">
               <label className="admin-field__label" htmlFor="event-desc">
                 Description *
@@ -753,7 +700,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               {errorFor("description")}
             </div>
 
-            {/* Registration Link */}
             <div className="admin-field admin-form-grid__full">
               <label className="admin-field__label" htmlFor="event-reg-link">
                 Registration Link
@@ -770,7 +716,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
               {errorFor("registrationUrl")}
             </div>
 
-            {/* Banner */}
             <div className="admin-field admin-form-grid__full">
               <span className="admin-field__label">Event Banner *</span>
               <div
@@ -841,7 +786,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
             </div>
           </div>
 
-          {/* ---- editable sections ---- */}
           <EditableList
             title="Guest/Speakers"
             emptyHint="No guest/speakers added"
@@ -988,8 +932,6 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
             }}
           />
 
-          {/* footer actions — spans the full grid (the line above reaches the
-                card edges) and pushes Save draft/Publish to the far right. */}
           <FieldError id="event-photo-error" message={photoUpload.error} />
           {["timezone", "schedule", "speakers", "sponsors"].map((field) => (
             <FieldError key={field} id={`event-${field}-error`} message={fieldErrors[field]} />

@@ -5,14 +5,11 @@ import { DEFAULT_ROLE_ID, inviteRow, personRow } from "@/components/role-manager
 import { requireAdminViewer, signInAgainUrl } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Role Manager: everyone who holds a role (plus pending invites), by role. */
 export default async function RoleManagerPage() {
   const viewer = await requireAdminViewer("/roles", "users.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  // Chapter-scoped staff see only their chapters' accounts (filtered in the query, A2).
   const chapters = scopedChapterIds(viewer.principal, "users.read");
   if (chapters !== "all" && chapters.length === 0) return <AccessMessage reason="no-access" />;
 
@@ -20,7 +17,6 @@ export default async function RoleManagerPage() {
   const roleIds = roles.map((r) => r.id).filter((id) => id !== DEFAULT_ROLE_ID);
   const [holders, invites] = await Promise.all([
     adminReads.listRoleHolders(roleIds, chapters === "all" ? undefined : chapters),
-    // Invites belong to no chapter yet: only staff with users.read everywhere see them.
     chapters === "all" ? adminReads.listInvites() : [],
   ]);
 

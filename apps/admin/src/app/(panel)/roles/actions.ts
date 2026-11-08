@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { accountActions, exportLog, roleActions } from "@/server/wiring";
 
-// Thin server-action wrappers for Role Manager: every rule lives in src/server/accounts.ts
-// (people) and src/server/roles.ts (roles), both built with createGuardedAction.
 const done = <T extends { ok: boolean }>(result: T) => {
   if (result.ok) revalidatePath("/roles", "layout");
   return result;
@@ -31,12 +29,10 @@ export async function setStatusAction(input: unknown) {
   return done(await accountActions().setStatus(getPrincipal, getAuditContext)(input));
 }
 
-/** Read-only: Add New People suggestions (users.edit), asked while typing. */
 export async function findPeopleAction(input: unknown) {
   return accountActions().findPeople(getPrincipal, getAuditContext)(input);
 }
 
-/** Read-only: the person popup's sign-in methods (users.read for the account's chapter). */
 export async function personDetailsAction(input: unknown) {
   return accountActions().personDetails(getPrincipal, getAuditContext)(input);
 }
@@ -49,7 +45,6 @@ export async function deleteRoleAction(input: unknown) {
   return done(await roleActions().deleteRole(getPrincipal, getAuditContext)(input));
 }
 
-/** Export CSV of personal data: logged as a data.export security event (M8). */
 export async function logPeopleExportAction(input: unknown) {
   return exportLog().people(getPrincipal, getAuditContext)(input);
 }

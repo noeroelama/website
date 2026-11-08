@@ -9,8 +9,6 @@ export const metadata: Metadata = { title: "Sign in", robots: { index: false } }
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-// The form is in the prerendered shell; the optional `?next=` return target (e.g. the admin app,
-// which shares the session cookie) is read at request time and validated on the server.
 export default function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <AppShell title="Sign in">

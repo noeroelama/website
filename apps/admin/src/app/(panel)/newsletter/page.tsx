@@ -8,10 +8,8 @@ import { requireAdminViewer } from "@/server/context";
 import { getAppUrls } from "@/server/env";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Newest newsletter audit entries read for the campaign "author" (one query). */
 const AUTHOR_HISTORY = 500;
 
 export default async function NewsletterRoute() {
@@ -24,7 +22,6 @@ export default async function NewsletterRoute() {
     adminReads.listChapters(),
     adminReads.listAudit({ module: "newsletter", limit: AUTHOR_HISTORY }),
   ]);
-  // Author = whoever made the campaign's newest change; names from users/{uid} in one batched read.
   const editors = lastEditors(history.items, "campaign");
   const users = await adminReads.getUsers([...new Set([...editors.values()].map((a) => a.id))]);
   const authors = authorsById(editors, users);
@@ -33,7 +30,6 @@ export default async function NewsletterRoute() {
   return (
     <NewsletterPage
       campaigns={campaigns.map((c) => toCampaignItem(c, authors.get(c.id) ?? null))}
-      // Newsletter pages hold personal data: addresses and names are hidden without newsletter.edit.
       subscribers={subscribers.map((s) =>
         toSubscriberItem(s, canEdit, (s.chapterId && chapterName.get(s.chapterId)) || null),
       )}

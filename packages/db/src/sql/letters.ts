@@ -71,10 +71,6 @@ export function letterTypeSnapshot(t: LetterTypeFields): Snapshot {
   };
 }
 
-/**
- * `letterTypes/{id}` (master data across periods) with the code unique case-insensitively
- * (`letterTypeCodes/{code}`). Types are deactivated, never deleted: issued letters point to them.
- */
 export function createSqlLetterTypeStore(db: Database) {
   const store = createSluggedStore<LetterType>(db, {
     collection: "letterTypes",
@@ -114,7 +110,6 @@ export function createSqlLetterTypeStore(db: Database) {
 
 export type SqlLetterTypeStore = ReturnType<typeof createSqlLetterTypeStore>;
 
-/** `settings/letters`: the letterhead (+ version), edited on the Letter types page. */
 export function createSqlLetterSettingsStore(db: Database) {
   const ref = db.collection("settings").doc("letters");
   const audit = createSqlAuditWriter(db);
@@ -160,7 +155,6 @@ const uploaded = (value: unknown): UploadedLetterFile | null => {
   return { ...file, uploadedAt: toDate(file.uploadedAt) as Date };
 };
 
-/** A `certificates/{id}` document (a sheet of a batch, D5). */
 export const toCertificate = (id: string, data: Record<string, unknown>): Certificate => ({
   id,
   batchId: data["batchId"] as string,
@@ -173,7 +167,6 @@ export const toCertificate = (id: string, data: Record<string, unknown>): Certif
   createdAt: toDate(data["createdAt"]) as Date,
 });
 
-/** A `letters/{id}` document as a Letter (also read by the certificate store). */
 export function toLetter(id: string, data: Record<string, unknown>): Letter {
   return {
     id,
@@ -218,7 +211,6 @@ export function toLetter(id: string, data: Record<string, unknown>): Letter {
   };
 }
 
-/** Audit snapshot: the workflow fields (the body only as its length: it can be long). */
 export function letterSnapshot(l: LetterFields): Snapshot {
   return {
     typeId: l.typeId,
@@ -237,13 +229,11 @@ export function letterSnapshot(l: LetterFields): Snapshot {
     numberFormatted: l.numberFormatted,
     verificationCode: l.verificationCode,
     cancelReason: l.cancelReason,
-    // Upload path: which file, and whether its number was checked (a scan cannot be).
     upload: l.upload && { sha256: l.upload.sha256, numberChecked: l.upload.numberChecked },
     placement: l.placement,
   };
 }
 
-/** Everything stored for a letter (the audit snapshot is only part of it). */
 const stored = (l: LetterFields) => ({
   periodId: l.periodId,
   typeId: l.typeId,
@@ -288,27 +278,14 @@ export type LetterAudit = (
 export interface LetterListQuery {
   readonly periodId: string;
   readonly status?: LetterStatus | undefined;
-  /** From `scopedOrgUnitIds`: "all", or the units (with everything below them) the viewer covers. */
   readonly orgUnitIds: "all" | readonly string[];
   readonly cursor?: string | undefined;
   readonly limit: number;
 }
 
-/** At most 30 values in one `array-contains-any`. */
 const MAX_SCOPE_UNITS = 30;
 
-/**
- * `letters/{id}` (D1, D2): drafts and the desk workflow through the slugged-store transaction
- * (version check + audit), and `issue`, ONE transaction that numbers the letter
- * (`letterCounters/{periodId}_{typeId}`), reserves its verification code
- * (`verificationCodes/{code}`, one space shared with certificates) and freezes the content
- * digest and the signers.
- */
-export function createSqlLetterStore(
-  db: Database,
-  /** Random index 0..n-1 for verification codes (injectable for tests). */
-  random: (n: number) => number = randomInt,
-) {
+export function createSqlLetterStore(db: Database, random: (n: number) => number = randomInt) {
   const store = createSluggedStore<Letter>(db, {
     collection: "letters",
     slug: null,
@@ -325,7 +302,6 @@ export function createSqlLetterStore(
     return toLetterType(snapshot.id, snapshot.data() as Record<string, unknown>);
   };
 
-  /** The issuing unit, which must belong to the letter's period. */
   const readUnit = async (tx: Transaction, unitId: string, periodId: string) => {
     const snapshot = await tx.get(db.collection("orgUnits").doc(safeId.parse(unitId)));
     const unit = snapshot.data() as Omit<OrgUnit, "id"> | undefined;
@@ -338,7 +314,6 @@ export function createSqlLetterStore(
   return {
     get: store.get,
 
-    /** Newest first; a viewer with unit scopes sees only their units' letters. */
     async list(query: LetterListQuery): Promise<{ items: Letter[]; nextCursor: string | null }> {
       if (query.orgUnitIds !== "all" && query.orgUnitIds.length === 0) {
         return { items: [], nextCursor: null };
@@ -366,7 +341,6 @@ export function createSqlLetterStore(
       };
     },
 
-    /** New draft in the active period: typed here (editor) or the author's own PDF (upload). */
     create(
       input: LetterInput,
       createdBy: string,
@@ -418,7 +392,6 @@ export function createSqlLetterStore(
       );
     },
 
-    /** Edits the draft fields (draft or review only). */
     update(
       id: string,
       version: number,
@@ -447,7 +420,6 @@ export function createSqlLetterStore(
       );
     },
 
-    /** A workflow step decided by a pure domain function (submit, pass, return, sign, cancel). */
     transition(
       id: string,
       version: number,
@@ -467,7 +439,6 @@ export function createSqlLetterStore(
       );
     },
 
-    /** Drafts only, softly. */
     remove(id: string, version: number, auditFor: LetterAudit, now: Date): Promise<Letter> {
       return store.write(
         id,
@@ -483,15 +454,9 @@ export function createSqlLetterStore(
       );
     },
 
-    /**
-     * approved → issued (editor) or awaiting_file (upload, "Take number": the author then types
-     * the number into the document): number, verification code, frozen signers and digest, all
-     * in ONE transaction (a failure leaves no number used and no audit entry).
-     */
     issue(
       id: string,
       version: number,
-      /** `settings/letters` as it is now: frozen on the letter. */
       letterhead: Letterhead,
       auditFor: LetterAudit,
       now: Date,
@@ -539,7 +504,6 @@ export function createSqlLetterStore(
           { collection: "letterCounters", id: `${letter.periodId}_${letter.typeId}` },
           1,
         );
-        // Submitting required the date (missingFields).
         const letterDate = letter.letterDate as string;
         const values = {
           seq: first,
@@ -557,7 +521,6 @@ export function createSqlLetterStore(
           numberFormatted: formatNumber(type.numberFormat, values),
           sheetNumberTemplate: batch ? sheetNumberTemplate(type.numberFormat, values) : null,
           verificationCode: code,
-          // The upload path is issued once its final PDF is in (`issueUpload`).
           issuedAt: upload ? null : now,
           signers,
           letterhead: upload ? null : letterhead,
@@ -581,10 +544,6 @@ export function createSqlLetterStore(
       });
     },
 
-    /**
-     * Records the archived PDF once (later calls keep the first): the archive is the letter as it
-     * was issued, never replaced. Not a user change, so no new version and no audit entry.
-     */
     setArchive(id: string, archive: LetterArchive): Promise<LetterArchive> {
       const ref = store.docs.doc(safeId.parse(id));
       return db.runTransaction(async (tx) => {
@@ -597,7 +556,6 @@ export function createSqlLetterStore(
     },
   };
 
-  /** The desk, the person's name and their seat in this period, frozen at issue. */
   async function signerSnapshot(
     tx: Transaction,
     d: Desk,
@@ -634,12 +592,6 @@ export function createSqlLetterStore(
 
 export type SqlLetterStore = ReturnType<typeof createSqlLetterStore>;
 
-/**
- * Public verification (D7): `verificationCodes/{code}` → the issued or cancelled letter with its
- * type, unit and period names, and for a certificate code its sheet (the letter is then the
- * batch). Drafts never verify; anything else is "not found". Callers pass a normalized code
- * (`normalizeVerificationCode`).
- */
 export function createSqlVerificationReader(db: Database) {
   const read = async (collection: string, id: unknown) =>
     typeof id === "string" ? db.collection(collection).doc(id).get() : null;
@@ -671,10 +623,6 @@ export function createSqlVerificationReader(db: Database) {
       };
     },
 
-    /**
-     * Pickup page (D5-P): the sheets whose `emailHash` equals `emailHash` exactly, with their
-     * batch, for issued batches only (drafts and cancelled batches give nothing).
-     */
     async certificatesByEmailHash(emailHash: string) {
       const snapshot = await db
         .collection("certificates")
@@ -696,7 +644,6 @@ export function createSqlVerificationReader(db: Database) {
   };
 }
 
-/** At most this many sheets per e-mail on the pickup page. */
 const PICKUP_LIMIT = 100;
 
 export type SqlVerificationReader = ReturnType<typeof createSqlVerificationReader>;

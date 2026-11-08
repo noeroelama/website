@@ -6,13 +6,8 @@ import { ApplicationsPage } from "@/components/applications-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/**
- * Recruitment → Applications. Answers are personal data: only the committee (review, offer or
- * confirm permission) opens the queue; nothing here is cached.
- */
 export default async function ApplicationsRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/recruitment/${id}/applications`, "recruitment.read");

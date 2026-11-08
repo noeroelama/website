@@ -8,9 +8,6 @@ import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { formatEventDate } from "@/lib/event-time";
 import { publicNews, publicNewsBySlug } from "@/server/news";
 
-// Unknown, draft, future or deleted slug → the 404 page. With Cache Components the response has
-// already started streaming, so the status stays 200 and Next adds `noindex` (a soft 404; a real
-// 404 status would need a database read in proxy.ts for every request).
 export const instant = false;
 
 const find = async (slug: string) => (isValidSlug(slug) ? publicNewsBySlug(slug) : null);
@@ -34,11 +31,8 @@ export default async function NewsArticlePage({ params }: PageProps<"/news/[slug
   if (!item) notFound();
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
-  // Recent News: the three newest articles, the current one excluded (user).
   const recent = (await publicNews()).filter((n) => n.slug !== item.slug).slice(0, 3);
   return (
-    // Same frame as the news list (user): black page, 74rem column, cream text;
-    // the Recent News cards inherit the black-page card styles.
     <main className="site-lists site-lists--news">
       <div className="site-lists__inner">
         <a className="site-article__back" href="/news">

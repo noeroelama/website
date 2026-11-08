@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
 
-/**
- * Presentational only. UI components never fetch data, read env, or make
- * authorization decisions — they render what server code already decided.
- * Styling comes from `@website/ui/styles.css` (design tokens), imported once per app.
- */
 export function AppShell(props: { title: string; children?: ReactNode }) {
   return (
     <main className="ui-shell">

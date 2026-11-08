@@ -30,11 +30,6 @@ const toLink = (id: string, data: Record<string, unknown>): ShortLink => ({
   deletedAt: toDate(data["deletedAt"]),
 });
 
-/**
- * `shortLinks/{id}` (K1): every short link made, by people and by the system, with the index
- * `shortLinkSlugs/{provider}_{slug}` (one record per provider slug). Archive is a flag (the
- * provider keeps the slug); records are never deleted.
- */
 export function createSqlShortLinkStore(db: Database) {
   const store = createSluggedStore<ShortLink>(db, {
     collection: "shortLinks",
@@ -58,7 +53,6 @@ export function createSqlShortLinkStore(db: Database) {
   });
   return {
     get: store.get,
-    /** Newest first (the Tools page list). */
     async list(limit = 500): Promise<ShortLink[]> {
       const snapshot = await store.docs.orderBy("createdAt", "desc").limit(limit).get();
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data()));

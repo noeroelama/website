@@ -1,7 +1,5 @@
 "use client";
 
-// The article thumbnail and the featured image preview are plain <img> tags (uploaded
-// WebP files, already resized by the image pipeline), so next/image is not used here.
 /* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useRef, useState } from "react";
@@ -56,35 +54,19 @@ import {
   type ArticleTab,
 } from "./articles-model";
 
-/* ==================================================================
-   Article — list (tabs, search, filters, bulk actions), editor page
-   (featured image + content boxes) and the Settings panel (title,
-   category, date, URL, summary, tags). Matches the Figma "ARTICLE
-   ADMIN" screens with the shared dark admin look (globals.css "Dark
-   admin pages"), laid out like the Event page; the Settings panel is
-   the shared centred popup as a cream surface (`.admin-modal--side`).
-   The list uses the shared list parts (ui/list-controls.tsx) and the
-   content the shared rich-text boxes (ui/rich-text-box.tsx).
-   No hex values outside globals.css.
-   ================================================================== */
-
-/** Public article path on the web app (apps/web /news/[slug]). */
 const ARTICLE_PATH = "/news/";
 
-/** ISO timestamp → the value of a datetime-local input, in the viewer's time zone. */
 function toLocalInput(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-/** Sortable article-table columns (checkbox, author and actions are never sorted, as in the design). */
 type SortKey = "title" | "status" | "date";
 
 const sortValue = (a: ArticleItem, key: SortKey): string =>
   key === "title" ? a.title.toLowerCase() : key === "status" ? a.status : a.modifiedAt;
 
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (a: ArticleItem, key: SortKey): string =>
   key === "title"
     ? a.title
@@ -104,17 +86,13 @@ const TABS = [
 
 interface ArticleForm {
   title: string;
-  /** Byline: kept from the article, or the staff member's name for a new one (no field in the design). */
   author: string;
   category: NewsCategory;
   url: string;
   excerpt: string;
   banner: FeaturedImage | null;
-  /** Publish date & time, in the Settings popup's datetime-local format. */
   date: string;
-  /** Keywords shown as chips in the Settings popup ("Tag/Keywords"). */
   tags: string[];
-  /** The article's rich-text "type boxes" (add, delete and reorder in RichTextStack). */
   bodies: RichTextBlock[];
 }
 
@@ -130,24 +108,18 @@ const EMPTY_FORM: ArticleForm = {
   bodies: [newBlock()],
 };
 
-/** Pending delete action shown in the dark confirm modal (one article or many). */
 type DeleteConfirm = { kind: "one"; article: ArticleItem } | { kind: "many"; count: number };
 
-/** Save intent of the open Settings panel: a draft stays a draft, otherwise it is (re)published. */
 type SaveIntent = "draft" | "publish";
 
 interface ArticleListProps {
-  /** Rows from the server (src/app/(panel)/articles/page.tsx); refreshed after every change. */
   initial: ArticleItem[];
   canEdit: boolean;
   canPublish: boolean;
-  /** WEB_URL, for "Copy Link". */
   publicBase: string;
-  /** Byline of a new article (the staff member's name, else their e-mail). */
   defaultAuthor: string;
 }
 
-/** Form values for an existing article (editor page and Settings panel). */
 function formFrom(a: ArticleItem): ArticleForm {
   return {
     title: a.title,
@@ -172,32 +144,24 @@ function ArticleList({
   const toast = useToastMessage();
   const router = useRouter();
   const uploader = useImageUpload("thumbnail");
-  /* Server validation messages per field (GuardedResult `fields`). */
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
-  /* ---- list state (sorting, paging and selection: useListTable) ---- */
   const [tab, setTab] = useState<ArticleTab>("all");
-  const [query, setQuery] = useState(""); // applied only on Search / Enter
-  const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
+  const [query, setQuery] = useState("");
+  const [searchKey, setSearchKey] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
-  /* Settings panel: open with the intent its Save button uses (null = closed). */
   const [settingsIntent, setSettingsIntent] = useState<SaveIntent | null>(null);
 
-  /* ---- editor view state ---- */
   const [view, setView] = useState<"list" | "form">("list");
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ArticleForm>(EMPTY_FORM);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  /* ---- derived rows ---- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return articles.filter(
-      (a) =>
-        matchesArticleTab(a, tab) &&
-        // Search by title, like the Event page.
-        (!q || a.title.toLowerCase().includes(q)),
+      (a) => matchesArticleTab(a, tab) && (!q || a.title.toLowerCase().includes(q)),
     );
   }, [articles, tab, query]);
 
@@ -213,7 +177,6 @@ function ArticleList({
   const table = useListTable(filtered, sortValue, undefined, filterText);
   const { selected } = table;
 
-  /* ---- row / bulk mutations (server actions; the page re-reads after each) ---- */
   type Failure = Parameters<typeof actionMessage>[0];
   const fail = (result: Failure) => {
     setFieldErrors(result.fields ?? {});
@@ -248,7 +211,6 @@ function ArticleList({
     setDeleteConfirm({ kind: "many", count: selected.size });
   };
 
-  /* Deletes are confirmed in the popup first; doDelete runs the soft delete. */
   const doDelete = () => {
     if (!deleteConfirm) return;
     const ids = deleteConfirm.kind === "one" ? [deleteConfirm.article.id] : Array.from(selected);
@@ -265,7 +227,6 @@ function ArticleList({
     toast.show(`Link for "${a.title}" copied`);
   };
 
-  /* Admin-only preview of the SAVED article, rendered like the public page (also drafts). */
   const openPreview = (id: string | null) => {
     if (!id) {
       toast.show("Save the draft first, then preview it");
@@ -274,7 +235,6 @@ function ArticleList({
     window.open(`/articles/${id}/preview`, "_blank", "noopener");
   };
 
-  /* ---- editor open / save ---- */
   const toForm = (mode: "create" | "edit", a?: ArticleItem) => {
     setFormMode(mode);
     setEditingId(a?.id ?? null);
@@ -286,13 +246,9 @@ function ArticleList({
   const closeSettings = () => {
     setSettingsIntent(null);
     setTagInput("");
-    // From the list, the panel edited one row only: forget it (the editor keeps its article).
     if (view === "list") setEditingId(null);
   };
 
-  /* Save draft / Publish (editor) and Save (Settings panel). Publishing with a future date
-     schedules the article; it goes public by itself at that time. When the server refuses a
-     field that lives in the Settings panel, the panel opens with that field in red. */
   const save = async (intent: SaveIntent) => {
     const current = articles.find((a) => a.id === editingId);
     setBusy(true);
@@ -330,7 +286,6 @@ function ArticleList({
     setTagInput("");
     setEditingId(null);
     if (view === "form") {
-      // Back to the full list, where the saved article is on top.
       setTab("all");
       table.setPage(1);
       table.clearSelection();
@@ -339,8 +294,6 @@ function ArticleList({
     router.refresh();
   };
 
-  /* Row menu → Settings: edit the article's details; a draft stays a draft, a public or
-     scheduled article stays published (the body is sent unchanged). */
   const openSettings = (a: ArticleItem) => {
     setEditingId(a.id);
     setFieldErrors({});
@@ -348,7 +301,6 @@ function ArticleList({
     setSettingsIntent(a.status === "draft" ? "draft" : "publish");
   };
 
-  /* ---- Settings panel: Tag/Keywords input ("a, b, c" adds three) ---- */
   const [tagInput, setTagInput] = useState("");
   const addTags = () => {
     const typed = tagInput
@@ -360,7 +312,6 @@ function ArticleList({
   };
   const removeTag = (t: string) => setForm((f) => ({ ...f, tags: f.tags.filter((x) => x !== t) }));
 
-  /* Title edits keep the URL in step while it still is the title's slug (or empty). */
   const setTitle = (title: string) =>
     setForm((f) => ({
       ...f,
@@ -368,8 +319,6 @@ function ArticleList({
       url: f.url === "" || f.url === slugify(f.title) ? slugify(title) : f.url,
     }));
 
-  /* Images go through the image pipeline (type/size checks, WebP, preset "thumbnail");
-     the uploader shows its own error message under the drop zone. */
   const onBannerFile = async (file: File) => {
     const image = await uploader.upload(file);
     const banner = image ? publicImage(image) : null;
@@ -379,8 +328,6 @@ function ArticleList({
 
   const errorProps = (field: string, id: string) =>
     fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `${id}-error` } : {};
-
-  /* ---- table columns ---- */
 
   const checkboxCol: Column<ArticleItem> = {
     key: "check",
@@ -521,7 +468,6 @@ function ArticleList({
     },
   ];
 
-  /* "Delete 10 Articles" / "Delete Article": the delete modal's title (+ "?") and its button. */
   const deleteCount = deleteConfirm?.kind === "many" ? deleteConfirm.count : 1;
   const deleteLabel = deleteCount === 1 ? "Delete Article" : `Delete ${deleteCount} Articles`;
 
@@ -531,7 +477,6 @@ function ArticleList({
     table.clearSelection();
   };
 
-  /* A changed filter or search starts again at page 1. */
   const filterBy =
     <T,>(set: (value: T) => void) =>
     (value: T) => {
@@ -546,7 +491,6 @@ function ArticleList({
     table.setPage(1);
   };
 
-  /* Settings panel — the shared centred popup as a cream surface. */
   const settingsPanel = (
     <Modal
       asForm
@@ -725,7 +669,6 @@ function ArticleList({
     </Modal>
   );
 
-  /* ---- editor view: featured image + content boxes; details are in Settings ---- */
   if (view === "form") {
     return (
       <div>
@@ -743,11 +686,7 @@ function ArticleList({
             </div>
           </div>
 
-          <form
-            className="admin-dark-form"
-            onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-          >
-            {/* Featured Image + type boxes in one framed container, as in the design. */}
+          <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
             <div className="admin-article-frame">
               <div className="admin-field">
                 <span className="admin-field__label">Featured Image *</span>
@@ -818,7 +757,6 @@ function ArticleList({
                 />
               </div>
 
-              {/* Content — article "type boxes": the + adds a box below, the grip reorders. */}
               <RichTextStack
                 blocks={form.bodies}
                 onChange={(bodies) => setForm((f) => ({ ...f, bodies }))}
@@ -828,7 +766,6 @@ function ArticleList({
               <FieldError id="article-body-error" message={fieldErrors["body"]} />
             </div>
 
-            {/* Back on the left; Preview · Save draft · Publish on the right. */}
             <div className="admin-form-actions">
               <Button
                 variant="outline"
@@ -881,7 +818,6 @@ function ArticleList({
     );
   }
 
-  /* ---- list view ---- */
   return (
     <div>
       <div>
@@ -910,7 +846,6 @@ function ArticleList({
           </div>
         </div>
 
-        {/* Tabs (above the table card, as in the design) */}
         <Tabs
           label="Article lists"
           tabs={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
@@ -984,7 +919,5 @@ function ArticleList({
 
 export function ArticlesPage(props: ArticleListProps) {
   const pathname = usePathname();
-  // key={pathname} remounts the list on navigation so search/tab/filter state
-  // resets when the user comes back from another page (see Gallery).
   return <ArticleList key={pathname} {...props} />;
 }

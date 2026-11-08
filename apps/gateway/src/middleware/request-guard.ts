@@ -3,10 +3,6 @@ import { guardRequest } from "@website/security";
 import { problem } from "../http/problem";
 import type { GatewayDeps, GatewayVariables } from "../types";
 
-/**
- * Per-IP rate limit (100/min, 10k/day, then each request delayed), refusal of browser calls from other
- * websites, and `Cache-Control: private, no-store` on every response.
- */
 export function requestGuard(deps: GatewayDeps) {
   return createMiddleware<{ Variables: GatewayVariables }>(async (c, next) => {
     const guard = await guardRequest(c.req.raw, {

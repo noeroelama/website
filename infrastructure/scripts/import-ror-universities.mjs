@@ -1,20 +1,4 @@
 #!/usr/bin/env node
-/**
- * Fills the universities master (`universities/{rorKey}_{country}`) from the official ROR data
- * dump (CC0), for the countries of the ACTIVE PPI chapters (feature A3; PPIDK DECISIONS §7, §7b).
- * Run locally by the owner with the admin service account. Dry run unless --apply is given.
- *
- *   1. Download the latest dump from https://zenodo.org/communities/ror-data (zip) and unzip the
- *      *.json file (about 300 MB).
- *   2. node --experimental-strip-types --max-old-space-size=4096 \
- *        --import ./infrastructure/scripts/ts-register.mjs --env-file=apps/admin/.env.local \
- *        infrastructure/scripts/import-ror-universities.mjs --file ~/Downloads/v2-ror-data.json
- *   3. Same with --apply.
- *
- * Safe to run again: rows are keyed by ROR id + country; an existing row gets the ROR fields and
- * stays approved, a new row is created. Proposed (manual) campuses are never touched.
- * Needs DATABASE_URL.
- */
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { universityRowsFromRor } from "../../packages/domain/src/members/universities.ts";

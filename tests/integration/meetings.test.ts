@@ -32,7 +32,6 @@ const as = (principal: Principal) => [() => Promise.resolve(principal), context]
 
 const planner = staff("planner", ["meetings.edit"]);
 const unitPlanner = staff("unit", ["meetings.edit"], { type: "orgUnit", orgUnitId: "media" });
-// Takes part as chair; only reads meetings otherwise.
 const chair = staff("chair", ["meetings.read"], { type: "orgUnit", orgUnitId: "other" });
 const member = staff("member", ["meetings.read"], { type: "orgUnit", orgUnitId: "other" });
 
@@ -237,15 +236,12 @@ describe("meetings (F4)", () => {
     if (!opened.ok) throw new Error("no code");
     const { code } = opened.data;
     expect(opened.data.url).toBe(`https://example.org/attend/${code}`);
-    // Only the hash is stored.
     expect([...fake.docs.keys()].some((k) => k.includes(code))).toBe(false);
 
     const attend = createAttend({ meetings: store(), now: () => clock });
     expect(await attend(null, code)).toEqual({ ok: false, error: "signin" });
-    // Before the window (opens 30 min before 10:00 UTC).
     expect(await attend("member", code)).toEqual({ ok: false, error: "closed" });
     clock = new Date("2026-11-10T09:31:00Z");
-    // The 2-minute code has expired by now.
     expect(await attend("member", code)).toEqual({ ok: false, error: "invalid" });
     const fresh = await actions().openCode(...as(chair))({ id: m.id });
     if (!fresh.ok) throw new Error("no code");
@@ -264,7 +260,6 @@ describe("meetings (F4)", () => {
     expect(await attend("member", "ZZZZZZ")).toEqual({ ok: false, error: "invalid" });
     expect(await attend("member", "bad")).toEqual({ ok: false, error: "invalid" });
 
-    // Expired codes are removed by the `expire` cron job.
     clock = new Date("2026-11-10T10:00:00Z");
     const removed = await deleteExpired(db(), clock);
     expect(removed.attendanceCodes).toBe(2);

@@ -6,7 +6,6 @@ import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { cityOf } from "@/lib/event-time";
 import { publicAlbumBySlug } from "@/server/gallery";
 
-// Unknown, draft or deleted album → the 404 page (a soft 404 while streaming; see /news/[slug]).
 export const instant = false;
 
 const find = async (slug: string) => (isValidSlug(slug) ? publicAlbumBySlug(slug) : null);
@@ -22,7 +21,6 @@ export async function generateMetadata({
   };
 }
 
-/** The Google Drive logo (simple-icons official path), white on the red button. */
 function DriveLogo() {
   return (
     <svg className="site-album__drive-logo" viewBox="0 0 24 24" aria-hidden="true">
@@ -34,11 +32,6 @@ function DriveLogo() {
   );
 }
 
-// Design (user mock): the event detail look — full-bleed banner, header with small
-// button pills (year · city · type), a brief line, a short divider, the photos as
-// a table-like row (one wide image left, a stack of two on the right — all three
-// flush top and bottom) and a red Drive button. Fonts reuse the site-event block
-// (Poppins title, Inter text). Everything centred in a narrow column (user).
 export default async function AlbumPage({ params }: PageProps<"/gallery/[slug]">) {
   const album = await find((await params).slug);
   if (!album) notFound();
@@ -84,8 +77,6 @@ export default async function AlbumPage({ params }: PageProps<"/gallery/[slug]">
               loading="lazy"
             />
             <div className="site-album__stack">
-              {/* The design is exactly two photos on the right (user mock); the
-                  stack is sliced to two so every album renders the same layout. */}
               {photos.slice(1, 3).map((photo) => (
                 // eslint-disable-next-line @next/next/no-img-element -- Storage serves sized WebP
                 <img

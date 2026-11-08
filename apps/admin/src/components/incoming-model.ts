@@ -13,7 +13,6 @@ export type IncomingTab = (typeof INCOMING_TABS)[number]["key"];
 export interface DispositionItem {
   id: string;
   parentId: string | null;
-  /** 0 = disposed from the letter, 1 = forwarded once, ... */
   depth: number;
   from: string;
   to: string;
@@ -39,11 +38,9 @@ export interface IncomingItem {
   statusLabel: string;
   scanName: string | null;
   recordedBy: string;
-  /** In tree order: each disposition followed by the ones forwarded from it. */
   dispositions: DispositionItem[];
 }
 
-/** Dispositions in tree order with their depth (a parent before its children, oldest first). */
 export function dispositionTree(
   dispositions: readonly Disposition[],
 ): Array<Disposition & { depth: number }> {
@@ -60,7 +57,6 @@ export function dispositionTree(
 
 export function toIncomingItem(
   letter: IncomingLetter,
-  /** uid → person name, unit id → unit name. */
   names: ReadonlyMap<string, string>,
 ): IncomingItem {
   const name = (id: string | null) => (id ? (names.get(id) ?? id) : "");

@@ -7,11 +7,9 @@ import { publishedRecruitments } from "@/server/recruitment-wiring";
 
 export const metadata: Metadata = { title: "Recruitment" };
 
-// The language cookie and "open now" are per request.
 export const instant = false;
 
 export default async function RecruitmentListPage() {
-  // The cookie first: the page is per request, so the cached list is never read at build time.
   const jar = await cookies();
   const recruitments = await publishedRecruitments();
   const language = languageFrom(jar.get(LANG_COOKIE)?.value);

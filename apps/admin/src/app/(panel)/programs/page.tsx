@@ -5,10 +5,8 @@ import { ProgramsPage } from "@/components/programs-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Programmes (E2) of one period (`?period=`, default the active one) the viewer can read. */
 export default async function AdminProgramsPage({
   searchParams,
 }: {

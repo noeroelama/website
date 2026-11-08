@@ -1,25 +1,4 @@
 #!/usr/bin/env node
-/**
- * Imports people and the organisation from PPIDK (block J, step 3.9): users, chapters,
- * universities, periods, org units, member profiles and appointments (with the roles active
- * appointments give). Run locally by the owner with the admin service account, AFTER freezing the
- * PPIDK people screens. Dry run unless --apply is given; safe to run again (ids come from PPIDK).
- *
- *   1. Export each table from MariaDB as TSV into one folder, e.g.
- *        for t in users chapters universities periods org_units profiles appointments \
- *                 role_assignments provinces regencies; do
- *          mysql --batch -e "SELECT * FROM $t" asiania_my > ppidk/$t.tsv; done
- *   2. Set the appointment roles first (admin Structure page → Roles from appointments).
- *   3. node --experimental-strip-types --import ./infrastructure/scripts/ts-register.mjs \
- *        --env-file=apps/admin/.env.local infrastructure/scripts/import-ppidk-people.mjs \
- *        --dir ./ppidk [--apply]
- *   4. Read the report (ppidk/import-report.json): counts and every skipped row.
- *
- * Accounts: a person who already signed in keeps their account (matched by e-mail) and gets the
- * imported roles added; everybody else gets a Firebase account `ppidk-<id>` with that e-mail and
- * no password: they sign in with Google or "Forgot password", then re-register passkeys.
- * Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
- */
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -45,7 +24,6 @@ if (missing.length > 0) {
   process.exit(2);
 }
 
-// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
 const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -75,19 +53,16 @@ if (!roleMap) {
   process.exit(1);
 }
 
-// Periods and the structure come from PPIDK: refuse when staff already created some here.
 const periods = await db.collection("periods").get();
 if (periods.docs.some((doc) => !doc.id.startsWith("ppidk-"))) {
   console.error("Periods were already created here: import into an organisation not set up yet.");
   process.exit(1);
 }
-// Chapters staff already added are reused (matched by country).
 const chapters = await db.collection("chapters").get();
 const chapterIdByCountry = new Map(
   chapters.docs.filter((d) => !d.id.startsWith("ppidk-")).map((d) => [d.get("countryCode"), d.id]),
 );
 
-// Existing Firebase accounts by e-mail (100 per lookup); the others become ppidk-<id>.
 const existing = new Map();
 const emails = tables.users.map((u) => u.email?.trim().toLowerCase()).filter(Boolean);
 for (let i = 0; i < emails.length; i += 100) {
@@ -132,7 +107,6 @@ for (let i = 0; i < plan.writes.length; i += 400) {
   for (const write of chunk) {
     const current = stored.get(write.path);
     if (write.mode === "user" && current?.exists) {
-      // Signed in before: keep the account and its roles; add the imported ones not yet there.
       const roles = current.get("roleAssignments") ?? [];
       const have = new Set(roles.map((a) => `${a.roleId}|${a.appointmentId ?? ""}`));
       const added = write.data.roleAssignments.filter(

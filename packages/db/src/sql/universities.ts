@@ -30,20 +30,13 @@ const reviewSnapshot = (u: University): Snapshot => ({
   reviewNote: u.reviewNote,
 });
 
-/** What staff decide about a proposed campus. */
 export type UniversityDecision =
   | { readonly type: "approve" }
   | { readonly type: "merge"; readonly into: string }
   | { readonly type: "reject"; readonly note: string };
 
-/** At most this many member profiles follow one merge or reject (one transaction). */
 const PROFILE_LIMIT = 400;
 
-/**
- * `universities/{id}`: ROR rows (`{rorKey}_{countryCode}`, written by
- * infrastructure/scripts/import-ror-universities.mjs) and member proposals (random id, pending).
- * Profiles point at a campus with `memberProfiles/{uid}.universityId`.
- */
 export function createSqlUniversityStore(db: Database) {
   const docs = db.collection("universities");
   const profiles = db.collection("memberProfiles");
@@ -122,7 +115,6 @@ export function createSqlUniversityStore(db: Database) {
       return snapshot.exists ? read(id, snapshot.data()) : null;
     },
 
-    /** The campuses members can pick in one country, by name. */
     async listApproved(countryCode: string): Promise<University[]> {
       const snapshot = await docs
         .where("countryCode", "==", countryCode)
@@ -131,7 +123,6 @@ export function createSqlUniversityStore(db: Database) {
       return snapshot.docs.map((doc) => read(doc.id, doc.data())).sort(byName);
     },
 
-    /** One member's proposals that are still waiting for review. */
     async listOwnPending(userId: string): Promise<University[]> {
       const snapshot = await docs
         .where("submittedBy", "==", userId)
@@ -140,7 +131,6 @@ export function createSqlUniversityStore(db: Database) {
       return snapshot.docs.map((doc) => read(doc.id, doc.data())).sort(byName);
     },
 
-    /** The review queue, oldest first. */
     async listPending(): Promise<University[]> {
       const snapshot = await docs.where("status", "==", "pending").get();
       return snapshot.docs
@@ -148,15 +138,10 @@ export function createSqlUniversityStore(db: Database) {
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
     },
 
-    /**
-     * "My campus is not listed": a pending campus, unless an obvious duplicate exists in the same
-     * country (same normalised name, approved or pending, or an alias of an approved campus).
-     */
     propose(userId: string, proposal: UniversityProposal, now: Date): Promise<University> {
       return insert("pending", userId, proposal, now, null);
     },
 
-    /** Staff add a campus that is listed right away (same duplicate check), audited in the transaction. */
     add(
       userId: string,
       proposal: UniversityProposal,
@@ -166,11 +151,6 @@ export function createSqlUniversityStore(db: Database) {
       return insert("approved", userId, proposal, now, audit);
     },
 
-    /**
-     * Decides a pending proposal in ONE transaction with its audit entry. Merge: the proposal is
-     * rejected with `mergedInto` (kept as history, never deleted) and every profile pointing at it
-     * moves to the approved campus. Reject: those profiles lose the pick and choose again.
-     */
     review(
       id: string,
       expectedVersion: number,

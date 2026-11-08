@@ -11,14 +11,8 @@ import { ADMIN_NAVIGATION } from "../navigation";
 import type { Author } from "./authors";
 import { esc } from "./format";
 
-/**
- * What the Audit Log page shows, mapped on the server from `auditLogs/{id}`. The page loads the
- * entries of the chosen date range (at most `AUDIT_PAGE_LIMIT`) and filters, sorts and pages them
- * in the browser, like the Event page.
- */
 export const AUDIT_PAGE_LIMIT = 500;
 
-/** Date range picker (URL `?range=`); the server reads only this range. */
 export const AUDIT_RANGES = {
   "1d": { label: "Last 24 hours", days: 1 },
   "7d": { label: "Last 7 days", days: 7 },
@@ -37,11 +31,6 @@ export function rangeStart(range: AuditRange, now: Date): Date | undefined {
   return days === null ? undefined : new Date(now.getTime() - days * 86_400_000);
 }
 
-/**
- * Tabs: one per side-panel page (in its order) after "All", so a new page in `ADMIN_NAVIGATION`
- * gets a tab automatically. The Dashboard has no entries and the Audit Log is this page. The tab
- * key is the page id; `also` pages (Organizations holds Period and Structure) share its tab.
- */
 export type AuditTab = "all" | AdminPageId;
 type TabDefinition = { label: string; modules: readonly string[] | null };
 const pageTabs = ADMIN_NAVIGATION.flatMap(
@@ -62,7 +51,6 @@ export function matchesTab(row: Pick<AuditRow, "module">, tab: AuditTab): boolea
 
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 
-/** UTC "28 Sep, 10:05" (year added when it differs from `ref`); without `ref` just "14:32". */
 export function shortUtc(iso: string, ref?: string): string {
   const d = new Date(iso);
   const time = d.toISOString().slice(11, 16);
@@ -72,7 +60,6 @@ export function shortUtc(iso: string, ref?: string): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${year}, ${time}`;
 }
 
-/** One photo of an image field; `change` marks photos only on one side. */
 export interface ImageCell {
   key: string;
   thumbUrl: string;
@@ -90,30 +77,23 @@ export interface ChangeRow {
 
 export interface AuditRow {
   id: string;
-  /** ISO time of the change. */
   occurredAt: string;
   author: Author;
   action: AuditAction;
   actionLabel: string;
-  /** Admin page id (`ADMIN_PAGES` key); the resource type for older entries. */
   module: string;
   moduleLabel: string;
   title: string;
   resourceId: string;
-  /** Short record reference shown as "#Qm2ve9lL". */
   ref: string;
-  /** ISO time of the record's previous change in the loaded list (Before header), or null. */
   previousAt: string | null;
   changes: ChangeRow[];
   revert: { allowed: true } | { allowed: false; reason: string };
-  /** The stored entry as JSON (without request metadata or hashes). */
   raw: string;
 }
 
-/** Field labels the design names differently from the stored key. */
 const FIELD_LABELS: Readonly<Record<string, string>> = { images: "Photos" };
 
-/** "eventTitle" → "Event title". */
 function fieldLabel(field: string): string {
   const words = field.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
   return FIELD_LABELS[field] ?? words.charAt(0).toUpperCase() + words.slice(1);
@@ -122,7 +102,6 @@ function fieldLabel(field: string): string {
 type Image = { thumbUrl: string; path?: string; url?: string };
 const isImage = (v: JsonValue | undefined): v is Image & { [key: string]: JsonValue } =>
   typeof v === "object" && v !== null && !Array.isArray(v) && typeof v["thumbUrl"] === "string";
-/** Image list of a value (one image, a list of images, or nothing); null = not an image field. */
 function imagesOf(v: JsonValue | undefined): Image[] | null {
   if (isImage(v)) return [v];
   if (Array.isArray(v) && v.length > 0 && v.every(isImage)) return v;
@@ -135,7 +114,6 @@ function textOf(v: JsonValue | undefined): FieldValue {
   return { kind: "text", text: typeof v === "string" ? v : JSON.stringify(v) };
 }
 
-/** Before / After of one changed top-level field (unchanged fields are never stored). */
 function changeOf(field: string, before: JsonValue | undefined, after: JsonValue | undefined) {
   const a = imagesOf(before);
   const b = imagesOf(after);
@@ -160,7 +138,6 @@ function changeOf(field: string, before: JsonValue | undefined, after: JsonValue
   return { field, label: fieldLabel(field), before: textOf(before), after: textOf(after) };
 }
 
-/** Server-side mapping to a table row (plain JSON for the client page). */
 export function toAuditRow(
   entry: AuditEvent,
   author: Author,
@@ -195,7 +172,6 @@ export function toAuditRow(
   };
 }
 
-/** Entry id → time of the same record's previous change. `entries` are newest first. */
 export function previousChanges(entries: readonly AuditEvent[]): Map<string, Date> {
   const previous = new Map<string, Date>();
   const older = new Map<string, Date>();
@@ -209,12 +185,10 @@ export function previousChanges(entries: readonly AuditEvent[]): Map<string, Dat
   return previous;
 }
 
-/** Whole days left in the 14-day revert window (rounded up). */
 export function daysLeft(occurredAt: string, now: number): number {
   return Math.max(0, Math.ceil((Date.parse(occurredAt) + REVERT_WINDOW_MS - now) / 86_400_000));
 }
 
-/** Word-level diff: `after` split into kept and added parts (longest common subsequence). */
 export function wordDiff(before: string, after: string): { text: string; added: boolean }[] {
   const a = before.split(/(?<=\s)/).filter(Boolean);
   const b = after.split(/(?<=\s)/).filter(Boolean);
@@ -245,7 +219,7 @@ export function wordDiff(before: string, after: string): { text: string; added: 
       i++;
       j++;
     } else if (i < a.length && at(i + 1, j) >= at(i, j + 1)) {
-      i++; // word removed from the old text
+      i++;
     } else {
       push(b[j] as string, true);
       j++;
@@ -254,7 +228,6 @@ export function wordDiff(before: string, after: string): { text: string; added: 
   return parts;
 }
 
-/** Export CSV of the listed entries (cells already quoted for `downloadCsv`). */
 export function auditCsv(rows: readonly AuditRow[]): string[][] {
   const header = ["Date (UTC)", "User", "E-mail", "Action", "Page", "Title", "Record", "Change ID"];
   return [

@@ -3,7 +3,6 @@ import type { Database } from "./store";
 import type { PasskeyChallenge, PasskeyCredential, PasskeyStore } from "@website/auth";
 import { safeId } from "@website/security/validation";
 
-/** Stored Dates come back as timestamps (`toDate()`). */
 const toDate = (value: unknown): Date => (value as { toDate(): Date }).toDate();
 
 function toCredential(data: Record<string, unknown>): PasskeyCredential {
@@ -18,10 +17,6 @@ function toCredential(data: Record<string, unknown>): PasskeyCredential {
   };
 }
 
-/**
- * Passkey credentials in `passkeys/{sha256(credentialId)}` (credential ids can be longer than a
- * safe document id) and single-use challenges in `webauthnChallenges/{id}` (TTL on `expiresAt`).
- */
 export function createSqlPasskeyStore(db: Database): PasskeyStore {
   const credentials = db.collection("passkeys");
   const challenges = db.collection("webauthnChallenges");

@@ -164,9 +164,8 @@ describe("health always has a reason", () => {
 
 describe("weekly check-in (E3)", () => {
   it("weeks start on Monday 00:00 UTC, whatever the local day", () => {
-    expect(weekStartUtc(new Date("2026-11-04T03:00:00Z"))).toBe("2026-11-02"); // Wednesday
-    expect(weekStartUtc(new Date("2026-11-02T00:00:00Z"))).toBe("2026-11-02"); // Monday
-    // Sunday 23:30 UTC is already Monday in Tokyo, but still last week for everyone.
+    expect(weekStartUtc(new Date("2026-11-04T03:00:00Z"))).toBe("2026-11-02");
+    expect(weekStartUtc(new Date("2026-11-02T00:00:00Z"))).toBe("2026-11-02");
     expect(weekStartUtc(new Date("2026-11-08T23:30:00Z"))).toBe("2026-11-02");
     expect(weekStartUtc(new Date("2026-11-09T00:00:00Z"))).toBe("2026-11-09");
     expect(checkinId("pr1", "2026-11-02")).toBe("pr1_2026-11-02");

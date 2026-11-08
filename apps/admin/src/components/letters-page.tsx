@@ -51,18 +51,11 @@ import {
   type LetterTab,
 } from "./letters-model";
 
-/* ==================================================================
-   Letters (D1, D2) — drafts → secretariat correction → signing desks
-   → issue (number + verification code) → cancel. Every button calls a
-   guarded server action that re-checks the permission and the scope.
-   ================================================================== */
-
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 type SortKey = "subject" | "created";
 const sortValue = (l: LetterItem, key: SortKey) =>
   key === "subject" ? l.subject.toLowerCase() : l.createdAt;
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (l: LetterItem, key: SortKey): string =>
   key === "subject" ? l.subject : formatInZone(l.createdAt, browserZone(), false);
 
@@ -75,7 +68,6 @@ interface TypeOption {
 }
 
 interface Draft {
-  /** New letters only: typed here, the author's own PDF (D3) or a certificate batch (D5). */
   source: "editor" | "upload" | "certificate";
   activityCode: string;
   typeId: string;
@@ -90,18 +82,14 @@ interface Draft {
 
 interface Props {
   periodName: string | null;
-  /** More letters exist than were loaded. */
   truncated: boolean;
   initial: LetterItem[];
   types: TypeOption[];
-  /** Units of the active period the viewer may write letters for. */
   units: { id: string; name: string }[];
   viewerId: string;
   desks: LetterDesks;
   canWrite: boolean;
-  /** letter_types.read: shows the Letter types button. */
   canManageTypes: boolean;
-  /** Outgoing / Incoming tabs, under the header (`LetterSectionTabs`). */
   sectionTabs: ReactNode;
 }
 
@@ -118,7 +106,6 @@ const ACTION_LABELS: Record<Exclude<LetterActionKey, "edit" | "delete">, string>
   cancel: "Cancel letter",
 };
 
-/** The tabs of the Letter page (`/letters?tab=`); the server lists only those the viewer may read. */
 export type LetterSection = "outgoing" | "incoming" | "types";
 
 export function LetterSectionTabs({
@@ -235,7 +222,6 @@ function LettersList(props: Props) {
     setView("list");
   };
 
-  /** Runs one desk action on the open letter, then returns to the list. */
   const act = async (
     run: (input: Record<string, unknown>) => Promise<{ ok: true } | ActionFailure>,
     done: string,
@@ -356,10 +342,7 @@ function LettersList(props: Props) {
             </p>
           </div>
         </div>
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           {current?.reviewNote ? (
             <p className="admin-card__subtitle">Returned with: {current.reviewNote}</p>
           ) : null}
@@ -623,11 +606,7 @@ function LettersList(props: Props) {
             ) : null}
           </dl>
           {current.source === "upload" ? null : (
-            <div
-              className="admin-letter-body"
-              // The body was sanitized (allowlist) when it was saved.
-              dangerouslySetInnerHTML={{ __html: current.body }}
-            />
+            <div className="admin-letter-body" dangerouslySetInnerHTML={{ __html: current.body }} />
           )}
           {current.source === "upload" && current.status === "awaiting_file" ? (
             <LetterUploadPanel

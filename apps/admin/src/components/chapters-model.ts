@@ -6,21 +6,16 @@ import type {
   SocialLink,
 } from "@website/domain/organizations";
 
-/** A PPI chapter row of Organizations → PPI, mapped on the server from `chapters/{id}`. */
 export interface ChapterItem {
   id: string;
   version: number;
   name: string;
   slug: string;
   countryCode: string;
-  /** /map table group; null = hidden from the table. */
   region: ChapterRegion | null;
-  /** Badge number on /map's country table; null = no badge. */
   mapNo: number | null;
-  /** English country name (Intl, computed on the server). */
   country: string;
   timezone: string;
-  /** The time zone's offset now, e.g. "UTC+10:00" (computed on the server). */
   utcOffset: string;
   active: boolean;
   logo: FeaturedImage | null;
@@ -42,7 +37,6 @@ export interface ChapterItem {
 
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
-/** "UTC+10:00" for a time zone at this moment ("GMT" alone means UTC+00:00). */
 function utcOffset(timeZone: string): string {
   const name = new Intl.DateTimeFormat("en", { timeZone, timeZoneName: "longOffset" })
     .formatToParts(new Date())

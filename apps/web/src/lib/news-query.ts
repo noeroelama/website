@@ -2,17 +2,15 @@ import { NEWS_CATEGORIES, type NewsCategory, type PublicNews } from "@website/do
 
 export const NEWS_PAGE_SIZE = 12;
 
-/** The news list's time presets (backwards from today, unlike the events ones). */
 export const NEWS_TIME_RANGES = ["week", "month", "year"] as const;
 export type NewsTime = (typeof NEWS_TIME_RANGES)[number];
 
-/** A news time window maps to release dates: last 7 / 30 days, or the calendar year. */
 export function newsTimeBounds(time: NewsTime, now: Date): string | null {
   const add = (days: number) =>
     new Date(now.getTime() + days * 86_400_000).toISOString().slice(0, 10);
   if (time === "week") return add(-7);
   if (time === "month") return add(-30);
-  return `${now.getFullYear()}-01-01`; // year: release date within this calendar year
+  return `${now.getFullYear()}-01-01`;
 }
 
 export interface NewsQuery {
@@ -28,7 +26,6 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 const isNewsTime = (value: string | undefined): value is NewsTime =>
   NEWS_TIME_RANGES.find((range) => range === value) !== undefined;
 
-/** /news?category=…&tag=…&q=…&time=…&page=… → a safe query; anything unknown is ignored. */
 export function newsQuery(params: Record<string, string | string[] | undefined>): NewsQuery {
   const category = one(params["category"]);
   const tag = one(params["tag"])?.trim().toLowerCase();
@@ -44,8 +41,6 @@ export function newsQuery(params: Record<string, string | string[] | undefined>)
   };
 }
 
-/** Filters (category AND tag AND search AND time) and pages the visible
- * news; `pages` is at least 1. */
 export function pageOfNews(all: readonly PublicNews[], query: NewsQuery, now = new Date()) {
   const q = query.q?.toLowerCase() ?? null;
   const from = query.time === null ? null : newsTimeBounds(query.time, now);
@@ -66,7 +61,6 @@ export function pageOfNews(all: readonly PublicNews[], query: NewsQuery, now = n
   };
 }
 
-/** Link to another page of the same filtered list. */
 export function newsHref(query: NewsQuery, page: number): string {
   const params = new URLSearchParams();
   if (query.category) params.set("category", query.category);

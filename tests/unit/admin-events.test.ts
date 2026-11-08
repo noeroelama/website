@@ -76,7 +76,6 @@ describe("Event page list cells", () => {
       id,
       email,
     });
-    // Audit entries come newest first: the first entry per event wins; albums are ignored.
     const editors = lastEditors(
       [
         { resourceType: "event", resourceId: "e1", actor: actor("nk") },
@@ -94,7 +93,6 @@ describe("Event page list cells", () => {
       initials: "NK",
     });
     expect(authors.has("e2")).toBe(false);
-    // A user without a users/{uid} profile and without an e-mail has no author.
     expect(authors.has("e3")).toBe(false);
   });
 

@@ -4,13 +4,6 @@ import type { Answers, FileAnswer } from "../forms";
 import { TimezoneSchema } from "../members/profile";
 import { RuleViolationError, wallTimeToUtc, type EntityMeta } from "../shared";
 
-/**
- * Open recruitment (Oprec, feature C3). A recruitment belongs to a board period, offers seats in
- * org units (quota per unit, kept in `seatCounters/{recruitmentId}_{orgUnitId}`), asks the
- * questions of one frozen form version and takes one application per person
- * (`applications/{recruitmentId}_{uid}`). Docs: packages/domain/docs/recruitment.md.
- */
-
 export const APPLICATION_STATUSES = [
   "draft",
   "submitted",
@@ -28,10 +21,6 @@ export const APPLICATION_STATUSES = [
 ] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
-/**
- * Who may move an application where (feature-spec C3). `applicant` moves are made on the
- * website by the owner; the others are admin actions with their own permission.
- */
 export const TRANSITIONS: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> = {
   draft: ["submitted", "withdrawn"],
   submitted: ["revision", "admin_rejected", "interview", "withdrawn"],
@@ -58,7 +47,6 @@ export function assertTransition(from: ApplicationStatus, to: ApplicationStatus)
   }
 }
 
-/** Ends of the road: nothing more happens to the application. */
 export const isFinal = (status: ApplicationStatus) => TRANSITIONS[status].length === 0;
 
 export const MAX_CHOICES = 5;
@@ -67,11 +55,8 @@ export const MAX_PORTFOLIO_BYTES = 5 * 1024 * 1024;
 
 export interface RecruitmentUnit {
   readonly orgUnitId: string;
-  /** Unit name when the recruitment was saved (shown to applicants). */
   readonly name: string;
-  /** Seats; the live count is `seatCounters/{recruitmentId}_{orgUnitId}`. */
   readonly quota: number;
-  /** Applicants who choose this unit upload a portfolio (PDF). */
   readonly portfolioRequired: boolean;
 }
 
@@ -81,22 +66,17 @@ export interface Recruitment extends EntityMeta {
   readonly description: string;
   readonly opensAt: Date;
   readonly closesAt: Date;
-  /** How many ordered unit choices an applicant may make. */
   readonly maxChoices: number;
   readonly units: readonly RecruitmentUnit[];
-  /** An offer expires this many days after it is made. */
   readonly offerDays: number;
-  /** The recruitment form and the version applicants answer (frozen once answered). */
   readonly formId: string;
   readonly formVersion: number;
-  /** Where applicants download the integrity pact template ([OWNER] provides it). */
   readonly pactTemplateUrl: string | null;
   readonly published: boolean;
 }
 
 export interface Booking {
   readonly slotId: string;
-  /** Copy of the slot's start (UTC), shown without reading the slot. */
   readonly startsAt: Date;
 }
 
@@ -106,25 +86,18 @@ export interface Offer {
 }
 
 export interface Application {
-  /** `{recruitmentId}_{userId}`: one per person per recruitment. */
   readonly id: string;
   readonly recruitmentId: string;
   readonly userId: string;
   readonly status: ApplicationStatus;
-  /** Ordered org unit ids (first = most wanted). */
   readonly choices: readonly string[];
   readonly answers: Answers;
-  /** Private PDF, when a chosen unit requires one. */
   readonly portfolio: FileAnswer | null;
   readonly revisionRound: number;
   readonly offer: Offer | null;
-  /** The booked interview slot (C3-I), or null. */
   readonly interview: Booking | null;
-  /** Every signed integrity pact uploaded (private PDFs), oldest first; the last one counts. */
   readonly pacts: readonly FileAnswer[];
-  /** Why the committee sent the pact back (shown to the applicant), or null. */
   readonly pactNote: string | null;
-  /** The appointment created at ratification (C3 step 9). */
   readonly appointmentId: string | null;
   readonly submittedAt: Date | null;
   readonly version: number;
@@ -136,8 +109,6 @@ export const applicationId = (recruitmentId: string, userId: string) =>
   `${recruitmentId}_${userId}`;
 export const seatCounterId = (recruitmentId: string, orgUnitId: string) =>
   `${recruitmentId}_${orgUnitId}`;
-
-/* ---------------------------------------------------------------- set-up (admin) */
 
 const date = z.coerce.date({ error: "Enter a date and time." });
 
@@ -183,7 +154,6 @@ export const RecruitmentInputSchema = z
   });
 export type RecruitmentInput = z.output<typeof RecruitmentInputSchema>;
 
-/** Open for applications: published and inside its window (`closesAt` excluded). */
 export function isRecruitmentOpen(
   r: Pick<Recruitment, "published" | "opensAt" | "closesAt" | "deletedAt">,
   now: Date,
@@ -191,9 +161,6 @@ export function isRecruitmentOpen(
   return r.published && r.deletedAt === null && r.opensAt <= now && now < r.closesAt;
 }
 
-/* ---------------------------------------------------------------- applying (web) */
-
-/** The applicant's choices: 1..maxChoices distinct units of this recruitment, in order. */
 export function checkChoices(r: Pick<Recruitment, "maxChoices" | "units">, choices: unknown) {
   const parsed = z.array(safeId).safeParse(choices);
   if (!parsed.success || parsed.data.length === 0) {
@@ -212,45 +179,36 @@ export function checkChoices(r: Pick<Recruitment, "maxChoices" | "units">, choic
   return parsed.data;
 }
 
-/** A portfolio is needed only when a chosen unit asks for one. */
 export function portfolioRequired(r: Pick<Recruitment, "units">, choices: readonly string[]) {
   return r.units.some((u) => u.portfolioRequired && choices.includes(u.orgUnitId));
 }
 
-/** Storage path of an applicant's portfolio (private; never a public URL). */
 export function portfolioPath(recruitmentId: string, userId: string, now: Date, uuid: string) {
   return `recruitment/${recruitmentId}/${userId}/portfolio_${now.getTime()}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 }
 
-/** Storage path of a file question's answer (matches the forms FileAnswer path rule). */
 export function formFilePath(formId: string, userId: string, now: Date, uuid: string) {
   return `forms/${formId}/${userId}_${now.getTime()}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 }
 
-/** Storage path of a signed integrity pact (private). */
 export function pactPath(recruitmentId: string, userId: string, now: Date, uuid: string) {
   return `recruitment/${recruitmentId}/${userId}/pact_${now.getTime()}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;
 }
 
 export const revisionDocId = (applicationId: string, round: number) => `${applicationId}_${round}`;
 
-/** One revision round (`applicationRevisions/{applicationId}_{round}`); never overwritten. */
 export interface RevisionRound {
   readonly applicationId: string;
   readonly round: number;
-  /** What the committee asks the applicant to change. */
   readonly request: string;
   readonly requestedAt: Date;
   readonly requestedBy: string;
-  /** Set when the applicant submits again. */
   readonly resubmittedAt: Date | null;
 }
 
 export const RevisionRequestSchema = safeText(2000, { multiline: true });
-/** The note when the committee sends a pact back. */
 export const PactNoteSchema = safeText(1000, { multiline: true });
 
-/** An offer of one of the recruitment's units, valid for `offerDays` from now. */
 export function makeOffer(
   r: Pick<Recruitment, "units" | "offerDays">,
   orgUnitId: string,
@@ -262,7 +220,6 @@ export function makeOffer(
   return { orgUnitId, expiresAt: new Date(now.getTime() + r.offerDays * 86_400_000) };
 }
 
-/** The seat rule: a seat is taken only while `filled < quota` (one counter per unit). */
 export function takeSeat(counter: { quota: number; filled: number } | null): number {
   if (!counter || counter.filled >= counter.quota) {
     throw new RuleViolationError("All seats of this unit are taken.");
@@ -270,13 +227,9 @@ export function takeSeat(counter: { quota: number; filled: number } | null): num
   return counter.filled + 1;
 }
 
-/** An offer counts until its expiry (read-time rule: no job releases it). */
 export const offerExpired = (offer: Offer | null, now: Date) =>
   offer !== null && offer.expiresAt <= now;
 
-/**
- * The ONE thing the applicant should do (or wait for) now, shown on the application page.
- */
 export type NextAction =
   | "start"
   | "complete"
@@ -322,7 +275,6 @@ export function nextAction(
   }
 }
 
-/** What the applicant edits before submitting (answers are checked against the form version). */
 export const ApplicationDraftSchema = z
   .object({
     choices: z.array(safeId).max(MAX_CHOICES),
@@ -330,12 +282,6 @@ export const ApplicationDraftSchema = z
   })
   .strict();
 
-/* ---------------------------------------------------------------- interview slots (C3-I) */
-
-/**
- * `interviewSlots/{id}`: one interview time (UTC) with a capacity; `booked` is the live count,
- * read and written in every booking transaction.
- */
 export interface InterviewSlot {
   readonly id: string;
   readonly recruitmentId: string;
@@ -343,7 +289,6 @@ export interface InterviewSlot {
   readonly durationMinutes: number;
   readonly capacity: number;
   readonly booked: number;
-  /** Meeting link or room, shown to the booked applicant. */
   readonly location: string;
   readonly deletedAt: Date | null;
 }
@@ -352,11 +297,6 @@ export const MAX_SLOTS_PER_PLAN = 100;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const minutesOf = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
-/**
- * A day of interviews (PPIT schedule generator): from `startTime` to `endTime` on `date` in the
- * committee's `timeZone`, slots of `durationMinutes` with `gapMinutes` between them, skipping
- * breaks. Stored in UTC.
- */
 export const SlotPlanSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a day."),
@@ -383,7 +323,6 @@ export const SlotPlanSchema = z
   });
 export type SlotPlan = z.output<typeof SlotPlanSchema>;
 
-/** The UTC start of every slot of a plan (a slot overlapping a break is skipped). */
 export function slotTimes(plan: SlotPlan): Date[] {
   const end = minutesOf(plan.endTime);
   const breaks = plan.breaks.map((b) => [minutesOf(b.start), minutesOf(b.end)] as const);
@@ -406,7 +345,6 @@ export function slotTimes(plan: SlotPlan): Date[] {
   return times;
 }
 
-/** A slot can be booked while it is in the future, not deleted and not full. */
 export function canBook(slot: InterviewSlot, now: Date): boolean {
   return slot.deletedAt === null && slot.startsAt > now && slot.booked < slot.capacity;
 }

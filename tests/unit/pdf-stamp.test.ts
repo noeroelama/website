@@ -69,7 +69,6 @@ describe("stamping the author's PDF (upload path)", () => {
 
   it("refuses a locked, damaged or empty PDF with a clear message", async () => {
     const plain = new TextDecoder("latin1").decode(await textPdf("x"));
-    // A real Encrypt dictionary in the trailer, as a password-protected export has.
     const locked = new TextEncoder().encode(
       plain
         .replace("\nxref\n", "\n99 0 obj\n<< /Filter /Standard /V 1 >>\nendobj\n\nxref\n")

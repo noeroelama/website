@@ -1,4 +1,3 @@
-/** Error after a server action; when it needs a fresh sign-in, also the link to do it. */
 export function ActionError({
   text,
   reauthUrl,

@@ -27,23 +27,14 @@ import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { INCOMING_TABS, type IncomingItem, type IncomingTab } from "./incoming-model";
 
-/* ==================================================================
-   Incoming letters (D6) — agenda book of the active period, private
-   scans, dispositions to a unit or an officer, forwarded down the
-   structure, done bottom-up, then archived.
-   ================================================================== */
-
 interface Props {
   periodName: string | null;
   initial: IncomingItem[];
   units: { id: string; name: string }[];
-  /** Officers of the active period (dispositions to a person). */
   officers: { id: string; name: string }[];
   canEdit: boolean;
   canDispose: boolean;
-  /** letter_types.read: shows the Letter types button. */
   canManageTypes: boolean;
-  /** Outgoing / Incoming tabs, under the header (`LetterSectionTabs`). */
   sectionTabs: ReactNode;
 }
 
@@ -272,10 +263,7 @@ function IncomingList({
             </p>
           </div>
         </div>
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
             {text("sender", "Sender *")}
             {text("originNumber", "Sender's number")}

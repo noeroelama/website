@@ -40,16 +40,9 @@ import {
   type QueueTab,
 } from "./applications-model";
 
-/* ==================================================================
-   Recruitment → Applications: the selection queue (C3 steps 3-6).
-   Tabs per step; a row opens the application (answers, files, revision
-   rounds) with the actions the viewer's permissions allow.
-   ================================================================== */
-
 type SortKey = "name" | "submitted";
 const sortValue = (a: ApplicationItem, key: SortKey) =>
   key === "name" ? a.name.toLowerCase() : (a.submittedAt ?? "");
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (a: ApplicationItem, key: SortKey): string =>
   key === "name" ? a.name : a.submittedAt ? formatInZone(a.submittedAt, "UTC", false) : "";
 
@@ -72,7 +65,6 @@ export function ApplicationsPage(props: {
   initial: ApplicationItem[];
   canReview: boolean;
   canOffer: boolean;
-  /** recruitment.confirm (the Sekjen): approve placements and ratify. */
   canConfirm: boolean;
 }) {
   const { recruitment, initial: items, canReview, canOffer, canConfirm } = props;

@@ -2,11 +2,6 @@
 
 import { useState, type ReactNode } from "react";
 
-/**
- * The Asia–Oceania dot map with one marker per active chapter (positions in percent, so they
- * stay on their country at any width). Selecting a marker shows that chapter's card (rendered
- * on the server and passed in).
- */
 export function ChapterMap(props: {
   label: string;
   closeLabel: string;

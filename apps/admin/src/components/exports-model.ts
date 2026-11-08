@@ -4,13 +4,10 @@ import type { HealthStatus, ProgramStatus } from "@website/domain/programs";
 import { HEALTH_STATUS_LABELS, label, PROGRAM_STATUS_LABELS } from "../labels";
 import { esc } from "./format";
 
-// Export CSVs (M8): rows already on the page, cells quoted with `esc` for `downloadCsv`, UTC times.
-
 const utc = (iso: string | null) => (iso ? iso.slice(0, 16).replace("T", " ") : "");
 const table = (header: readonly string[], rows: readonly (readonly string[])[]) =>
   [header, ...rows].map((r) => r.map(esc));
 
-/** Programmes with their milestones: one row per milestone (or one for a programme without). */
 export function programsCsv(
   rows: ReadonlyArray<{
     name: string;
@@ -99,7 +96,6 @@ export function applicantsCsv(
   );
 }
 
-/** Accounts with their role assignments (website role and organisational roles by name). */
 export function peopleCsv(
   rows: ReadonlyArray<{
     name: string;

@@ -6,15 +6,10 @@ import type { Dictionary, Language } from "@/i18n/dictionaries";
 import { formatEventTime } from "@/lib/event-time";
 import { bookInterviewAction } from "./actions";
 
-/**
- * The applicant's interview booking (C3-I): free times on the applicant's own clock (profile
- * time zone); choosing another time moves the booking and frees the old one (server side).
- */
 export function InterviewTimes(props: {
   recruitmentId: string;
   zone: string;
   language: Language;
-  /** ISO start of the booked time, or null. */
   current: string | null;
   times: { id: string; startsAt: string; minutes: number }[];
   location: string;

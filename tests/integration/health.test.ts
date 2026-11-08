@@ -3,8 +3,6 @@ import { HealthResponseSchema } from "@website/contracts";
 import { GET as adminHealth } from "../../apps/admin/src/app/health/route";
 import { GET as webHealth } from "../../apps/web/src/app/health/route";
 
-// Uptime checks (infrastructure/monitoring) call GET /health on web and admin, like the gateway.
-// Liveness only: no database call, nothing about versions, hosts or configuration (docs/security.md).
 describe.each([
   ["web", webHealth],
   ["admin", adminHealth],

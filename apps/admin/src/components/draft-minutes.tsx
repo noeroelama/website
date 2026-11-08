@@ -9,10 +9,6 @@ import { Modal } from "@/components/ui/modal";
 
 type Proposal = { title: string; pic: string | null; dueOn: string | null };
 
-/**
- * F6: paste a transcript or open a Zoom .vtt file → the machine fills the EMPTY agenda items;
- * proposed follow-ups are listed for a person to add (the server re-checks each PIC).
- */
 export function DraftMinutes({
   meetingId,
   version,
@@ -22,7 +18,6 @@ export function DraftMinutes({
   meetingId: string;
   version: number;
   names: ReadonlyMap<string, string>;
-  /** The meeting's room is a Zoom booking: its transcript can be pulled (F2). */
   hasZoom: boolean;
 }) {
   const router = useRouter();

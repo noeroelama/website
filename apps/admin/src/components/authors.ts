@@ -1,21 +1,11 @@
 import type { AuditActor, AuditEvent } from "@website/audit";
 
-/**
- * "Author" of a list row (Gallery, Event): whoever made the row's newest change, read from the
- * audit log. Pages read the audit entries and users/{uid} on the server, then map them here.
- */
 export interface Author {
-  /** Short name, e.g. "Nevyllo K.". */
   name: string;
   email: string;
-  /** Avatar initials, e.g. "NK". */
   initials: string;
 }
 
-/**
- * Resource id → actor of its newest change. `entries` are audit entries, newest first (Audit Log
- * order), so the first entry seen for a resource wins. Other resource types are skipped.
- */
 export function lastEditors(
   entries: readonly Pick<AuditEvent, "resourceType" | "resourceId" | "actor">[],
   resourceType: string,
@@ -29,7 +19,6 @@ export function lastEditors(
   return editors;
 }
 
-/** "Nevyllo Zamuel Kalangi" → "Nevyllo K." / "NK"; without a name, the e-mail's local part. */
 export function toAuthor(name: string | null, email: string | null): Author | null {
   const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
   const first = words[0] ?? email?.split("@")[0];
@@ -42,7 +31,6 @@ export function toAuthor(name: string | null, email: string | null): Author | nu
   };
 }
 
-/** Resource id → Author: the name comes from users/{uid}, the e-mail falls back to the audit one. */
 export function authorsById(
   editors: ReadonlyMap<string, AuditActor>,
   users: ReadonlyMap<string, { name: string | null; email: string | null }>,

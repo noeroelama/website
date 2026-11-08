@@ -1,23 +1,15 @@
-/*
- * Admin-only layout tokens. Colours, type, radius, spacing and shadows come from the shared
- * design tokens (@website/ui/styles.css, imported first in layout.tsx).
- */
 :root {
-  --sidebar-width: 16.5rem; /* 264 px */
+  --sidebar-width: 16.5rem;
   --sidebar-width-mobile: min(17.5rem, 82vw);
-  --topbar-height: 3.5rem; /* 56 px */
+  --topbar-height: 3.5rem;
   --content-padding: var(--space-4);
-  /* Desktop: top gap above the page title smaller than the bottom (--space-8). */
   --content-padding-desktop: var(--space-4) var(--space-10) var(--space-8);
-  --admin-leading-wide: 1.7; /* welcome copy */
-  --admin-leading-tight: 1.2; /* buttons / tight stacks */
-  --admin-leading-label: 1.3; /* radio stack / dropzone / slug / meta */
-  --admin-leading-badge: 1.6; /* badge rows */
-  /* One height for every button, field, dropdown and search box (34 px; 40 px on phones). */
+  --admin-leading-wide: 1.7;
+  --admin-leading-tight: 1.2;
+  --admin-leading-label: 1.3;
+  --admin-leading-badge: 1.6;
   --admin-control-height: calc(var(--size-control-sm) + var(--space-1-5));
-  /* Spring for presses, popups and growing note fields (overshoots a little, then settles). */
   --admin-ease-spring: linear(0, 0.55 10%, 1.12 30%, 0.98 55%, 1.01 75%, 1);
-  /* Dark page of the Gallery/Event designs (darker than brand-950, which the dialogs use). */
   --admin-page-dark: color-mix(in srgb, var(--color-brand-950) 60%, var(--color-black));
 }
 
@@ -27,7 +19,6 @@
   }
 }
 
-/* Phones: a long word or link breaks anywhere instead of widening the page. */
 @media (max-width: 767px) {
   body,
   .admin-table th,
@@ -36,7 +27,6 @@
   }
 }
 
-/* ===================== Side panel (components/admin-sidebar.tsx) ===================== */
 .admin-frame {
   min-height: 100dvh;
 }
@@ -57,7 +47,6 @@
   top: var(--space-3);
 }
 
-/* Mobile top bar (hidden on desktop) */
 .admin-topbar {
   position: fixed;
   inset: 0 0 auto;
@@ -96,7 +85,6 @@
   background: var(--color-panel-hover);
 }
 
-/* Drawer backdrop (mobile) */
 .admin-backdrop {
   position: fixed;
   inset: 0;
@@ -114,7 +102,6 @@
   pointer-events: auto;
 }
 
-/* Panel */
 .admin-panel {
   position: fixed;
   inset: 0 auto 0 0;
@@ -124,7 +111,7 @@
   width: var(--sidebar-width-mobile);
   padding: calc(env(safe-area-inset-top) + var(--space-6)) var(--space-3-5)
     calc(env(safe-area-inset-bottom) + var(--space-4));
-  overflow: hidden; /* only the page menu (.admin-nav) scrolls; logo and account stay */
+  overflow: hidden;
   background: var(--color-panel);
   color: var(--color-on-panel);
   transform: translateX(-100%);
@@ -151,11 +138,10 @@
 
 .admin-logo {
   display: block;
-  width: 100%; /* fills the brand row; the height follows the image */
+  width: 100%;
   height: auto;
 }
 
-/* Page menu: the only part of the panel that scrolls. 12px between groups. */
 .admin-nav {
   display: grid;
   flex: 1;
@@ -163,7 +149,6 @@
   align-content: start;
   gap: var(--space-3);
   min-height: 0;
-  /* The scroll box reaches both panel edges, so its scrollbar sits at the very right. */
   margin-inline: calc(-1 * var(--space-3-5));
   padding-top: var(--space-4);
   padding-inline: var(--space-3-5);
@@ -171,7 +156,6 @@
   overscroll-behavior: contain;
 }
 
-/* Group label: also the button that collapses the group (<summary>). */
 .admin-menu-label {
   display: flex;
   align-items: center;
@@ -204,7 +188,6 @@
   transform: rotate(-90deg);
 }
 
-/* 8px between pages. */
 .admin-nav-list {
   display: grid;
   gap: var(--space-2);
@@ -241,7 +224,6 @@
   outline-color: var(--color-highlight);
 }
 
-/* Footer with the account menu */
 .admin-footer {
   flex: none;
   margin-top: auto;
@@ -357,15 +339,12 @@
   line-height: var(--leading-xs);
 }
 
-/* Content */
 .admin-main {
   min-height: 100dvh;
   padding: calc(var(--topbar-height) + env(safe-area-inset-top) + var(--space-2))
     var(--content-padding) var(--space-8);
 }
 
-/* Desktop. CSS cannot read a custom property in a media query: 1024px must match
-   DESKTOP_QUERY in components/admin-sidebar.tsx. */
 @media (min-width: 1024px) {
   .admin-topbar,
   .admin-backdrop {
@@ -379,7 +358,6 @@
     transition: none;
   }
 
-  /* Pointer devices: denser rows, as in the desktop design. */
   .admin-nav-link {
     min-height: var(--size-control);
   }
@@ -394,10 +372,6 @@
   }
 }
 
-/* ===================== Page content (Dashboard · Tools · shared) ===================== */
-/* All colours/type/spacing/radius come from @website/ui/styles.css tokens. */
-
-/* ---- Page header ---- */
 .admin-page-header {
   display: flex;
   align-items: flex-end;
@@ -420,7 +394,6 @@
   line-height: var(--leading-xs);
 }
 
-/* ---- Card ---- */
 .admin-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
@@ -467,7 +440,6 @@
   padding: 0;
 }
 
-/* ---- Account / profile / emails content ---- */
 .admin-account__line {
   margin: 0 0 var(--space-2);
   color: inherit;
@@ -515,7 +487,6 @@
   margin: 0;
 }
 
-/* ---- Stat cards ---- */
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -584,7 +555,6 @@ a.admin-stat-card:hover {
   color: var(--color-danger);
 }
 
-/* ---- Welcome card ---- */
 .admin-welcome-card {
   margin-top: var(--space-4);
   display: flex;
@@ -628,7 +598,6 @@ a.admin-stat-card:hover {
   line-height: var(--admin-leading-wide);
 }
 
-/* ---- Buttons ---- */
 .admin-btn {
   display: inline-flex;
   align-items: center;
@@ -651,8 +620,6 @@ a.admin-stat-card:hover {
     scale 0.6s var(--admin-ease-spring);
 }
 
-/* Six states: default (above), hover (pointer devices only, per variant), focus, press,
-   loading and disabled. */
 .admin-btn:focus-visible {
   outline: var(--focus-ring-width) solid var(--admin-focus, var(--color-focus));
   outline-offset: var(--focus-ring-offset);
@@ -667,7 +634,6 @@ a.admin-stat-card:hover {
   cursor: not-allowed;
 }
 
-/* Loading: the action runs; the button stays readable and shows a spinner after its label. */
 .admin-btn[aria-busy="true"] {
   opacity: 1;
   cursor: progress;
@@ -722,7 +688,6 @@ a.admin-stat-card:hover {
   }
 }
 
-/* Row-action delete: always the danger colour, even in the ghost/icon look. */
 .admin-table__delete {
   color: var(--color-danger);
 }
@@ -759,7 +724,6 @@ a.admin-stat-card:hover {
   font-size: var(--text-sm);
 }
 
-/* Buttons whose label should read as regular weight, not semibold. */
 .admin-btn--regular {
   font-weight: var(--font-regular);
 }
@@ -771,7 +735,6 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-md);
 }
 
-/* ---- Badges ---- */
 .admin-badge {
   display: inline-flex;
   align-items: center;
@@ -816,7 +779,6 @@ a.admin-stat-card:hover {
   color: var(--color-primary);
 }
 
-/* ---- Page-level tools layout ---- */
 .admin-tools-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
@@ -824,7 +786,6 @@ a.admin-stat-card:hover {
   align-items: start;
 }
 
-/* ---- Fields & inputs ---- */
 .admin-field {
   display: flex;
   flex-direction: column;
@@ -844,7 +805,6 @@ a.admin-stat-card:hover {
   align-items: center;
 }
 
-/* "Generate Link" sits flush against the slug box; flatten its inner corners. */
 .admin-field__row .admin-btn {
   font-size: var(--text-xs);
   font-weight: var(--font-regular);
@@ -893,7 +853,6 @@ a.admin-stat-card:hover {
   box-shadow: 0 0 0 3px var(--color-border-subtle);
 }
 
-/* A group of checkboxes or radios with its title (Roles: the permissions of one page). */
 .admin-fieldset {
   margin: 0;
   padding: var(--space-3) var(--space-4) var(--space-4);
@@ -905,7 +864,6 @@ a.admin-stat-card:hover {
   padding: 0 var(--space-1);
 }
 
-/* Radio rows (QR size / type) */
 .admin-radio-row {
   display: flex;
   gap: var(--space-4);
@@ -924,7 +882,6 @@ a.admin-stat-card:hover {
   color: var(--color-text);
 }
 
-/* QR/type radios keep a plain black dot. */
 .admin-radio input {
   accent-color: var(--color-black);
 }
@@ -936,19 +893,16 @@ a.admin-stat-card:hover {
   line-height: var(--admin-leading-label);
 }
 
-/* Compact QR-size radios: "Small" over "For Screens" — same size as the other QR labels. */
 .admin-radio__stack strong,
 .admin-radio__stack .admin-card__subtitle {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
 }
 
-/* The hint under each size stays regular — only the label text is emphasized. */
 .admin-radio__stack .admin-card__subtitle {
   font-weight: var(--font-regular);
 }
 
-/* Logo switch (pill; off = knob right, on = knob left + brand-950 track) */
 .admin-qr-switch {
   display: inline-flex;
   align-items: center;
@@ -1023,7 +977,6 @@ a.admin-stat-card:hover {
   line-height: var(--leading-xs);
 }
 
-/* QR preview */
 .admin-qr-preview {
   display: flex;
   flex-direction: column;
@@ -1033,18 +986,9 @@ a.admin-stat-card:hover {
   overflow-x: auto;
 }
 
-/* Dashed container around the generated QR. Lives in the same flex column as the
-   Generate QR button, so it stretches to the exact same width automatically —
-   no fixed width to drift out of sync. Transparent surface, black dashed frame
-   shared with the upload dropzone below (see .admin-dropzone).
-   FIXED height (not min-height) sized for the largest QR so the frame never
-   resizes as the size/Small|Medium|Large changes — the outline stays put. */
 .admin-qr-preview__container {
   display: grid;
   place-items: center;
-  /* minmax(0,1fr) forces the track to the content-box width/height, so the tile's
-     max-width/max-height:100% resolve to the interior — a Large QR is clamped to
-     fit inside the fixed frame instead of overflowing it. */
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
@@ -1057,10 +1001,6 @@ a.admin-stat-card:hover {
   background: transparent;
 }
 
-/* The QR tile fits the fixed frame: capped to the interior (so a Large QR is
-   centred inside, not overflowing) and square via aspect-ratio — Small/Medium
-   keep their natural size. Height is derived from width (see the inline width
-   on the element). */
 .admin-qr-preview__tile {
   position: relative;
   flex: none;
@@ -1090,12 +1030,10 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-sm);
 }
 
-/* Centre logo on a dark chip (same look as the SVG download, see downloadSvg). */
 .admin-qr-preview__logo {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
-  /* Opaque plate in the QR's light colour, like the PNG download (qrLogoPlate). */
   background: var(--color-brand-50);
   display: grid;
   place-items: center;
@@ -1109,7 +1047,6 @@ a.admin-stat-card:hover {
   padding: var(--space-0-5);
 }
 
-/* Download actions under the dashed QR container: two dark buttons, one at each edge. */
 .admin-qr-preview__actions {
   display: flex;
   justify-content: space-between;
@@ -1118,7 +1055,6 @@ a.admin-stat-card:hover {
   margin-top: var(--space-2);
 }
 
-/* Dropzone (before a QR is generated) — base look (also used by events-page). */
 .admin-dropzone {
   display: flex;
   flex-direction: column;
@@ -1136,12 +1072,6 @@ a.admin-stat-card:hover {
   text-align: center;
 }
 
-/* QR tool dropzone: transparent + thick black dashed frame, matching the
-   generated-QR container (.admin-qr-preview__container) — same fixed height and
-   stretch-to-card width, so the outline is identical before and after
-   generation. Scoped to the QR branch so events-page's banner dropzone keeps
-   its cream well, and higher specificity than the theme overrides that repaint
-   dropzones cream. */
 .admin-tools-grid .admin-dropzone {
   border: 1px dashed var(--admin-page-dark);
   background: transparent;
@@ -1153,8 +1083,6 @@ a.admin-stat-card:hover {
   color: var(--color-text);
 }
 
-/* The pick action of a drop area or photo tile: a real <button> over the whole area. A remove
-   button later in the same area sits above it. */
 .admin-pick {
   position: absolute;
   inset: 0;
@@ -1173,7 +1101,7 @@ a.admin-stat-card:hover {
 
 .admin-dropzone__badge {
   position: absolute;
-  pointer-events: none; /* a click on the badge reaches the pick button under it */
+  pointer-events: none;
   bottom: var(--space-2);
   right: var(--space-2-5);
   color: var(--color-white);
@@ -1184,9 +1112,6 @@ a.admin-stat-card:hover {
   line-height: var(--leading-xs);
 }
 
-/* Remove button: small floating chip at the top-right corner while an image
-   is uploaded, so it never conflicts with the "Click to change" badge below.
-   Shared cream look with the QR "Clear" button (see .admin-qr-clear). */
 .admin-dropzone .admin-dropzone__remove {
   position: absolute;
   top: var(--space-2);
@@ -1194,9 +1119,6 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-full);
 }
 
-/* QR preview "Clear" button: a circular X chip at the top-right corner of the
-   QR tile itself (the tile is position:relative and exactly the image size +
-   its 8px padding), styled exactly like the upload dropzone's remove X. */
 .admin-qr-preview__tile .admin-qr-clear {
   position: absolute;
   top: var(--space-1);
@@ -1204,8 +1126,6 @@ a.admin-stat-card:hover {
   border-radius: var(--radius-full);
 }
 
-/* Both QR buttons share the same cream chip background and maroon ink. A hair
-   border keeps them visible when they sit on cream surfaces (cards, dropzone). */
 .admin-dropzone .admin-dropzone__remove,
 .admin-qr-preview__tile .admin-qr-clear {
   background: var(--color-brand-50);
@@ -1227,14 +1147,12 @@ a.admin-stat-card:hover {
   padding: 0 var(--space-3);
 }
 
-/* "Any image format • …" hint under the dropzone title. */
 .admin-dropzone .admin-card__subtitle {
   font-size: var(--text-2xs);
   line-height: var(--leading-2xs);
   padding: 0 var(--space-3);
 }
 
-/* URL slug (readonly prefix + editable slug) */
 .admin-url-slug {
   display: flex;
   align-items: center;
@@ -1272,21 +1190,19 @@ a.admin-stat-card:hover {
   font-weight: var(--font-semibold);
   padding: 0 var(--space-2);
   height: calc(100% + 2px);
-  margin: calc(var(--space-0-5) * -0.5) 0; /* overlap the 1px slug-box border */
+  margin: calc(var(--space-0-5) * -0.5) 0;
 }
 
 .admin-url-slug__slug:focus {
   box-shadow: inset 0 0 0 2px var(--color-focus);
 }
 
-/* Tools form + long-url/title fields */
 .admin-tools-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-3-5);
 }
 
-/* Toolbar (search + delete) */
 .admin-toolbar {
   position: relative;
   display: flex;
@@ -1297,9 +1213,6 @@ a.admin-stat-card:hover {
   padding: var(--space-3-5) var(--space-4);
 }
 
-/* Top divider inset to the toolbar's horizontal padding so it lines up with
-   the search box (left) and the Delete button (right) instead of spanning
-   the full card width. */
 .admin-toolbar::before {
   content: "";
   position: absolute;
@@ -1350,9 +1263,6 @@ a.admin-stat-card:hover {
   line-height: var(--size-control-sm);
 }
 
-/* ---- Events header controls ---- */
-/* Add New Event + Filters + Search live together on the header row, wrapping
-   when the viewport narrows. */
 .admin-events-header .admin-page-header__actions {
   display: flex;
   align-items: center;
@@ -1366,13 +1276,11 @@ a.admin-stat-card:hover {
   min-width: 200px;
 }
 
-/* Table */
 .admin-table-wrap {
   overflow-x: auto;
   margin-inline: var(--space-4);
 }
 
-/* No results: the header stays and the message is centred in the space under it. */
 .admin-table-wrap--empty {
   display: flex;
   flex-direction: column;
@@ -1386,8 +1294,6 @@ a.admin-stat-card:hover {
   padding: var(--space-8) var(--space-4);
 }
 
-/* URL table on the Tools page: rounded corners only at the TOP (the bottom
-   is left square — the footer bar sits below it with normal spacing). */
 .admin-tools-grid .admin-table-wrap {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow-y: hidden;
@@ -1395,9 +1301,6 @@ a.admin-stat-card:hover {
   z-index: 1;
 }
 
-/* URL table footer (pagination bar): its own bar at normal spacing (no
-   negative margin pulling it up behind the last record), square top so the
-   divider runs straight, rounded bottom only. */
 .admin-tools-grid .admin-darkbar {
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
@@ -1418,7 +1321,6 @@ a.admin-stat-card:hover {
   padding: var(--space-2-5) var(--space-4);
 }
 
-/* Text wraps onto the next line between words; the table never gets wider than its card. */
 .admin-table th,
 .admin-table td {
   overflow-wrap: break-word;
@@ -1432,14 +1334,12 @@ a.admin-stat-card:hover {
   font-weight: var(--font-regular);
 }
 
-/* First column (row checkboxes) stays narrow — nudge the checkboxes to the right. */
 .admin-table th:first-child,
 .admin-table td:first-child {
   padding-left: var(--space-3);
   padding-right: var(--space-1);
 }
 
-/* URL column hugs the checkbox so check + short link read as one left-aligned group. */
 .admin-table th:nth-child(2),
 .admin-table td:nth-child(2) {
   padding-left: var(--space-1);
@@ -1468,7 +1368,7 @@ a.admin-stat-card:hover {
   color: var(--color-text-muted);
   font-size: var(--text-2xs);
   line-height: var(--leading-2xs);
-  overflow-wrap: anywhere; /* links and e-mails have no spaces: break them anywhere */
+  overflow-wrap: anywhere;
 }
 
 .admin-table__actions {
@@ -1477,8 +1377,6 @@ a.admin-stat-card:hover {
   align-items: center;
 }
 
-/* Custom checkbox (row + select-all): native input is visually hidden;
-   the sibling <span> draws the box, and a hidden mark shows on :checked. */
 .admin-checkbox {
   display: inline-grid;
   place-items: center;
@@ -1506,8 +1404,6 @@ a.admin-stat-card:hover {
   background: transparent;
 }
 
-/* Row checkboxes: a solid black checkmark appears when selected; the box keeps
-   its border (no black fill). */
 .admin-table tbody .admin-table__checkbox:checked + span::after {
   content: "";
   width: 8px;
@@ -1516,9 +1412,6 @@ a.admin-stat-card:hover {
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
 
-/* Select-all master checkbox (table header + bulk bar): shows a black dash
-   whenever it is active — fully selected or partial — while the per-row boxes
-   below keep their checkmarks. */
 .admin-table thead .admin-table__checkbox:checked + span::after,
 .admin-table thead .admin-table__checkbox:indeterminate + span::after,
 .admin-bulkbar .admin-table__checkbox:checked + span::after,
@@ -1533,7 +1426,6 @@ a.admin-stat-card:hover {
   box-shadow: 0 0 0 2px var(--color-focus);
 }
 
-/* Empty state */
 .admin-empty {
   display: flex;
   flex-direction: column;
@@ -1553,7 +1445,6 @@ a.admin-stat-card:hover {
   font-size: var(--text-sm);
 }
 
-/* Dark bar (table footer — rows-per-page + page numbers) */
 .admin-darkbar {
   display: flex;
   align-items: center;
@@ -1591,7 +1482,6 @@ a.admin-stat-card:hover {
   min-width: 0;
 }
 
-/* Nudge the "Showing … of N" summary a little off the left edge. */
 .admin-darkbar > .admin-darkbar__info:first-child {
   margin-left: var(--space-2);
 }
@@ -1629,7 +1519,6 @@ a.admin-stat-card:hover {
   cursor: not-allowed;
 }
 
-/* Result banner (created/updated link) */
 .admin-link-result {
   display: flex;
   align-items: center;
@@ -1702,8 +1591,6 @@ a.admin-stat-card:hover {
   font-weight: var(--font-regular);
 }
 
-/* Modal: one look on every page — a dark maroon card over the dimmed (still visible) page, a big
-   cream title, cream fields, actions at the bottom right (Back + the action). */
 .admin-modal-overlay {
   position: fixed;
   inset: 0;
@@ -1763,7 +1650,6 @@ a.admin-stat-card:hover {
   background: var(--color-panel-hover);
 }
 
-/* A popup that is a form (Modal asForm): the form adds no box of its own. */
 .admin-modal__form {
   display: contents;
 }
@@ -1781,7 +1667,6 @@ a.admin-stat-card:hover {
   padding: var(--space-3) var(--space-5) var(--space-5);
 }
 
-/* Footer actions: Back (left of the pair) and the action, at the right edge. */
 .admin-modal__footer-row {
   display: flex;
   align-items: center;
@@ -1795,8 +1680,6 @@ a.admin-stat-card:hover {
   font-size: var(--text-xs);
 }
 
-/* Cream popup (Article Settings, Role Manager): the same centred popup as a cream surface (dark
-   fields and buttons, see "Dark admin pages"), with lines under the title and above the actions. */
 .admin-modal.admin-modal--side {
   background: var(--color-brand-50);
   border-color: var(--color-brand-50);
@@ -1827,14 +1710,12 @@ a.admin-stat-card:hover {
   border-top: 1px solid var(--color-brand-950);
 }
 
-/* Confirmation text (delete, revert, publish …). */
 .admin-delete-confirm__message {
   margin: 0;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
 }
 
-/* Form grid (2 columns → 1 on small screens) */
 .admin-form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1860,8 +1741,6 @@ a.admin-stat-card:hover {
   }
 }
 
-/* Toast — matches the side panel look (same surface, ink and type as the
-   sidebar links): maroon pill with cream text, medium weight (not bold). */
 .admin-toast {
   position: fixed;
   left: 50%;
@@ -1891,13 +1770,6 @@ a.admin-stat-card:hover {
   }
 }
 
-/* ==================================================================
-   Events — tabs, bulk action bar, list chips (Figma "EVENT ADMIN")
-   ================================================================== */
-
-/* Tab row (All / Upcoming / Past / Drafts): underline style, sits above the table. Every tab row
-   scrolls sideways here (no scrollbar; drag with the mouse, see Tabs in ui/list-controls.tsx) and
-   fades out at its end; the end padding lets the last tab scroll clear of the fade. */
 .admin-tabs {
   display: flex;
   align-items: center;
@@ -1967,8 +1839,6 @@ a.admin-stat-card:hover {
   margin-left: var(--space-0-5);
 }
 
-/* Title cell: event logo as a SQUARE box — below the height of the
-   two-line event text (title on top, type below). */
 .admin-event-avatar {
   display: inline-flex;
   align-items: center;
@@ -1985,7 +1855,6 @@ a.admin-stat-card:hover {
   overflow: hidden;
 }
 
-/* Event logo is an image now — crop it to fill the square box. */
 .admin-event-avatar__img {
   width: 100%;
   height: 100%;
@@ -2000,18 +1869,15 @@ a.admin-stat-card:hover {
   min-width: 0;
 }
 
-/* Events table: roomier gap between the row checkbox and the event avatar. */
 .admin-events-card .admin-table th:first-child,
 .admin-events-card .admin-table td:first-child {
   padding-right: var(--space-4);
 }
 
-/* Events pagination footer sits flush with the black card bottom — no gap. */
 .admin-events-card .admin-darkbar {
   margin-bottom: 0;
 }
 
-/* Event Date cell: date on top, gold countdown below. */
 .admin-event-date {
   display: inline-flex;
   flex-direction: column;
@@ -2026,8 +1892,6 @@ a.admin-stat-card:hover {
   white-space: nowrap;
 }
 
-/* Bulk action bar — replaces the dark pagination bar while rows are selected.
-   Mirrors the Figma "Bulk action bar" (cream bg, near-black text). */
 .admin-bulkbar {
   display: flex;
   align-items: center;
@@ -2073,7 +1937,6 @@ a.admin-stat-card:hover {
   margin-left: auto;
 }
 
-/* Row "more" menu (Publish / Make Private / Copy Link / Delete event) */
 .admin-row-menu {
   position: relative;
 }
@@ -2087,7 +1950,6 @@ a.admin-stat-card:hover {
   padding: var(--space-1);
   background: var(--color-brand-50);
   border: 1px solid var(--color-border-subtle);
-  /* Concentric corners: outer radius = item radius + the gap around the items. */
   border-radius: calc(var(--radius-sm) + var(--space-1));
   box-shadow: var(--shadow-popover);
 }
@@ -2121,22 +1983,18 @@ a.admin-stat-card:hover {
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 }
 
-/* Rule separating the destructive Delete entry from Copy Link (and above). */
 .admin-row-menu__divider {
   height: 1px;
   margin: var(--space-1) var(--space-1);
   background: var(--color-border);
 }
 
-/* Right side of the more menu already carries a danger tone; keep the
-   backdrop underneath but let it stay transparent to the panel. */
 .admin-row-menu__backdrop {
   position: fixed;
   inset: 0;
   z-index: 40;
 }
 
-/* Form footer actions (Back · Save draft · Publish) */
 .admin-form-actions {
   display: flex;
   align-items: center;
@@ -2154,7 +2012,6 @@ a.admin-stat-card:hover {
   gap: var(--space-2);
 }
 
-/* Labelled editable-string section (Guest/Speakers, Rundown, Sponsors) */
 .admin-form-separator {
   margin-top: var(--space-5);
   padding-top: var(--space-4);
@@ -2175,7 +2032,6 @@ a.admin-stat-card:hover {
   gap: var(--space-2);
 }
 
-/* ── Page pattern (docs/admin-shell.md): field errors ── */
 .admin-field__error {
   margin: var(--space-1) 0 0;
   color: var(--admin-error, var(--color-danger));
@@ -2183,8 +2039,6 @@ a.admin-stat-card:hover {
   line-height: var(--leading-xs);
 }
 
-/* Under a field (components/ui/field-error.tsx): one line, or a list of requirements, each with a
-   warning triangle (unmet, red) or a tick (met, green); help text before the field is checked. */
 .admin-field__feedback:empty {
   display: none;
 }
@@ -2220,15 +2074,11 @@ a.admin-stat-card:hover {
   color: var(--admin-ink-muted, var(--color-text-muted));
 }
 
-/* The icon sits on the first line of the text. */
 .admin-field__icon {
   flex: none;
   margin-top: calc((var(--text-xs) * var(--leading-xs) - 14px) / 2);
 }
 
-/* Dropdown (components/ui/select.tsx; search box over 5 options). The button takes the select's
-   own class (admin-select, admin-input …); the list is the Newsletter status menu
-   (`.admin-row-menu__panel`): cream panel, hover shade, chosen option in semibold. */
 .admin-combo {
   position: relative;
   min-width: 0;
@@ -2264,7 +2114,6 @@ a.admin-stat-card:hover {
   cursor: not-allowed;
 }
 
-/* Dropdown buttons press like `.admin-btn`, and their arrow turns over while the menu is open. */
 :is(.admin-combo__trigger, .admin-newsletter-status, .admin-th-sort) {
   transition: scale 0.6s var(--admin-ease-spring);
 }
@@ -2289,8 +2138,8 @@ a.admin-stat-card:hover {
 
 .admin-combo__panel {
   position: fixed;
-  z-index: 1100; /* above popups (.admin-modal-overlay) */
-  top: auto; /* useDropdown sets top (below the button) or bottom (above it) */
+  z-index: 1100;
+  top: auto;
   right: auto;
   display: flex;
   flex-direction: column;
@@ -2333,18 +2182,10 @@ a.admin-stat-card:hover {
   border-color: var(--color-danger);
 }
 
-/* ===================== Dark admin pages (every page; docs/admin-shell.md) ===================== */
-/* Every admin page is dark: `.admin-dark-page` sits on the content area (`<main>` in
-   components/admin-sidebar.tsx), so the rules below apply to all pages and their popups. The list
-   card is `.admin-list-card`, the add/edit page wrapper `.admin-dark-form`. */
 body:has(.admin-dark-page) {
   background: var(--admin-page-dark);
 }
 
-/* Every scrollbar (page, side panel, popups, menus, tables, code blocks): a slim rounded thumb on a
-   transparent track. Only the page reserves its gutter (`stable`), so content keeps its width when
-   a page becomes long enough to scroll. Chromium and Safari use the `::-webkit-` parts; Firefox
-   gets the standard properties. `.admin-tabs` hides its own scrollbar (more specific rules). */
 html:has(.admin-dark-page) {
   scrollbar-gutter: stable;
 }
@@ -2381,8 +2222,6 @@ html:has(.admin-dark-page) {
   }
 }
 
-/* Cream menus and dropdowns: a dark thumb (the light one above is for the dark page), on the menu
-   itself (column menus scroll as a whole) and on boxes inside it (Select's option list). */
 :is(.admin-row-menu__panel, .admin-row-menu__panel *)::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--color-brand-950) 30%, transparent);
   background-clip: padding-box;
@@ -2393,8 +2232,6 @@ html:has(.admin-dark-page) {
   background-clip: padding-box;
 }
 
-/* Colours that depend on the surface. The dark canvas (and dark blocks inside cream cards): cream
-   text, cream fields and buttons. */
 .admin-dark-page,
 .admin-dark-page
   :is(.admin-link-result--dark, .admin-tools .admin-table-wrap, .admin-tools .admin-darkbar) {
@@ -2414,8 +2251,6 @@ html:has(.admin-dark-page) {
   color: var(--admin-ink);
 }
 
-/* Cream surfaces on the dark canvas (cards, rows, menus, bars): dark text, dark fields and
-   buttons. Add a surface here instead of styling its fields one by one. */
 .admin-dark-page
   :is(
     .admin-bulkbar,
@@ -2458,15 +2293,12 @@ html:has(.admin-dark-page) {
   color: var(--admin-ink-muted);
 }
 
-/* Cards: transparent with a thin light outline (the list card look). */
 .admin-dark-page .admin-card {
   background: transparent;
   border: 1px solid var(--color-panel-line);
   color: var(--admin-ink);
 }
 
-/* Buttons: solid ones (primary, outline) are cream with dark ink on the canvas and dark on cream
-   surfaces; ghost/icon buttons take the text colour; danger stays red. */
 .admin-dark-page :is(.admin-btn--outline, .admin-btn--maroon) {
   background: var(--admin-btn-bg);
   color: var(--admin-btn-ink);
@@ -2480,7 +2312,6 @@ html:has(.admin-dark-page) {
   }
 }
 
-/* Primary stays champagne gold on both the dark canvas and cream surfaces: the admin's one pop colour. */
 .admin-dark-page .admin-btn--primary {
   border: 1px solid var(--color-highlight);
 }
@@ -2501,8 +2332,6 @@ html:has(.admin-dark-page) {
   }
 }
 
-/* Fields: cream wells with dark ink on the canvas (dark wells on cream surfaces). The border lights
-   up gold while typing and turns red (with the message below) when a requirement is unmet. */
 .admin-dark-page :is(.admin-input, .admin-select, .admin-textarea, .admin-url-slug) {
   background: var(--admin-field-bg);
   border-color: var(--admin-field-bg);
@@ -2510,7 +2339,6 @@ html:has(.admin-dark-page) {
   color-scheme: var(--admin-field-scheme);
 }
 
-/* The URL box: prefix in the field ink, the editable part a shade darker than the field. */
 .admin-dark-page .admin-url-slug__prefix {
   color: var(--admin-field-ink);
   font-size: var(--text-sm);
@@ -2547,7 +2375,6 @@ html:has(.admin-dark-page) {
   cursor: not-allowed;
 }
 
-/* Checkbox and radio choices take the text colour; the box follows the surface. */
 .admin-dark-page .admin-radio {
   color: var(--admin-ink);
 }
@@ -2556,7 +2383,6 @@ html:has(.admin-dark-page) {
   accent-color: var(--admin-btn-bg);
 }
 
-/* Status chips on the dark rows: tinted (green, gold, red, muted). */
 .admin-dark-page .admin-badge {
   border-radius: var(--radius-sm);
   font-size: var(--text-2xs);
@@ -2588,7 +2414,6 @@ html:has(.admin-dark-page) {
   color: var(--color-on-panel-muted);
 }
 
-/* Search box: an outlined well in the text colour with a solid Search button. */
 .admin-dark-page .admin-searchbox {
   background: transparent;
   border-color: var(--admin-ink);
@@ -2616,7 +2441,6 @@ html:has(.admin-dark-page) {
   background: var(--admin-btn-hover);
 }
 
-/* Links in text on the dark canvas: the text colour; table rows link without an underline. */
 .admin-dark-page .admin-card a:not(.admin-btn),
 .admin-dark-page .admin-table a:not(.admin-btn) {
   color: inherit;
@@ -2632,12 +2456,10 @@ html:has(.admin-dark-page) {
   }
 }
 
-/* A row link with a title and a line under it (Users: name over e-mail). */
 .admin-table a > .admin-table__sub {
   display: block;
 }
 
-/* A filter form above a table: its controls sit together on the left. */
 form.admin-toolbar {
   justify-content: flex-start;
   padding-inline: 0;
@@ -2647,7 +2469,6 @@ form.admin-toolbar::before {
   display: none;
 }
 
-/* Filter selects in a toolbar keep their natural width. */
 .admin-toolbar .admin-select,
 .admin-toolbar .admin-combo {
   width: auto;
@@ -2667,7 +2488,6 @@ form.admin-toolbar::before {
   padding: 0 var(--space-6);
 }
 
-/* Album table: transparent card with a thin light outline, lines edge to edge. */
 .admin-dark-page .admin-list-card {
   background: transparent;
   border: 1px solid var(--color-panel-line);
@@ -2723,7 +2543,6 @@ form.admin-toolbar::before {
   color: var(--color-brand-50);
 }
 
-/* Column menu (ui/column-menu.tsx): sort A–Z / Z–A, then the column's values as a checklist. */
 .admin-colmenu {
   display: inline-block;
 }
@@ -2751,8 +2570,6 @@ form.admin-toolbar::before {
   accent-color: var(--color-brand-950);
 }
 
-/* Checkboxes: cream rounded squares; filled cream (with the black mark) when on.
-   Shared with the Tools link list, which uses the same dark rows. */
 .admin-dark-page .admin-checkbox,
 .admin-dark-page .admin-checkbox span {
   width: var(--space-4-5);
@@ -2778,7 +2595,6 @@ form.admin-toolbar::before {
   background: transparent;
 }
 
-/* Gallery cell: four thumbnails + "48+" tile, then title and event type. */
 .admin-gallery-album {
   display: flex;
   align-items: center;
@@ -2812,7 +2628,6 @@ form.admin-toolbar::before {
   font-size: var(--text-2xs);
 }
 
-/* Author cell: green initials avatar, name and e-mail. */
 .admin-gallery-author {
   display: flex;
   align-items: center;
@@ -2838,14 +2653,12 @@ form.admin-toolbar::before {
   flex-direction: column;
 }
 
-/* Disabled menu entries are dimmed. */
 .admin-dark-page .admin-row-menu__item:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   background: transparent;
 }
 
-/* Footer bars sit inside the card: pagination transparent, bulk bar cream. */
 .admin-dark-page .admin-darkbar,
 .admin-dark-page .admin-bulkbar {
   margin: 0;
@@ -2858,7 +2671,6 @@ form.admin-toolbar::before {
   border-top: 1px solid var(--color-panel-line);
 }
 
-/* The paging bar draws the line under the last row, so the row does not draw a second one. */
 .admin-dark-page .admin-table tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -2882,7 +2694,6 @@ form.admin-toolbar::before {
   border: 0;
 }
 
-/* Empty state: cream title, muted hint, outlined "Clear Filters" + cream "Add New Album". */
 .admin-dark-page .admin-empty {
   color: var(--color-on-panel-muted);
 }
@@ -2897,7 +2708,6 @@ form.admin-toolbar::before {
   margin-top: var(--space-2);
 }
 
-/* Album form: cream fields on the dark page, lines under the title and above the actions. */
 .admin-dark-form {
   display: flex;
   flex-direction: column;
@@ -2906,7 +2716,6 @@ form.admin-toolbar::before {
   border-top: 1px solid var(--color-brand-50);
 }
 
-/* Back · Save draft · Publish stay at the bottom of the page on short forms. */
 .admin-dark-form > .admin-form-actions {
   margin-top: auto;
 }
@@ -2919,7 +2728,6 @@ form.admin-toolbar::before {
   border-top-color: var(--color-brand-50);
 }
 
-/* Banner images: five square tiles per row, red round remove button top-right. */
 .admin-gallery-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3002,9 +2810,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* A page with a table fills the screen height: the content area and every wrapper down to the
-   table card are columns that take the free height, so a short table reaches the bottom of the
-   screen. They never shrink below their rows, so a long table makes the page scroll instead. */
 .admin-dark-page:has(.admin-list-card),
 .admin-dark-page :has(.admin-list-card) {
   display: flex;
@@ -3018,7 +2823,6 @@ form.admin-toolbar::before {
   min-width: 0;
 }
 
-/* The pagination / bulk bar stay at the bottom of the card. */
 .admin-dark-page .admin-list-card {
   display: flex;
   flex-direction: column;
@@ -3036,15 +2840,9 @@ form.admin-toolbar::before {
   margin-top: auto;
 }
 
-/* Long event titles in the select must not widen the form past the screen. */
 .admin-dark-page .admin-form-grid > * {
   min-width: 0;
 }
-
-/* ==================================================================
-   Organizations (Period / PPI lists, Structure, Create/Edit Unit) —
-   Figma "ORGANIZATIONS ADMIN". The page sits on the black canvas.
-   ================================================================== */
 
 .admin-org-badges {
   display: inline-flex;
@@ -3053,12 +2851,10 @@ form.admin-toolbar::before {
   gap: var(--space-2);
 }
 
-/* "#AUS" under the chapter name. */
 .admin-org-code {
   font-weight: var(--font-bold);
 }
 
-/* Conditions joined with " · " (bold, wraps over several lines). */
 .admin-org-conditions {
   display: block;
   font-size: var(--text-xs);
@@ -3066,24 +2862,20 @@ form.admin-toolbar::before {
   line-height: var(--leading-sm);
 }
 
-/* Red trash icon in table rows. */
 .admin-btn--icon-danger {
   color: var(--color-danger-bright);
 }
 
-/* PPI bulk bar sits above the pagination bar (both stay visible). */
 .admin-org-bulkbar {
   margin-top: var(--space-2);
 }
 
-/* Structure page period switch: menu under the button. */
 .admin-org-period-menu {
   left: 0;
   right: auto;
   min-width: 100%;
 }
 
-/* ---- Create / Edit Unit page ---- */
 .admin-unit-header {
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--color-panel-line);
@@ -3134,7 +2926,6 @@ form.admin-toolbar::before {
   font-size: var(--text-xs);
 }
 
-/* Cream cards: a core member, or a division with its members. */
 .admin-unit-card {
   background: var(--color-brand-50);
   color: var(--color-brand-950);
@@ -3149,7 +2940,6 @@ form.admin-toolbar::before {
   gap: var(--space-6);
 }
 
-/* Members inside a division have no handle of their own. */
 .admin-unit-division .admin-unit-member {
   grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
   padding: var(--space-3) 0;
@@ -3202,7 +2992,6 @@ form.admin-toolbar::before {
   gap: var(--space-6);
 }
 
-/* Dashed "+ Add New Member" area at the end of a division. */
 .admin-unit-add {
   display: inline-flex;
   align-items: center;
@@ -3250,8 +3039,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* ---- Event page (components/events-page.tsx) on the dark page ---- */
-/* Tabs (All / Upcoming / Past / Drafts) sit above the table card on a thin full-width line. */
 .admin-dark-page .admin-tabs {
   gap: var(--space-8);
   margin-bottom: var(--space-4);
@@ -3271,7 +3058,6 @@ form.admin-toolbar::before {
   color: var(--color-brand-50);
 }
 
-/* Only the active tab is bold; hover changes the colour, so no tab changes width (no wiggle). */
 .admin-dark-page .admin-tabs__btn--active {
   font-weight: var(--font-semibold);
 }
@@ -3286,13 +3072,11 @@ form.admin-toolbar::before {
   font-size: inherit;
 }
 
-/* Banner thumbnail of the event row. */
 .admin-dark-page .admin-event-avatar {
   width: var(--space-10);
   height: var(--space-10);
 }
 
-/* Location: pin + text. */
 .admin-event-location {
   display: inline-flex;
   align-items: center;
@@ -3300,13 +3084,11 @@ form.admin-toolbar::before {
   font-size: var(--text-xs);
 }
 
-/* Last Modified: "2 hours ago" over the author's short name. */
 .admin-event-meta {
   display: inline-flex;
   flex-direction: column;
 }
 
-/* Status pill: cream with dark ink, lock (Private) or globe (Public). */
 .admin-status-badge {
   display: inline-flex;
   align-items: center;
@@ -3320,8 +3102,6 @@ form.admin-toolbar::before {
   white-space: nowrap;
 }
 
-/* ---- Article page (articles-page.tsx): list and editor reuse the Event page styles ---- */
-/* Featured image thumbnail in the Article column. */
 .admin-article-thumb {
   flex: 0 0 auto;
   width: calc(var(--space-12) + var(--space-3));
@@ -3338,8 +3118,6 @@ form.admin-toolbar::before {
   object-fit: cover;
 }
 
-/* Content editor frame (Article: with the Featured Image; Newsletter: Content Blocks): one
-   outline around seamless content blocks. */
 .admin-article-frame {
   display: flex;
   flex: 1;
@@ -3358,14 +3136,12 @@ form.admin-toolbar::before {
   border: 0;
 }
 
-/* The content items fill the frame down to the actions and follow each other seamlessly. */
 .admin-article-frame .admin-editor-list {
   flex: 1;
   min-width: 0;
   gap: 0;
 }
 
-/* Settings → Tag/Keywords: input + Add, then removable chips in the field colours. */
 .admin-article-tags-row {
   display: flex;
   gap: var(--space-2);
@@ -3412,22 +3188,17 @@ form.admin-toolbar::before {
   outline: 2px solid var(--admin-focus);
 }
 
-/* Event form: a tall description box (`.admin-input` alone is one line high). */
 .admin-dark-page .admin-textarea {
   height: auto;
   min-height: calc(var(--space-16) * 2 + var(--space-2));
   resize: vertical;
 }
 
-/* Uploaded banner: kept inside the drop zone's height. */
 .admin-dark-page .admin-dropzone__image {
   position: absolute;
   inset: 0;
 }
 
-/* Guest/Speakers, Rundown and Sponsors sections (components/ui/editable-list.tsx). */
-/* The gap sits under each section (not above its line), so the last list keeps clear of the
-   Back · Save draft · Publish line, which is pushed down with margin-top: auto. */
 .admin-dark-page .admin-form-separator {
   margin-top: 0;
   padding-bottom: var(--space-5);
@@ -3448,7 +3219,6 @@ form.admin-toolbar::before {
   font-style: italic;
 }
 
-/* One row: cream card with grip · photo · fields · red Delete; the fields are dark wells. */
 .admin-list-panel {
   border-radius: var(--radius-lg);
   background: var(--color-brand-50);
@@ -3502,7 +3272,6 @@ form.admin-toolbar::before {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-/* Square photo / logo well (components/ui/photo-drop.tsx). */
 .admin-photo {
   position: relative;
   display: grid;
@@ -3564,10 +3333,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* ===================== Tools page (components/tools-page.tsx) ===================== */
-/* The Tools page: cream cards on the dark canvas (scoped to `.admin-tools`, the page wrapper). */
-
-/* Cream cards with roomy padding. */
 .admin-tools-grid > .admin-card {
   background: var(--color-brand-50);
   border: 0;
@@ -3582,7 +3347,6 @@ form.admin-toolbar::before {
   padding: var(--space-3) var(--space-6) var(--space-6);
 }
 
-/* Choices read as regular text, not bold. */
 .admin-tools .admin-radio,
 .admin-tools .admin-radio__stack strong,
 .admin-tools .admin-qr-switch__label {
@@ -3611,7 +3375,6 @@ form.admin-toolbar::before {
   color: var(--color-text);
 }
 
-/* Extra air above the Generate QR button. */
 .admin-tools .admin-qr-switch + .admin-btn {
   margin-top: var(--space-5);
 }
@@ -3631,7 +3394,6 @@ form.admin-toolbar::before {
   color: var(--color-text);
 }
 
-/* Toolbar: maroon divider, search box, red Delete. */
 .admin-tools .admin-toolbar {
   padding: var(--space-10) var(--space-6) var(--space-6);
 }
@@ -3642,7 +3404,6 @@ form.admin-toolbar::before {
   background: color-mix(in srgb, var(--color-brand-800) 45%, transparent);
 }
 
-/* Link list: a dark block of rows inside the cream card (no header row). */
 .admin-tools .admin-table-wrap {
   margin-inline: var(--space-6);
   background: var(--admin-page-dark);
@@ -3653,8 +3414,6 @@ form.admin-toolbar::before {
   padding-block: var(--space-4);
 }
 
-/* The list has no header row, so column widths are set here: checkbox hugs the link,
-   the date starts about a third of the way across. */
 .admin-tools .admin-table td:first-child {
   width: 1%;
   padding-left: var(--space-4);
@@ -3696,7 +3455,6 @@ form.admin-toolbar::before {
   color: var(--color-danger-bright);
 }
 
-/* Pagination bar: the bottom of the dark block. */
 .admin-tools .admin-darkbar {
   margin: 0 var(--space-6) var(--space-6);
   background: var(--admin-page-dark);
@@ -3709,10 +3467,6 @@ form.admin-toolbar::before {
   color: var(--color-on-panel-muted);
 }
 
-/* ===================== Newsletter (components/newsletter-page.tsx) ===================== */
-/* Dark page pattern of Event/Gallery; these rules add only what the newsletter needs. */
-
-/* Status dropdown (cream pill like the header buttons; menu reuses .admin-row-menu__panel). */
 .admin-newsletter-status {
   display: inline-flex;
   align-items: center;
@@ -3746,7 +3500,6 @@ form.admin-toolbar::before {
   font-weight: var(--font-semibold);
 }
 
-/* KPI strip: three cream cards (icon + label, big number + trend). */
 .admin-newsletter-kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3799,7 +3552,6 @@ form.admin-toolbar::before {
   color: var(--color-gold);
 }
 
-/* "All subscribers" / e-mail line with the user glyph. */
 .admin-newsletter-audience {
   display: flex;
   align-items: center;
@@ -3812,7 +3564,6 @@ form.admin-toolbar::before {
   gap: var(--space-2);
 }
 
-/* Status pills: tinted on the dark rows (Sent green, Scheduled blue, Draft gold). */
 .admin-newsletter-badge {
   display: inline-flex;
   align-items: center;
@@ -3863,7 +3614,6 @@ form.admin-toolbar::before {
   color: var(--color-danger-bright);
 }
 
-/* Results popup: label / value pairs. */
 .admin-newsletter-results {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -3883,7 +3633,6 @@ form.admin-toolbar::before {
   font-variant-numeric: tabular-nums;
 }
 
-/* Preview: the e-mail in a sandboxed frame (white, like a mail app). */
 .admin-newsletter-preview {
   display: block;
   width: 100%;
@@ -3893,14 +3642,12 @@ form.admin-toolbar::before {
   background: var(--color-white);
 }
 
-/* ---- Rich-text composer (Newsletter Content Blocks; same markup as the article type boxes) ---- */
 .admin-editor-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-/* One line per item: + (on the item's bottom edge), drag handle, the text beside it, delete. */
 .admin-editor {
   position: relative;
   display: grid;
@@ -3915,7 +3662,6 @@ form.admin-toolbar::before {
   color: var(--color-brand-50);
 }
 
-/* Composer page: the Content Blocks box fills the page down to the actions (no line above them). */
 .admin-newsletter-form > .admin-form-grid {
   flex: 1;
   min-width: 0;
@@ -3931,13 +3677,11 @@ form.admin-toolbar::before {
   border-top: 0;
 }
 
-/* Drop target while dragging: the dashed line wraps the content only, not the handles. */
 .admin-editor--drag-over .admin-editor__body {
   outline: 2px dashed var(--color-brand-50);
   outline-offset: var(--space-0-5);
 }
 
-/* A box added from the + menu comes in like a new list row. */
 .admin-editor--new {
   animation: admin-row-in var(--duration-base) var(--ease-out) backwards;
 }
@@ -3947,7 +3691,7 @@ form.admin-toolbar::before {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  margin-top: var(--space-1-5); /* centres the icons on the first line of text */
+  margin-top: var(--space-1-5);
 }
 
 .admin-editor__top-btn,
@@ -3979,9 +3723,6 @@ form.admin-toolbar::before {
   color: var(--color-danger-bright);
 }
 
-/* Toolbar: a cream strip of dark square tiles (the PNG tiles carry the glyphs). */
-/* The + sits on the item's bottom edge (between items, and under the last one), in its own
-   column so it never meets the next item's drag handle. Open, it stays above the next items. */
 .admin-editor__add {
   position: relative;
   z-index: 10;
@@ -3994,7 +3735,6 @@ form.admin-toolbar::before {
   z-index: 30;
 }
 
-/* The block menu: under the + once it is clicked (glides in like the other popups). */
 .admin-editor__toolbar {
   position: absolute;
   top: 100%;
@@ -4002,7 +3742,7 @@ form.admin-toolbar::before {
   z-index: 20;
   transform-origin: top left;
   display: inline-flex;
-  width: max-content; /* one row, though the + column is narrow */
+  width: max-content;
   flex-wrap: wrap;
   gap: var(--space-1);
   padding: var(--space-1);
@@ -4037,7 +3777,6 @@ form.admin-toolbar::before {
   height: var(--space-6);
 }
 
-/* One line high, so + adds the next box right below this one's drag handle. */
 .admin-editor__body {
   grid-area: 1 / 3;
   min-width: 0;
@@ -4049,7 +3788,6 @@ form.admin-toolbar::before {
   overflow-wrap: anywhere;
 }
 
-/* The first line sits level with the drag handle; the box ends with its content. */
 .admin-editor__body > :first-child {
   margin-top: 0;
 }
@@ -4078,7 +3816,6 @@ form.admin-toolbar::before {
   color: var(--color-info);
 }
 
-/* Link popover (Text + Hyperlink + Apply), placed under the selection. */
 .admin-link-pop {
   position: fixed;
   z-index: 60;
@@ -4104,11 +3841,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* ===================== Audit Log page (components/audit-page.tsx) ===================== */
-/* Dark list page like Event (`.admin-dark-page` + `.admin-events-header` header controls). */
-
-/* Header pickers: a `Select` whose button is the cream pill (`prefix` label, value, chevron). The
-   panel opens under the whole pill; the focus ring is the button's own (keyboard only). */
 .admin-audit-pick {
   justify-content: flex-start;
   gap: var(--space-1-5);
@@ -4126,7 +3858,6 @@ form.admin-toolbar::before {
   font-weight: var(--font-semibold);
 }
 
-/* Tabs on the left, "Reversible only" switch on the right, one line below both. */
 .admin-audit-tabbar {
   display: flex;
   align-items: center;
@@ -4142,7 +3873,6 @@ form.admin-toolbar::before {
   border-bottom: 0;
 }
 
-/* Switch: off = knob left on a dark track, on = knob right on a cream track. */
 .admin-audit-switch {
   flex: 0 0 auto;
   gap: var(--space-2);
@@ -4179,7 +3909,6 @@ form.admin-toolbar::before {
   transform: translateX(14px);
 }
 
-/* Rows: chevron, action badge + page + title, record ref, days left + Revert. */
 .admin-audit-icon-btn {
   display: inline-grid;
   place-items: center;
@@ -4269,7 +3998,6 @@ form.admin-toolbar::before {
   white-space: nowrap;
 }
 
-/* The open row and its panel share a lighter band. */
 .admin-audit .admin-table tbody tr:has(+ .admin-table__expanded-row) td,
 .admin-audit .admin-table__expanded-row td {
   background: var(--color-panel-hover);
@@ -4279,7 +4007,6 @@ form.admin-toolbar::before {
   padding: 0 var(--space-6) var(--space-4) var(--space-12);
 }
 
-/* Expanded panel: Field / Before / After. */
 .admin-audit-diff {
   border-radius: var(--radius-md);
   background: var(--admin-page-dark);
@@ -4372,7 +4099,7 @@ form.admin-toolbar::before {
   background: var(--color-success);
   color: var(--color-brand-50);
   font-size: var(--text-3xs);
-  line-height: var(--leading-5xl); /* 1 */
+  line-height: var(--leading-5xl);
 }
 
 .admin-audit-photo--removed .admin-audit-photo__mark {
@@ -4446,9 +4173,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* ================================================================
-   Forms page (components/forms-page.tsx): one question per list panel.
-   ================================================================ */
 .admin-question {
   display: grid;
   flex: 1;
@@ -4469,7 +4193,6 @@ form.admin-toolbar::before {
   align-items: center;
 }
 
-/* A visible label next to a native checkbox ("Required", "Allow other"). */
 .admin-check-label {
   display: inline-flex;
   align-items: center;
@@ -4489,7 +4212,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* Recruitment editor (components/recruitment-page.tsx): one line per unit of the period. */
 .admin-recruit-units {
   display: grid;
   gap: var(--space-2);
@@ -4507,7 +4229,6 @@ form.admin-toolbar::before {
   width: calc(var(--space-16) + var(--space-4));
 }
 
-/* Application detail (components/applications-page.tsx): label / value pairs. */
 .admin-detail-list {
   display: grid;
   grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
@@ -4525,7 +4246,6 @@ form.admin-toolbar::before {
   margin: 0;
 }
 
-/* A question + answer pair keeps the two grid columns. */
 .admin-detail-list__row {
   display: contents;
 }
@@ -4550,7 +4270,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* Letters: the body as written (sanitized), on a paper-like card under the details. */
 .admin-letter-body {
   margin-top: var(--space-4);
   padding: var(--space-4);
@@ -4560,7 +4279,6 @@ form.admin-toolbar::before {
   font-size: var(--text-sm);
 }
 
-/* Incoming letters: the disposition chain, indented per forwarding. */
 .admin-dispositions {
   list-style: none;
   margin: var(--space-2) 0 0;
@@ -4568,11 +4286,7 @@ form.admin-toolbar::before {
   display: grid;
   gap: var(--space-3);
 }
-/* ===================== Role Manager (components/role-manager-page.tsx) ===================== */
-/* Dark list page like Audit Log (`.admin-audit-tabbar` + `.admin-audit-pick` for the status
-   filter); popups are the cream popup (`.admin-modal--side`). */
 
-/* Role badge in the role's colour (`--role-color`); the text colour is picked for contrast. */
 .admin-role-pill {
   display: inline-flex;
   align-items: center;
@@ -4608,7 +4322,6 @@ form.admin-toolbar::before {
   gap: var(--space-2);
 }
 
-/* Edit Role: the permissions column wraps (long lists). */
 .admin-role-perms {
   font-size: var(--text-xs);
   line-height: var(--leading-sm);
@@ -4634,14 +4347,12 @@ form.admin-toolbar::before {
   text-decoration: underline;
 }
 
-/* Popups */
 .admin-role-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-/* Dark chip with a remove button (permissions, roles in the person popup). */
 .admin-role-chip {
   display: inline-flex;
   align-items: center;
@@ -4718,7 +4429,6 @@ form.admin-toolbar::before {
   line-height: var(--leading-xs);
 }
 
-/* Add New People: suggestions under "Email or Name" (the row-menu panel, full field width). */
 .admin-role-suggest {
   position: relative;
 }
@@ -4739,8 +4449,6 @@ form.admin-toolbar::before {
   font-size: var(--text-xs);
 }
 
-/* Role popup: "Add more permissions" dropdown (search box + checkboxes per page, the page then
-   its permissions indented); positioned like the searchable Select (`.admin-combo__panel`). */
 .admin-role-picker__panel {
   gap: var(--space-2);
   padding: var(--space-2);
@@ -4788,7 +4496,6 @@ form.admin-toolbar::before {
   font-size: var(--text-sm);
 }
 
-/* Many roles = many tabs: they scroll sideways (.admin-tabs) instead of widening the page. */
 .admin-role-manager .admin-audit-tabbar .admin-tabs {
   max-width: 100%;
 }
@@ -4799,14 +4506,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* ================================================================
-   Mobile list cards (phone): every admin table becomes a list of cream cards — checkbox, title,
-   detail lines, then a row of labelled buttons — with a summary line (count, sort, Select), the
-   Add / Export buttons floating bottom right, and the bulk bar fixed at the bottom. The cell
-   places come from `data-card` / `data-label` set by `DataTable` (`cardRoles` in list-model.ts);
-   docs/admin-shell.md "Phone cards". Wide screens keep the table: the parts below that only exist
-   for the phone are hidden here.
-   ================================================================ */
 .admin-fab {
   display: contents;
 }
@@ -4825,9 +4524,7 @@ form.admin-toolbar::before {
   display: none;
 }
 
-/* Mobile list cards: begin */
 @media (max-width: 767px) {
-  /* Page: title, tabs, then the search row (the header becomes part of the page column). */
   .admin-dark-page :has(> .admin-page-header):has(> .admin-tabs) {
     gap: var(--space-3);
   }
@@ -4858,7 +4555,6 @@ form.admin-toolbar::before {
     width: 100%;
   }
 
-  /* Search: one rounded cream field with a magnifier (Enter searches); Filters: icon + count. */
   .admin-dark-page .admin-page-header__actions .admin-searchbox {
     flex: 1 1 var(--space-16);
     min-width: 0;
@@ -4892,7 +4588,6 @@ form.admin-toolbar::before {
     display: none;
   }
 
-  /* The sortable columns' sort-and-filter menus, as a row of cream chips under the search. */
   .admin-sort-menu {
     display: flex;
     order: 2;
@@ -4913,7 +4608,6 @@ form.admin-toolbar::before {
     white-space: nowrap;
   }
 
-  /* Add New … / Export CSV float bottom right; they step aside while rows are selected. */
   .admin-fab {
     position: fixed;
     right: var(--space-4);
@@ -4934,12 +4628,10 @@ form.admin-toolbar::before {
     display: none;
   }
 
-  /* Room under the list for the floating buttons and the fixed bulk bar. */
   .admin-dark-page:has(.admin-list-card) {
     padding-bottom: calc(var(--space-16) + var(--space-8));
   }
 
-  /* The list card has no frame of its own: the cards are the frame. */
   .admin-dark-page .admin-list-card {
     border: 0;
     overflow: visible;
@@ -4960,7 +4652,6 @@ form.admin-toolbar::before {
     min-width: 0;
   }
 
-  /* A text button, but a full 44 px tall target. */
   .admin-list-summary__btn {
     display: inline-flex;
     align-items: center;
@@ -4974,7 +4665,6 @@ form.admin-toolbar::before {
     cursor: pointer;
   }
 
-  /* A row is a card. Columns: checkbox | picture | text; the action row spans all three. */
   .admin-dark-page .admin-table-wrap {
     overflow: visible;
   }
@@ -5011,7 +4701,6 @@ form.admin-toolbar::before {
     transition: box-shadow 150ms ease-out;
   }
 
-  /* A selected card says so on the card itself, not only in its small checkbox. */
   .admin-dark-page .admin-table tbody tr:has(.admin-table__checkbox:checked) {
     box-shadow: inset 0 0 0 2px var(--color-brand-950);
   }
@@ -5039,7 +4728,6 @@ form.admin-toolbar::before {
     margin-right: var(--space-3);
   }
 
-  /* The box stays small; the label around it is a 44 px target centred on it. */
   .admin-dark-page .admin-table td[data-card="lead"] .admin-checkbox {
     width: var(--size-touch);
     height: var(--size-touch);
@@ -5052,7 +4740,6 @@ form.admin-toolbar::before {
     line-height: var(--leading-sm);
   }
 
-  /* The title leads the card: largest text, at most two lines. */
   .admin-dark-page .admin-table td[data-card="title"] .admin-table__title {
     display: -webkit-box;
     overflow: hidden;
@@ -5073,7 +4760,6 @@ form.admin-toolbar::before {
     line-height: var(--leading-xs);
   }
 
-  /* Detail lines: "Label  value". */
   .admin-dark-page .admin-table td[data-card="meta"][data-label] {
     display: flex;
     align-items: baseline;
@@ -5087,7 +4773,6 @@ form.admin-toolbar::before {
     font-size: var(--text-xs);
   }
 
-  /* Cells that say what they are by themselves (pin, status pill, date) need no label. */
   .admin-dark-page
     .admin-table
     td[data-card="meta"]:has(
@@ -5096,7 +4781,6 @@ form.admin-toolbar::before {
     display: none;
   }
 
-  /* Event: a big picture beside the title, type and status as pills (as the phone design). */
   .admin-dark-page .admin-table td[data-card="title"]:has(> .admin-event-title),
   .admin-dark-page .admin-table .admin-event-title {
     display: contents;
@@ -5138,14 +4822,12 @@ form.admin-toolbar::before {
     background: color-mix(in srgb, var(--color-brand-800) 50%, var(--color-brand-200));
   }
 
-  /* The status pill sits beside the type pill, on the same line. */
   .admin-dark-page .admin-table tr:has(.admin-event-title) td:has(> .admin-status-badge) {
     grid-column: 4;
     grid-row: 2;
     margin-left: var(--space-2);
   }
 
-  /* Event detail lines have no labels: a calendar and a pin say what they are. */
   .admin-dark-page
     .admin-table
     tr:has(.admin-event-title)
@@ -5167,14 +4849,12 @@ form.admin-toolbar::before {
     display: none;
   }
 
-  /* Gallery: the "120+" photo count is a dark tile on the cream card. */
   .admin-dark-page .admin-table .admin-gallery-stack__more {
     background: var(--color-brand-950);
     color: var(--color-brand-50);
     font-size: var(--text-xs);
   }
 
-  /* "Last modified by Nevyllo K." on the left, "2h ago" on the right. */
   .admin-dark-page .admin-table .admin-event-meta {
     display: flex;
     flex-direction: row-reverse;
@@ -5183,7 +4863,6 @@ form.admin-toolbar::before {
     color: var(--color-text-muted);
   }
 
-  /* The time keeps its line ("3 hours ago"); a long name wraps instead. */
   .admin-dark-page .admin-table .admin-event-meta .admin-table__title {
     flex: none;
     color: var(--color-text-muted);
@@ -5195,7 +4874,6 @@ form.admin-toolbar::before {
     content: "Last modified by ";
   }
 
-  /* One Visibility button replaces Publish and Make Private; "Delete Event" reads "Delete". */
   .admin-row-menu__item--wide,
   .admin-long {
     display: none;
@@ -5205,14 +4883,10 @@ form.admin-toolbar::before {
     display: flex;
   }
 
-  /* The checkbox box shows on the cream card. */
   .admin-dark-page .admin-table tbody tr .admin-checkbox span {
     border-color: var(--color-brand-950);
   }
 
-  /* Action row: one line of equal buttons, icon over label (the ⋯ menu entries and the row
-     buttons). Delete sits far left, away from the thumb; the row's own buttons (Edit) far right,
-     where the thumb rests. */
   .admin-dark-page .admin-table td[data-card="actions"] {
     display: grid;
     grid-auto-columns: minmax(0, 1fr);
@@ -5291,7 +4965,6 @@ form.admin-toolbar::before {
     content: attr(title);
   }
 
-  /* Tools: the list is a dark well inside a cream card; on a phone the well holds the cards. */
   .admin-dark-page .admin-tools .admin-table-wrap {
     padding: var(--space-3) var(--space-3) 0;
   }
@@ -5302,14 +4975,12 @@ form.admin-toolbar::before {
     color: var(--color-brand-950);
   }
 
-  /* An opened row (Audit Log details) continues its card. */
   .admin-dark-page .admin-table .admin-table__expanded-row {
     display: block;
     margin-top: calc(-1 * var(--space-3));
     padding-top: 0;
   }
 
-  /* Bulk bar: Publish · Make private · Delete across the bottom (the summary line has the count). */
   .admin-dark-page .admin-list-card .admin-bulkbar {
     --admin-ink: var(--color-brand-50);
     --admin-btn-bg: var(--color-brand-50);
@@ -5342,14 +5013,12 @@ form.admin-toolbar::before {
     justify-content: center;
   }
 
-  /* "Clear Filters" is outlined, "Add New …" solid. */
   .admin-dark-page .admin-empty__actions .admin-btn--outline {
     border-color: var(--color-brand-50);
     background: transparent;
     color: var(--color-brand-50);
   }
 
-  /* Pagination: ‹ Prev · 1 of 10 · Next ›. */
   .admin-dark-page .admin-darkbar {
     justify-content: center;
     gap: var(--space-3);
@@ -5374,11 +5043,7 @@ form.admin-toolbar::before {
     padding: 0 var(--space-3);
   }
 }
-/* Mobile list cards: end */
 
-/* ===================== Motion (popups, rows, note fields) ===================== */
-/* Page change: the old page fades into the new one (<ViewTransition> around <main> in
-   admin-sidebar.tsx; the browser's default crossfade). Off when the system asks for less motion. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
@@ -5387,7 +5052,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* Popups glide in: their first frame is see-through and a little smaller. */
 :is(
   .admin-modal-overlay,
   .admin-modal,
@@ -5412,7 +5076,6 @@ form.admin-toolbar::before {
   }
 }
 
-/* Menu items, dropdown options and table rows come in one after another (--i = row index). */
 @keyframes admin-row-in {
   from {
     opacity: 0;
@@ -5420,19 +5083,15 @@ form.admin-toolbar::before {
   }
 }
 
-/* RowMenu wraps each entry to give it --i; the wrapper adds no box. */
 .admin-row-menu__row {
   display: contents;
 }
 
 :is(.admin-row-menu__item, .admin-popup-item, .admin-table tbody tr) {
-  /* backwards, not both: a finished animation must not leave each row its own stacking context
-     (a row menu would then open under the next row). */
   animation: admin-row-in var(--duration-base) var(--ease-out) backwards;
   animation-delay: calc(min(var(--i, 0), 12) * 40ms);
 }
 
-/* Note fields grow a line at a time (height set in components/admin-sidebar.tsx). */
 textarea {
   transition: height 0.6s var(--admin-ease-spring);
 }

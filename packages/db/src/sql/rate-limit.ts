@@ -2,14 +2,8 @@ import type { Database } from "./store";
 import { applyRateLimit, type RateLimitState, type RateLimitStore } from "@website/security";
 import { safeId } from "@website/security/validation";
 
-/** gRPC status ABORTED: the transaction lost a race with concurrent writes to the same counter. */
 const ABORTED = 10;
 
-/**
- * Shared rate-limit counters in `rateLimits/{key}`, updated in a transaction so concurrent
- * requests on any server instance can never exceed the limit. Only allowed requests write,
- * and `expiresAt` lets the cron job `expire` delete stale counters.
- */
 export function createSqlRateLimitStore(db: Database, collection = "rateLimits"): RateLimitStore {
   return {
     async consume(key, policy, now) {
@@ -27,7 +21,6 @@ export function createSqlRateLimitStore(db: Database, collection = "rateLimits")
           return decision;
         });
       } catch (error) {
-        // Heavy contention on one counter only happens under bursts far above the limit.
         if ((error as { code?: unknown }).code === ABORTED) {
           return {
             allowed: false,

@@ -47,7 +47,7 @@ const fresh = () =>
   Promise.resolve({
     actorEmail: "boss@example.org",
     requestId: "req-999999",
-    authTime: Date.now() / 1000, // the recent-sign-in check uses the real clock
+    authTime: Date.now() / 1000,
   });
 
 let fake: ReturnType<typeof fakeDb>;
@@ -59,7 +59,6 @@ const write = async (...events: AuditEvent[]) => {
 const actions = () =>
   createAuditLogActions({
     audit: store,
-    // How each module's records are reverted (a test module here; content modules add theirs).
     revertible: { testItem: "testItems" },
     now: () => now,
     logSecurityEvent: () => undefined,
@@ -123,7 +122,6 @@ describe("Audit Log page: list and filters", () => {
       stale: { allowed: false, reason: "version_conflict" },
       gone: { allowed: false, reason: "version_conflict" },
     });
-    // The revert itself re-checks: a record type nobody registered is never written.
     expect(await revert("other")).toMatchObject({ error: "refused" });
     expect(await revert("ok")).toMatchObject({ ok: true });
     const after = await actions().revertStatus(page.items);
@@ -156,7 +154,6 @@ describe("revert (14 days, only the listed fields, a NEW entry)", () => {
       actor: { type: "staff", id: "boss", email: "boss@example.org" },
     });
     expect(JSON.stringify(fake.docs.get("auditLogs/a1"))).toBe(original);
-    // Never twice.
     expect(await revert("a1")).toMatchObject({
       error: "refused",
       issues: ["Already reverted"],

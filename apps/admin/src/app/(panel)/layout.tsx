@@ -5,14 +5,6 @@ import { navigationFor } from "@/navigation";
 import { getAdminViewer } from "@/server/context";
 import { getAppUrls } from "@/server/env";
 
-/**
- * Frame for every staff page. Partial Prerendering: the page segment ({children}) is ALWAYS
- * rendered — in the prerendered fallback and after the session is known — so Next.js can
- * validate instant navigation. The side panel depends on the session and streams in.
- *
- * The layout is not the security boundary (layouts are not re-run on every client navigation):
- * each page checks the session itself inside its own <Suspense> (see (panel)/page.tsx).
- */
 export default function PanelLayout({ children }: { children: ReactNode }) {
   return (
     <Suspense fallback={<SignedOutFrame>{children}</SignedOutFrame>}>

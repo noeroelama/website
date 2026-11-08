@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./icon";
 
-/** Badge tones map to `badge--*` in `apps/admin/src/app/globals.css`. */
 export type BadgeTone = "success" | "warn" | "danger" | "neutral" | "primary";
 
 export function Badge({
@@ -30,10 +29,6 @@ export interface StatCardProps {
   href?: string;
 }
 
-/**
- * KPI card for dashboards. If `href` is given it renders an `<a>` so the whole card is a link
- * (same-origin admin pages only). No hex values here — colours come from CSS classes / tokens.
- */
 export function StatCard({ label, value, icon, trend, trendDir = "up", href }: StatCardProps) {
   const inner = (
     <>

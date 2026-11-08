@@ -1,8 +1,3 @@
-/**
- * The sanitized rich text of a letter (news allowlist, `sanitizeRichText`) as printable blocks:
- * paragraphs, headings, list items and rules, each a list of styled runs. Images, links and
- * code are printed as their text only (letters with images or tables use the upload path).
- */
 export interface Run {
   readonly text: string;
   readonly bold: boolean;
@@ -71,12 +66,10 @@ export function htmlToBlocks(html: string): Block[] {
   const lists: Array<{ ordered: boolean; n: number }> = [];
   let runs: Run[] = [];
   let open: { tag: string; align: Align | null } | null = null;
-  /** The list item being read: its first block gets the marker, later blocks "" (indented). */
   let item: { marker: string; depth: number } | null = null;
   let quote = 0;
 
   const flush = () => {
-    // Collapse white space like a browser (a <br> is kept as "\n"), then trim the block's ends.
     const collapsed = runs.map((r) =>
       r.text === "\n" ? r : { ...r, text: r.text.replace(/\s+/g, " ") },
     );

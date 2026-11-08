@@ -27,7 +27,6 @@ const event = (slug: string, start: string, extra: Partial<PublicEvent> = {}): P
   ...extra,
 });
 
-/** A query with every optional filter off (same window as the bare /events URL). */
 const off: EventQuery = {
   category: null,
   q: null,
@@ -81,9 +80,9 @@ describe("public events list query (/events?category&q&region&time&from&to&page)
     const at = (range: "upcoming" | "week" | "month" | "year") =>
       pageOfEvents(all, { ...off, time: range }, yearEnd).items.map((e) => e.slug);
 
-    expect(at("upcoming")).toEqual(["dec29", "dec31", "newYear"]); // no upper bound needed
-    expect(at("week")).toEqual(["dec29", "dec31"]); // +7 days would spill into 2027, clamped
-    expect(at("month")).toEqual(["dec29", "dec31"]); // +30 days would spill into 2027, clamped
+    expect(at("upcoming")).toEqual(["dec29", "dec31", "newYear"]);
+    expect(at("week")).toEqual(["dec29", "dec31"]);
+    expect(at("month")).toEqual(["dec29", "dec31"]);
     expect(at("year")).toEqual(["jan", "dec1", "dec29", "dec31"]);
   });
 

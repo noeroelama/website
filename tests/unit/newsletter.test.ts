@@ -126,7 +126,7 @@ describe("Newsletter page rows (server mapping)", () => {
     };
     expect(toSubscriberItem(row, false, "PPI Jepang")).toMatchObject({
       email: "s***@example.org",
-      name: null, // a name is personal data too
+      name: null,
       ppi: "PPI Jepang",
     });
     expect(toSubscriberItem(row, true, null)).toMatchObject({ name: "Sari Wulandari", ppi: null });
@@ -222,7 +222,7 @@ describe("staff add / import (still double opt-in)", () => {
         { email: "sari@example.org", name: "Sari, W.", ppi: "PPI Jepang" },
         { email: "budi@example.org", name: "", ppi: "" },
         { email: "q@example.org", name: 'Quote "Q"', ppi: "" },
-        { email: "solo@example.org", name: "Solo", ppi: "" }, // missing trailing columns
+        { email: "solo@example.org", name: "Solo", ppi: "" },
       ],
       invalid: [4],
     });

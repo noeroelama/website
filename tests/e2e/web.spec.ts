@@ -6,14 +6,12 @@ test("web home responds with security headers", async ({ request }) => {
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
   expect(response.headers()["x-powered-by"]).toBeUndefined();
   const html = await response.text();
-  // Google's OAuth review fetches "/" as a guest: the purpose and the Google data notice stay.
   expect(html).toContain("Pemberitahuan data Google");
   expect(html).toContain('href="/privacy"');
 });
 
 test("public pages are available without signing in", async ({ request }) => {
   for (const [path, title] of [
-    // Without a `lang` cookie the site is in Indonesian.
     ["/", "Menyatukan Pelajar Indonesia"],
     ["/news", "Blog &amp; Artikel"],
     ["/map", "Peta PPI Negara"],
@@ -30,7 +28,6 @@ test("public pages are available without signing in", async ({ request }) => {
   }
 });
 
-/** First `<tag …>…</tag>` of the page (the prerendered Indonesian frame) and the links in it. */
 const part = (html: string, tag: string) =>
   html.slice(html.indexOf(`<${tag}`), html.indexOf(`</${tag}>`));
 const links = (html: string) => [...html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]);
@@ -40,8 +37,6 @@ test("every public page has the site header and footer", async ({ request }) => 
 
   const header = part(html, "header");
   expect(header).toContain('src="/logo.webp"');
-  // Logo (home), then About Us, Events, Gallery, News, Map, and the Log in chip for signed-out
-  // visitors; the current page is marked.
   expect(links(header)).toEqual(["/", "/about", "/events", "/gallery", "/news", "/map", "/login"]);
   expect(header).toContain('href="/gallery" aria-current="page"');
 
@@ -54,7 +49,6 @@ test("every public page has the site header and footer", async ({ request }) => 
     expect.arrayContaining(["/", "/about", "/events", "/gallery", "/news", "/map", "/terms"]),
   );
   expect(links(footer)).toContain("/privacy");
-  // Five social profiles, opened in a new tab without access to this page.
   expect(footer.match(/target="_blank" rel="noopener noreferrer"/g)).toHaveLength(5);
   expect(footer).not.toContain('type="email"');
 });
@@ -63,7 +57,6 @@ test("old /articles links go to /news; unknown articles show the 404 page", asyn
   const moved = await request.get("/articles", { maxRedirects: 0 });
   expect(moved.status()).toBe(308);
   expect(moved.headers()["location"]).toBe("/news");
-  // Streamed (Cache Components): soft 404 with the not-found page and noindex.
   for (const path of ["/news/Not A Slug", "/events/Not A Slug", "/gallery/Not A Slug"]) {
     const html = await (await request.get(path)).text();
     expect(html, path).toContain("Page not found");

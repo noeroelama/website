@@ -24,24 +24,18 @@ import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface ApplicationDeps {
   readonly applications: Pick<SqlApplicationStore, "decide" | "get" | "ratify">;
-  /** Ratification creates the appointment through the step 3.7 rules (roles, escalation, MFA). */
   readonly appointments: Pick<SqlAppointmentStore, "getRoleMap">;
   readonly units: { get(id: string): Promise<OrgUnit | null> };
   readonly roles: Pick<SqlRoleStore, "getMany">;
-  /** True when the account has a second sign-in method (staff roles need it). */
   readonly hasSecondFactor: (uid: string) => Promise<boolean>;
-  /** Sessions revoked + `staff.role_changed` security event, after the roles changed. */
   readonly afterRoleChange: (actor: Principal, uid: string, details: object) => Promise<void>;
-  /** 15-minute signed read URL of a private Storage file. */
   readonly signedUrl: (path: string) => Promise<string>;
-  /** After a decision committed: tells the applicant (J2; never throws). */
   readonly notify: (application: Application, recruitmentTitle: string) => Promise<void>;
   readonly now: () => Date;
 }
 
 const Ref = z.object({ id: safeId, version: z.number().int().min(1) }).strict();
 
-/** Audit entry of one decision (module `recruitment`, resource `application`; never revertible). */
 const decisionAudit =
   (audit: AuditBuilder) =>
   (
@@ -64,12 +58,6 @@ const decisionAudit =
       revertible: false,
     });
 
-/**
- * The selection queue (C3 steps 3-6). Review, offer and confirm are separate permissions:
- * `recruitment.review` asks for revisions, fails, passes to interview and rejects;
- * `recruitment.offer` offers a unit with an expiry. Seats are taken only when the applicant
- * accepts (website), in the seat counter transaction.
- */
 export function createApplicationActions(deps: ApplicationDeps) {
   const decision = <S extends z.ZodType<{ id: string; version: number }>>(
     permission: PagePermission,
@@ -104,20 +92,15 @@ export function createApplicationActions(deps: ApplicationDeps) {
   const to = (status: ApplicationStatus) => () => () => ({ status });
 
   return {
-    /** submitted → revision: a new round with the committee's request (rounds are kept). */
     requestRevision: decision(
       "recruitment.review",
       Ref.extend({ request: RevisionRequestSchema }).strict(),
       ({ request }, userId) =>
         () => ({ status: "revision", revision: { request, requestedBy: userId } }),
     ),
-    /** submitted → admin_rejected (fails the document check). */
     fail: decision("recruitment.review", Ref, to("admin_rejected")),
-    /** submitted → interview. */
     pass: decision("recruitment.review", Ref, to("interview")),
-    /** interview | offered | accepted → rejected (an accepted seat is given back). */
     reject: decision("recruitment.review", Ref, to("rejected")),
-    /** interview | offered → offered: one unit, valid for the recruitment's offer days. */
     offer: decision(
       "recruitment.offer",
       Ref.extend({ orgUnitId: safeId }).strict(),
@@ -128,9 +111,7 @@ export function createApplicationActions(deps: ApplicationDeps) {
         }),
     ),
 
-    /** accepted → approved: the Sekjen approves the placement (recruitment.confirm). */
     approve: decision("recruitment.confirm", Ref, to("approved")),
-    /** pakta_review → approved with a note: the pact goes back; every uploaded file is kept. */
     returnPact: decision(
       "recruitment.review",
       Ref.extend({ note: PactNoteSchema }).strict(),
@@ -138,12 +119,6 @@ export function createApplicationActions(deps: ApplicationDeps) {
         () => ({ status: "approved", pactNote: note }),
     ),
 
-    /**
-     * pakta_review → confirmed (recruitment.confirm, the Sekjen) and, in the SAME transaction,
-     * the appointment to the offered unit as a member seat through the step 3.7 rules: the
-     * derived roles must not exceed the ratifier's own, staff roles need a second sign-in
-     * method, nobody ratifies themselves. Afterwards the applicant's sessions are renewed.
-     */
     ratify: createGuardedAction({
       permission: "recruitment.confirm",
       input: Ref.extend({
@@ -232,7 +207,6 @@ export function createApplicationActions(deps: ApplicationDeps) {
       },
     }),
 
-    /** A short-lived link to a portfolio, pact or file answer of the application (recruitment.review). */
     fileUrl: createGuardedAction({
       permission: "recruitment.review",
       input: z.object({ id: safeId, path: z.string().max(400) }).strict(),
@@ -245,7 +219,6 @@ export function createApplicationActions(deps: ApplicationDeps) {
             (a): a is FileAnswer => typeof a === "object" && !Array.isArray(a),
           ),
         ];
-        // Only a file that belongs to this application can be opened.
         if (!files.some((f) => f?.path === path)) {
           throw new RuleViolationError("This file does not belong to the application.");
         }

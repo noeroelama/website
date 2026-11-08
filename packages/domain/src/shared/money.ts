@@ -1,8 +1,4 @@
-/**
- * Money (DEC-8): integer minor units + ISO 4217 code, shared by shop and finance. Never floats;
- * amounts of different currencies are never added (no conversion, PPIDK DECISIONS §27).
- */
-export type CurrencyCode = string; // ISO 4217
+export type CurrencyCode = string;
 
 export interface Money {
   readonly amountMinor: number;
@@ -21,15 +17,9 @@ export function addMoney(a: Money, b: Money): Money {
   return money(a.amountMinor + b.amountMinor, a.currency);
 }
 
-/**
- * ISO 4217 minor digits. Fixed here, not read from Intl: stored amounts must mean the same on
- * every runtime (CLDR gives IDR 0 cash digits; ISO and PPIDK's decimal(15,2) give 2).
- * shortcut: only the region's zero-digit currencies are listed, add others when they are used.
- */
 const ZERO_DIGITS: ReadonlySet<string> = new Set(["JPY", "KRW", "VND"]);
 export const minorDigits = (currency: CurrencyCode): number => (ZERO_DIGITS.has(currency) ? 0 : 2);
 
-/** "IDR 1,500,000.00" (code, not symbol: ¥ is both JPY and CNY; plain space for CSV and PDF). */
 export const formatMoney = ({ amountMinor, currency }: Money): string => {
   const digits = minorDigits(currency);
   const number = new Intl.NumberFormat("en", {
@@ -39,16 +29,11 @@ export const formatMoney = ({ amountMinor, currency }: Money): string => {
   return `${currency} ${number}`;
 };
 
-/** Minor units as a plain decimal ("1500000.00", "5000"): forms and CSV. */
 export const majorText = (amountMinor: number, currency: CurrencyCode): string => {
   const digits = minorDigits(currency);
   return (amountMinor / 10 ** digits).toFixed(digits);
 };
 
-/**
- * A typed amount ("1,500,000.50") in minor units, or null when it is not a plain non-negative
- * number with at most the currency's digits after the point.
- */
 export function toMinor(text: string, currency: CurrencyCode): number | null {
   const digits = minorDigits(currency);
   const match = /^(\d{1,15})(?:\.(\d+))?$/.exec(text.trim().replace(/,/g, ""));

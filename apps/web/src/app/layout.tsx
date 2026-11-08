@@ -6,7 +6,6 @@ import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/site-frame";
 import { Localized } from "@/i18n/localized";
 
-// Self-hosted at build time by next/font; design tokens use it through --font-poppins.
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -18,8 +17,6 @@ export const metadata: Metadata = {
   description: "Perhimpunan Pelajar Indonesia Dunia Kawasan Asia-Oseania",
 };
 
-// Header and footer follow the visitor's language (Indonesian in the prerendered shell). The page
-// segment ({children}) is always rendered, outside the language boundary.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="id" className={poppins.variable}>

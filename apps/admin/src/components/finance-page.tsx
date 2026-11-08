@@ -40,23 +40,15 @@ import {
   type FinanceTab,
 } from "./finance-model";
 
-/* ==================================================================
-   Finance requests (I1) — draft → treasurer review → coordinator
-   authorisation → paid with proof → done. Desks act only on others'
-   requests; documents and the proof are private PDFs.
-   ================================================================== */
-
 interface Props {
   periodName: string | null;
   initial: FinanceItem[];
-  /** Units the viewer may make requests for. */
   units: { id: string; name: string }[];
   desks: {
     edit: boolean;
     review: boolean;
     authorize: boolean;
     pay: boolean;
-    /** Global finance.cashbook or finance.export: the cash book page. */
     cashbook: boolean;
   };
 }
@@ -79,7 +71,6 @@ interface NoteStep {
   title: string;
   action: Action;
   done: string;
-  /** Returns and rejections must say why. */
   required: boolean;
 }
 
@@ -192,7 +183,6 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
     finish(text);
   };
 
-  /** Upload a document (kind=doc) or mark paid with the proof (kind=proof). */
   const upload = async (file: File, query: string, text: string) => {
     if (!current) return;
     if (file.type !== "application/pdf") return toast.show("Upload the file as a PDF.");
@@ -298,10 +288,7 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
             </p>
           </div>
         </div>
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
             <label className="admin-field">
               <span className="admin-field__label">Category</span>

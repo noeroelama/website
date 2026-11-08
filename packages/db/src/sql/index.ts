@@ -1,7 +1,3 @@
-/**
- * Database access (MySQL 8 on cPanel). `mysql2` is imported only in ./store.ts (lint-enforced),
- * so storage details stay out of domain and UI code.
- */
 import { getDatabase, type Database } from "./store";
 import type { DatabaseRole } from "../roles";
 
@@ -261,15 +257,10 @@ if ("window" in globalThis) {
 
 export interface DatabaseRoleConfig {
   readonly role: DatabaseRole;
-  /** `DATABASE_URL`: each app has its own MySQL user (least privilege, separate revocation). */
   readonly url: string;
   readonly connectionLimit?: number | undefined;
 }
 
-/**
- * The database for an app's role. Connection pooling: one pool per database URL per server
- * process, reused for every request. Never open a connection per request.
- */
 export function getDatabaseForRole(config: DatabaseRoleConfig): Database {
   return getDatabase({ url: config.url, connectionLimit: config.connectionLimit });
 }

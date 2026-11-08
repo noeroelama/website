@@ -3,40 +3,28 @@ import { htmlToBlocks } from "./html";
 import { A4, embedTimes, Flow, INK, MM, MUTED, plain } from "./flow";
 import { qrPng } from "./qr";
 
-/** A PNG or JPEG (convert WebP uploads before rendering). */
 export interface PdfImage {
   readonly bytes: Uint8Array;
   readonly type: "png" | "jpeg";
 }
 
-/** The letterhead frozen on the letter at issue (PPIDK `kop_snapshot`). */
 export interface LetterheadArt {
   readonly parentName: string;
   readonly mainName: string;
   readonly address: string;
   readonly period: string | null;
-  /** Full-width images designed outside (e.g. Canva); text letterhead when absent. */
   readonly header: PdfImage | null;
   readonly footer: PdfImage | null;
   readonly watermark: PdfImage | null;
-  /** 0.02-0.4 */
   readonly watermarkOpacity: number;
-  /** Emblem of the text letterhead. */
   readonly emblem: PdfImage | null;
-  /** Small "Paraf" box above the footer. */
   readonly initialsBox: boolean;
 }
 
 export interface LetterDesk {
-  /** "Sekretaris Jenderal PPIDK Asia-Oseania", or the unit's name. */
   readonly label: string;
   readonly name: string | null;
-  /** "2 November 2026" once signed; null = waiting. */
   readonly signedOn: string | null;
-  /**
-   * The signer's own signature image (step 4.6), printed only once signed: width on paper and
-   * degrees clockwise. An image that cannot be read prints the electronic-signature box instead.
-   */
   readonly signature: {
     readonly image: PdfImage;
     readonly widthMm: number;
@@ -46,7 +34,6 @@ export interface LetterDesk {
 
 export interface LetterPdfInput {
   readonly letterhead: LetterheadArt;
-  /** "Tokyo, 2 November 2026" is built from these. */
   readonly place: string;
   readonly dateText: string | null;
   readonly number: string | null;
@@ -54,11 +41,8 @@ export interface LetterPdfInput {
   readonly subject: string;
   readonly typeName: string;
   readonly recipient: string;
-  /** Sanitized HTML. */
   readonly bodyHtml: string;
-  /** One desk (right column) or two (Coordinator left, Secretary-General right). */
   readonly desks: readonly LetterDesk[];
-  /** The QR and the line under it; null for drafts. */
   readonly verification: {
     readonly url: string;
     readonly label: string;
@@ -76,14 +60,9 @@ const embedImage = (doc: PDFDocument, image: PdfImage): Promise<PDFImage> =>
 const embed = (doc: PDFDocument, image: PdfImage | null) =>
   image ? embedImage(doc, image) : Promise.resolve(null);
 
-/** A broken signature file never blocks a letter. */
 export const tryEmbed = (doc: PDFDocument, image: PdfImage): Promise<PDFImage | null> =>
   embedImage(doc, image).catch(() => null);
 
-/**
- * Draws `image` `width` wide, turned `rotation` degrees clockwise about its centre, with the
- * turned picture's top-left corner at (x, top) and never wider than `max`. Returns its height.
- */
 export function drawTurned(
   page: Pick<PDFPage, "drawImage">,
   image: PDFImage,
@@ -97,7 +76,6 @@ export function drawTurned(
   const h = w * ratio;
   const boxW = w * cos + h * sin;
   const boxH = w * sin + h * cos;
-  // pdf-lib turns about the bottom-left corner: move it so the centre stays in the box's centre.
   const cx = at.x + boxW / 2;
   const cy = at.top - boxH / 2;
   page.drawImage(image, {
@@ -110,16 +88,9 @@ export function drawTurned(
   return boxH;
 }
 
-/** Height on paper of a full-width (210 mm) image. */
 const fullWidthHeight = (image: PDFImage | null) =>
   image ? (A4.width * image.height) / image.width : 0;
 
-/**
- * An A4 letter (D1/D9), laid out like PPIDK's `surat/pdf.blade.php`: letterhead (images on every
- * page, or a text letterhead), place and date, number / attachment / subject / type, recipient,
- * the body (justified, first-line indent 1.27 cm), the signing desks with their electronic
- * signature boxes, and the verification QR with its code.
- */
 export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(input.number ? `${input.number} — ${input.subject}` : input.subject);
@@ -207,7 +178,6 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
     flow.gap(8);
   }
 
-  // Number / attachment / subject / type: label, colon, value (the value wraps in its column).
   const label = 58;
   const colon = 9;
   const meta: Array<[string, string, boolean]> = [
@@ -279,7 +249,6 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
     }
   }
 
-  // Signing desks, kept together on one page.
   flow.gap(26);
   flow.ensure(120);
   const column = flow.width * 0.46;

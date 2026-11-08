@@ -9,10 +9,6 @@ import { messenger } from "./messaging";
 import { createNewsletter } from "./newsletter";
 import { logger } from "./session";
 
-/**
- * Newsletter field, confirm and unsubscribe pages, open/click tracking and the campaign archive
- * (needs SUBSCRIBER_HASH_SECRET, LINK_SIGNING_SECRET).
- */
 export const newsletter = lazyEnv(() => {
   const env = getWebEnv();
   if (!env.SUBSCRIBER_HASH_SECRET || !env.LINK_SIGNING_SECRET || !env.WEB_URL) {

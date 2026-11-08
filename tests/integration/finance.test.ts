@@ -23,7 +23,6 @@ const context = () =>
   Promise.resolve({ actorEmail: "staff@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
 
-/** A director asks for money for their unit; the treasurer and coordinator are other people. */
 const director = staff("ari", ["finance.edit"], { type: "orgUnit", orgUnitId: "media" });
 const treasurer = staff("bendahara", ["finance.review", "finance.pay"]);
 const coordinator = staff("koor", ["finance.authorize", "finance.review"]);
@@ -192,7 +191,6 @@ describe("desks and separation of duties", () => {
     expect(await run.review(...as(treasurer))({ id, version: 2, note: "OK" })).toMatchObject({
       data: { status: "reviewed" },
     });
-    // The treasurer who reviewed cannot authorise too (koor holds both, but did not review).
     const both = staff("bendahara", ["finance.authorize"]);
     expect(await run.authorize(...as(both))({ id, version: 3, note: "" })).toMatchObject({
       error: "refused",
@@ -362,7 +360,6 @@ describe("documents and the proof of transfer (private PDFs, checksum on read)",
     const { id } = await created();
     const run = actions();
     await run.submit(...as(director))({ id, version: 1 });
-    // Not authorised yet: refused before anything is stored.
     expect(
       await (await upload(id, "kind=proof&version=2&amount=1", pdf, treasurer)).json(),
     ).toMatchObject({ message: "Only authorised requests can be marked paid." });
@@ -440,7 +437,6 @@ describe("cash book (I2) and cash report (I3)", () => {
       (v) => (v as { resourceType?: string }).resourceType === "cashEntry",
     );
     expect(audit).toHaveLength(1);
-    // A second payment of the same request is refused: the line is never written twice.
     const again = await actions().uploadFile(...as(treasurer))(
       id,
       new Request(`https://admin.test/api/finance/${id}/files?kind=proof&version=5&amount=1`, {
@@ -455,7 +451,6 @@ describe("cash book (I2) and cash report (I3)", () => {
   it("a stale version or an existing line refuses the payment as a whole", async () => {
     const id = await paidRequest({}, 1);
     const request = await get(id);
-    // Simulate a line already present (e.g. imported) for a request being paid now.
     fake.docs.set(`financeRequests/${id}`, {
       ...(fake.docs.get(`financeRequests/${id}`) as object),
       status: "authorized",

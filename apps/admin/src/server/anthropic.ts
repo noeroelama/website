@@ -8,7 +8,6 @@ import {
 
 export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5";
 
-/** The JSON shape the model must return (a forced tool call; validated again with Zod). */
 const DRAFT_TOOL = {
   name: "minutes_draft",
   description: "Meeting minutes drafted from a transcript.",
@@ -29,10 +28,6 @@ const ToolAnswer = z.object({
   ),
 });
 
-/**
- * Anthropic Messages API adapter for `MinutesDrafter` (F6): one request, forced tool output,
- * 60 s timeout. Throws a short error (no response body in it) on any failure.
- */
 export function createAnthropicDrafter(config: {
   apiKey: string;
   model: string;

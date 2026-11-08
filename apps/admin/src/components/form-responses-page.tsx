@@ -16,11 +16,9 @@ interface ResponseRow {
   cells: string[];
 }
 
-/** Forms → Responses: the newest answers as a table, and the CSV export (forms.export). */
 export function FormResponsesPage(props: {
   id: string;
   title: string;
-  /** All responses received (the table shows the newest ones). */
   total: number;
   header: string[];
   rows: ResponseRow[];

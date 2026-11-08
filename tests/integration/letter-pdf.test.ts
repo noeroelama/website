@@ -128,7 +128,6 @@ beforeEach(() => {
   signatureKey = KEY;
 });
 
-/** Embedded images in a PDF (letterhead art, QR, signatures). */
 const imageCount = async (bytes: Uint8Array) =>
   (await PDFDocument.load(bytes)).context
     .enumerateIndirectObjects()
@@ -245,14 +244,12 @@ describe("upload path stamping (D3)", () => {
       archive: null,
     };
     const pdf = createLetterPdf(deps());
-    // No positions: the author's file byte for byte.
     expect(await pdf.stampUpload(waiting)).toEqual(original);
     const stamped = await pdf.stampUpload({
       ...waiting,
       placement: {
         qr: { page: 1, xMm: 170, yMm: 250, sizeMm: 22 },
         secretary: { page: 1, xMm: 130, yMm: 230 },
-        // Placed, but the Coordinator has no signature on file: nothing is printed there.
         coordinator: { page: 1, xMm: 30, yMm: 230 },
       },
     });
@@ -396,7 +393,6 @@ describe("GET /api/letters/<id>/pdf", () => {
     expect(
       (await empty.handler("l1", staff(["letters.read"]))).headers.get("content-disposition"),
     ).toBe('inline; filename="letter.pdf"');
-    // Upload path: the stamped preview once the file is in; nothing to show before.
     const file = {
       path: "p",
       sha256: "s",

@@ -6,12 +6,10 @@ import { requireAdminViewer } from "@/server/context";
 import { canCancelZoom } from "@/server/zoom";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
 const DAY = 86_400_000;
 
-/** Zoom bookings (F1): 30 days back to 180 days ahead, the viewer's own and their units'. */
 export default async function AdminZoomPage() {
   const viewer = await requireAdminViewer("/zoom", "zoom.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;

@@ -3,14 +3,12 @@ import { ShortenerError, type CreatedLink, type Shortener } from "@website/domai
 
 type Json = Record<string, unknown>;
 
-/** HTTP status → the port's failure (409 taken, other 4xx refused, the rest unreachable). */
 const failure = (status: number) =>
   new ShortenerError(
     status === 409 ? "slug_taken" : status >= 400 && status < 500 ? "invalid" : "unavailable",
     `http_${status}`,
   );
 
-/** One JSON call with a timeout; network errors and timeouts are "unavailable". */
 async function call(
   fetchImpl: typeof fetch,
   url: string,
@@ -36,7 +34,6 @@ async function call(
   if (!response.ok) throw failure(response.status);
   const parsed = (await response.json().catch(() => ({}))) as unknown;
   const json = (parsed && typeof parsed === "object" ? parsed : {}) as Json;
-  // Both providers wrap the record in `data`.
   return (json["data"] && typeof json["data"] === "object" ? json["data"] : json) as Json;
 }
 
@@ -45,12 +42,6 @@ const unconfigured = (): never => {
   throw new ShortenerError("unavailable", "not_configured");
 };
 
-/**
- * goppi.id (primary, X3). Create `POST {base}/links` with `long_url`, optional `slug`, `title`;
- * links are managed by id; archive `PUT {base}/links/{id}/archive`; a taken slug answers 409.
- * shortcut: no availability, restore or click endpoints are known from PPIDK, so those answer
- * "unknown"/"not supported"; add them when the goppi.id API documents them.
- */
 export function goppiShortener(
   config: { baseUrl: string; apiKey: string } | null,
   fetchImpl: typeof fetch,
@@ -81,12 +72,6 @@ export function goppiShortener(
   };
 }
 
-/**
- * s.id API v2 (fallback): base https://api.s.id/v2; create `POST /links` with `long_url`,
- * optional `custom_slug`, `title`; archive `DELETE /links/{short}`; restore
- * `POST /links/{short}/unarchive`; clicks `GET /links/{short}/stats`; availability
- * `POST /links/available`. Wrong field names are silently ignored by s.id (tests pin them).
- */
 export function sidShortener(apiKey: string | null, fetchImpl: typeof fetch): Shortener {
   const api = (path: string, method: string, body?: Json) =>
     apiKey ? call(fetchImpl, `https://api.s.id/v2${path}`, apiKey, method, body) : unconfigured();

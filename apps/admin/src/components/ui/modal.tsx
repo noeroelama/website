@@ -4,11 +4,6 @@ import { useEffect } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "./icon";
 
-/**
- * Admin modal (client component — needs DOM effects). Closes on Escape (unless a control inside
- * already handled it with preventDefault, e.g. an open dropdown) or overlay click.
- * Styling via `admin-modal*` classes in globals.css.
- */
 export interface ModalProps {
   open: boolean;
   title: string;
@@ -20,10 +15,6 @@ export interface ModalProps {
   className?: string;
   hideClose?: boolean;
   style?: CSSProperties;
-  /**
-   * Body and footer form one `<form>`: Enter in a field and a `type="submit"` footer button run
-   * the action after native validation (see Button). Leave it off when the body has its own form.
-   */
   asForm?: boolean;
 }
 
@@ -43,7 +34,6 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      // A dropdown inside the popup that handles Escape itself calls preventDefault().
       if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     document.addEventListener("keydown", onKey);

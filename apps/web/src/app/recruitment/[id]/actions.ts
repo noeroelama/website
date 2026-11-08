@@ -3,7 +3,6 @@
 import { applying } from "@/server/recruitment-wiring";
 import { getSignedInUser } from "@/server/session";
 
-// Thin wrappers: the applicant is always the session's user (src/server/recruitment.ts).
 const applicant = async () => {
   const user = await getSignedInUser();
   return user && { uid: user.uid };

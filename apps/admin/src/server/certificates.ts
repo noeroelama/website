@@ -19,7 +19,6 @@ import type { LetterContext, LetterPdf } from "./letter-pdf";
 export interface CertificateDeps {
   readonly certificates: Pick<SqlCertificateStore, "add" | "remove">;
   readonly getLetter: (id: string) => Promise<Letter | null>;
-  /** keyedHash(CERTIFICATE_EMAIL_PURPOSE, email) with SUBSCRIBER_HASH_SECRET (pickup page). */
   readonly hashEmail: (email: string) => string;
   readonly now: () => Date;
 }
@@ -37,14 +36,9 @@ const participantAudit =
       after: "added" in change ? { participantsAdded: change.added } : null,
       versionBefore: batch.version,
       versionAfter: batch.version,
-      // Sheets are re-added or removed by hand; a revert would reuse numbers and codes.
       revertible: false,
     });
 
-/**
- * Participants of a certificate batch (D5): pasted lists and single removals, for
- * `letters.edit` in the batch's unit, only while the batch can be edited.
- */
 export function createCertificateActions(deps: CertificateDeps) {
   const scopeOf = async ({ batchId }: { batchId: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.getLetter(batchId))?.orgUnitPath ?? [],
@@ -85,7 +79,6 @@ export function createCertificateActions(deps: CertificateDeps) {
   return { add, remove };
 }
 
-/** Sends per call (each one a provider request; the page calls again for the rest). */
 export const SEND_BATCH = 50;
 
 export const certificateSendKey = (batchId: string, seq: number) => `cert:${batchId}:${seq}`;
@@ -94,21 +87,13 @@ export interface CertificateSendDeps {
   readonly getLetter: (id: string) => Promise<Letter | null>;
   readonly list: (batchId: string) => Promise<Certificate[]>;
   readonly hashEmail: (email: string) => string;
-  /** The account of an e-mail and its WhatsApp number, when there is one. */
   readonly contactOf: (email: string) => Promise<Contact>;
   readonly log: Pick<SqlMessageLog, "byKeys">;
   readonly send: Messenger["send"];
   readonly retry: Messenger["retry"];
-  /** The website's pickup page (/certificates). */
   readonly pickupUrl: string;
 }
 
-/**
- * Bulk sending (D5): each participant gets a LINK to the pickup page (never the PDF), on WhatsApp
- * when their account has a number, else by e-mail, key `cert:{batchId}:{seq}` (never twice). The
- * e-mails are not stored (only their hash), so staff paste the same list again; lines are matched
- * to sheets by that hash. Only issued batches; a cancelled one cannot be sent.
- */
 export function createCertificateSending(deps: CertificateSendDeps) {
   const scopeOf = async ({ batchId }: { batchId: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.getLetter(batchId))?.orgUnitPath ?? [],
@@ -165,7 +150,6 @@ export function createCertificateSending(deps: CertificateSendDeps) {
     },
   });
 
-  /** Sends the failed ones again (only those; the same key, so never twice once delivered). */
   const retryFailed = createGuardedAction({
     permission: "letters.edit",
     input: z.object({ batchId: safeId }).strict(),
@@ -182,7 +166,6 @@ export function createCertificateSending(deps: CertificateSendDeps) {
     },
   });
 
-  /** Progress: per status how many sheets (not sent = no log entry yet). */
   async function progress(batchId: string): Promise<Record<string, number>> {
     const sheets = await deps.list(batchId);
     const entries = await deps.log.byKeys(sheets.map((c) => certificateSendKey(batchId, c.seq)));
@@ -206,7 +189,6 @@ interface SheetPdfDeps {
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
 }
 
-/** One sheet rendered now as a PDF response (never stored), or 404 / a generic 500. */
 async function sheetPdf(
   deps: SheetPdfDeps,
   batch: Letter,
@@ -235,10 +217,6 @@ async function sheetPdf(
   }
 }
 
-/**
- * GET /api/letters/<batchId>/certificates/<sheetId>: one sheet, rendered now (D5), for staff
- * who may read the batch (others get 404). Before issue: no number and no QR.
- */
 export function createCertificateFileRoute(
   deps: SheetPdfDeps & {
     readonly getLetter: (id: string) => Promise<Letter | null>;
@@ -261,12 +239,6 @@ export function createCertificateFileRoute(
   };
 }
 
-/**
- * GET /certificates/pickup?t=<token>: the holder's own sheet (D5-P), no sign-in. The website's
- * pickup page matched the e-mail and signed a 15-minute link naming the sheet's verification
- * code (LINK_SIGNING_SECRET, the same on web and admin). Only sheets of issued batches; a bad,
- * expired or foreign token is 404.
- */
 export function createCertificatePickupRoute(
   deps: SheetPdfDeps & {
     readonly find: (

@@ -5,32 +5,20 @@ import {
   type RoleAssignment,
 } from "@website/permissions";
 
-/*
- * Pure rules of the Role Manager page (people and their roles; Edit Role). The React side is
- * `role-manager-page.tsx`; the server rules are in `src/server/accounts.ts` and `roles.ts`.
- */
-
-/** Every account has it; it is never shown, filtered by or given here. */
 export const DEFAULT_ROLE_ID = "visitor";
 
 export type PersonStatus = "active" | "inactive" | "invited";
 
-/** One row of the people table: an account holding a role, or a pending invite. */
 export interface PersonRow {
-  /** The uid, or `invite:<email>`. */
   readonly id: string;
-  /** null for an invite (no account yet). */
   readonly uid: string | null;
-  /** Full name, else the e-mail, else the uid. */
   readonly name: string;
   readonly email: string | null;
   readonly status: PersonStatus;
   readonly version: number;
   readonly createdAt: string | null;
   readonly lastSignInAt: string | null;
-  /** The website role (one per account; changed here), null = Visitor only. */
   readonly roleId: string | null;
-  /** Organizational roles (one chapter / unit / period, or an appointment): shown, changed there. */
   readonly orgRoleIds: readonly string[];
 }
 
@@ -80,7 +68,6 @@ export function inviteRow(invite: {
   };
 }
 
-/** Tab (`all` or a website role id) and the search text (name or e-mail). */
 export function matchesPerson(row: PersonRow, filter: { tab: string; query: string }): boolean {
   const query = filter.query.trim().toLowerCase();
   return (
@@ -91,7 +78,6 @@ export function matchesPerson(row: PersonRow, filter: { tab: string; query: stri
   );
 }
 
-/** "All" plus one tab per website role somebody holds, in the roles' order, with counts. */
 export function roleTabs(
   rows: readonly PersonRow[],
   roles: readonly { id: string; name: string }[],
@@ -107,7 +93,6 @@ export function roleTabs(
 
 export type PersonSortKey = "name" | "role" | "status" | "lastSignIn";
 
-/** ISO dates sort as text; never signed in ("") comes first. */
 export function personSortValue(
   row: PersonRow,
   key: PersonSortKey,
@@ -124,16 +109,11 @@ const channel = (hex: string, at: number) => {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 };
 
-/**
- * Text colour on a role badge: whichever of dark or light text has the higher contrast with the
- * badge colour (WCAG relative luminance; the two are equal at about 0.18).
- */
 export function roleInk(hex: string): "dark" | "light" {
   const luminance = 0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5);
   return luminance > 0.179 ? "dark" : "light";
 }
 
-/** Edit Role search: the role name or one of its permissions. */
 export function matchesRole(
   role: { readonly name: string; readonly permissions: readonly string[] },
   query: string,
@@ -146,7 +126,6 @@ export function matchesRole(
   );
 }
 
-/** "shop_orders" → "Shop Orders", "revert" → "Revert". */
 const title = (key: string) =>
   key
     .split("_")
@@ -155,13 +134,10 @@ const title = (key: string) =>
 
 export interface PermissionGroup {
   readonly page: string;
-  /** The admin page's label ("Audit Log"). */
   readonly label: string;
-  /** Read, Edit and the page's extras: `{ value: "audit.revert", label: "Audit Revert" }`. */
   readonly permissions: readonly { readonly value: string; readonly label: string }[];
 }
 
-/** The permission checkboxes of Create / Edit Role: one group per admin page. */
 export function permissionGroups(): PermissionGroup[] {
   return Object.entries(ADMIN_PAGES).map(
     ([page, definition]: [string, { label: string; extras?: Record<string, string> }]) => ({
@@ -175,10 +151,6 @@ export function permissionGroups(): PermissionGroup[] {
   );
 }
 
-/**
- * The permission dropdown's search: a page whose label matches keeps all its permissions;
- * otherwise only the permissions whose label or key matches (pages without any are left out).
- */
 export function filterPermissionGroups(
   groups: readonly PermissionGroup[],
   query: string,
@@ -198,10 +170,6 @@ export function filterPermissionGroups(
     .filter((group) => group.permissions.length > 0);
 }
 
-/**
- * A role's permissions as the checkboxes show them: `pages` = pages ticked as a whole (the role
- * has every permission of the page), `single` = the other permissions. Unknown ones are dropped.
- */
 export function splitPermissions(permissions: readonly string[]): {
   pages: Set<string>;
   single: Set<string>;
@@ -216,7 +184,6 @@ export function splitPermissions(permissions: readonly string[]): {
   return { pages, single };
 }
 
-/** What is saved: every permission of the ticked pages plus the single ones. */
 export function joinPermissions(pages: ReadonlySet<string>, single: ReadonlySet<string>): string[] {
   return [
     ...permissionGroups()

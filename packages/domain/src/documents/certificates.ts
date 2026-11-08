@@ -2,23 +2,14 @@ import { safeText } from "@website/security/validation";
 import { RuleViolationError } from "../shared";
 import { formatNumber, type NumberValues } from "./numbering";
 
-/**
- * Mass certificates (D5, PPIDK `SertifikatService`): a batch is a letter (`source:
- * "certificate"`) with ONE agenda number; each participant is a sheet `certificates/{id}` with
- * its own sequence (`007.037/...`) and its own verification code. Sheets are not stored as
- * files: they are rendered on demand from the batch frozen at issue.
- */
 export interface Certificate {
   readonly id: string;
   readonly batchId: string;
   readonly periodId: string;
-  /** 1, 2, ... in the order added; never reused or renumbered. */
   readonly seq: number;
   readonly name: string;
-  /** "Narasumber", "Juara 1"; null for most participants. */
   readonly note: string | null;
   readonly verificationCode: string;
-  /** keyedHash(CERTIFICATE_EMAIL_PURPOSE, e-mail) for the pickup page (D5-P); null = none. */
   readonly emailHash: string | null;
   readonly createdAt: Date;
 }
@@ -26,19 +17,14 @@ export interface Certificate {
 export interface Participant {
   readonly name: string;
   readonly note: string | null;
-  /** Lower case; turned into `emailHash` before it is stored (never stored itself). */
   readonly email: string | null;
 }
 
-/** keyedHash purpose of `emailHash` (the same on admin and web, SUBSCRIBER_HASH_SECRET). */
 export const CERTIFICATE_EMAIL_PURPOSE = "certificate-email";
-/** signLink purpose of the 15-minute pickup download link (LINK_SIGNING_SECRET). */
 export const CERTIFICATE_PICKUP_PURPOSE = "certificate-pickup";
 export const CERTIFICATE_PICKUP_LINK_MS = 15 * 60_000;
 
-/** At most this many sheets are written in one transaction (keeps one transaction small). */
 export const CERTIFICATE_CHUNK = 200;
-/** At most this many lines in one paste. */
 export const MAX_PARTICIPANT_LINES = 1000;
 
 export const certificateId = (batchId: string, seq: number) =>
@@ -50,13 +36,6 @@ const Note = safeText(160, { allowEmpty: true });
 const SEPARATOR = /[\t;|]/u;
 const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/u;
 
-/**
- * A pasted list (from Excel or Google Sheets): one person per line, an optional note after the
- * first TAB, `;` or `|`. Never a comma: Indonesian names carry degrees ("Arif, S.Kom.").
- * A column that is an e-mail address (anywhere after the name) is the pickup e-mail, not the note.
- * Duplicates are KEPT: two people may share a name, and a wrong extra line is easy to delete,
- * while a silently dropped person never gets a certificate.
- */
 export function parseParticipants(text: string): Participant[] {
   const lines = text.split(/\r\n|\r|\n/u);
   if (lines.length > MAX_PARTICIPANT_LINES) {
@@ -89,10 +68,6 @@ export function parseParticipants(text: string): Participant[] {
 const PARTICLES = new Set(["bin", "binti", "van", "von", "de", "da", "di", "der"]);
 const capital = (part: string) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
 
-/**
- * "ARIF NURWAHID, S.KOM." → "Arif Nurwahid, S.KOM.": the optional "Title case" of a paste.
- * Degrees (a dot inside the word) stay as typed; particles stay small except first.
- */
 export function titleCaseName(name: string): string {
   return tidy(name)
     .split(" ")
@@ -104,10 +79,6 @@ export function titleCaseName(name: string): string {
     .join(" ");
 }
 
-/**
- * The batch number with the sheet's place left open (`007.{sheet:3}/SERT/...`), frozen at issue:
- * a later change to the type's pattern never renumbers printed sheets.
- */
 export function sheetNumberTemplate(pattern: string, values: Omit<NumberValues, "sheet">): string {
   return formatNumber(pattern.replaceAll("{nomor}", "\u0000"), values).replaceAll(
     "\u0000",
@@ -132,7 +103,6 @@ const ENTITIES: Record<string, string> = {
   nbsp: " ",
 };
 
-/** The sentence under the name: the batch text as plain lines, or PPIDK's default. */
 export function certificateCitation(bodyHtml: string, subject: string): string {
   const text = bodyHtml
     .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6])>/giu, "\n")

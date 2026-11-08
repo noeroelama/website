@@ -7,12 +7,10 @@ import { formatEventTime } from "@/lib/event-time";
 import { publicFormByToken } from "@/server/forms-wiring";
 import { PublicFormClient } from "./public-form";
 
-// Unknown, draft, deleted and recruitment forms → 404. Read per request (window, version).
 export const instant = false;
 
 export async function generateMetadata({ params }: PageProps<"/f/[token]">): Promise<Metadata> {
   const view = await publicFormByToken()((await params).token);
-  // The token is a capability: keep form pages out of search engines.
   return view ? { title: view.form.title, robots: { index: false, follow: false } } : {};
 }
 

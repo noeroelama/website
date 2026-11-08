@@ -61,16 +61,14 @@ describe("member profile on the website (B3)", () => {
     const saved = await own().load(siti);
     expect(saved).toMatchObject({
       userId: "siti",
-      email: "siti@example.org", // from the verified session, never typed
+      email: "siti@example.org",
       fullName: "Siti Rahma",
       consent: { privacyPolicyVersion: PRIVACY_POLICY_VERSION, consentedAt: now },
       version: 1,
     });
     expect(isProfileComplete(saved)).toBe(true);
-    // The account record learns the member's chapter (chapter-scoped staff lists, A2).
     expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: "ch-jp", version: 3 });
 
-    // Edits keep the first consent date unless the policy changed; a move updates the chapter.
     const later = createOwnProfile({
       profiles: store,
       universities: universities(),
@@ -85,7 +83,6 @@ describe("member profile on the website (B3)", () => {
       createdAt: now,
     });
     expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: "ch-kr" });
-    // A country without an active chapter clears it.
     expect(await later.save(siti, { version: 2, profile: { ...input, ppiCountry: "AU" } })).toEqual(
       { ok: true, version: 3 },
     );
@@ -119,7 +116,6 @@ describe("member profile on the website (B3)", () => {
       error: "conflict",
     });
     expect(await own().save(siti, { profile: input })).toMatchObject({ error: "invalid" });
-    // A consent to an older policy version makes the profile incomplete again.
     const stored = await store.findByUserId("siti");
     expect(
       isProfileComplete(

@@ -1,6 +1,5 @@
 import "server-only";
 
-/** Each integration and the variables it needs (any one group of `anyOf` is enough). */
 const INTEGRATIONS: ReadonlyArray<{
   readonly name: string;
   readonly section: "whatsapp" | "zoom" | "other";
@@ -45,10 +44,6 @@ const INTEGRATIONS: ReadonlyArray<{
   { name: "E-mail (Resend)", section: "other", anyOf: [["RESEND_API_KEY"]] },
 ];
 
-/**
- * Settings (L3): integrations are configured in the cPanel app screen (secrets never live in the
- * database or on this page), so the page only says yes/no per integration.
- */
 export function integrationStatus(env: Readonly<Record<string, unknown>>) {
   return {
     messagingMode: env["MESSAGING_MODE"] === "live" ? ("live" as const) : ("log" as const),

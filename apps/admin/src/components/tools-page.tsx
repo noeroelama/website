@@ -30,32 +30,20 @@ import {
 } from "@/app/(panel)/tools/actions";
 import { Select } from "@/components/ui/select";
 
-/* ==================================================================
-   Tools — QR Generator (left ~25%) & URL Shortener (right ~75%)
-   Ported from the earlier Vite admin; colours come from the shared
-   design tokens. No hex values are allowed outside styles.css, so QR
-   colours are read from the resolved `--color-*` custom properties.
-   ================================================================== */
-
-/** Resolve a single CSS custom property from :root (used for QR colours). */
 function tokenValue(name: string): string {
   if (typeof window === "undefined") return "";
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value;
 }
 
-/** QR foreground/background from the brand tokens (dark ink on the cream card, as in the
- *  design); undefined → qrcode's own defaults. */
 function colorForQr(): { dark: string; light: string } | undefined {
   const dark = tokenValue("--color-brand-950");
   const light = tokenValue("--color-brand-50");
   return dark && light ? { dark, light } : undefined;
 }
 
-/* ---- Centre logo (memoised per app run) ---- */
 let logoPromise: Promise<HTMLImageElement | null> | null = null;
 
-/** Load the public brand logo once (drawn on the PNG download's plate). */
 function brandLogo(): Promise<HTMLImageElement | null> {
   logoPromise ??= new Promise((resolve) => {
     const img = new Image();
@@ -66,7 +54,6 @@ function brandLogo(): Promise<HTMLImageElement | null> {
   return logoPromise;
 }
 
-/* ---------- Real, scannable QR code ---------- */
 function QrPreview({
   text,
   size,
@@ -76,7 +63,6 @@ function QrPreview({
 }: {
   text: string;
   size: number;
-  /** Pixels of the PNG download (print sizes, larger than the preview). */
   downloadSize: number;
   showLogo: boolean;
   onClear?: () => void;
@@ -84,7 +70,7 @@ function QrPreview({
   const [dataUrl, setDataUrl] = useState("");
 
   useEffect(() => {
-    if (!text.trim()) return; // blank stays blank; `shown` also hides any stale dataUrl below
+    if (!text.trim()) return;
     let alive = true;
     QRCode.toDataURL(text.trim(), {
       width: size,
@@ -103,7 +89,6 @@ function QrPreview({
     };
   }, [text, size]);
 
-  /* Never show a stale QR: blank when the input is empty, while generating, or on error. */
   const shown = text.trim() && dataUrl ? dataUrl : "";
   const plate = qrLogoPlate(size);
   const ready = Boolean(shown);
@@ -115,8 +100,6 @@ function QrPreview({
     a.click();
   };
 
-  /* PNG at print size; with the logo on an OPAQUE plate in the QR's light colour (qrLogoPlate),
-     so the transparent icon never merges with the dark modules. */
   const downloadPng = async () => {
     const value = text.trim();
     if (!ready || !value) return;
@@ -135,7 +118,6 @@ function QrPreview({
         const plate = qrLogoPlate(canvas.width);
         ctx.fillStyle = colors?.light || tokenValue("--color-white");
         ctx.fillRect(plate.x, plate.y, plate.size, plate.size);
-        // The wide logo keeps its proportions inside the square plate (centred, "contain").
         const scale = plate.logo.size / Math.max(logo.naturalWidth, logo.naturalHeight);
         const w = logo.naturalWidth * scale;
         const h = logo.naturalHeight * scale;
@@ -148,12 +130,9 @@ function QrPreview({
         );
       }
       save(canvas.toDataURL("image/png"), "qr-code.png");
-    } catch {
-      /* Keep the button inert if generation fails (e.g. content overflows the symbol). */
-    }
+    } catch {}
   };
 
-  /* SVG for large prints: never with the logo (it would be a raster inside the vector file). */
   const downloadSvg = async () => {
     const value = text.trim();
     if (!ready || !value) return;
@@ -168,16 +147,12 @@ function QrPreview({
       const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
       save(url, "qr-code.svg");
       URL.revokeObjectURL(url);
-    } catch {
-      /* Keep the button inert if generation fails (e.g. content overflows the symbol). */
-    }
+    } catch {}
   };
 
   return (
     <div className="admin-qr-preview">
       <div className="admin-qr-preview__container">
-        {/* Height is derived from width (aspect-ratio) in CSS, so the tile stays
-            square even when a Large QR is clamped to the fixed dashed frame. */}
         <div className="admin-qr-preview__tile" style={{ width: size }}>
           {shown ? (
             // eslint-disable-next-line @next/next/no-img-element -- data-URL QR output, not optimizable
@@ -196,7 +171,6 @@ function QrPreview({
               className="admin-qr-preview__logo"
               style={{ width: plate.size, height: plate.size }}
             >
-              {/* Brand mark from the admin public folder; content only — see admin-logo. */}
               {/* eslint-disable-next-line @next/next/no-img-element -- static packed asset */}
               <img
                 src="/logo.webp"
@@ -232,12 +206,7 @@ function QrPreview({
 type QrType = "link" | "text";
 type QrSize = "small" | "medium" | "large";
 
-/** Pending delete action shown in the dark confirm modal (one link or many). */
 type DeleteConfirm = { kind: "one"; link: ShortLink } | { kind: "many"; count: number };
-
-/* Result banner shown after a link is created/updated (dark on the page, cream in the
-   Edit Link popup). Left: check + "Short link created", the link, "Redirects to …".
-   Right: Generate QR / Copy / Visit URL in the opposite colour (icon before text). */
 
 function LinkResultBanner({
   title,
@@ -286,7 +255,6 @@ function LinkResultBanner({
   );
 }
 
-/** `px` = on-screen preview; the downloads use QR_DOWNLOAD_PX (300 / 600 / 1000 px). */
 const QR_SIZE_OPTIONS: { value: QrSize; label: string; hint: string; px: number }[] = [
   { value: "small", label: "Small", hint: "For screens", px: 132 },
   { value: "medium", label: "Medium", hint: "For A4 print", px: 180 },
@@ -295,24 +263,17 @@ const QR_SIZE_OPTIONS: { value: QrSize; label: string; hint: string; px: number 
 
 interface ToolsProps {
   initialLinks: ShortLink[];
-  /** tools.edit: create, rename, archive. */
   canEdit: boolean;
 }
 
 export function ToolsPage(props: ToolsProps) {
   const pathname = usePathname();
-  // key={pathname} remounts the page when the tools route is (re)entered, so
-  // the searchbox and filters start empty on every visit (same pattern as
-  // Articles & Gallery).
   return <ToolsList key={pathname} {...props} />;
 }
 
-/** Tools screen (all state lives here; remounted by ToolsPage on navigation
- *  so it starts clean). */
 function ToolsList({ initialLinks, canEdit }: ToolsProps) {
   const toast = useToastMessage();
 
-  /* ---- QR Generator ---- */
   const [qrType, setQrType] = useState<QrType>("link");
   const [qrLink, setQrLink] = useState("");
   const [qrText, setQrText] = useState("");
@@ -322,9 +283,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
   const [banner, setBanner] = useState<string | null>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  /* Read the chosen image, convert it to PNG (canvas), max 5MB. When the image
-     is a QR code, decode it and fill the Link / Plain Text field with its content,
-     auto-switching the type to match (a URL → Link input, anything else → Text). */
   const onBannerFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.show("Please choose an image file");
@@ -362,9 +320,7 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
             setQrText(content);
           }
           toast.show(isLink ? `Link read: ${content}` : "Text read from QR");
-        } catch {
-          /* Non-QR images keep the plain upload behaviour. */
-        }
+        } catch {}
       };
       img.src = reader.result as string;
     };
@@ -384,7 +340,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
     toast.show("QR code generated successfully");
   };
 
-  /* ---- URL Shortener ---- */
   const [longUrl, setLongUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -397,15 +352,13 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
   const [createdLink, setCreatedLink] = useState<ShortLink | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState(""); // diterapkan hanya saat Search diklik / Enter ditekan
+  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  /* --- edit modal form --- */
   const [editForm, setEditForm] = useState({ original: "", title: "", slug: "" });
   const [editClicks, setEditClicks] = useState<string>("…");
   const [busy, setBusy] = useState(false);
 
-  /* Result container auto-hides after a few seconds */
   useEffect(() => {
     if (!createdLink) return;
     const t = setTimeout(() => setCreatedLink(null), 4000);
@@ -459,7 +412,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
     );
   };
 
-  /** Only the title is ours to change; the provider's link keeps its address and slug. */
   const saveEdit = async () => {
     if (!editingLink) return;
     const result = await renameLinkAction({
@@ -495,8 +447,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
     window.open(link.shortUrl, "_blank", "noopener,noreferrer");
   };
 
-  /* Archive (the providers' soft delete: the slug stays taken) is confirmed in the dark modal;
-     an archived link can be restored the same way. */
   const archiveOne = async (link: ShortLink, archived: boolean) => {
     const result = await setLinkArchivedAction({ id: link.id, version: link.version, archived });
     if (!result.ok) {
@@ -674,7 +624,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
     },
   ];
 
-  /* --- Pagination: sliding window of 5 consecutive page numbers --- */
   const pageNumbers: number[] = [];
   const winStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
   const winEnd = Math.min(totalPages, winStart + 4);
@@ -694,11 +643,9 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
       </div>
 
       <div className="admin-tools-grid">
-        {/* ============ QR GENERATOR (left 30%) ============ */}
         <Card>
           <CardHeader title={<span className="admin-card__title">QR Generator</span>} />
           <CardBody style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-            {/* Type */}
             <div className="admin-field">
               <span className="admin-field__label">Type</span>
               <div className="admin-radio-row">
@@ -723,7 +670,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               </div>
             </div>
 
-            {/* Value input */}
             {qrType === "link" ? (
               <label className="admin-field">
                 <span className="admin-field__label">Link *</span>
@@ -750,7 +696,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               </label>
             )}
 
-            {/* Size — horizontal, bold value on top / hint below */}
             <div className="admin-field">
               <span className="admin-field__label">Size</span>
               <div className="admin-radio-row">
@@ -771,7 +716,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               </div>
             </div>
 
-            {/* Logo toggle (horizontal switch) */}
             <label className="admin-qr-switch">
               <input
                 type="checkbox"
@@ -868,11 +812,9 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
           </CardBody>
         </Card>
 
-        {/* ============ URL SHORTENER (right 70%) ============ */}
         <Card className="admin-tools-card">
           <CardHeader title={<span className="admin-card__title">URL Shortener</span>} />
           <CardBody className="admin-tools-form">
-            {/* Result container (appears above Long URL after Generate) */}
             {createdLink ? (
               <LinkResultBanner
                 title="Short link created"
@@ -883,7 +825,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               />
             ) : null}
 
-            {/* Long URL */}
             <label className="admin-field">
               <span className="admin-field__label">Long URL *</span>
               <input
@@ -895,7 +836,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               />
             </label>
 
-            {/* Title */}
             <label className="admin-field">
               <span className="admin-field__label">Title</span>
               <input
@@ -907,7 +847,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               />
             </label>
 
-            {/* Short URL — snug readonly prefix + editable slug */}
             <div className="admin-field">
               <span className="admin-field__label">URL *</span>
               <div className="admin-field__row">
@@ -941,7 +880,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
           </CardBody>
 
           <CardBody flush>
-            {/* Toolbar: search left, delete right */}
             <div className="admin-toolbar">
               <form
                 className="admin-searchbox"
@@ -960,8 +898,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
-                    // Emptying the box (✕ or clear) drops the applied query
-                    // too, so the list returns to its default view.
                     if (e.target.value === "") {
                       setQuery("");
                       setPage(1);
@@ -1015,7 +951,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
               />
             )}
 
-            {/* Pagination: Showing … of N · Rows per page · page numbers */}
             <div className="admin-darkbar">
               <span className="admin-darkbar__info">
                 Showing {shownStart}–{shownEnd} of {filtered.length}
@@ -1075,7 +1010,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
         </Card>
       </div>
 
-      {/* Edit link popup */}
       <Modal
         asForm
         open={editOpen}
@@ -1151,7 +1085,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
             </p>
           </div>
 
-          {/* Result container appears above the Save button after saving */}
           {editSaved && editingLink ? (
             <div className="admin-form-grid__full">
               <LinkResultBanner
@@ -1167,8 +1100,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
         </div>
       </Modal>
 
-      {/* Delete confirmation popup — dark, compact, styled like Edit Link but
-          sized to the text; the two actions sit flush right. */}
       <Modal
         open={deleteConfirm !== null}
         title={

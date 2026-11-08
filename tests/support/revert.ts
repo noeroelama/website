@@ -20,7 +20,6 @@ const auditor: Principal = {
   ],
 };
 
-/** Reverts one audit entry the way the Audit Log page does (production revert collections). */
 export function revertEntry(db: unknown, id: string, now: Date) {
   return createAuditLogActions({
     audit: createSqlAuditStore(db as Db),
@@ -33,7 +32,7 @@ export function revertEntry(db: unknown, id: string, now: Date) {
       Promise.resolve({
         actorEmail: "auditor@example.org",
         requestId: "req-777777",
-        authTime: Date.now() / 1000, // the recent-sign-in check uses the real clock
+        authTime: Date.now() / 1000,
       }),
   )({ id });
 }

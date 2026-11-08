@@ -187,13 +187,11 @@ describe("placement approval and integrity pact (C3 steps 7-8)", () => {
       `recruitment/rec1/ari/pact_${clock.getTime()}_abcdef12.pdf`,
     ]);
     expect(app()).toMatchObject({ status: "pakta_review", pactNote: null });
-    // Both files stay readable for the committee.
     for (const { path } of pacts) {
       expect(await actions().fileUrl(...as("panitia"))({ id: "rec1_ari", path })).toMatchObject({
         ok: true,
       });
     }
-    // A pact can only be uploaded once the placement is approved.
     expect(await (await uploadPact()).json()).toMatchObject({ ok: false, error: "locked" });
   });
 });
@@ -201,7 +199,6 @@ describe("placement approval and integrity pact (C3 steps 7-8)", () => {
 describe("ratification (C3 step 9)", () => {
   it("confirms and appoints in ONE transaction, once; roles come from the appointment", async () => {
     setApplication("pakta_review");
-    // An account without an e-mail is filed under its uid in the audit log.
     fake.docs.set("users/ari", { ...user("ari", ["visitor"]), email: null });
     expect(
       await actions().ratify(...as("sekjen"))({ id: "rec1_ari", version: 4, title: "Staf Media" }),
@@ -238,7 +235,6 @@ describe("ratification (C3 step 9)", () => {
       appointment: appointmentId,
       application: "rec1_ari",
     });
-    // Ratifying again is refused: confirmed is final, and there is still one appointment.
     expect(
       await actions().ratify(...as("sekjen"))({ id: "rec1_ari", version: 6, title: "Staf" }),
     ).toMatchObject({ ok: false, error: "refused" });
@@ -253,7 +249,6 @@ describe("ratification (C3 step 9)", () => {
     setApplication("pakta_review");
     const ratify = (uid: string) =>
       actions().ratify(...as(uid))({ id: "rec1_ari", version: 5, title: "Staf Direktorat Media" });
-    // The ratifier must hold the permissions of the roles given.
     fake.docs.set("roles/officer", role(["events.read", "members.pii"]));
     expect(await ratify("sekjen")).toMatchObject({
       error: "refused",
@@ -266,7 +261,6 @@ describe("ratification (C3 step 9)", () => {
       issues: [expect.stringContaining("second sign-in method")],
     });
     secondFactor = { ari: true };
-    // The board period of the unit is no longer the active one.
     fake.docs.set("settings/activePeriod", { periodId: "p2027" });
     expect(await ratify("sekjen")).toMatchObject({
       error: "refused",
@@ -274,7 +268,6 @@ describe("ratification (C3 step 9)", () => {
     });
     expect(app()).toMatchObject({ status: "pakta_review", appointmentId: null });
     expect(appointments()).toHaveLength(0);
-    // Nobody ratifies their own application.
     fake.docs.set("applications/rec1_sekjen", { ...app(), userId: "sekjen" });
     expect(
       await actions().ratify(...as("sekjen"))({ id: "rec1_sekjen", version: 5, title: "Staf" }),
@@ -300,7 +293,6 @@ describe("ratification (C3 step 9)", () => {
     expect(
       await actions().ratify(...as("sekjen"))({ id: "missing", version: 1, title: "Staf" }),
     ).toMatchObject({ error: "refused" });
-    // The store re-reads the application inside its transaction.
     await expect(
       createSqlApplicationStore(db()).ratify(
         "missing",

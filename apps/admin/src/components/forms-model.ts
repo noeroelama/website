@@ -9,10 +9,6 @@ import type {
 import { FORM_STATUS_LABELS, FORM_USAGE_LABELS, label } from "../labels";
 import type { Author } from "./authors";
 
-/**
- * What the Forms page shows and edits, mapped on the server from `forms/{id}` and the form's
- * current version (`formVersions/{id}_{n}`).
- */
 export type FormTab = "all" | "published" | "drafts" | "closed";
 
 export interface FormItem {
@@ -24,14 +20,11 @@ export interface FormItem {
   usageLabel: string;
   status: FormStatus;
   statusLabel: string;
-  /** ISO times (UTC) or null. */
   opensAt: string | null;
   closesAt: string | null;
-  /** Public link token (/f/{token} on the website), set on the first publish. */
   publicToken: string | null;
   responseCount: number;
   currentVersion: number;
-  /** Someone answered the current version: saving changed questions creates the next one. */
   answered: boolean;
   questions: Question[];
   modifiedAt: string;
@@ -70,14 +63,12 @@ export function matchesFormTab(item: Pick<FormItem, "status">, tab: FormTab): bo
   return item.status === tab;
 }
 
-/** One question row of the builder: numbers and options are edited as text. */
 export interface QuestionDraft {
   id: string;
   type: QuestionType;
   label: string;
   description: string;
   required: boolean;
-  /** One option per line. */
   options: string;
   allowOther: boolean;
   maxSelections: string;
@@ -115,10 +106,8 @@ export function toDraft(q: Question): QuestionDraft {
   };
 }
 
-/** "" → null; anything else → a number (NaN reaches the server and is refused there). */
 const toNumber = (text: string) => (text.trim() === "" ? null : Number(text));
 
-/** The builder row as the save action expects it (the server validates and normalises). */
 export function fromDraft(d: QuestionDraft) {
   return {
     id: d.id,
@@ -137,6 +126,5 @@ export function fromDraft(d: QuestionDraft) {
   };
 }
 
-/** Question types whose options are edited. */
 export const hasOptions = (type: QuestionType) =>
   type === "single_choice" || type === "multi_choice";

@@ -18,7 +18,6 @@ import { type AdminPageId, type PagePermission, type Principal } from "@website/
 import { jsonError, readBodyLimited } from "@website/security";
 import { createGuardedAction, type AuditContext } from "./guarded-action";
 
-/** Which admin page may upload which kind of image (signatures are uploaded on web, later). */
 export const ADMIN_UPLOAD_PRESETS = {
   banner: "events.edit",
   speaker: "events.edit",
@@ -36,13 +35,11 @@ const isAdminPreset = (name: string): name is AdminPreset =>
 
 export interface ImageUploadDeps {
   readonly storage: ImageStorage;
-  /** Writes one audit entry in its own transaction (no record changes with an upload). */
   readonly appendAudit: (event: AuditEvent) => Promise<void>;
   readonly now: () => Date;
   readonly uuid: () => string;
 }
 
-/** Re-encodes: EXIF orientation applied, inside maxPx, WebP q82, metadata stripped (sharp default). */
 async function encode(bytes: Uint8Array, preset: AdminPreset) {
   try {
     const { maxPx } = IMAGE_PRESETS[preset];
@@ -61,12 +58,6 @@ async function encode(bytes: Uint8Array, preset: AdminPreset) {
   }
 }
 
-/**
- * POST /api/uploads/<preset> (flowchart section 2): the page permission is checked BEFORE the
- * body is read (the guarded action's handler reads it), body ≤ 5 MB, real type from the bytes,
- * re-encode + 480 px thumbnail, store both, audit UPLOAD, and answer
- * `{ path, thumbPath, url, thumbUrl, width, height }` (URLs null for private presets).
- */
 export function createImageUploads(deps: ImageUploadDeps) {
   const actionFor = (preset: AdminPreset) =>
     createGuardedAction({

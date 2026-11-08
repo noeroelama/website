@@ -4,7 +4,6 @@ import { useState, type FormEvent } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { attendAction } from "./actions";
 
-/** Code entry (prefilled from a scanned QR link); the server checks everything. */
 export function AttendForm({ code, labels: t }: { code: string; labels: Dictionary["attend"] }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

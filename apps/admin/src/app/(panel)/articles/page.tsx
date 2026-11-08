@@ -7,10 +7,8 @@ import { requireAdminViewer } from "@/server/context";
 import { getAppUrls } from "@/server/env";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Newest article audit entries read for the "Last Modified" editor (one query, as on Event). */
 const EDITOR_HISTORY = 500;
 
 export default async function AdminArticlesPage() {
@@ -21,7 +19,6 @@ export default async function AdminArticlesPage() {
     adminReads.listNews(),
     adminReads.listAudit({ module: "articles", limit: EDITOR_HISTORY }),
   ]);
-  // Editor = whoever made the article's newest change; names from users/{uid} in one batched read.
   const editors = lastEditors(history.items, "content");
   const users = await adminReads.getUsers([...new Set([...editors.values()].map((a) => a.id))]);
   const authors = authorsById(editors, users);

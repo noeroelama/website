@@ -5,14 +5,11 @@ import type { SortDir } from "../list-model";
 import { Icon } from "./icon";
 import { useDropdown } from "./select";
 
-/** What a sortable column header needs; made by `useListTable().header(key, label)`. */
 export interface ColumnMenuProps {
   label: string;
-  /** This column sorts the table. */
   active: boolean;
   dir: SortDir;
   onSort: (dir: SortDir) => void;
-  /** The column's values as a checklist; unticked values hide their rows. */
   filter?: {
     values: readonly string[];
     hidden: ReadonlySet<string>;
@@ -20,11 +17,6 @@ export interface ColumnMenuProps {
   };
 }
 
-/**
- * Header of a sortable column: its label and the filter icon (the old Filters button's icon).
- * It opens a menu to sort the column A to Z or Z to A and a checklist of the column's values
- * (Select all, then each value). Changes apply at once; Escape or a click outside closes it.
- */
 export function ColumnMenu({ label, active, dir, onSort, filter }: ColumnMenuProps) {
   const { trigger, box, open, position, show, hide } = useDropdown<HTMLButtonElement>();
   const listId = useId();
@@ -33,7 +25,6 @@ export function ColumnMenu({ label, active, dir, onSort, filter }: ColumnMenuPro
   const filtered = hidden.size > 0;
   const values = filter?.values ?? [];
 
-  // "Select all" is half-ticked while some values are unticked.
   useEffect(() => {
     if (all.current) all.current.indeterminate = filtered && hidden.size < values.length;
   });

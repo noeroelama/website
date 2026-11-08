@@ -3,11 +3,6 @@
 import { TEXT_LIMITS, type Question } from "@website/domain/forms";
 import { OTHER, type FieldValues } from "@/lib/form-answers";
 
-/**
- * The ONE renderer of form questions (public forms at /f/{token}; recruitment applications use
- * it too). It only collects values (lib/form-answers.ts builds the answers); the server
- * validates every answer against the version.
- */
 export interface FormFieldLabels {
   readonly required: string;
   readonly other: string;
@@ -19,15 +14,9 @@ export function FormFields(props: {
   questions: readonly Question[];
   value: FieldValues;
   onChange: (next: FieldValues) => void;
-  /** Server messages per question id. */
   errors: Readonly<Record<string, string>>;
   labels: FormFieldLabels;
-  /**
-   * File questions (recruitment only): uploads a PDF and resolves to the stored file's name.
-   * Without it a file question is shown as unavailable (public forms never have one).
-   */
   onFile?: (questionId: string, file: File) => Promise<void>;
-  /** The uploaded file's name per file question. */
   fileNames?: Readonly<Record<string, string>>;
   disabled?: boolean;
 }) {
@@ -131,7 +120,6 @@ export function FormFields(props: {
 
         if (q.type === "file") {
           const onFile = props.onFile;
-          // Public forms never have file questions (domain assertPublishable).
           if (!onFile) {
             return (
               <p key={q.id} className="site-muted">

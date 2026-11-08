@@ -4,7 +4,6 @@ import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { verification } from "@/server/verification-wiring";
 import { LetterContent } from "./letter-content";
 
-// Never indexed (codes are typed from paper); read per request.
 export const metadata: Metadata = {
   title: "Verifikasi Dokumen",
   robots: { index: false, follow: false },
@@ -13,7 +12,6 @@ export const instant = false;
 
 const ZONE = "Asia/Jakarta";
 
-/** /verify/<code> (also verif.ppiasiania.id/<CODE>): is this letter ours, and what does it say? */
 export default async function VerifyCodePage({
   params,
   searchParams,

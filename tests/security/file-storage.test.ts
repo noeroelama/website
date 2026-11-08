@@ -40,7 +40,7 @@ describe("files on the cPanel disk", () => {
     expect(await storage.read("missing.pdf")).toBeNull();
 
     await storage.remove("members/ktm/k.webp");
-    await storage.remove("members/ktm/k.webp"); // missing is not an error
+    await storage.remove("members/ktm/k.webp");
     expect(await storage.read("members/ktm/k.webp")).toBeNull();
   });
 
@@ -83,7 +83,6 @@ describe("files on the cPanel disk", () => {
     expect([...new Uint8Array(await priv.arrayBuffer())]).toEqual([2]);
 
     expect((await routes.privateFile(null)).status).toBe(404);
-    // Other signed links (unsubscribe, certificate pickup) never open files.
     expect((await routes.privateFile(signLink({ path: "recruitment/p.pdf" }, secret))).status).toBe(
       404,
     );
@@ -107,9 +106,7 @@ describe("files on the cPanel disk", () => {
     expect(fileContentType("members/signatures/a.enc")).toBe("application/octet-stream");
     expect(fileContentType("a.webp")).toBe("image/webp");
     await storage.save("folder/a.pdf", new Uint8Array([1]), { visibility: "private" });
-    // "folder" is a directory, not a file.
     await expect(storage.read("folder")).rejects.toMatchObject({ code: "EISDIR" });
-    // Without a clock the links expire 15 minutes from the real time.
     const real = createDiskFileStorage({ root, baseUrl: "", secret });
     expect(await real.signedReadUrl("folder/a.pdf")).toMatch(/^\/private-files\?t=/);
   });

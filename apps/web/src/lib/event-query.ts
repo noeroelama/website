@@ -3,15 +3,9 @@ import type { PublicAlbum } from "@website/domain/gallery";
 
 export const EVENT_PAGE_SIZE = 12;
 
-/** Presets of the design's date-range combobox: upcoming by default, rolling
- * week/month, current calendar year, or "custom" which shows the from/to date pickers. */
 export const TIME_RANGES = ["upcoming", "week", "month", "year", "custom"] as const;
 export type TimeRange = (typeof TIME_RANGES)[number];
 
-/**
- * Category pills of the design (Figma EVENT PUBLIC "Pills"): Semua, the four most
- * used types, and "Lainnya" for everything else.
- */
 const CATEGORY_TYPES = [
   "seminar",
   "workshop",
@@ -19,19 +13,15 @@ const CATEGORY_TYPES = [
   "conference",
   "meeting",
 ] as const satisfies readonly EventType[];
-/** The five types that get their own pill (the rest fall under "Lainnya"). */
 export type PillCategory = (typeof CATEGORY_TYPES)[number];
 export type EventCategory = "all" | PillCategory | "other";
 export const EVENT_CATEGORIES: readonly EventCategory[] = ["all", ...CATEGORY_TYPES, "other"];
 
 export interface EventQuery {
-  /** Category pill; null = "all". */
   readonly category: EventCategory | null;
   readonly q: string | null;
   readonly region: string | null;
-  /** Date-range preset ("Mendatang" by default); "custom" shows the from/to pickers. */
   readonly time: TimeRange;
-  /** YYYY-MM-DD (UTC day of the start), inclusive; used with time="custom". */
   readonly from: string | null;
   readonly to: string | null;
   readonly page: number;
@@ -41,7 +31,6 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 const day = (value: string | undefined) =>
   value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 
-/** /events?category=…&q=…&region=…&time=…&from=…&to=…&page=… → a safe query; anything unknown is ignored. */
 export function eventQuery(params: Record<string, string | string[] | undefined>): EventQuery {
   const category = one(params["category"]);
   const q = one(params["q"])?.trim().slice(0, 100) || null;
@@ -59,8 +48,6 @@ export function eventQuery(params: Record<string, string | string[] | undefined>
   };
 }
 
-/** True when an event type falls under the given category pill (null type only
- * matches "all" / "Lainnya"; albums reuse this for their event snapshots). */
 export function matchesEventType(type: EventType | null, category: EventCategory | null): boolean {
   return (
     category === null ||
@@ -71,16 +58,10 @@ export function matchesEventType(type: EventType | null, category: EventCategory
   );
 }
 
-/** True when the event falls under the given category pill. */
 export function matchesCategory(e: PublicEvent, category: EventCategory | null): boolean {
   return matchesEventType(e.type, category);
 }
 
-/**
- * The distinct regions of the given events, from the location text (last comma-separated
- * part, "Jakarta, Indonesia" → "Indonesia"; same-city placeholders like "Jakarta (Webinar)"
- * keep the city), in first-seen order.
- */
 export function regionsOf(events: readonly PublicEvent[]): string[] {
   const regions: string[] = [];
   for (const e of events) {
@@ -96,9 +77,6 @@ export function regionsOf(events: readonly PublicEvent[]): string[] {
   return regions;
 }
 
-/** From/to bounds (YYYY-MM-DD) of a time-range preset; "custom" has none.
- * Week/month windows are clamped to the end of the current calendar year, so their
- * results never spill into a different year (user). */
 export function timeBounds(
   range: TimeRange,
   now: Date,
@@ -111,14 +89,12 @@ export function timeBounds(
   if (range === "week") return { from: today, to: add(7) < yearEnd ? add(7) : yearEnd };
   if (range === "month") return { from: today, to: add(30) < yearEnd ? add(30) : yearEnd };
   if (range === "year") {
-    // Calendar year of "now" (e.g. 2026: Jan 1 – Dec 31).
     const year = now.getFullYear();
     return { from: `${year}-01-01`, to: `${year}-12-31` };
   }
   return { from: null, to: null };
 }
 
-/** Filters (category AND text AND region AND time range) and pages the published events. */
 export function pageOfEvents(all: readonly PublicEvent[], query: EventQuery, now = new Date()) {
   const { from: presetFrom, to: presetTo } = timeBounds(query.time, now);
   const q = query.q?.toLocaleLowerCase() ?? null;
@@ -145,7 +121,6 @@ export function pageOfEvents(all: readonly PublicEvent[], query: EventQuery, now
   };
 }
 
-/** Link to another page of the same filtered list. */
 export function eventsHref(query: EventQuery, page: number): string {
   const params = new URLSearchParams();
   if (query.category && query.category !== "all") params.set("category", query.category);
@@ -159,11 +134,6 @@ export function eventsHref(query: EventQuery, page: number): string {
   return search ? `/events?${search}` : "/events";
 }
 
-/* ---- Gallery list: the same black bar, but over the albums' event snapshots. ---- */
-
-/** Album version of EventQuery; unknown/absent values mean "no filter", so every
- * way of opening /gallery finds all albums. (No "custom" range here: the album
- * bar shows the same combos as events but no from/to date pickers.) */
 export interface AlbumQuery {
   readonly category: EventCategory | null;
   readonly q: string | null;
@@ -182,7 +152,6 @@ const num = (value: string | string[] | undefined) => {
   return Number.isInteger(n) && n > 0 ? n : 1;
 };
 
-/** /gallery?category=…&q=…&region=…&time=…&page=… → a safe query; anything unknown is ignored. */
 export function albumQuery(params: Record<string, string | string[] | undefined>): AlbumQuery {
   const category = Array.isArray(params["category"]) ? params["category"][0] : params["category"];
   const q =
@@ -200,8 +169,6 @@ export function albumQuery(params: Record<string, string | string[] | undefined>
   };
 }
 
-/** The distinct regions of the albums, from the snapshot location text — same rule
- * as the events ("Jakarta, Indonesia" → "Indonesia"). */
 export function albumRegionsOf(albums: readonly PublicAlbum[]): string[] {
   const regions: string[] = [];
   for (const a of albums) {
@@ -217,9 +184,6 @@ export function albumRegionsOf(albums: readonly PublicAlbum[]): string[] {
   return regions;
 }
 
-/** Filters (category AND text AND region AND time range) and pages the albums (the
- * pager appears as soon as there are more than one page, like /events); albums
- * without an event snapshot only match when no snapshot filter is active. */
 export function pageOfAlbums(albums: readonly PublicAlbum[], query: AlbumQuery, now = new Date()) {
   const { from, to } = query.time ? timeBounds(query.time, now) : { from: null, to: null };
   const q = query.q?.toLocaleLowerCase() ?? null;
@@ -244,7 +208,6 @@ export function pageOfAlbums(albums: readonly PublicAlbum[], query: AlbumQuery, 
   };
 }
 
-/** Link back to the same filtered album list (used by the pill, pager and clear links). */
 export function albumsHref(query: AlbumQuery, page = 1): string {
   const params = new URLSearchParams();
   if (query.category && query.category !== "all") params.set("category", query.category);

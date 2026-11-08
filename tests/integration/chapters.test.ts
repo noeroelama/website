@@ -134,7 +134,6 @@ describe("chapters (Organizations → PPI) and the map", () => {
       await actions().save(...as(jpAdmin))({ ...chapter, ...contact, id: jpId, version: 1 }),
     ).toMatchObject({ ok: true, data: { version: 2 } });
     expect(await store.get(jpId)).toMatchObject(contact);
-    // Name, country, map position and URL stay with the national board.
     for (const change of [
       { name: "PPI Nippon" },
       { latitude: 35 },
@@ -153,7 +152,6 @@ describe("chapters (Organizations → PPI) and the map", () => {
         }),
       ).toMatchObject({ error: "refused", issues: [expect.stringContaining("contact")] });
     }
-    // Another chapter, a new chapter and (de)activation are out of reach.
     expect(
       await actions().save(...as(jpAdmin))({ ...chapter, name: "PPI Korea", id: krId, version: 1 }),
     ).toEqual({ ok: false, error: "forbidden" });
@@ -180,7 +178,6 @@ describe("chapters (Organizations → PPI) and the map", () => {
     });
     const id = saved.ok ? saved.data.id : "";
     expect(await store.get(id)).toMatchObject({ memberCount: 200, risk: "at_risk" });
-    // Chapters saved before these fields existed read as "nothing entered yet".
     fake.docs.set(`chapters/${id}`, {
       ...fake.docs.get(`chapters/${id}`),
       memberCount: undefined,
@@ -194,8 +191,6 @@ describe("chapters (Organizations → PPI) and the map", () => {
   });
 
   it("reads legacy chapter rows missing the newer public fields (description/role/phone)", async () => {
-    // A row saved before the public-profile fields existed: the reader falls back
-    // to the defaults ("" / null) instead of crashing (issue: 100% branch coverage).
     const legacy: Record<string, unknown> = {
       ...chapter,
       slug: "ppi-legacy",

@@ -1,6 +1,5 @@
 import type { ShortenerProvider } from "@website/domain/links";
 
-/** A short link as the Tools page lists it (`linkRow` in src/server/links.ts). */
 export interface ShortLink {
   id: string;
   version: number;
@@ -13,12 +12,10 @@ export interface ShortLink {
   createdAt: string;
 }
 
-/** The primary provider's prefix in the slug field (s.id is only the fallback). */
 export const PREFIX = "goppi.id/";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** ISO date (2026-05-11) → "11 May 2026" for the table cells. */
 export function formatDate(iso: string): string {
   const parts = iso.slice(0, 10).split("-").map(Number);
   const y = parts[0];

@@ -62,7 +62,6 @@ describe("Article editor → Settings panel", () => {
   it("opens Settings only when the server refused a field that lives in it", () => {
     expect(needsSettings({ title: "Enter a title." })).toBe(true);
     expect(needsSettings({ publishAt: "x", summary: "y" })).toBe(true);
-    // Featured image and content are on the editor page itself.
     expect(needsSettings({ featuredImage: "Add a featured image." })).toBe(false);
     expect(needsSettings({ body: "x" })).toBe(false);
     expect(needsSettings({})).toBe(false);

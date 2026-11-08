@@ -1,11 +1,3 @@
-/**
- * PPIDK → platform import of meetings (with participants, agenda, minutes and action items), Zoom
- * bookings and their recorded sessions, short links and the outgoing message log (block J, step
- * 7.12, DEC-10): pure mapping from the MariaDB tables (exported as TSV) to database documents, run
- * after the people import (periods, units and accounts exist) and after freezing the PPIDK
- * meeting, Zoom and Tools screens. Ids come from PPIDK (idempotent). Attendance codes are not
- * imported (they rotate); capacity days are rebuilt from the approved bookings.
- */
 import type { MeetingRole } from "@website/domain/meetings";
 import type { MessageStatus } from "@website/domain/messaging";
 import type { ZoomStatus } from "@website/domain/zoom";
@@ -13,7 +5,6 @@ import { utcDays } from "@website/domain/zoom";
 import { messageId } from "../sql/messages";
 import type { PlannedWrite, TsvRow } from "./people";
 
-/** The tables this import reads (one `<name>.tsv` file each). */
 export const PPIDK_MEETING_TABLES = [
   "org_units",
   "meetings",
@@ -44,12 +35,10 @@ const ROLE: Readonly<Record<string, MeetingRole>> = {
 const ZOOM_STATUS: Readonly<Record<string, ZoomStatus>> = {
   diajukan: "pending",
   disetujui: "approved",
-  // A finished booking was approved; "finished" is read-time on the platform.
   selesai: "approved",
   ditolak: "rejected",
   dibatalkan: "cancelled",
 };
-/** Queued PPIDK messages are NOT sent late after the move: they become "blocked" history. */
 const MESSAGE_STATUS: Readonly<Record<string, MessageStatus>> = {
   antre: "blocked",
   mengirim: "blocked",
@@ -93,7 +82,6 @@ export function mapPpidkMeetings(
     return path.length > 0 ? path : null;
   };
 
-  /* ---- Zoom bookings (first: meetings point to them) ---- */
   const bookingIds = new Set<string>();
   const approvedSlots: Array<{ id: string; startsAt: Date; endsAt: Date }> = [];
   for (const z of tables.zoom_meetings) {
@@ -134,7 +122,6 @@ export function mapPpidkMeetings(
       ...meta(z),
     });
   }
-  // Capacity days rebuilt from the approved bookings (so the next booking sees them).
   const days = new Map<string, Array<{ id: string; startsAt: Date; endsAt: Date }>>();
   for (const slot of approvedSlots) {
     for (const day of utcDays(slot.startsAt, slot.endsAt))
@@ -146,7 +133,6 @@ export function mapPpidkMeetings(
       skip("zoom_recording_sessions", s, "booking not imported");
       continue;
     }
-    // Archived sessions count as listed; the archive job lists the others again.
     const archived = at(s["archived_at"]);
     set(`recordingSessions/${Buffer.from(s["meeting_uuid"] as string).toString("hex")}`, {
       uuid: s["meeting_uuid"],
@@ -157,7 +143,6 @@ export function mapPpidkMeetings(
     });
   }
 
-  /* ---- meetings with participants, agenda, minutes ---- */
   const byMeeting = <T extends TsvRow>(rows: readonly T[]) => {
     const map = new Map<string, T[]>();
     for (const r of rows)
@@ -182,7 +167,6 @@ export function mapPpidkMeetings(
       const role = ROLE[p["role"] as string];
       return role ? [{ uid: options.uidOf(p["user_id"] as string), role, row: p }] : [];
     });
-    // The platform needs exactly one chair: the first leader, else the creator joins as chair.
     let chairSeen = false;
     const participants = people.map((p) => {
       if (p.role !== "chair") return p;
@@ -286,7 +270,6 @@ export function mapPpidkMeetings(
     });
   }
 
-  /* ---- action items (PIC kept even when not a participant: history) ---- */
   for (const a of tables.meeting_action_items) {
     const meeting = meetings.get(a["meeting_id"] as string);
     if (!meeting || a["status"] === "dibatalkan") {
@@ -307,7 +290,6 @@ export function mapPpidkMeetings(
     });
   }
 
-  /* ---- short links (history; the provider keeps the slug) ---- */
   const slugs = new Set<string>();
   for (const l of tables.shortlinks) {
     const provider = l["provider"] === "goppi" ? "goppi" : "sid";
@@ -334,7 +316,6 @@ export function mapPpidkMeetings(
     set(`shortLinkSlugs/${key}`, { id: linkId });
   }
 
-  /* ---- message log (history; keys keep PPIDK's idempotency keys) ---- */
   for (const o of tables.outgoing_messages) {
     const key = `ppidk:${text(o["idempotency_key"]).replace(/[^A-Za-z0-9_.@:-]/g, "_")}`;
     const status =

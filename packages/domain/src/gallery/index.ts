@@ -4,37 +4,27 @@ import { FeaturedImageSchema, type FeaturedImage } from "../content";
 import { type EventType } from "../events";
 import { isValidSlug, type EntityMeta } from "../shared";
 
-/** Most featured images an album shows on the site (the full album is the external link). */
 export const ALBUM_MAX_IMAGES = 10;
 
-/** A gallery album: featured photos of one event + a link to the full external album. */
 export interface Album extends EntityMeta {
   readonly slug: string;
   readonly eventId: string;
-  /** The event's title when the album was saved (lists show it without reading the event). */
   readonly eventTitle: string;
-  /** Snapshots of the linked event at save time (the filter bar, the cards and the
-   * description excerpt of the gallery list; timezone so card dates render on the
-   * event's clock). */
   readonly eventType: EventType | null;
   readonly eventStartsAt: Date | null;
   readonly eventTimezone: string | null;
   readonly eventLocation: string | null;
-  /** The event's long text, for the card excerpt (clamped to two lines in CSS). */
   readonly eventDescription: string | null;
   readonly images: readonly FeaturedImage[];
-  /** Number shown on the card; null = the number of featured images. */
   readonly totalPhotos: number | null;
   readonly albumUrl: string;
   readonly published: boolean;
 }
 
-/** Albums belong to published events only (flowchart: searchable list of published events). */
 export function canHaveAlbum(event: { published: boolean; deletedAt: Date | null }): boolean {
   return event.published && event.deletedAt === null;
 }
 
-/** The Gallery form (add + edit). */
 export const AlbumInputSchema = z
   .object({
     eventId: safeId,
@@ -42,14 +32,12 @@ export const AlbumInputSchema = z
       .array(FeaturedImageSchema)
       .min(1, "Add at least one image.")
       .max(ALBUM_MAX_IMAGES, `At most ${ALBUM_MAX_IMAGES} images.`),
-    /** Required on save; older (imported) albums may still store null. */
     totalPhotos: z.number({ error: "Enter the total number of photos/videos." }).int().min(0),
     albumUrl: z
       .string()
       .trim()
       .max(2000)
       .regex(/^https?:\/\/\S+$/i, "Paste the album link (http:// or https://)."),
-    /** Empty = the event's URL. */
     slug: z
       .string()
       .trim()
@@ -59,7 +47,6 @@ export const AlbumInputSchema = z
   .strict();
 export type AlbumInput = z.infer<typeof AlbumInputSchema>;
 
-/** What visitors see of a published album. */
 export interface PublicAlbum {
   readonly slug: string;
   readonly eventId: string;

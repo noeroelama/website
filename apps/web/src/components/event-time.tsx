@@ -7,10 +7,6 @@ import { formatEventTime } from "@/lib/event-time";
 const subscribe = () => () => undefined;
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-/**
- * The same instant in the visitor's own time zone. Rendered only in the browser (the server
- * does not know the zone), and only when it differs from the event's zone.
- */
 export function ViewerTime(props: {
   iso: string;
   eventZone: string;

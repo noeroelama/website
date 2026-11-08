@@ -18,14 +18,12 @@ export interface ProposalRow {
   city: string | null;
   submittedBy: string | null;
   proposedAt: string;
-  /** Approved campuses of the same country that share a distinctive word (merge targets). */
   candidates: { id: string; name: string }[];
 }
 
 type Decision =
   { type: "approve" } | { type: "merge"; into: string } | { type: "reject"; note: string };
 
-/** The review queue: one row per proposal with Accept, Merge into … and Reject. */
 export function ReviewQueue({ rows, canEdit }: { rows: ProposalRow[]; canEdit: boolean }) {
   const router = useRouter();
   const toast = useToastMessage();

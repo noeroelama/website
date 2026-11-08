@@ -118,7 +118,6 @@ describe("admin dashboard overview", () => {
     ];
     const counts = async (principal: Principal) =>
       (await dashboard(principal)).queues.map((q) => [q.label, q.count]);
-    // Global: f3 (other unit) counts; f2 (my own request) and f5 (I reviewed it) never do.
     expect(await counts(staff(desks))).toEqual([
       ["Finance requests to review", 2],
       ["Finance requests to authorise", 1],
@@ -128,7 +127,6 @@ describe("admin dashboard overview", () => {
       ["LPJs to approve", 1],
       ["Zoom bookings to approve", 1],
     ]);
-    // Scoped to "other": only f3.
     expect(await counts(staff(desks, { type: "orgUnit", orgUnitId: "other" }))).toEqual([
       ["Finance requests to review", 1],
       ["Finance requests to authorise", 0],
@@ -138,7 +136,6 @@ describe("admin dashboard overview", () => {
       ["LPJs to approve", 0],
       ["Zoom bookings to approve", 0],
     ]);
-    // finance.read alone is not a desk.
     expect(await counts(staff(["finance.read", "lpj.read"]))).toEqual([]);
     period = null;
     expect(await counts(staff(["finance.review", "zoom.approve"]))).toEqual([

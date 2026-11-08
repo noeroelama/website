@@ -19,12 +19,6 @@ import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import type { CashSection } from "./finance-model";
 
-/* ==================================================================
-   Cash book (I2) and cash report (I3): the active period's lines for
-   a date range, per currency (never added together), with opening
-   and closing balances; manual lines; CSV and PDF from the server.
-   ================================================================== */
-
 interface Props {
   periodName: string | null;
   range: { from: string | null; to: string | null };

@@ -3,21 +3,12 @@ import { safeId, safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
 import { romanMonth } from "./numbering";
 
-/**
- * Incoming letters and dispositions (D6), ported from PPIDK `AgendaService`. A letter received
- * is recorded in the agenda book of the period (number given AT RECORDING: the letter is in hand,
- * so no number is ever left unused), then disposed to a unit or a person; recipients may forward
- * their disposition further down (the chain answers "where did it stop?"). A disposition closes
- * only when everything below it is done; the letter is done when every disposition is, and can
- * then be archived (no more dispositions).
- */
 export const INCOMING_STATUSES = ["new", "disposed", "done", "archived"] as const;
 export type IncomingStatus = (typeof INCOMING_STATUSES)[number];
 
 export const DISPOSITION_STATUSES = ["waiting", "in_progress", "done"] as const;
 export type DispositionStatus = (typeof DISPOSITION_STATUSES)[number];
 
-/** Scans are private PDFs, at most 10 MB (PPIDK's limit). */
 export const MAX_SCAN_BYTES = 10 * 1024 * 1024;
 
 const plainDate = z.iso.date();
@@ -25,7 +16,6 @@ const plainDate = z.iso.date();
 export const IncomingInputSchema = z
   .object({
     sender: safeText(200),
-    /** The sender's own number. */
     originNumber: safeText(120, { allowEmpty: true }).default(""),
     subject: safeText(300),
     letterDate: plainDate.nullable().default(null),
@@ -37,12 +27,10 @@ export type IncomingInput = z.infer<typeof IncomingInputSchema>;
 
 export const DispositionInputSchema = z
   .object({
-    /** One of the two: a unit of the period or a person. */
     toOrgUnitId: safeId.nullable(),
     toUserId: safeId.nullable(),
     instruction: safeText(1000, { multiline: true }),
     dueDate: plainDate.nullable().default(null),
-    /** Forwarding an existing disposition (its id); null = from the letter itself. */
     parentId: safeId.nullable().default(null),
   })
   .strict();
@@ -52,7 +40,6 @@ export interface ScanFile {
   readonly path: string;
   readonly name: string;
   readonly size: number;
-  /** Checked when the scan is opened: a swapped file is never shown. */
   readonly sha256: string;
 }
 
@@ -76,11 +63,9 @@ export interface IncomingLetter extends IncomingInput, EntityMeta {
   readonly status: IncomingStatus;
   readonly scan: ScanFile | null;
   readonly recordedBy: string;
-  /** Kept on the letter (few per letter): one document, one transaction per change. */
   readonly dispositions: readonly Disposition[];
 }
 
-/** `042/AG/VIII/2026` from the sequence and the date received (PPIDK format). */
 export function agendaNumber(seq: number, receivedDate: string): string {
   const [year, month] = receivedDate.split("-") as [string, string];
   return `${String(seq).padStart(3, "0")}/AG/${romanMonth(Number(month))}/${year}`;
@@ -90,7 +75,6 @@ const refuse = (message: string): never => {
   throw new RuleViolationError(message);
 };
 
-/** Dispose the letter, or forward one of its dispositions (`parentId`). */
 export function dispose(
   letter: IncomingLetter,
   input: DispositionInput,
@@ -122,7 +106,6 @@ export function dispose(
     ...letter,
     status: "disposed",
     dispositions: [
-      // Forwarding keeps the parent responsible ("in progress"), it does not close it.
       ...letter.dispositions.map((d) =>
         d.id === input.parentId ? { ...d, status: "in_progress" as const } : d,
       ),
@@ -131,7 +114,6 @@ export function dispose(
   };
 }
 
-/** A recipient reports the disposition done; never while something below it is open. */
 export function completeDisposition(
   letter: IncomingLetter,
   dispositionId: string,
@@ -156,7 +138,6 @@ export function completeDisposition(
   };
 }
 
-/** Archived letters are read-only; only when every disposition is done. */
 export function archiveIncoming(letter: IncomingLetter): IncomingLetter {
   if (letter.status === "archived") refuse("This letter is already archived.");
   if (letter.dispositions.some((d) => d.status !== "done")) {
@@ -165,6 +146,5 @@ export function archiveIncoming(letter: IncomingLetter): IncomingLetter {
   return { ...letter, status: "archived" };
 }
 
-/** Private Storage path of a scan. */
 export const scanPath = (periodId: string, letterId: string, uuid: string) =>
   `letters/incoming/${periodId}/${letterId}_${uuid.replace(/-/g, "").slice(0, 8)}.pdf`;

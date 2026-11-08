@@ -24,7 +24,6 @@ test("every side-panel page requires a verified session", async ({ request }) =>
     "/audit",
   ]) {
     const response = await request.get(path, { maxRedirects: 0 });
-    // E2E runs without WEB_URL/ADMIN_URL, so the page shows the message instead of redirecting.
     expect(response.status(), path).toBe(200);
     expect(await response.text(), path).toContain("sign-in required");
   }

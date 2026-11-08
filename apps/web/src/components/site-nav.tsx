@@ -5,10 +5,6 @@ import { Suspense } from "react";
 
 type Link = readonly [href: string, text: string];
 
-/**
- * Header links; the current section gets aria-current="page" (shown bold). Pages with a dynamic
- * slug only know their path at request time, so the prerendered shell shows the links unmarked.
- */
 export function SiteNav({ label, links }: { label: string; links: readonly Link[] }) {
   return (
     <nav aria-label={label}>

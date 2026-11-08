@@ -1,11 +1,5 @@
 import type { Database, Transaction } from "./store";
 
-/**
- * Reserves `count` numbers from the counter document `{collection}/{id}` (`{ last }`) inside the caller's
- * transaction (letters, certificate sheets, incoming-letter agenda numbers). Numbers are never
- * given back, so a cancelled letter keeps its number. It READS the counter: call it before the
- * transaction's first write.
- */
 export async function nextNumbers(
   db: Database,
   tx: Transaction,

@@ -55,7 +55,6 @@ function toRecruitment(id: string, data: Record<string, unknown>): Recruitment {
   };
 }
 
-/** Audit snapshot = the stored fields (dates as ISO strings, also stored that way). */
 export function recruitmentSnapshot(r: RecruitmentFields): Snapshot {
   return {
     periodId: r.periodId,
@@ -101,7 +100,6 @@ export function toApplication(id: string, data: Record<string, unknown>): Applic
   };
 }
 
-/** What the audit log keeps of an application: never the answers or the portfolio. */
 export function applicationSnapshot(a: Application): Snapshot {
   return {
     status: a.status,
@@ -175,18 +173,13 @@ const listSlots = async (slots: CollectionReference, recruitmentId: string) => {
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 };
 
-/** What an admin decision does to an application (built by the action from the rules). */
 export interface Decision {
   readonly status: ApplicationStatus;
-  /** Set on an offer; kept otherwise. */
   readonly offer?: Offer;
-  /** A revision request opens round n+1 (`applicationRevisions/{id}_{n+1}`). */
   readonly revision?: { readonly request: string; readonly requestedBy: string };
-  /** Why a pact was sent back (shown to the applicant). */
   readonly pactNote?: string;
 }
 
-/** Sort key of the queue: never-submitted (withdrawn drafts) first. */
 const submittedTime = (a: Application) => a.submittedAt?.getTime() ?? 0;
 
 export type ApplicationAudit = (
@@ -204,11 +197,6 @@ export type RecruitmentAudit = (
   next: Recruitment,
 ) => AuditEvent;
 
-/**
- * `recruitments/{id}` (soft delete) with `seatCounters/{recruitmentId}_{orgUnitId}`
- * ({ quota, filled }). Saving reads the period, the form and every offered unit and seat counter
- * in the same transaction: a quota is never set below the seats already taken.
- */
 export function createSqlRecruitmentStore(db: Database) {
   const store = createSluggedStore<Recruitment>(db, {
     collection: "recruitments",
@@ -229,7 +217,6 @@ export function createSqlRecruitmentStore(db: Database) {
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((r) => !r.deletedAt);
     },
 
-    /** Seats per unit of each recruitment (one `in` query per 30 recruitments). */
     async seats(
       recruitmentIds: readonly string[],
     ): Promise<Map<string, Map<string, { quota: number; filled: number }>>> {
@@ -328,7 +315,6 @@ export function createSqlRecruitmentStore(db: Database) {
           units: recruitmentUnits,
           offerDays: input.offerDays,
           formId: input.formId,
-          // Applicants answer the form's current version (frozen once someone submits).
           formVersion: form.get("currentVersion") as number,
           pactTemplateUrl: input.pactTemplateUrl,
           published: current?.published ?? false,
@@ -365,12 +351,6 @@ export function createSqlRecruitmentStore(db: Database) {
 
 export type SqlRecruitmentStore = ReturnType<typeof createSqlRecruitmentStore>;
 
-/**
- * The committee's side of applications (C3 steps 3-6): the queue and the decisions. Every
- * decision is ONE transaction: the application (status, version), its recruitment and, when a
- * seat is involved, the unit's seat counter are read; the transition rule is checked; the
- * application, the revision round, the counter and the audit entry are written together.
- */
 export function createSqlApplicationStore(db: Database) {
   const recruitments = db.collection("recruitments");
   const applications = db.collection("applications");
@@ -379,7 +359,6 @@ export function createSqlApplicationStore(db: Database) {
   const auditLog = createSqlAuditWriter(db);
 
   return {
-    /** Every application that left the draft stage, first submitted first. */
     async listForRecruitment(recruitmentId: string): Promise<Application[]> {
       const snapshot = await applications
         .where("recruitmentId", "==", safeId.parse(recruitmentId))
@@ -390,7 +369,6 @@ export function createSqlApplicationStore(db: Database) {
         .sort((a, b) => submittedTime(a) - submittedTime(b));
     },
 
-    /** Applications still at the interview stage whose booked interview starts in [from, to). */
     async interviewsBetween(from: Date, to: Date): Promise<Application[]> {
       const snapshot = await applications
         .where("interview.startsAt", ">=", from)
@@ -409,10 +387,8 @@ export function createSqlApplicationStore(db: Database) {
         : null;
     },
 
-    /** Revision rounds of one application, oldest first (kept forever). */
     revisions: (id: string) => listRevisions(revisions, safeId.parse(id)),
 
-    /** Every revision round of a recruitment's applications (one query), oldest first. */
     async revisionsForRecruitment(recruitmentId: string): Promise<RevisionRound[]> {
       const snapshot = await revisions
         .where("recruitmentId", "==", safeId.parse(recruitmentId))
@@ -420,11 +396,6 @@ export function createSqlApplicationStore(db: Database) {
       return snapshot.docs.map((doc) => toRevision(doc.data())).sort((a, b) => a.round - b.round);
     },
 
-    /**
-     * Ratification (C3 step 9): pakta_review → confirmed AND the appointment (step 3.7, same
-     * rules and derived roles) in ONE transaction, so an applicant is confirmed exactly when the
-     * appointment exists, and only once.
-     */
     ratify(
       id: string,
       expectedVersion: number,
@@ -500,7 +471,6 @@ export function createSqlApplicationStore(db: Database) {
         );
         const decision = decide(current, recruitment);
         assertTransition(current.status, decision.status);
-        // An offer needs a free seat; leaving "accepted" gives the seat back.
         const offerCounter = decision.offer
           ? counters.doc(seatCounterId(recruitment.id, decision.offer.orgUnitId))
           : null;
@@ -567,10 +537,6 @@ export function createSqlApplicationStore(db: Database) {
 
 export type SqlApplicationStore = ReturnType<typeof createSqlApplicationStore>;
 
-/**
- * Interview times (`interviewSlots/{id}`) set by the committee: a day plan creates up to 100
- * UTC slots in one transaction; a slot with bookings is never deleted.
- */
 export function createSqlInterviewStore(db: Database) {
   const slots = db.collection("interviewSlots");
   const recruitments = db.collection("recruitments");
@@ -631,8 +597,6 @@ export function createSqlInterviewStore(db: Database) {
 
 export type SqlInterviewStore = ReturnType<typeof createSqlInterviewStore>;
 
-/* ------------------------------------------------------------------ website (applicants) */
-
 export type ApplyOutcome =
   | { readonly ok: true; readonly application: Application }
   | {
@@ -646,7 +610,6 @@ export type ApplyOutcome =
       readonly fields: Readonly<Record<string, string>>;
     };
 
-/** The entry for an applicant's own change (actor = the member). */
 const applicantAudit = (
   uid: string,
   now: Date,
@@ -674,11 +637,6 @@ const applicantAudit = (
   hash: null,
 });
 
-/**
- * The applicant's side (apps/web): open recruitments, and the signed-in member's OWN application
- * (`applications/{recruitmentId}_{uid}`, the uid always from the session). Every write is one
- * transaction that re-reads the recruitment (window) and the application (status, version).
- */
 export function createSqlRecruitmentWebStore(db: Database) {
   const recruitments = db.collection("recruitments");
   const applications = db.collection("applications");
@@ -693,15 +651,9 @@ export function createSqlRecruitmentWebStore(db: Database) {
     const r = snapshot.exists
       ? toRecruitment(snapshot.id, snapshot.data() as Record<string, unknown>)
       : null;
-    // Unpublished is still "there" for applicants already in the process (offers, interviews,
-    // pacts); drafts and submissions check the window (which includes `published`) themselves.
     return r && !r.deletedAt ? r : null;
   };
 
-  /**
-   * One change of the applicant's own application: `change` gets the recruitment, the current
-   * application (or null) and the questions, and returns the next application or an outcome.
-   */
   const change = (
     recruitmentId: string,
     uid: string,
@@ -712,7 +664,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       questions: Parameters<typeof parseAnswers>[0],
     ) => Application | Exclude<ApplyOutcome, { ok: true }>,
     markAnswered = false,
-    /** Extra writes in the same transaction (after the application is written). */
     also?: (tx: Transaction, current: Application | null, next: Application) => void,
   ): Promise<ApplyOutcome> =>
     db.runTransaction(async (tx): Promise<ApplyOutcome> => {
@@ -771,7 +722,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
   });
 
   return {
-    /** Published recruitments, newest first (the page shows open and upcoming ones). */
     async listPublished(): Promise<Recruitment[]> {
       const snapshot = await recruitments.where("published", "==", true).get();
       return snapshot.docs
@@ -780,7 +730,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
         .sort((a, b) => b.opensAt.getTime() - a.opensAt.getTime());
     },
 
-    /** A recruitment that is not deleted (published or not): pages of applicants in progress. */
     async getVisible(id: string): Promise<Recruitment | null> {
       if (!safeId.safeParse(id).success) return null;
       const snapshot = await recruitments.doc(id).get();
@@ -799,7 +748,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       return r && r.published && !r.deletedAt ? r : null;
     },
 
-    /** The questions applicants answer (the recruitment's form version). */
     async questions(r: Recruitment) {
       const snapshot = await versions.doc(versionDocId(r.formId, r.formVersion)).get();
       return snapshot.exists
@@ -807,7 +755,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
         : [];
     },
 
-    /** The member's OWN application (uid from the session), or null. */
     async ownApplication(recruitmentId: string, uid: string): Promise<Application | null> {
       if (!safeId.safeParse(recruitmentId).success || !safeId.safeParse(uid).success) return null;
       const snapshot = await applications.doc(applicationId(recruitmentId, uid)).get();
@@ -816,7 +763,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
         : null;
     },
 
-    /** Saves choices and answers as a draft (answers checked, but none required yet). */
     saveDraft(
       recruitmentId: string,
       uid: string,
@@ -832,8 +778,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
         } catch (error) {
           return { ok: false, error: "refused", message: (error as Error).message };
         }
-        // File answers come only from the upload route: whatever the browser sends for a file
-        // question is ignored and the stored file is kept (no path can point at another file).
         const fileIds = new Set(questions.filter((q) => q.type === "file").map((q) => q.id));
         const sent = Object.fromEntries(
           Object.entries(draft.answers).filter(([id]) => !fileIds.has(id)),
@@ -851,7 +795,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       });
     },
 
-    /** Stores the uploaded portfolio (already checked and saved privately). */
     setPortfolio(recruitmentId: string, uid: string, file: FileAnswer, now: Date) {
       return change(recruitmentId, uid, now, (r, current) => {
         if (!isRecruitmentOpen(r, now)) return { ok: false, error: "closed" };
@@ -860,10 +803,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       });
     },
 
-    /**
-     * The signed integrity pact (C3 step 8): approved → pakta_review. Every upload is kept
-     * (`pacts`, oldest first), also when the committee sends a pact back.
-     */
     setPact(recruitmentId: string, uid: string, file: FileAnswer, now: Date) {
       return change(recruitmentId, uid, now, (_r, current) => {
         if (!current || current.status !== "approved") return { ok: false, error: "locked" };
@@ -875,7 +814,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       });
     },
 
-    /** Stores an uploaded PDF as the answer of one file question of the form version. */
     setAnswerFile(
       recruitmentId: string,
       uid: string,
@@ -894,11 +832,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       });
     },
 
-    /**
-     * Submit (draft or revision → submitted): window open, choices valid, every required answer
-     * given against the recruitment's form version, a portfolio when a chosen unit needs one.
-     * The version is marked answered (frozen) in the same transaction.
-     */
     submit(recruitmentId: string, uid: string, now: Date) {
       return change(
         recruitmentId,
@@ -921,7 +854,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
           return bump(current, now, { status: "submitted", submittedAt: now });
         },
         true,
-        // A resubmission closes the open revision round (the round's request stays as it was).
         (tx, current, next) => {
           if (current?.status === "revision") {
             tx.update(revisions.doc(revisionDocId(next.id, current.revisionRound)), {
@@ -932,14 +864,8 @@ export function createSqlRecruitmentWebStore(db: Database) {
       );
     },
 
-    /** Interview times of a recruitment that are not deleted (the page shows the free ones). */
     slots: (recruitmentId: string) => listSlots(slotsCollection, recruitmentId),
 
-    /**
-     * Books an interview time (C3-I): ONE transaction reads the application (must be in
-     * `interview`), the chosen slot (future, not full) and the previously booked slot; the new
-     * slot's count goes up, the old one's goes down, so a re-booking frees the old time.
-     */
     bookInterview(
       recruitmentId: string,
       uid: string,
@@ -964,7 +890,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
           : null;
         let slot: InterviewSlot;
         try {
-          // A slot of another recruitment does not exist here.
           slot = assertBookable(found?.recruitmentId === r.id ? found : null, now);
         } catch (error) {
           return { ok: false, error: "refused", message: (error as Error).message };
@@ -981,7 +906,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       });
     },
 
-    /** The applicant's own revision rounds, oldest first. */
     async ownRevisions(recruitmentId: string, uid: string): Promise<RevisionRound[]> {
       return listRevisions(
         revisions,
@@ -989,11 +913,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       );
     },
 
-    /**
-     * Accept or decline an offer (C3 step 6). Accepting takes the seat: ONE transaction reads
-     * and writes `seatCounters/{recruitmentId}_{orgUnitId}` and refuses when it is full, so
-     * concurrent accepts never exceed the quota. An expired offer cannot be answered.
-     */
     respondOffer(
       recruitmentId: string,
       uid: string,
@@ -1037,7 +956,6 @@ export function createSqlRecruitmentWebStore(db: Database) {
       });
     },
 
-    /** The applicant withdraws (before any seat was taken). */
     withdraw(recruitmentId: string, uid: string, now: Date) {
       return change(recruitmentId, uid, now, (_r, current) => {
         if (!current || !["draft", "submitted", "revision", "interview"].includes(current.status)) {

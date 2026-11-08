@@ -4,7 +4,6 @@ import { FeaturedImageSchema, type FeaturedImage } from "../content";
 import { TimezoneSchema } from "../members/profile";
 import { isValidSlug, type EntityMeta } from "../shared";
 
-/** Event types (Figma EVENT DASHBOARD); labels live in the apps' label maps. */
 export const EVENT_TYPES = [
   "general",
   "seminar",
@@ -20,11 +19,9 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Uploaded image (public preset), same shape as a news featured image. */
 export type EventImage = FeaturedImage;
 
 export interface ScheduleRow {
-  /** "HH:MM" in the event's time zone, or "" when not timed. */
   readonly time: string;
   readonly title: string;
   readonly description: string;
@@ -35,7 +32,6 @@ export interface Speaker {
   readonly photo: EventImage | null;
 }
 export interface Sponsor {
-  /** Display position (1 = first). */
   readonly order: number;
   readonly logo: EventImage | null;
   readonly caption: string;
@@ -54,29 +50,25 @@ export interface EventEntity extends EntityMeta {
   readonly capacity: number | null;
   readonly registrationClosesAt: Date | null;
   readonly type: EventType;
-  /** Long text (plain, line breaks kept). */
   readonly description: string;
   readonly bannerImage: EventImage | null;
-  /** External registration form; null = the site's own registration. */
   readonly registrationUrl: string | null;
   readonly schedule: readonly ScheduleRow[];
   readonly speakers: readonly Speaker[];
   readonly sponsors: readonly Sponsor[];
 }
 
-/** Sponsors in display order. */
 export function sortedSponsors(sponsors: readonly Sponsor[]): Sponsor[] {
   return [...sponsors].sort((a, b) => a.order - b.order);
 }
 
-/** What visitors see of a published event (web). The id is kept for registrations. */
 export interface PublicEvent {
   readonly id: string;
   readonly slug: string;
   readonly title: string;
   readonly type: EventType;
   readonly startsAt: Date;
-  readonly endsAt: Date | null; /* end of the programme, when the event has one */
+  readonly endsAt: Date | null;
   readonly timezone: string;
   readonly registrationClosesAt: Date | null;
   readonly location: string | null;
@@ -110,7 +102,6 @@ export function toPublicEvent(e: EventEntity): PublicEvent {
   };
 }
 
-/** URL slug when the editor leaves the URL empty: "event-" + 8 random hex characters. */
 export function randomEventSlug(uuid: string): string {
   return `event-${uuid.replace(/-/g, "").slice(0, 8)}`;
 }
@@ -123,7 +114,6 @@ const linkSchema = z
   .refine((value) => value === "" || /^https?:\/\/[^\s]+$/i.test(value), "Use an http(s):// link.")
   .transform((value) => value || null);
 
-/** The Event form (add + edit). Sponsors get their order from their position in the list. */
 export const EventInputSchema = z
   .object({
     title: safeText(200).pipe(z.string().min(3, "Enter a title (at least 3 characters).")),
@@ -135,7 +125,6 @@ export const EventInputSchema = z
     description: safeText(5000, { multiline: true }),
     bannerImage: FeaturedImageSchema.nullable().refine((v) => v !== null, "Upload a banner."),
     registrationUrl: linkSchema,
-    /** Empty = random. */
     slug: z
       .string()
       .trim()
@@ -185,12 +174,6 @@ export function isRegistrationOpen(
 
 export type RegistrationStatus = "confirmed" | "waitlisted" | "cancelled";
 
-/**
- * A registration links a signed-in user to an event. Personal data is NOT copied here:
- * it lives once in `memberProfiles/{uid}` and is joined for authorized staff only.
- * Stored at `eventRegistrations/{eventId}_{userId}` so one user registers at most once
- * per event (enforced by the document id inside a transaction).
- */
 export interface EventRegistration {
   readonly id: string;
   readonly eventId: string;
@@ -204,7 +187,6 @@ export function registrationId(eventId: string, userId: string): string {
   return `${eventId}_${userId}`;
 }
 
-/** Capacity rule: confirmed while seats remain, otherwise waitlisted. */
 export function nextRegistrationStatus(
   event: Pick<EventEntity, "capacity">,
   confirmedCount: number,
@@ -225,7 +207,6 @@ export interface EventReader {
   findById(id: string): Promise<EventEntity | null>;
 }
 
-/** Zoom (or another provider) behind a port; called synchronously with a timeout. */
 export interface MeetingProvider {
   createMeeting(input: {
     topic: string;
@@ -238,7 +219,6 @@ export interface MeetingProvider {
   }>;
 }
 
-/** Calendar output is an ICS feed, not a two-way integration. */
 export interface CalendarFeed {
   render(events: readonly EventEntity[]): string;
 }

@@ -2,12 +2,6 @@ import type { PublicAlbum } from "@website/domain/gallery";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { cityOf, formatEventDate } from "@/lib/event-time";
 
-/**
- * Album cards (/gallery): the same card content as the events list — banner, type,
- * title, meta line with dot separators (date · location · type) — fed by the album's
- * event snapshots (user: "Isi card samakan dengan event"). Albums without a snapshot
- * (old imports) render title + photo count only.
- */
 export function AlbumCards({ items, t }: { items: readonly PublicAlbum[]; t: Dictionary }) {
   return (
     <ul className="site-cards">

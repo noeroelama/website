@@ -43,7 +43,6 @@ function toIncoming(id: string, data: Record<string, unknown>): IncomingLetter {
   };
 }
 
-/** Audit snapshot: the record and each disposition's target and state (not the scan bytes). */
 export function incomingSnapshot(l: IncomingFields): Snapshot {
   return {
     agendaNumber: l.agendaNumber,
@@ -84,11 +83,6 @@ export type IncomingAudit = (
   next: IncomingLetter,
 ) => AuditEvent;
 
-/**
- * `incomingLetters/{id}` (D6) with the agenda counter `incomingCounters/{periodId}`: recording
- * takes the next agenda number in the same transaction; every later change (fields, scan,
- * dispositions, archive) is one versioned write with its audit entry.
- */
 export function createSqlIncomingStore(db: Database) {
   const store = createSluggedStore<IncomingLetter>(db, {
     collection: "incomingLetters",
@@ -110,7 +104,6 @@ export function createSqlIncomingStore(db: Database) {
   return {
     get: store.get,
 
-    /** The period's agenda book, newest first. */
     async list(periodId: string, limit: number): Promise<IncomingLetter[]> {
       const snapshot = await store.docs
         .where("periodId", "==", periodId)
@@ -121,7 +114,6 @@ export function createSqlIncomingStore(db: Database) {
       return snapshot.docs.map((d) => store.read(d.id, d.data()));
     },
 
-    /** Records a letter received in the active period with the next agenda number. */
     record(input: IncomingInput, recordedBy: string, auditFor: IncomingAudit, now: Date) {
       const ref = store.docs.doc(randomUUID());
       return db.runTransaction(async (tx) => {
@@ -161,7 +153,6 @@ export function createSqlIncomingStore(db: Database) {
       });
     },
 
-    /** Edits the recorded fields (not the agenda number); archived letters are read-only. */
     update(id: string, version: number, input: IncomingInput, auditFor: IncomingAudit, now: Date) {
       return change(
         id,
@@ -176,7 +167,6 @@ export function createSqlIncomingStore(db: Database) {
       );
     },
 
-    /** A disposition step or archiving, decided by a domain function. */
     change,
   };
 }

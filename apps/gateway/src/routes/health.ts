@@ -14,7 +14,6 @@ const healthRoute = createRoute({
   },
 });
 
-/** Liveness only. Exposes nothing about versions, hosts, dependencies or configuration. */
 export function healthRoutes() {
   const app = new OpenAPIHono<{ Variables: GatewayVariables }>();
   app.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));

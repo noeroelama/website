@@ -31,12 +31,9 @@ import { canRunMeeting, canSeeMeeting } from "./meetings";
 export interface MinutesDeps {
   readonly meetings: Pick<SqlMeetingStore, "get" | "write">;
   readonly actionItems: Pick<SqlActionItemStore, "get" | "write" | "readMeeting">;
-  /** null = no ANTHROPIC_API_KEY: machine drafts are off. */
   readonly drafter: MinutesDrafter | null;
-  /** Display names of accounts (the machine matches speakers to participants). */
   readonly names: (uids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
-  /** The VTT transcript of the meeting's Zoom room (F2), or null when there is none. */
   readonly zoomTranscript: (meeting: Meeting) => Promise<string | null>;
   readonly now: () => Date;
 }
@@ -55,16 +52,13 @@ const Draft = z.discriminatedUnion("source", [
       id: safeId,
       version,
       source: z.literal("ai_transcript"),
-      /** Pasted text or a Zoom .vtt file's content. */
       transcript: z.string().min(20, "Paste the transcript.").max(MAX_TRANSCRIPT_CHARS),
     })
     .strict(),
-  /** F6 with F2: the transcript of the meeting's Zoom room, pulled from Zoom. */
   z.object({ id: safeId, version, source: z.literal("ai_zoom") }).strict(),
 ]);
 const ItemDone = z.object({ id: safeId, version, done: z.boolean() }).strict();
 
-/** Approving: the chair, or `meetings.approve_minutes` for the meeting's unit. */
 export const canApproveMinutes = (
   principal: Principal,
   meeting: Pick<Meeting, "participants" | "orgUnitPath">,
@@ -90,16 +84,13 @@ const minutesAudit =
       resourceType: "minutes",
       resourceId: next.id,
       title,
-      // Minutes always belong to an existing meeting.
       before: minutesSnapshot((current as Meeting).minutes),
       after: minutesSnapshot(next.minutes),
       versionBefore: (current as Meeting).version,
       versionAfter: next.version,
-      // Approval freezes attendance; a revert could unfreeze approved minutes.
       revertible: false,
     });
 
-/** Minutes (F5): notes per agenda item, approval, action items. */
 export function createMinutesActions(deps: MinutesDeps) {
   const change = (
     principal: Principal,
@@ -178,7 +169,6 @@ export function createMinutesActions(deps: MinutesDeps) {
         versionAfter: next.version,
       });
 
-  /** Add or edit a follow-up (whoever runs the meeting); the PIC must be a participant. */
   const saveItem = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
@@ -214,7 +204,6 @@ export function createMinutesActions(deps: MinutesDeps) {
     },
   });
 
-  /** The PIC (or whoever runs the meeting) marks a follow-up done or open again. */
   const setItemDone = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
@@ -263,11 +252,6 @@ export function createMinutesActions(deps: MinutesDeps) {
     },
   });
 
-  /**
-   * F6: the machine drafts from a transcript (VTT is turned into plain lines first); the draft
-   * fills only EMPTY agenda items in a transaction, and proposed action items come back to the
-   * page for a person to add (their PICs are checked again on save).
-   */
   const draft = createGuardedAction({
     permission: "meetings.read",
     inSomeScope: true,
@@ -318,7 +302,6 @@ export function createMinutesActions(deps: MinutesDeps) {
   return { save, approve, saveItem, setItemDone, removeItem, draft };
 }
 
-/** The minutes as a printable sheet (PDF at download time; nothing stored). */
 export function minutesSheet(
   meeting: Meeting,
   names: ReadonlyMap<string, string>,
@@ -374,7 +357,6 @@ export function minutesSheet(
   };
 }
 
-/** The attendance list alone (M8): each participant, present with the time signed, or absent. */
 export function attendanceSheet(
   meeting: Meeting,
   names: ReadonlyMap<string, string>,
@@ -405,10 +387,6 @@ export function attendanceSheet(
   };
 }
 
-/**
- * GET /api/meetings/<id>/minutes: the minutes (or, with ?sheet=attendance, the attendance list)
- * as PDF for whoever may see the meeting.
- */
 export function createMinutesFileRoute(deps: {
   readonly getMeeting: (id: string) => Promise<Meeting | null>;
   readonly listItems: (

@@ -47,7 +47,6 @@ const actions = () =>
     meetings: meetings(),
     actionItems: items(),
     drafter,
-    // "member" has no name on record: the uid stands in.
     names: (uids) =>
       Promise.resolve(new Map(uids.filter((u) => u !== "member").map((u) => [u, u.toUpperCase()]))),
     logError: (message) => errors.push(message),
@@ -397,7 +396,6 @@ describe("minutes PDF (F5)", () => {
     await empty("m1", member);
     expect(JSON.stringify(sheet)).toContain("member (Participant)");
 
-    // M8: the attendance list alone, with the time each person signed.
     fake.docs.set("meetings/m1", {
       ...meetingDoc,
       attendance: { chair: { at: new Date("2026-11-10T10:02:00Z"), method: "code" } },
@@ -511,7 +509,6 @@ describe("machine-drafted minutes (F6)", () => {
     const saved = (await meetings().get("m1")) as Meeting;
     expect(saved.minutes?.notes).toEqual({ a1: "Typed.", a2: "Budget agreed." });
 
-    // Plain pasted text goes to the machine as is.
     await actions().draft(...as(secretary))({
       id: "m1",
       version: 3,

@@ -31,21 +31,13 @@ export interface ProgramDeps {
     SqlProgramStore,
     "get" | "create" | "update" | "transition" | "checkIn" | "finish"
   >;
-  /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
-  /** The account uid of an e-mail (PICs are named by e-mail), null when there is none. */
   readonly findUserId: (email: string) => Promise<string | null>;
-  /** After finishing: tells the PICs their LPJ is open and when it is due (never throws). */
   readonly afterLpj: (lpj: LpjReport) => Promise<void>;
   readonly now: () => Date;
   readonly uuid: () => string;
 }
 
-/**
- * Who runs a programme (milestones, health, check-ins, LPJ): the persons listed on it as PIC,
- * or whoever may edit the programmes of its unit. Being a PIC is not a role (DECISIONS §24): a
- * staff member named PIC needs no unit-wide permission to update their own programme.
- */
 export function canManageProgram(
   principal: Principal,
   program: Pick<Program, "pics" | "orgUnitPath">,
@@ -64,7 +56,6 @@ const SaveProgram = z
   .object({
     id: safeId.optional(),
     version: version.nullable(),
-    /** New programmes only: the period they belong to. */
     periodId: safeId,
     plan: ProgramInputSchema,
     picEmails: z.array(z.email("Enter the PIC's account e-mail.").max(254)).max(MAX_PICS),
@@ -93,11 +84,9 @@ const programAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // Workflow steps and computed progress are never undone by a revert.
       revertible: false,
     });
 
-/** Audit entry builder for LPJ changes (also used by the programme's finish, which opens it). */
 export const lpjAudit =
   (audit: AuditBuilder, action: "CREATE" | "UPDATE"): LpjAudit =>
   (before, after, current, next) =>
@@ -111,16 +100,9 @@ export const lpjAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // Desks and submissions are never undone by a revert: return the LPJ instead.
       revertible: false,
     });
 
-/**
- * Programmes page (E2, E3). Scope: `orgUnit` (a unit assignment covers its unit and the units
- * below it). Plans: `programs.edit` of the unit. Approve / return / cancel: `programs.approve`.
- * Running it (start, finish, milestones, health, check-ins): `canManageProgram`, for staff who
- * can read the programme.
- */
 export function createProgramActions(deps: ProgramDeps) {
   const scopeOf = async ({ id }: { id: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.programs.get(id))?.orgUnitPath ?? [],
@@ -179,7 +161,6 @@ export function createProgramActions(deps: ProgramDeps) {
     },
   });
 
-  /** One workflow step on one programme; `manage` = PIC rule instead of the permission alone. */
   const step = <S extends z.ZodType<{ id: string; version: number }>>(
     permission: "programs.approve" | "programs.read",
     input: S,
@@ -211,7 +192,6 @@ export function createProgramActions(deps: ProgramDeps) {
     cancelProgram(p, i.note, now),
   );
   const start = step("programs.read", Ref, (p, _i, _principal, now) => startProgram(p, now));
-  /** running → finished, and the LPJ opens in the same transaction (frozen plan, due date). */
   const finish = createGuardedAction({
     permission: "programs.read",
     input: Ref,
@@ -248,7 +228,6 @@ export function createProgramActions(deps: ProgramDeps) {
     completeMilestone(p, i.milestoneId, i.done, principal.userId, now),
   );
 
-  /** This UTC week's check-in; sending again the same week updates it. */
   const checkIn = createGuardedAction({
     permission: "programs.read",
     input: CheckIn,

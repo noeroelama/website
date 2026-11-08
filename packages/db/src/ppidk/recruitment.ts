@@ -1,11 +1,3 @@
-/**
- * PPIDK → platform import of forms and recruitment (block J, step 5.8): pure mapping from the
- * MariaDB tables (exported as TSV) to database documents, run after the people import
- * (step 3.9: periods, org units and accounts exist). The local script
- * infrastructure/scripts/import-ppidk-recruitment.mjs reads the files, resolves Firebase uids
- * the same way as the people import, writes what this returns and copies the private PDFs.
- * Every id is derived from the PPIDK id, so a second run writes the same documents (idempotent).
- */
 import {
   MAX_OPTIONS,
   type AnswerValue,
@@ -23,7 +15,6 @@ import {
 } from "@website/domain/recruitment";
 import type { PlannedWrite, TsvRow } from "./people";
 
-/** The tables this import reads (one `<name>.tsv` file each). */
 export const PPIDK_RECRUITMENT_TABLES = [
   "users",
   "org_units",
@@ -42,7 +33,6 @@ export type PpidkRecruitmentTables = Readonly<
   Record<(typeof PPIDK_RECRUITMENT_TABLES)[number], readonly TsvRow[]>
 >;
 
-/** A private PPIDK file to copy (path under the PPIDK storage folder → platform Storage path). */
 export interface PlannedFile {
   readonly from: string;
   readonly to: string;
@@ -56,7 +46,6 @@ export interface PpidkRecruitmentPlan {
   readonly counts: Record<string, number>;
 }
 
-/** PPIDK field type → question type (`url` has no own type here: a short answer). */
 const TYPES: Readonly<Record<string, QuestionType>> = {
   text: "short_text",
   textarea: "long_text",
@@ -74,7 +63,6 @@ const FORM_STATUS: Readonly<Record<string, FormStatus>> = {
   closed: "closed",
 };
 
-/** Applications that hold a seat (PPIDK `STATUS_MENAHAN_KURSI`). */
 const HOLDS_SEAT: readonly ApplicationStatus[] = [
   "accepted",
   "approved",
@@ -82,7 +70,6 @@ const HOLDS_SEAT: readonly ApplicationStatus[] = [
   "confirmed",
 ];
 
-/** Answers of guest forms keep the respondent's name and e-mail as two extra questions. */
 const RESPONDENT_NAME = "q_respondentname";
 const RESPONDENT_EMAIL = "q_respondentemail";
 
@@ -95,7 +82,6 @@ const json = <T>(value: string | null | undefined, fallback: T): T => {
     return fallback;
   }
 };
-/** A stored answer as text (numbers and booleans as written, anything else as JSON). */
 const text = (value: unknown): string =>
   typeof value === "string" ? value : (JSON.stringify(value) ?? "");
 const byNumber = (field: string) => (a: TsvRow, b: TsvRow) =>
@@ -110,7 +96,6 @@ interface PpidkField {
   options?: string[];
 }
 
-/** A question id from a PPIDK field key: "q_" + its letters and digits (unique per form). */
 function questionIds() {
   const ids = new Map<string, string>();
   return (key: string) => {
@@ -128,7 +113,6 @@ export function mapPpidkRecruitment(
   tables: PpidkRecruitmentTables,
   options: {
     uidOf: (ppidkUserId: string) => string;
-    /** Bytes of a PPIDK private file, or null when it is not available (not referenced then). */
     fileSize: (ppidkPath: string) => number | null;
     now: Date;
   },
@@ -165,7 +149,6 @@ export function mapPpidkRecruitment(
     return file;
   };
 
-  /* ---- forms and their versions ---- */
   const versionsOf = new Map<string, TsvRow[]>();
   for (const v of [...tables.form_versions].sort(byNumber("version"))) {
     const list = versionsOf.get(v["form_id"] ?? "") ?? [];
@@ -264,7 +247,6 @@ export function mapPpidkRecruitment(
     });
   }
 
-  /** PPIDK answers → answers keyed by question id, kept only where they fit the question. */
   const answersOf = (
     formPpidkId: string,
     versionId: string,
@@ -295,7 +277,6 @@ export function mapPpidkRecruitment(
     return answers;
   };
 
-  /* ---- public form responses ---- */
   for (const r of tables.form_responses) {
     const form = formById.get(r["form_id"] ?? "");
     if (!form || form["type"] === "recruitment") continue;
@@ -320,7 +301,6 @@ export function mapPpidkRecruitment(
     });
   }
 
-  /* ---- recruitments, seats ---- */
   const recruitmentOf = new Map<string, string>();
   for (const r of tables.recruitments) {
     const form = formById.get(r["form_id"] ?? "");
@@ -357,7 +337,6 @@ export function mapPpidkRecruitment(
       units: offered.map((u) => ({
         orgUnitId: id("unit", u["id"]),
         name: u["name"] ?? "",
-        // PPIDK null = no limit; the platform needs a number (at most 500).
         quota: u["quota"] ? Number(u["quota"]) : 500,
         portfolioRequired: u["requires_portfolio"] === "1",
       })),
@@ -381,7 +360,6 @@ export function mapPpidkRecruitment(
     }
   }
 
-  /* ---- interview slots ---- */
   const bookings = tables.interviews.filter(
     (i) => i["status"] === "booked" || i["status"] === "attended",
   );
@@ -398,12 +376,10 @@ export function mapPpidkRecruitment(
       capacity: Number(s["capacity"] ?? 1),
       booked,
       location: s["location"] ?? "",
-      // A closed slot nobody booked is not bookable any more.
       deletedAt: s["is_open"] === "0" && booked === 0 ? now : null,
     });
   }
 
-  /* ---- applications, revision rounds ---- */
   const latestPerPerson = new Map<string, TsvRow>();
   for (const a of [...tables.recruitment_applications].sort(byNumber("id"))) {
     const key = `${a["recruitment_id"] ?? ""}|${a["user_id"] ?? ""}`;
@@ -508,7 +484,6 @@ export function mapPpidkRecruitment(
         : null,
       pacts: pact ? [pact] : [],
       pactNote: a["pakta_rejection_note"] ?? null,
-      // The appointment (if confirmed) came with the people import.
       appointmentId: null,
       submittedAt: at(a["submitted_at"]),
       version: 1,
@@ -517,7 +492,6 @@ export function mapPpidkRecruitment(
     });
   }
 
-  /* ---- personality results ---- */
   for (const p of tables.personality_results) {
     const owner = uid(p["user_id"]);
     if (!owner) {

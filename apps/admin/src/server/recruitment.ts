@@ -17,11 +17,6 @@ const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).stri
 
 type Action = "CREATE" | "UPDATE" | "DELETE" | "PUBLISH" | "UNPUBLISH";
 
-/**
- * Audit entry for one recruitment change (module `recruitment`). A CREATE (revert = trash) and
- * a DELETE (revert = restore) are revertible; an edit is not (it also wrote the seat counters),
- * nor is publishing (applicants may already have seen it).
- */
 const recruitmentAudit =
   (audit: AuditBuilder, action: Action) =>
   (
@@ -43,7 +38,6 @@ const recruitmentAudit =
       revertible: action === "CREATE" || action === "DELETE",
     });
 
-/** Recruitment set-up (recruitment.edit): save, publish/unpublish, delete (soft). */
 export function createRecruitmentActions(deps: RecruitmentDeps) {
   const save = createGuardedAction({
     permission: "recruitment.edit",

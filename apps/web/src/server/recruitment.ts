@@ -13,11 +13,6 @@ import { isPdf, type ImageStorage } from "@website/domain/shared";
 import { jsonError, readBodyLimited } from "@website/security";
 import { safeId, safeText } from "@website/security/validation";
 
-/**
- * Applying to a recruitment on the website (C3 steps 1-2). The applicant is ALWAYS the signed-in
- * user (uid from the session) and must have a complete member profile; every rule is re-checked
- * in the store's transaction (window, status, choices, answers, portfolio).
- */
 export interface ApplyingDeps {
   readonly store: Pick<
     SqlRecruitmentWebStore,
@@ -32,7 +27,6 @@ export interface ApplyingDeps {
     | "setPact"
   >;
   readonly profileComplete: (uid: string) => Promise<boolean>;
-  /** Private Storage (portfolios have no public URL). */
   readonly storage: ImageStorage;
   readonly now: () => Date;
   readonly uuid: () => string;
@@ -73,7 +67,6 @@ const toResult = (outcome: ApplyOutcome): ApplyResult =>
     : outcome;
 
 export function createApplying(deps: ApplyingDeps) {
-  /** Signed in, complete profile, valid input: the common gate of every applicant action. */
   const gate = async <S extends z.ZodType>(
     user: Applicant,
     schema: S,
@@ -104,7 +97,6 @@ export function createApplying(deps: ApplyingDeps) {
       return toResult(await deps.store.submit(g.data.recruitmentId, g.uid, deps.now()));
     },
 
-    /** Accept (takes the seat, refused when full) or decline the own offer before it expires. */
     async respondOffer(user: Applicant, input: unknown): Promise<ApplyResult> {
       const g = await gate(user, Ref.extend({ accept: z.boolean() }).strict(), input);
       if (!g.ok) return g.result;
@@ -112,7 +104,6 @@ export function createApplying(deps: ApplyingDeps) {
       return toResult(await deps.store.respondOffer(recruitmentId, g.uid, accept, deps.now()));
     },
 
-    /** Books (or moves) the own interview to a free time; the old time is freed. */
     async bookInterview(user: Applicant, input: unknown): Promise<ApplyResult> {
       const g = await gate(user, Ref.extend({ slotId: safeId }).strict(), input);
       if (!g.ok) return g.result;
@@ -126,11 +117,6 @@ export function createApplying(deps: ApplyingDeps) {
       return toResult(await deps.store.withdraw(g.data.recruitmentId, g.uid, deps.now()));
     },
 
-    /**
-     * POST /api/recruitment/{id}/portfolio — `target` null: the portfolio; "pact": the signed
-     * integrity pact; a question id: a file question. PDF only (magic bytes), at most 5 MB,
-     * stored privately; the file name comes from `X-File-Name` (URI-encoded).
-     */
     async uploadFile(
       user: Applicant,
       recruitmentId: string,

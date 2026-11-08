@@ -1,9 +1,4 @@
 // @ts-check
-/**
- * Single flat config for the whole monorepo. Architecture boundaries are enforced
- * here (import rules) AND by scripts/check-boundaries.mjs (package dependency graph).
- * See docs/architecture.md → "Dependency rules".
- */
 import js from "@eslint/js";
 import nextPlugin from "@next/eslint-plugin-next";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -21,20 +16,16 @@ const FRAMEWORKS = [
   "@hono/*",
   "@vercel/*",
 ];
-// Regexes (not gitignore globs) so "@website/auth/firebase-admin" is not mistaken for "firebase-admin".
-// Firebase (sign-in only) and the MySQL driver: each has exactly one sanctioned adapter.
 const SDK_ANY = "^(firebase(-admin)?|mysql2)(/.*)?$";
 const SDK_MESSAGE =
   "Firebase (sign-in) is only accessed via @website/auth/firebase-admin, MySQL via @website/db/sql.";
 const APPS = "^(web|admin|shop|gateway)(/.*)?$|(^|/)apps/";
 
-/** Relative imports that climb into another app (e.g. "../../admin/src/..."). */
 const CROSS_APP = {
   regex: "^(\\.\\./){2,}(apps|web|admin|shop|gateway)(/|$)",
   message: "Apps must not import other apps.",
 };
 
-/** Per-app import rules (approved dependency surface). */
 const APP_RULES = {
   web: [
     {
@@ -70,7 +61,6 @@ const APP_RULES = {
   ],
 };
 
-/** Outside src/server/**, app code may not touch server-only infrastructure. */
 const SERVER_ONLY_INFRA = {
   group: ["@website/db", "@website/db/*", "@website/auth/firebase-admin", "@website/email"],
   message:
@@ -106,10 +96,7 @@ function appBoundaryBlocks() {
   ]);
 }
 
-/** Helper: build a no-restricted-imports rule from package-name groups. */
-const restrict = (
-  /** @type {Array<{group?: string[], regex?: string, message: string}>} */ patterns,
-) => ({
+const restrict = (patterns) => ({
   "no-restricted-imports": ["error", { patterns }],
 });
 
@@ -142,8 +129,6 @@ export default tseslint.config(
       "@typescript-eslint/no-floating-promises": "error",
       eqeqeq: ["error", "always"],
       "no-console": ["error", { allow: ["warn", "error"] }],
-      // No package or app may touch Firebase or MySQL except the two sanctioned adapters below.
-      // Client SDK data APIs are banned outright: admin data is never written from the browser.
       ...restrict([
         {
           regex: SDK_ANY,
@@ -158,7 +143,6 @@ export default tseslint.config(
     rules: { ...tseslint.configs.disableTypeChecked.rules, "no-console": "off" },
   },
 
-  // ── Sanctioned Firebase and MySQL adapters─────────────────────────────────
   {
     files: ["packages/auth/src/firebase-admin.ts"],
     rules: restrict([
@@ -175,7 +159,6 @@ export default tseslint.config(
     ]),
   },
 
-  // ── Packages: never import apps ───────────────────────────────────────────
   {
     files: ["packages/**/*.{ts,tsx}"],
     ignores: ["packages/auth/src/firebase-admin.ts", "packages/db/src/sql/store.ts"],
@@ -188,7 +171,6 @@ export default tseslint.config(
     ]),
   },
 
-  // ── Framework-free packages (domain, contracts, permissions, audit, apikeys, email, config) ──
   {
     files: [
       "packages/{domain,contracts,permissions,audit,apikeys,email,config,observability}/**/*.ts",
@@ -238,7 +220,6 @@ export default tseslint.config(
     },
   },
   {
-    // Shop stays extractable: no imports from sibling domain modules.
     files: ["packages/domain/src/shop/**/*.ts"],
     rules: restrict([
       {
@@ -268,7 +249,6 @@ export default tseslint.config(
     ]),
   },
 
-  // ── Next.js apps ──────────────────────────────────────────────────────────
   {
     files: ["apps/{web,admin,shop}/**/*.{ts,tsx}"],
     plugins: { "@next/next": nextPlugin, "react-hooks": reactHooks },
@@ -278,16 +258,12 @@ export default tseslint.config(
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs["core-web-vitals"].rules,
       ...reactHooks.configs.recommended.rules,
-      "@next/next/no-html-link-for-pages": "off", // App Router only
+      "@next/next/no-html-link-for-pages": "off",
     },
   },
 
-  // NOTE: in flat config a later `no-restricted-imports` REPLACES an earlier one for the
-  // same file, so each block below carries the complete pattern list for its files.
   ...appBoundaryBlocks(),
 
-  // The browser Firebase SDK is allowed in exactly these files, for sign-in only
-  // (Auth). Firestore/Storage/Database stay forbidden in the browser.
   {
     files: ["apps/web/src/lib/firebase-client.ts", "apps/web/src/lib/auth-client.ts"],
     rules: restrict([
@@ -301,7 +277,6 @@ export default tseslint.config(
     ]),
   },
 
-  // ── Gateway ───────────────────────────────────────────────────────────────
   {
     files: ["apps/gateway/**/*.ts"],
     rules: restrict([
@@ -330,7 +305,6 @@ export default tseslint.config(
     ]),
   },
 
-  // ── Tests ─────────────────────────────────────────────────────────────────
   {
     files: ["tests/**/*.ts"],
     rules: { "no-restricted-imports": "off", "@typescript-eslint/no-non-null-assertion": "off" },

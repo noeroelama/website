@@ -1,9 +1,3 @@
-/**
- * Shop module (MySQL via @website/db). MUST stay self-contained (no imports from other domain modules,
- * only the shared kernel's Money, DEC-8) so it can be extracted later without touching the rest.
- * Enforced by eslint (see eslint.config.mjs).
- */
-// Money lives in the shared kernel (DEC-8); re-exported so the shop API is unchanged.
 import { addMoney, money, type CurrencyCode, type Money } from "../shared/money";
 export { addMoney, money, type CurrencyCode, type Money };
 
@@ -23,7 +17,6 @@ export function orderTotal(lines: readonly OrderLine[], currency: CurrencyCode):
   );
 }
 
-/** Hosted-checkout payment provider port. Card data never touches our servers. */
 export interface PaymentProvider {
   createCheckoutSession(input: {
     orderId: string;
@@ -32,7 +25,6 @@ export interface PaymentProvider {
     cancelUrl: string;
     idempotencyKey: string;
   }): Promise<{ checkoutUrl: string; providerSessionId: string }>;
-  /** Verifies signature + timestamp; returns null when invalid. */
   verifyWebhook(
     rawBody: string,
     headers: Readonly<Record<string, string>>,

@@ -51,12 +51,10 @@ interface Props {
     status: PeriodStatus;
     vision: string;
     mission: string;
-    /** Global okr.edit and the period is not archived (also: region objectives). */
     canEdit: boolean;
   } | null;
   periods: Array<{ id: string; name: string }>;
   objectives: ObjectiveItem[];
-  /** Units the viewer may plan for (empty in an archived period). */
   units: Array<{ id: string; name: string }>;
 }
 
@@ -71,7 +69,6 @@ type Removing =
 const measure = (kr: KeyResultItem) =>
   `${kr.baseline} → ${kr.target}${kr.unit ? ` ${kr.unit}` : ""} (now ${kr.current})`;
 
-/** OKR (E1): the period's vision and mission, its objectives and their key results. */
 export function OkrPage({ period, periods, objectives, units }: Props) {
   const router = useRouter();
   const toast = useToastMessage();

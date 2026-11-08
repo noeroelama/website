@@ -14,11 +14,9 @@ import { createOwnProfile, type ProfileOwner } from "./profile";
 import { createOwnSignature } from "./signature";
 import { createUniversityPicker, type UniversityChoice } from "./universities";
 
-/** `memberProfiles/{uid}` and `universities/{id}` with the website's database. */
 const memberProfiles = lazyEnv(() => createSqlMemberProfileStore(webDb()));
 const universities = lazyEnv(() => createSqlUniversityStore(webDb()));
 
-/** /account/profile: the signed-in member's own profile. */
 export const ownProfile = lazyEnv(() =>
   createOwnProfile({
     profiles: memberProfiles(),
@@ -27,7 +25,6 @@ export const ownProfile = lazyEnv(() =>
   }),
 );
 
-/** /account/signature: the signed-in person's own signature (D4), stored encrypted. */
 export const ownSignature = lazyEnv(() =>
   createOwnSignature({
     store: createSqlSignatureStore(webDb()),
@@ -38,11 +35,9 @@ export const ownSignature = lazyEnv(() =>
   }),
 );
 
-/** Gate for member-only actions (event registration). */
 export const hasCompleteProfile = async (uid: string): Promise<boolean> =>
   isProfileComplete(await memberProfiles().findByUserId(uid));
 
-/** The member's own IANA time zone (profile), for showing times on their clock (C3-I). */
 export const ownTimezone = async (uid: string): Promise<string> =>
   (await memberProfiles().findByUserId(uid))?.timezone ?? "Asia/Jakarta";
 
@@ -50,7 +45,6 @@ export const universityPicker = lazyEnv(() =>
   createUniversityPicker({ universities: universities(), now: () => new Date() }),
 );
 
-/** The approved campuses of one country (cached for minutes under the tag "universities"). */
 async function approvedCampuses(countryCode: string): Promise<UniversityChoice[]> {
   "use cache";
   cacheTag("universities");
@@ -58,7 +52,6 @@ async function approvedCampuses(countryCode: string): Promise<UniversityChoice[]
   return universityPicker().approved(countryCode);
 }
 
-/** Picker choices: the cached approved list plus the member's own pending proposals. */
 export async function campusChoices(
   owner: ProfileOwner | null,
   countryCode: string,

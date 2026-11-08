@@ -12,7 +12,6 @@ import { webDb, webStorage } from "./db";
 import { getAppUrls, getWebEnv } from "./env";
 import { createCertificatePickup, createVerification } from "./verification";
 
-/** /verify/<code> (D7): letters by verification code, archived PDFs from private Storage. */
 export const verification = lazyEnv(() =>
   createVerification({
     reader: createSqlVerificationReader(webDb()),
@@ -20,10 +19,6 @@ export const verification = lazyEnv(() =>
   }),
 );
 
-/**
- * /certificates (D5-P). Needs SUBSCRIBER_HASH_SECRET and LINK_SIGNING_SECRET (the same values as
- * apps/admin) and ADMIN_URL (the download route lives in admin, where sheets are rendered).
- */
 export const certificatePickup = lazyEnv(() => {
   const env = getWebEnv();
   const admin = getAppUrls().ADMIN_URL;

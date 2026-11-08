@@ -16,19 +16,12 @@ import { DICTIONARIES, type Language } from "../i18n/dictionaries";
 
 export interface NewsletterDeps {
   readonly store: Pick<SqlSubscriberStore, "startOptIn" | "confirm" | "unsubscribe">;
-  /** Public archive page and open/click counters. */
   readonly campaigns: Pick<SqlCampaignWebStore, "findPublic" | "track">;
-  /** A counter that could not be written (the reader still gets the pixel or the redirect). */
   readonly onTrackError: (error: unknown) => void;
-  /** reCAPTCHA v3, action "newsletter". */
   readonly captcha: (token: string) => Promise<boolean>;
-  /** Messenger send; called after the transaction committed. */
   readonly send: (message: Message, key: string) => Promise<unknown>;
-  /** Random, unguessable confirmation token (base64url). */
   readonly newToken: () => string;
-  /** HMAC key for subscriber ids (never rotate: ids would change). */
   readonly hashSecret: string;
-  /** HMAC key for unsubscribe links. */
   readonly linkSecret: string;
   readonly webUrl: string;
   readonly now: () => Date;
@@ -38,18 +31,12 @@ const SubscribeInput = z.object({ email: z.string().max(320), token: z.string().
 const ConfirmInput = z.object({ s: safeId, t: z.string().min(1).max(200) });
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
-/**
- * Newsletter field (flowchart NEWSLETTER FIELD) with double opt-in. The answer to a valid sign-up
- * is always "check your inbox", whether the address is new, pending or confirmed. Subscriber ids
- * are keyed hashes, so the address never appears in URLs, keys or logs.
- */
 export function createNewsletter(deps: NewsletterDeps) {
   const subscriberId = (email: string) => keyedHash("subscriber", email, deps.hashSecret);
 
   const unsubscribeUrl = (id: string) =>
     `${deps.webUrl}/newsletter/unsubscribe?t=${signLink(unsubscribeLinkData(id), deps.linkSecret)}`;
 
-  /** Verifies a tracking link of `kind`, counts it (errors reported, never thrown) → its URL. */
   const record = async (linkToken: string, kind: "open" | "click"): Promise<string | null> => {
     const link = readTrackingLink(verifyLink(linkToken, deps.linkSecret, deps.now()));
     if (link?.kind !== kind) return null;
@@ -103,20 +90,16 @@ export function createNewsletter(deps: NewsletterDeps) {
       return deps.store.confirm(parsed.data.s, sha256(parsed.data.t), deps.now());
     },
 
-    /** Every campaign e-mail carries this link (step 2.9). */
     unsubscribeUrl,
 
-    /** Public archive page (/newsletter/{id}): sent campaigns only. */
     publicCampaign(id: string): Promise<Campaign | null> {
       return deps.campaigns.findPublic(id);
     },
 
-    /** Open pixel (/newsletter/o): counts a valid signed link once per subscriber. */
     async trackOpen(linkToken: string): Promise<void> {
       await record(linkToken, "open");
     },
 
-    /** Click link (/newsletter/c): counts it and returns the signed address to redirect to. */
     async trackClick(linkToken: string): Promise<string | null> {
       return record(linkToken, "click");
     },

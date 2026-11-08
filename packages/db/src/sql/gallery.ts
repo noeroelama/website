@@ -13,8 +13,6 @@ function toAlbum(id: string, data: Record<string, unknown>): Album {
     slug: data["slug"] as string,
     eventId: data["eventId"] as string,
     eventTitle: data["eventTitle"] as string,
-    // Imported albums may predate the event snapshots; the list falls back to its own
-    // time/region/type filters when a field is missing.
     eventType: (data["eventType"] as EventType | null | undefined) ?? null,
     eventStartsAt: toDate(data["eventStartsAt"]),
     eventTimezone: (data["eventTimezone"] as string | null | undefined) ?? null,
@@ -37,7 +35,7 @@ export function albumSnapshot(a: AlbumFields): Snapshot {
     eventId: a.eventId,
     eventTitle: a.eventTitle,
     eventType: a.eventType,
-    eventStartsAt: a.eventStartsAt?.toISOString() ?? null, // audit snapshots are JSON
+    eventStartsAt: a.eventStartsAt?.toISOString() ?? null,
     eventTimezone: a.eventTimezone,
     eventLocation: a.eventLocation,
     eventDescription: a.eventDescription,
@@ -48,7 +46,6 @@ export function albumSnapshot(a: AlbumFields): Snapshot {
   };
 }
 
-/** `galleries/{id}` + `gallerySlugs/{slug}`. */
 const galleries = (db: Database) =>
   createSluggedStore<Album>(db, {
     collection: "galleries",
@@ -58,12 +55,10 @@ const galleries = (db: Database) =>
     fixed: () => ({}),
   });
 
-/** Admin store. Deleting an album is a soft delete; its images stay in Storage until a later cleanup. */
 export function createSqlGalleryStore(db: Database) {
   const store = galleries(db);
 
   return {
-    /** Admin list: newest change first, trash excluded. */
     async listForAdmin(limit = 500): Promise<Album[]> {
       const snapshot = await store.docs.orderBy("updatedAt", "desc").limit(limit).get();
       return snapshot.docs
@@ -77,7 +72,6 @@ export function createSqlGalleryStore(db: Database) {
 
 export type SqlGalleryStore = ReturnType<typeof createSqlGalleryStore>;
 
-/** Published albums for the website (role web_ro), newest change first, as public DTOs. */
 export function createSqlGalleryReader(db: Database) {
   const store = galleries(db);
   const published = async (query: Query) =>
@@ -97,7 +91,6 @@ export function createSqlGalleryReader(db: Database) {
       return album?.published ? toPublicAlbum(album) : null;
     },
 
-    /** The event page's album link (closed registration branch). */
     async findPublishedByEvent(eventId: string): Promise<PublicAlbum | null> {
       const [album] = await published(
         store.docs.where("eventId", "==", eventId).where("published", "==", true).limit(1),

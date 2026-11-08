@@ -3,7 +3,6 @@ import type { SqlApplicationStore } from "@website/db/sql";
 import { messageTo, type Contact, type Messenger } from "@website/domain/messaging";
 import { addDaysUtc, isOverdue, type LpjReport, type Program } from "@website/domain/programs";
 
-/** Milestones and LPJs due within this many days get one reminder. */
 export const REMINDER_DAYS = 3;
 
 const both = (id: string, en: string) => `${id}\n\n${en}`;
@@ -16,15 +15,8 @@ interface Reminder {
   readonly text: string;
 }
 
-/**
- * cron "deadline-reminders" (M6, daily): interviews tomorrow (UTC day), open milestones and
- * unsubmitted LPJs due within REMINDER_DAYS, and unsubmitted LPJs past due. Each reminder goes
- * once per person and due date (key reminder:{type}:{id}:{date}:{uid}), so a missed or
- * repeated run changes nothing and a moved due date reminds again.
- */
 export function createDeadlineReminders(deps: {
   applications: Pick<SqlApplicationStore, "interviewsBetween">;
-  /** Programmes and LPJs of the active period (none without one). */
   programs: () => Promise<Program[]>;
   lpj: () => Promise<LpjReport[]>;
   contacts: (uids: readonly string[]) => Promise<Map<string, Contact>>;
@@ -72,7 +64,6 @@ export function createDeadlineReminders(deps: {
               ),
             })),
         ),
-      // Submitted LPJs wait on the desks (dashboard queues), not on the PICs.
       ...lpjs
         .filter((l) => l.status === "draft" || l.status === "returned")
         .flatMap((l) => {

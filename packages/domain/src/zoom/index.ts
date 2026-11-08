@@ -4,13 +4,6 @@ import { RuleViolationError, wallTimeToUtc, type EntityMeta } from "../shared";
 
 export * from "./recordings";
 
-/**
- * Zoom bookings (F1), ported from PPIDK `Zoom/*`: a unit asks for a room on the organisation's
- * Zoom licences; capacity is counted per UTC day (`zoomCapacity/{yyyy-mm-dd}`) so two bookings
- * can never take the last slot at once; approval is optional (`settings/zoom`); the Zoom meeting
- * is created after the slot is held, and a cron job retries rooms that have no link yet.
- */
-
 export const ZOOM_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
 export type ZoomStatus = (typeof ZOOM_STATUSES)[number];
 export const ZOOM_STATUS_LABELS: Record<ZoomStatus, string> = {
@@ -22,18 +15,13 @@ export const ZOOM_STATUS_LABELS: Record<ZoomStatus, string> = {
 
 export const JOIN_BEFORE_HOST_MINUTES = [0, 5, 10, 15] as const;
 
-/** `settings/zoom` (operational, edited on the Zoom page; never a secret in clear). */
 export interface ZoomSettings {
   readonly licences: number;
   readonly concurrentPerLicence: number;
   readonly approvalRequired: boolean;
-  /** Hours between now and the start a request needs at least. */
   readonly minNoticeHours: number;
-  /** Longest booking without `zoom.long_duration`. */
   readonly maxDurationMinutes: number;
-  /** The Host Key, encrypted with FIELD_ENCRYPTION_KEY (encryptField); null = none. */
   readonly hostKeyEncrypted: string | null;
-  /** F3: move a session's recording to the Zoom trash once every file is in Drive. */
   readonly autoDeleteRecordings: boolean;
 }
 export const DEFAULT_ZOOM_SETTINGS: ZoomSettings = {
@@ -65,7 +53,6 @@ export const ZoomSettingsInputSchema = z
   })
   .strict();
 
-/** Longest any booking may be (with zoom.long_duration). */
 export const ABSOLUTE_MAX_MINUTES = 24 * 60;
 
 export const ZoomRequestInputSchema = z
@@ -86,7 +73,6 @@ export const ZoomRequestInputSchema = z
     durationMinutes: z.number().int().min(15).max(ABSOLUTE_MAX_MINUTES),
     passcode: z.string().regex(/^[A-Za-z0-9@*_-]{1,10}$/, "1-10 letters, digits or @ * _ -."),
     joinBeforeHostMinutes: z.union(JOIN_BEFORE_HOST_MINUTES.map((m) => z.literal(m))),
-    /** A meeting of the platform this room is for (optional). */
     meetingId: safeId.nullable().default(null),
   })
   .strict();
@@ -101,28 +87,19 @@ export interface ZoomRequest extends EntityMeta {
   readonly joinBeforeHostMinutes: number;
   readonly meetingId: string | null;
   readonly requestedBy: string;
-  /** The requester's unit (from their appointment); null = region. */
   readonly orgUnitId: string | null;
   readonly orgUnitPath: readonly string[];
   readonly status: ZoomStatus;
   readonly decidedBy: string | null;
   readonly decisionNote: string | null;
-  /** Filled when the Zoom meeting exists (the cron job retries until then). */
   readonly zoomMeetingId: string | null;
   readonly joinUrl: string | null;
   readonly shortUrl: string | null;
   readonly roomError: string | null;
-  /** Set when Zoom said the meeting ended after its end time (waiting room on, F2). */
   readonly closedAt: Date | null;
-  /** Every recorded session (Zoom meeting UUID) of this room (F2, F3). */
   readonly recordingUuids: readonly string[];
 }
 
-/**
- * The meeting a Zoom webhook is about, from both payload shapes: recordings and meeting events
- * use `object.id` / `object.uuid`, AI summaries `object.meeting_id` / `object.meeting_uuid`.
- * Matching is by OUR meeting ids only (never by host e-mail: the host is shared).
- */
 export function zoomEventMeeting(payload: unknown): { id: string; uuid: string | null } | null {
   const object = (payload as { object?: Record<string, unknown> } | null)?.object;
   const id = object?.["id"] ?? object?.["meeting_id"];
@@ -131,13 +108,11 @@ export function zoomEventMeeting(payload: unknown): { id: string; uuid: string |
   return { id: String(id), uuid: typeof uuid === "string" ? uuid : null };
 }
 
-/** UTC start and end from the form; refuses the past, short notice and too long. */
 export function requestTimes(
   input: Pick<ZoomRequestInput, "startsAtLocal" | "timeZone" | "durationMinutes">,
   settings: Pick<ZoomSettings, "minNoticeHours" | "maxDurationMinutes">,
   options: { now: Date; longDuration: boolean },
 ): { startsAt: Date; endsAt: Date } {
-  // The schema already checked the wall-time format.
   const startsAt = wallTimeToUtc(input.startsAtLocal, input.timeZone) as Date;
   const lead = startsAt.getTime() - options.now.getTime();
   if (lead < 0) throw new RuleViolationError("The start time has passed.");
@@ -154,13 +129,11 @@ export function requestTimes(
   return { startsAt, endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60_000) };
 }
 
-/** Every UTC day an interval touches ("2026-11-10"), in order. */
 export function utcDays(startsAt: Date, endsAt: Date): string[] {
   const days: string[] = [];
   const day = new Date(
     Date.UTC(startsAt.getUTCFullYear(), startsAt.getUTCMonth(), startsAt.getUTCDate()),
   );
-  // The end is exclusive: a booking ending at 00:00 does not touch the next day.
   while (day.getTime() < endsAt.getTime()) {
     days.push(day.toISOString().slice(0, 10));
     day.setUTCDate(day.getUTCDate() + 1);
@@ -174,7 +147,6 @@ export interface HeldSlot {
   readonly endsAt: Date;
 }
 
-/** Approved bookings overlapping the interval must stay below licences × concurrent. */
 export function assertCapacity(
   held: readonly HeldSlot[],
   slot: HeldSlot,
@@ -196,7 +168,6 @@ export function assertCapacity(
   }
 }
 
-/** Approve / reject only a pending request; cancel only a pending or approved one. */
 export function assertStatus(request: Pick<ZoomRequest, "status">, allowed: readonly ZoomStatus[]) {
   if (!allowed.includes(request.status)) {
     throw new RuleViolationError(
@@ -205,7 +176,6 @@ export function assertStatus(request: Pick<ZoomRequest, "status">, allowed: read
   }
 }
 
-/** The text people forward, once the room exists. Never contains the Host Key. */
 export function invitationText(
   request: Pick<
     ZoomRequest,

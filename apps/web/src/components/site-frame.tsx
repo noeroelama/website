@@ -9,12 +9,10 @@ import { LoginChip, SiteAccount } from "./site-account";
 import { SocialLinks } from "./social-links";
 import { SiteNav } from "./site-nav";
 
-/** Organisation address and profiles, shown in the footer in every language. */
 const ADDRESS =
   "Perkumpulan Pelajar Indonesia Sedunia Jalan Kirai 07, RT 002/RW 001 Cipete Utara, Kebayoran Baru Kota Administrasi Jakarta Selatan Daerah Khusus Ibukota Jakarta 12150";
 const COMMUNITY = ["PPI Tiongkok", "PPI Singapore", "PPI Australia", "PPI India", "PPI Thailand"];
 
-/** The logo (shield and name in one image, apps/web/public/logo.webp) links home. */
 function Logo({ t }: { t: Dictionary }) {
   return (
     <a href="/" className="site-logo-link">
@@ -30,7 +28,6 @@ function Logo({ t }: { t: Dictionary }) {
   );
 }
 
-/** Header of every public page. Personal data only in HeaderAccount (streamed, not prerendered). */
 export function SiteHeader({ t }: { t: Dictionary }) {
   const links = [
     ["/about", t.nav.about],
@@ -52,7 +49,6 @@ export function SiteHeader({ t }: { t: Dictionary }) {
   );
 }
 
-/** Right side of the header: request-time only (the session), so never in the prerendered shell. */
 async function HeaderAccount({ t }: { t: Dictionary }) {
   const user = await getSignedInUser();
   if (!user) return <LoginChip t={t.account} />;
@@ -67,7 +63,6 @@ async function HeaderAccount({ t }: { t: Dictionary }) {
   );
 }
 
-/** Year in the copyright line; cached because the shell may not read the clock directly. */
 // eslint-disable-next-line @typescript-eslint/require-await -- "use cache" functions must be async
 async function CopyrightYear() {
   "use cache";
@@ -102,8 +97,6 @@ export function SiteFooter({ t }: { t: Dictionary }) {
               </li>
             ))}
           </ul>
-          {/* "Service" as its own heading like Explore, with E-commerce under it (user).
-              Always shown, even without SHOP_URL; "#" is a placeholder until then. */}
           <h2 className="site-footer__heading">{t.footer.services}</h2>
           <ul className="site-footer__list">
             <li>
@@ -140,7 +133,6 @@ export function SiteFooter({ t }: { t: Dictionary }) {
   );
 }
 
-/** Body of the Terms and Privacy pages. */
 export function LegalPage({
   title,
   updated,

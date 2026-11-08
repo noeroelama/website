@@ -19,9 +19,6 @@ import { publicEvents } from "@/server/events";
 
 export const metadata: Metadata = { title: "Events" };
 
-// Design (Figma "EVENT PUBLIC"): cream page, Poppins title + Inter tagline, dark filter
-// bar (date range + region + search), category pills with a count, 3-up cards, numbered
-// pager. Static shell (title); the filtered list streams in.
 export default function EventsPage({ searchParams }: PageProps<"/events">) {
   return (
     <main className="site-lists site-lists--events">
@@ -68,14 +65,11 @@ async function EventList({ searchParams }: Pick<PageProps<"/events">, "searchPar
               <span className="site-lists__box">
                 <FieldIcon name="date" className="site-lists__box-icon" />
                 <SubmitOnChangeSelect className="ui-input" name="time" defaultValue={query.time}>
-                  {TIME_RANGES.filter(
-                    (range) => range !== "custom",
-                  ) /* "Menyesuaikan" removed (user) */
-                    .map((range) => (
-                      <option key={range} value={range}>
-                        {t.events.periodOptions[range]}
-                      </option>
-                    ))}
+                  {TIME_RANGES.filter((range) => range !== "custom").map((range) => (
+                    <option key={range} value={range}>
+                      {t.events.periodOptions[range]}
+                    </option>
+                  ))}
                 </SubmitOnChangeSelect>
               </span>
               {query.time === "custom" && (

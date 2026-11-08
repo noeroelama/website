@@ -224,7 +224,6 @@ describe("recruitment set-up (recruitment.edit)", () => {
       error: "refused",
       issues: ["Direktorat Media has accepted seats; keep it."],
     });
-    // Raising the quota keeps the seats already taken.
     expect(
       await edit([
         { orgUnitId: "media", quota: 3, portfolioRequired: true },
@@ -235,7 +234,6 @@ describe("recruitment set-up (recruitment.edit)", () => {
       quota: 3,
       filled: 2,
     });
-    // Dropping an empty unit removes its counter.
     await recruitmentActions().save(...as(committee))({
       ...setup,
       formId,
@@ -265,7 +263,6 @@ describe("applying (C3 steps 1-2)", () => {
     expect(
       await applying().saveDraft(ari, { recruitmentId, choices: ["finance"], answers: {} }),
     ).toEqual({ ok: true, status: "draft", version: 1 });
-    // Required answers are only enforced on submit.
     expect(await applying().submit(ari, { recruitmentId })).toEqual({
       ok: false,
       error: "answers",
@@ -287,14 +284,11 @@ describe("applying (C3 steps 1-2)", () => {
       choices: ["finance"],
       answers: { [questionId]: "I like numbers." },
     });
-    // The form version is now frozen.
     expect(fake.docs.get(`formVersions/${formId}_1`)).toMatchObject({ answered: true });
-    // A second submit or an edit after submitting is refused.
     expect(await applying().submit(ari, { recruitmentId })).toEqual({ ok: false, error: "locked" });
     expect(
       await applying().saveDraft(ari, { recruitmentId, choices: ["media"], answers: {} }),
     ).toEqual({ ok: false, error: "locked" });
-    // The audit entry keeps status and choices, never the answers.
     const entry = auditEntries().at(-1);
     expect(entry).toMatchObject({
       actor: { type: "member", id: "ari" },
@@ -361,12 +355,10 @@ describe("applying (C3 steps 1-2)", () => {
       },
     ]);
     expect(await applying().submit(ari, { recruitmentId })).toMatchObject({ ok: true });
-    // A broken file name header falls back to a plain name.
     expect(await (await upload(budi, pdf, { "x-file-name": "%E0%A4%A" })).json()).toEqual({
       ok: true,
       name: "portfolio.pdf",
     });
-    // Units without the flag never ask for one.
     await applying().saveDraft(
       { uid: "cici" },
       {
@@ -399,8 +391,6 @@ describe("applying (C3 steps 1-2)", () => {
       published: false,
     });
     expect(await web().getPublished(recruitmentId)).toBeNull();
-    // Still visible to applicants already in it (offers, interviews, pacts), not open for new
-    // drafts or uploads.
     expect(await web().getVisible(recruitmentId)).toMatchObject({ published: false });
     expect(await applying().withdraw(ari, { recruitmentId })).toEqual({
       ok: false,
@@ -411,7 +401,6 @@ describe("applying (C3 steps 1-2)", () => {
     expect(await web().getVisible("missing")).toBeNull();
     expect(await web().getPublished("a/b")).toBeNull();
     expect(await web().listPublished()).toEqual([]);
-    // A deleted recruitment is gone for everyone.
     await recruitmentActions().remove(...as(committee))({ id: recruitmentId, version: 3 });
     expect(await web().getVisible(recruitmentId)).toBeNull();
     expect(await (await upload(ari, pdf)).json()).toEqual({ error: "closed" });
@@ -447,7 +436,6 @@ describe("edge cases kept safe", () => {
       error: "refused",
       issues: ["A recruitment stays in its board period."],
     });
-    // A unit whose counter is gone can still be dropped.
     fake.docs.delete(`seatCounters/${recruitmentId}_finance`);
     expect(
       await save({
@@ -628,8 +616,6 @@ describe("file questions in the recruitment form", () => {
       name: "cv.pdf",
       contentType: "application/pdf",
     });
-    // A later draft save keeps the uploaded file; a file "answer" sent by the browser (here a
-    // forged path to someone else's file) is ignored.
     const kept = (await web().ownApplication(recruitmentId, "ari"))?.answers["q_cv"];
     await applying().saveDraft(ari, {
       recruitmentId,
@@ -646,9 +632,7 @@ describe("file questions in the recruitment form", () => {
     });
     expect((await web().ownApplication(recruitmentId, "ari"))?.answers["q_cv"]).toEqual(kept);
     expect(await applying().submit(ari, { recruitmentId })).toMatchObject({ ok: true });
-    // Locked after submitting.
     expect(await (await send("q_cv")).json()).toMatchObject({ error: "locked" });
-    // The portfolio has its own fallback name; a file question gets "file.pdf".
     const unnamed = await applying().uploadFile(
       budi,
       recruitmentId,

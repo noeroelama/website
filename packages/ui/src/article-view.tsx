@@ -1,13 +1,6 @@
-/**
- * One news article as visitors see it. Used by the public page (apps/web /news/[slug]) and the
- * admin preview (apps/admin /articles/[id]/preview), so the preview looks exactly like the site.
- * `safeHtml` MUST already be sanitised by the caller (`sanitizeRichText` from
- * `@website/security/html`, run again at render time).
- */
 export function ArticleView(props: {
   title: string;
   author: string;
-  /** Already formatted publish date, e.g. "18 Oktober 2026". */
   date: string;
   category: string;
   image: { url: string; width: number; height: number } | null;

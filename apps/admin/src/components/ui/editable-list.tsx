@@ -5,10 +5,6 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 
-/** Editable three-part list section (Guest/Speakers, Rundown, Sponsors,
- *  unit Core Members). The caller supplies a row renderer; each row gets a
- *  trailing remove button. An empty list shows the italic empty hint instead
- *  of the rows. */
 export function EditableList({
   title,
   subtitle,
@@ -21,8 +17,6 @@ export function EditableList({
   renderRow,
 }: {
   title: string;
-  /** Optional one-line description under the title (e.g. the unit form's
-   *  "Heads of unit and members without divisions"). */
   subtitle?: string;
   count: number;
   emptyHint: string;
@@ -32,8 +26,6 @@ export function EditableList({
   onReorder: (from: number, to: number) => void;
   renderRow: (index: number) => ReactNode;
 }) {
-  /* HTML5 drag & drop reorder: the handle is the draggable part, panels are
-     the drop targets. */
   const [dragFrom, setDragFrom] = useState<number | null>(null);
 
   return (

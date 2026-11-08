@@ -16,7 +16,7 @@ describe("sign-in error messages (no account enumeration, no internal details)",
     expect(authErrorMessage({ code: "auth/email-already-in-use" })).toMatch(/sign in or reset/);
     expect(authErrorMessage({ code: "auth/weak-password" })).toMatch(/at least 8/);
     expect(authErrorMessage({ code: "auth/network-request-failed" })).toMatch(/connection/);
-    expect(authErrorMessage({ name: "NotAllowedError" })).toBe(""); // passkey prompt dismissed
+    expect(authErrorMessage({ name: "NotAllowedError" })).toBe("");
     expect(authErrorMessage({ code: "passkey/failed" })).toMatch(/Passkey sign-in didn't work/);
     expect(authErrorMessage({ code: "passkey/reauthenticate" })).toMatch(/sign in again/);
     expect(authErrorMessage(new Error("internal: projects/123 quota"))).toBe(

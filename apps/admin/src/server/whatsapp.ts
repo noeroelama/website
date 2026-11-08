@@ -7,18 +7,11 @@ export interface WahaConfig {
   readonly session: string;
 }
 
-/** `+6281234567890` → `6281234567890@c.us` (WAHA's chat id for a phone number). */
 export const whatsappChatId = (e164: string) => `${e164.replace(/^\+/, "")}@c.us`;
 
-/** One WhatsApp text: the subject in bold (WhatsApp markup), then the plain text. */
 export const whatsappText = (message: Pick<Message, "subject" | "text">) =>
   message.subject ? `*${message.subject}*\n\n${message.text}` : message.text;
 
-/**
- * WhatsApp channel over WAHA (`POST {base}/api/sendText`, `X-Api-Key`) for proactive messages
- * (J1). Never throws: no config → `not_configured`, HTTP error → `waha_<status>`, network
- * error or timeout → `waha_unreachable` (the message log keeps it for a retry).
- */
 export function wahaChannel(
   config: WahaConfig | null,
   fetchImpl: typeof fetch = fetch,
@@ -50,10 +43,6 @@ export function wahaChannel(
   };
 }
 
-/**
- * A single-answer WhatsApp poll over WAHA (`POST {base}/api/sendPoll`, J3). The WAHA message id
- * comes back: votes refer to it. Never throws (same outcomes as `wahaChannel`).
- */
 export function wahaPoll(config: WahaConfig | null, fetchImpl: typeof fetch = fetch) {
   return async (
     e164: string,

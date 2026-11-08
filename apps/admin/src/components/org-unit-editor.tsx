@@ -17,7 +17,6 @@ import { ORG_SUBTITLE } from "./organizations-page";
 import type { OrgUnitItem } from "./org-units-model";
 import { Select } from "@/components/ui/select";
 
-/** A member row; `key` only keeps React rows stable while they are reordered. */
 interface MemberRow {
   key: number;
   name: string;
@@ -30,7 +29,6 @@ interface DivisionRow {
   name: string;
   members: MemberRow[];
 }
-/** Which list a row belongs to: the core members (null) or a division (its index). */
 type ListId = number | null;
 
 let nextKey = 1;
@@ -46,7 +44,6 @@ const toRows = (members: OrgUnitItem["members"]): MemberRow[] =>
 const fromRows = (rows: MemberRow[]) =>
   rows.map(({ name, role, head, photo }) => ({ name, role, head, photo }));
 
-/** Moves item `from` to position `to` (drag and drop). */
 function moved<T>(list: T[], from: number, to: number): T[] {
   const next = [...list];
   const [item] = next.splice(from, 1);
@@ -54,11 +51,6 @@ function moved<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
-/**
- * Organizations → Period → Structure → Create / Edit Unit: the unit's name, code and type, its
- * core members and its divisions with their members — names, roles and photos for the cabinet
- * page — display data only (not accounts, no roles). Rows are reordered by dragging the handle.
- */
 export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgUnitItem | null }) {
   const router = useRouter();
   const toast = useToastMessage();
@@ -78,11 +70,9 @@ export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgU
   const photo = useImageUpload("cabinet");
   const photoInput = useRef<HTMLInputElement>(null);
   const photoFor = useRef<{ list: ListId; index: number } | null>(null);
-  /* What is being dragged: a member (in a list) or a division. */
   const dragged = useRef<{ list: ListId; index: number } | { division: number } | null>(null);
   const backPath = `/organizations/periods/${periodId}`;
 
-  /* ---- member lists ---- */
   const listOf = (list: ListId) => (list === null ? members : (divisions[list]?.members ?? []));
   const setList = (list: ListId, update: (rows: MemberRow[]) => MemberRow[]) => {
     if (list === null) setMembers(update);
@@ -120,7 +110,6 @@ export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgU
       ...(unit ? { id: unit.id } : {}),
       version: unit?.version ?? null,
       periodId,
-      // Where the unit sits and its notes are kept as they are (this page does not show them).
       parentId: unit?.parentId ?? null,
       description: unit?.description ?? "",
       sort: unit?.sort ?? 0,

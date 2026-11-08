@@ -17,13 +17,11 @@ import { safeId } from "@website/security/validation";
 import { createGuardedAction } from "./guarded-action";
 
 export interface TaskDeps {
-  /** The active period (null = none). */
   readonly activePeriod: () => Promise<{ id: string } | null>;
   readonly actionItemsOf: (uid: string) => Promise<ActionItem[]>;
   readonly actionItemsOfPeriod: (periodId: string) => Promise<ActionItem[]>;
   readonly incoming: (periodId: string) => Promise<IncomingLetter[]>;
   readonly programs: (periodId: string) => Promise<Program[]>;
-  /** Unit ids where the person holds an active appointment. */
   readonly unitsOf: (uid: string) => Promise<string[]>;
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   readonly shares: Pick<SqlTaskShareStore, "has" | "set">;
@@ -31,13 +29,11 @@ export interface TaskDeps {
   readonly now: () => Date;
 }
 
-/** A task as shown: the link only when the viewer may open the source page in its scope. */
 export const visibleTask = (principal: Principal, task: Task) => ({
   ...task,
   href: can(principal, `${task.page}.read`, { orgUnitPath: task.orgUnitPath }) ? task.href : null,
 });
 
-/** My Tasks and unit task boards (G1): read models only; work is done in the source module. */
 export function createTasks(deps: TaskDeps) {
   const today = () => deps.now().toISOString().slice(0, 10);
   const paths = async (ids: readonly string[]) => {
@@ -46,7 +42,6 @@ export function createTasks(deps: TaskDeps) {
     return map;
   };
 
-  /** Follow-ups where I am PIC, dispositions to me or my units, milestones of my programmes. */
   async function mine(uid: string): Promise<Task[]> {
     const period = await deps.activePeriod();
     const [items, letters, programs, units] = await Promise.all([
@@ -63,7 +58,6 @@ export function createTasks(deps: TaskDeps) {
       ...dispositionTasks(
         letters,
         { userId: uid, orgUnitIds: units },
-        // Every disposition target was looked up above.
         (id) => unitPaths.get(id) as readonly string[],
         today(),
       ),
@@ -74,10 +68,6 @@ export function createTasks(deps: TaskDeps) {
     ]);
   }
 
-  /**
-   * A unit's board: everything of the unit and the units below it. Who may see it: `tasks.read`
-   * for the unit, or a share (view only).
-   */
   async function board(principal: Principal, orgUnitId: string): Promise<Task[] | null> {
     const path = await deps.unitPath(orgUnitId);
     if (!path) return null;
@@ -115,7 +105,6 @@ export function createTasks(deps: TaskDeps) {
     ]);
   }
 
-  /** Share or unshare a unit board with a person (by account e-mail). */
   const share = createGuardedAction({
     permission: "tasks.share",
     input: z

@@ -21,10 +21,6 @@ const isSafePath = (path: string) => {
   }
 };
 
-/**
- * `/files/<path>`: public uploads (long-cached, every upload has a new name).
- * `/private-files?t=<token>`: a private file through a signed link (15 minutes, `signedReadUrl`).
- */
 export function createFileRoutes(deps: {
   storage: () => FileStorage;
   secret: () => string | undefined;

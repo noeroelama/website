@@ -20,7 +20,6 @@ import { createGuardedAction, type AuditBuilder, type AuditContext } from "./gua
 
 export interface IncomingDeps {
   readonly letters: Pick<SqlIncomingStore, "get" | "record" | "update" | "change">;
-  /** Period of a unit (null when it does not exist or is deleted). */
   readonly unitPeriod: (orgUnitId: string) => Promise<string | null>;
   readonly userExists: (uid: string) => Promise<boolean>;
   readonly storage: {
@@ -50,11 +49,9 @@ const incomingAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // The agenda book is a record of what happened: undone by new steps, never by a revert.
       revertible: false,
     });
 
-/** The browser sends the file name URL-encoded; anything unreadable becomes "scan.pdf". */
 function fileName(header: string | null): string {
   try {
     return decodeURIComponent(header ?? "") || "scan.pdf";
@@ -63,7 +60,6 @@ function fileName(header: string | null): string {
   }
 }
 
-/** Incoming letters page (D6): agenda book (incoming.edit) and dispositions (incoming.dispose). */
 export function createIncomingActions(deps: IncomingDeps) {
   const record = createGuardedAction({
     permission: "incoming.edit",
@@ -152,7 +148,6 @@ export function createIncomingActions(deps: IncomingDeps) {
     },
   });
 
-  /** POST /api/incoming/<id>/scan?version=<n>: the letter's scan (PDF ≤ 10 MB, private). */
   const scan = createGuardedAction({
     permission: "incoming.edit",
     input: Ref.extend({ name: safeText(200), request: z.instanceof(Request) }).strict(),
@@ -183,7 +178,6 @@ export function createIncomingActions(deps: IncomingDeps) {
     },
   });
 
-  /** GET /api/incoming/<id>/scan: the scan inline, for incoming.read (checksum checked). */
   async function scanFile(id: string, principal: Principal | null): Promise<Response> {
     if (principal === null || !principal.active) return jsonError("unauthenticated");
     if (!canAccessAdmin(principal) || !can(principal, "incoming.read"))
@@ -206,7 +200,6 @@ export function createIncomingActions(deps: IncomingDeps) {
     });
   }
 
-  /** Route form of `scan`: version and file name from the query/header, body = the PDF. */
   const uploadScan =
     (getPrincipal: () => Promise<Principal | null>, getAuditContext: () => Promise<AuditContext>) =>
     async (id: string, request: Request): Promise<Response> => {

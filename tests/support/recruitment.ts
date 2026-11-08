@@ -1,4 +1,3 @@
-/** Ratification deps for tests that never ratify (selection, interviews). */
 export const noRatification = {
   appointments: { getRoleMap: () => Promise.resolve(null) },
   units: { get: () => Promise.resolve(null) },

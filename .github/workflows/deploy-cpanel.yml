@@ -1,9 +1,5 @@
 name: Deploy cPanel
 
-# Builds web, admin and shop with NEXT_OUTPUT=standalone and uploads them to the cPanel host
-# (docs/deployment.md#cpanel). `prod` only changes through a PR that passed CI.
-# The gateway is built on the server by cPanel Git Version Control (.cpanel.yml).
-
 on:
   push:
     branches: [prod]
@@ -30,8 +26,6 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
-          # setup-node would cache pnpm (from packageManager) but pnpm is not installed here;
-          # the deploy script runs pnpm through npx.
           package-manager-cache: false
       - name: Set up SSH
         env:
@@ -47,7 +41,6 @@ jobs:
         env:
           DEPLOY_HOST: ${{ vars.CPANEL_HOST }}
           DEPLOY_SSH_PORT: ${{ vars.CPANEL_SSH_PORT }}
-          # Public values: the browser bundles are built with them.
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}

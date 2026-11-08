@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { programActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/programs.ts (createGuardedAction).
 const done = <T extends { ok: boolean }>(result: T): T => {
   if (result.ok) revalidatePath("/programs", "layout");
   return result;

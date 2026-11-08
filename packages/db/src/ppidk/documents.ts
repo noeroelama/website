@@ -1,12 +1,3 @@
-/**
- * PPIDK → platform import of letters, certificates and the agenda book (block J, step 4.10,
- * DEC-10): pure mapping from the MariaDB tables (exported as TSV) to database documents, run
- * after the people import (periods, units and accounts exist) and after freezing the PPIDK
- * letter screens. Numbers and verification codes are kept AS PRINTED and every counter is set
- * to the last PPIDK number, so the platform never gives out a PPIDK number again. The local
- * script infrastructure/scripts/import-ppidk-documents.mjs reads the files, writes what this
- * returns and copies the archived PDFs. Ids come from PPIDK (idempotent).
- */
 import {
   certificateId,
   checkNumberPattern,
@@ -29,7 +20,6 @@ import { sanitizeRichText } from "@website/security/html";
 import type { PlannedWrite, TsvRow } from "./people";
 import type { PlannedFile } from "./recruitment";
 
-/** The tables this import reads (one `<name>.tsv` file each). */
 export const PPIDK_DOCUMENT_TABLES = [
   "users",
   "org_units",
@@ -52,7 +42,6 @@ export interface PpidkDocumentPlan {
   readonly counts: Record<string, number>;
 }
 
-/** A PDF found in the owner's download of PPIDK's storage. */
 export interface PpidkFileInfo {
   readonly size: number;
   readonly sha256: string;
@@ -83,7 +72,6 @@ const DISPOSITION_STATUS: Readonly<Record<string, Disposition["status"]>> = {
   diproses: "in_progress",
   selesai: "done",
 };
-/** Stored file names get this instead of a random part (the same on every run). */
 const FIXED = "ppidkpdf";
 
 const at = (value: string | null | undefined) => (value ? new Date(`${value}Z`) : null);
@@ -98,7 +86,6 @@ const json = <T>(value: string | null | undefined, fallback: T): T => {
 const tidy = (value: string) => value.replace(/\r\n?/g, "\n").trim();
 const sha = (text: string) => sha256Hex(new TextEncoder().encode(text));
 
-/** PPIDK `SidikSurat::kanonik`: its keys and PPIDK user ids, as frozen there. */
 function ppidkCanonical(l: TsvRow, typeCode: string): string {
   return [
     ["nomor", l["number_formatted"] ?? ""],
@@ -126,7 +113,6 @@ export function mapPpidkDocuments(
   tables: PpidkDocumentTables,
   options: {
     uidOf: (ppidkUserId: string) => string;
-    /** A real PDF of PPIDK's storage, or null when it is not in the download. */
     file: (ppidkPath: string) => PpidkFileInfo | null;
     now: Date;
   },
@@ -148,7 +134,6 @@ export function mapPpidkDocuments(
     updatedAt: now,
     deletedAt: null,
   });
-  /** The PDF to copy (only PDFs, only when downloaded), or null with the reason reported. */
   const pdf = (table: string, row: TsvRow, from: string | null | undefined, to: string) => {
     if (!from) return null;
     if (!from.toLowerCase().endsWith(".pdf")) {
@@ -162,7 +147,6 @@ export function mapPpidkDocuments(
   const counter = (counters: Map<string, number>, key: string, value: number) =>
     counters.set(key, Math.max(counters.get(key) ?? 0, value));
 
-  /** One code space for letters and certificates (`verificationCodes/{code}`). */
   const codes = new Set<string>();
   const reserveCode = (table: string, row: TsvRow, data: Record<string, unknown>) => {
     const raw = row["verification_code"];
@@ -181,7 +165,6 @@ export function mapPpidkDocuments(
     return code;
   };
 
-  /* ---- org units (names and codes for the numbers and the desks) ---- */
   const units = new Map(tables.org_units.map((u) => [u["id"] ?? "", u]));
   const pathOf = (unitId: string): string[] => {
     const path: string[] = [];
@@ -193,7 +176,6 @@ export function mapPpidkDocuments(
   };
   const userName = new Map(tables.users.map((u) => [u["id"] ?? "", u["name"] ?? u["email"]]));
 
-  /* ---- letter types ---- */
   const types = new Map<
     string,
     Pick<LetterType, "code" | "numberFormat" | "numberPadding" | "requiresCoordinator">
@@ -234,7 +216,6 @@ export function mapPpidkDocuments(
     }
   }
 
-  /* ---- letters (outgoing, upload path and certificate batches) ---- */
   const letterCounters = new Map<string, number>();
   for (const s of tables.letter_sequences) {
     counter(
@@ -268,7 +249,6 @@ export function mapPpidkDocuments(
     const coordinator = desk(l["coordinator_user_id"], l["coordinator_approved_at"]);
     const issuedAt = at(l["issued_at"]);
     const snapshot = json<PpidkSigner[] | null>(l["signature_snapshot"], null);
-    // Letters issued before PPIDK froze signers: rebuilt from the accounts, as PPIDK's page did.
     const signers: SignerSnapshot[] = Array.isArray(snapshot)
       ? snapshot.map((s) => ({
           name: s.nama ?? "",
@@ -298,7 +278,6 @@ export function mapPpidkDocuments(
               : [],
           );
 
-    // The archived PDF: an upload waiting for issue is the upload, anything else the archive.
     const waiting = status === "awaiting_file";
     const where = { id: letterId, periodId };
     let file = pdf(
@@ -393,8 +372,6 @@ export function mapPpidkDocuments(
         skip("letters", l, "sheet numbers cannot be built from the type's pattern");
       }
     }
-    // Same status as PPIDK: a digest that matched there is re-frozen in the platform's form; one
-    // that no longer matched stays as it is (content shown to nobody); none stays none.
     if (l["content_digest"]) {
       const intact = sha(ppidkCanonical(l, type.code)) === l["content_digest"];
       if (!intact)
@@ -407,7 +384,6 @@ export function mapPpidkDocuments(
   }
   for (const [key, last] of letterCounters) set(`letterCounters/${key}`, { last });
 
-  /* ---- certificate sheets ---- */
   const sheetCounters = new Map<string, number>();
   for (const c of tables.certificates) {
     const batch = batches.get(c["letter_id"] ?? "");
@@ -417,7 +393,6 @@ export function mapPpidkDocuments(
     }
     const batchId = id("letter", c["letter_id"]);
     const seq = Number(c["urut"]);
-    // A printed sequence is used even when its sheet cannot be imported.
     counter(sheetCounters, batchId, seq);
     const sheetId = certificateId(batchId, seq);
     const code = reserveCode("certificates", c, {
@@ -434,14 +409,12 @@ export function mapPpidkDocuments(
       name: c["nama"] ?? "",
       note: c["keterangan"] ?? null,
       verificationCode: code,
-      // PPIDK kept no e-mail per sheet: these sheets are not on the pickup page.
       emailHash: null,
       createdAt: at(c["created_at"]) ?? now,
     });
   }
   for (const [batchId, last] of sheetCounters) set(`certificateCounters/${batchId}`, { last });
 
-  /* ---- agenda book (incoming letters) and dispositions ---- */
   const incomingCounters = new Map<string, number>();
   for (const s of tables.incoming_letter_sequences) {
     counter(incomingCounters, id("period", s["period_id"]), Number(s["last_number"] ?? 0));

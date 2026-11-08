@@ -30,12 +30,10 @@ import { canManageProgram, lpjAudit } from "./programs";
 
 export interface LpjDeps {
   readonly lpj: Pick<SqlLpjStore, "get" | "transition">;
-  /** After a step committed: tells whoever acts next (J2; never throws). */
   readonly afterStep: (lpj: LpjReport) => Promise<void>;
   readonly now: () => Date;
 }
 
-/** The desk permission (named extras of the `lpj` page). */
 export const deskPermission = (desk: LpjDesk) => LPJ_DESK_PERMISSIONS[desk] as PagePermission;
 
 const version = z.number().int().min(1);
@@ -44,12 +42,6 @@ const SaveLpj = LpjInputSchema.extend({ id: safeId, version }).strict();
 const ReturnInput = Ref.extend({ note: safeText(1000, { multiline: true }) }).strict();
 const ExtendInput = Ref.extend({ dueOn: z.iso.date() }).strict();
 
-/**
- * LPJ (E4). The PICs write and submit it (`canManageProgram`, for staff who can read
- * programmes); three desks review: `lpj.review_secretariat`, `lpj.review_treasurer`,
- * `lpj.approve` (three different people, never the submitter, rules in the domain); any desk
- * holder may return it; `programs.approve` extends the due date. Scope: `orgUnit`.
- */
 export function createLpjActions(deps: LpjDeps) {
   const scopeOf = async ({ id }: { id: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.lpj.get(id))?.orgUnitPath ?? [],
@@ -78,7 +70,6 @@ export function createLpjActions(deps: LpjDeps) {
       },
     });
 
-  /** The PICs' part (and submit): they run the programme, so they write its LPJ. */
   const asPic = (principal: Principal, lpj: LpjReport) => {
     if (!canManageProgram(principal, lpj)) {
       throw new RuleViolationError("Only the programme's PICs or its unit can write the LPJ.");
@@ -120,10 +111,6 @@ export function createLpjActions(deps: LpjDeps) {
 const NOT_REVIEWED = "Belum diperiksa / not yet reviewed";
 const day = (date: Date) => date.toISOString().slice(0, 10);
 
-/**
- * The LPJ sheet (D9), built at download time from the record: the frozen plan next to what the
- * PICs report, and the three desks — a desk that has not signed prints "not yet reviewed".
- */
 export function lpjSheet(
   lpj: LpjReport,
   names: ReadonlyMap<string, string>,
@@ -184,10 +171,8 @@ export function lpjSheet(
 const notFound = () =>
   Response.json({ error: "not_found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
-/** GET /api/lpj/<id>/pdf: rendered at download time, never stored. */
 export function createLpjFileRoute(deps: {
   readonly getLpj: (id: string) => Promise<LpjReport | null>;
-  /** Display names of accounts (PICs, desks). */
   readonly names: (uids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
   readonly render: (input: ReportPdfInput) => Promise<Uint8Array>;
   readonly now: () => Date;

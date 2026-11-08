@@ -10,9 +10,7 @@ import type { ZoomClient } from "./zoom-client";
 const MAX_BODY = 256 * 1024;
 
 export interface ZoomWebhookDeps {
-  /** ZOOM_WEBHOOK_SECRET_TOKEN; undefined = webhooks refused. */
   readonly secret: string | undefined;
-  /** webhookEvents de-duplication: true the first time. */
   readonly record: (provider: string, eventId: string, now: Date) => Promise<boolean>;
   readonly zoom: Pick<SqlZoomStore, "findByZoomMeetingId" | "write" | "addSession">;
   readonly client: Pick<ZoomClient, "updateMeeting"> | null;
@@ -39,16 +37,9 @@ const NOTICES: Record<string, readonly [string, string, string]> = {
   ],
 };
 
-/**
- * POST /webhooks/zoom (F2). Order: body size → signature (`v0:{timestamp}:{body}`, 5-minute
- * tolerance) → URL validation challenge → de-duplication → only meetings that are OURS (a
- * booking with that Zoom meeting id) → work. Always a short generic answer; failures are logged.
- */
 export function createZoomWebhookRoute(deps: ZoomWebhookDeps) {
   async function onEnded(booking: ZoomRequest, now: Date) {
-    // Zoom also sends "ended" when the host leaves early; only close after the booked end.
     if (booking.closedAt || now.getTime() < booking.endsAt.getTime()) return;
-    // The booking was found by this Zoom meeting id, so it is set.
     if (deps.client) {
       await deps.client.updateMeeting(booking.zoomMeetingId as string, {
         settings: { waiting_room: true, join_before_host: false },
@@ -65,7 +56,6 @@ export function createZoomWebhookRoute(deps: ZoomWebhookDeps) {
 
   async function onRecording(booking: ZoomRequest, uuid: string | null, now: Date) {
     if (!uuid || booking.recordingUuids.includes(uuid)) return;
-    // The archive (F3) picks the session up from here.
     await deps.zoom.addSession(uuid, booking.id, now);
     await deps.zoom.write(
       booking.id,
@@ -134,7 +124,7 @@ export function createZoomWebhookRoute(deps: ZoomWebhookDeps) {
     const id = createHmac("sha256", "zoom-event").update(eventId).digest("hex");
     if (!(await deps.record("zoom", id, now))) return reply({ ok: true });
     const booking = await deps.zoom.findByZoomMeetingId(meeting.id);
-    if (!booking) return reply({ ok: true }); // not ours: ignored
+    if (!booking) return reply({ ok: true });
     try {
       if (name === "meeting.ended") await onEnded(booking, now);
       if (name === "recording.completed") await onRecording(booking, meeting.uuid, now);

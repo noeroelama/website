@@ -2,11 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/**
- * Minimal admin toast message. No provider needed: `useToastMessage` returns a stable `show`
- * function and the current message; `ToastBanner` renders it fixed bottom-center for a few
- * seconds. Each caller keeps its own message state, so composing pages is trivial.
- */
 export function useToastMessage(autoHideMs = 2600) {
   const [message, setMessage] = useState<string | null>(null);
   const timer = useRef<number | null>(null);

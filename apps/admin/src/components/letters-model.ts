@@ -9,7 +9,6 @@ import {
 } from "@website/domain/documents";
 import { LETTER_STATUS_LABELS, label } from "../labels";
 
-/** Tabs of the Letters page, one per desk (who has to act next). */
 export const LETTER_TABS = [
   { key: "all", label: "All" },
   { key: "draft", label: "Drafts" },
@@ -27,7 +26,6 @@ export function matchesLetterTab(item: Pick<LetterItem, "status">, tab: LetterTa
   return item.status === tab;
 }
 
-/** The viewer's desks on this page (each server action checks again; editing is per letter). */
 export interface LetterDesks {
   readonly review: boolean;
   readonly sign: boolean;
@@ -71,11 +69,9 @@ export interface LetterItem {
   issuedAt: string | null;
   cancelReason: string | null;
   createdAt: string;
-  /** editor = typed here; upload = the author's own PDF after "Take number" (D3). */
   source: LetterSource;
   upload: { size: number; numberChecked: boolean; uploadedAt: string } | null;
   placement: UploadPlacement | null;
-  /** letters.edit covers this letter's unit. */
   canEdit: boolean;
 }
 
@@ -146,10 +142,6 @@ export type LetterActionKey =
   | "issueFile"
   | "cancel";
 
-/**
- * The buttons a letter shows for this viewer (the server re-checks each one). A desk already
- * signed, or held by the viewer at the other desk, shows no sign button.
- */
 export function letterActions(
   item: LetterItem,
   can: LetterDesks,
@@ -177,7 +169,6 @@ export function letterActions(
       actions.push("signCoordinator");
     }
   }
-  // Upload path: "issue" takes the number; the stamped file is issued once it is uploaded.
   if (can.issue && status === "approved") actions.push("issue");
   if (can.issue && status === "awaiting_file" && item.upload) actions.push("issueFile");
   if (can.cancel && (status === "issued" || status === "awaiting_file")) actions.push("cancel");

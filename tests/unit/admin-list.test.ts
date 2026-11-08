@@ -45,7 +45,6 @@ describe("admin list pages: sort, page, select, bulk actions", () => {
     const many = Array.from({ length: 25 }, (_, i) => i);
     expect(pageSlice(many, 1, 10)).toEqual({ page: 1, rows: many.slice(0, 10) });
     expect(pageSlice(many, 3, 10)).toEqual({ page: 3, rows: [20, 21, 22, 23, 24] });
-    // After a filter leaves fewer rows, a page past the end shows the last page.
     expect(pageSlice(many, 9, 10)).toEqual({ page: 3, rows: [20, 21, 22, 23, 24] });
     expect(pageSlice([], 2, 10)).toEqual({ page: 1, rows: [] });
   });
@@ -131,9 +130,7 @@ describe("admin list pages: phone card layout", () => {
       "meta",
       "actions",
     ]);
-    // No checkbox column: the first column is the title.
     expect(cardRoles(["name", "role", "edit"])).toEqual(["title", "meta", "actions"]);
-    // The expander of the audit log leads; "open" / "revert" are row actions.
     expect(cardRoles(["expand", "date", "user", "revert"])).toEqual([
       "lead",
       "title",

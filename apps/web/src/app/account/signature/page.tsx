@@ -10,10 +10,8 @@ import { SignatureForm } from "./signature-form";
 
 export const metadata: Metadata = { title: "Signature", robots: { index: false } };
 
-// Depends on the session: no static shell. Signed-out visitors already got a 307 from proxy.ts.
 export const instant = false;
 
-/** /account/signature (D4): the signed-in person's own signature for letters. */
 export default async function SignaturePage() {
   const user = await getSignedInUser();
   if (!user) redirect(signInUrl("", "/account/signature"));

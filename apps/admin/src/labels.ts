@@ -50,11 +50,6 @@ import {
   type ProgramStatus,
 } from "@website/domain/programs";
 
-/**
- * Display labels for stored keys, one map per module, in Indonesian and English. Keys stay in
- * the database; only labels are shown. `tests/unit/admin-labels.test.ts` fails when a key has
- * no label, so add the label in the same change as a new status, action or category.
- */
 export type Label = { readonly id: string; readonly en: string };
 export type Language = keyof Label;
 
@@ -63,7 +58,6 @@ export const USER_STATUS_LABELS = {
   inactive: { id: "Nonaktif", en: "Inactive" },
 } as const satisfies Record<AccountStatus, Label>;
 
-/** What happened (past tense): Audit Log badges and filter, dashboard "latest changes". */
 export const AUDIT_ACTION_LABELS = {
   CREATE: { id: "Dibuat", en: "Created" },
   UPDATE: { id: "Diubah", en: "Updated" },
@@ -75,7 +69,6 @@ export const AUDIT_ACTION_LABELS = {
   REVERT: { id: "Dikembalikan", en: "Reverted" },
 } as const satisfies Record<AuditAction, Label>;
 
-/** Why a REVERT button is disabled (tooltip) or a revert was refused. */
 export const REVERT_REJECTION_LABELS = {
   window_expired: { id: "Batas waktu pengembalian sudah lewat", en: "Revert window expired" },
   already_reverted: { id: "Sudah dikembalikan", en: "Already reverted" },
@@ -135,14 +128,12 @@ export const ORG_UNIT_TYPE_LABELS = {
   staf: { id: "Staf", en: "Staff" },
 } as const satisfies Record<OrgUnitType, Label>;
 
-/** Organizations → PPI status badge (the board's rating of a chapter). */
 export const CHAPTER_RISK_LABELS = {
   none: { id: "Tidak ada risiko", en: "No risk" },
   needs_checking: { id: "Perlu dicek", en: "Needs checking" },
   at_risk: { id: "Berisiko kekosongan", en: "At risk of a vacuum" },
 } as const satisfies Record<ChapterRisk, Label>;
 
-/** Where the chapter sits on the /map country table (regions of the side.svg design). */
 export const CHAPTER_REGION_LABELS = {
   oceania: { id: "Oseania", en: "Oceania" },
   southeastAsia: { id: "Asia Tenggara", en: "South East Asia" },
@@ -258,7 +249,6 @@ export const FINANCE_CATEGORY_LABELS = {
   budget: { id: "Pengajuan Anggaran", en: "Budget request (plan, no money moves)" },
 } as const satisfies Record<FinanceCategory, Label>;
 
-/** Every map with the keys it must cover (used by the completeness test). */
 export const LABEL_MAPS: ReadonlyArray<{
   readonly name: string;
   readonly keys: readonly string[];
@@ -288,7 +278,6 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "finance category", keys: FINANCE_CATEGORIES, labels: FINANCE_CATEGORY_LABELS },
 ];
 
-/** The admin is in English for now; pass "id" once the language switch exists. */
 export function label<K extends string>(
   map: Readonly<Record<K, Label>>,
   key: K,

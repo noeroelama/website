@@ -13,13 +13,8 @@ import { safeId } from "@website/security/validation";
 import { createSqlAuditWriter } from "./audit";
 import { toDate } from "./slugged";
 
-/**
- * Profile verification was removed (2026-10-24). Older documents still carry these fields; they
- * are left out when reading, so the next save (a full `set`) removes them.
- */
 const REMOVED_FIELDS = new Set(["verificationStatus", "verifiedBy", "verifiedAt"]);
 
-/** Stored flat; the domain shape nests consent and graduation. */
 function toProfile(data: Record<string, unknown>): MemberProfile {
   const {
     privacyPolicyVersion,
@@ -66,7 +61,6 @@ function toDoc(profile: MemberProfile): Record<string, unknown> {
   };
 }
 
-/** Audit entry for one change of a profile (module `members`, never revertible). */
 type ProfileAudit = (input: {
   action: "UPDATE";
   title: string;
@@ -77,7 +71,6 @@ type ProfileAudit = (input: {
   versionAfter: number;
 }) => AuditEvent;
 
-/** The entry for a member's own change (actor the member). */
 const memberAudit =
   (uid: string, now: Date): ProfileAudit =>
   (input) => ({
@@ -95,23 +88,15 @@ const memberAudit =
     hash: null,
   });
 
-/** Restricted values never reach the audit log (`profileAuditSnapshots`). */
 const redacted = (before: MemberProfile, after: MemberProfile, changes: GuardedChanges) => {
   const pick = (p: MemberProfile) =>
     Object.fromEntries(
       Object.keys(changes).map((field) => [field, p[field as keyof MemberProfile]]),
     );
-  // Profile values are plain JSON (strings, numbers, arrays, nested objects).
   const snapshots = profileAuditSnapshots(pick(before), pick(after));
   return { before: snapshots.before as Snapshot, after: snapshots.after as Snapshot };
 };
 
-/**
- * `memberProfiles/{uid}` (personal data, UU PDP): read and written only for the member's own uid
- * on the website, or read by staff with `members.pii` for the member's chapter.
- * Saving also copies the member's chapter (the active chapter of `ppiCountry`) to the profile and
- * `users/{uid}.chapterId`, so chapter-scoped staff lists are one query (A2).
- */
 export function createSqlMemberProfileStore(db: Database) {
   const profiles = db.collection("memberProfiles");
   const users = db.collection("users");
@@ -132,10 +117,6 @@ export function createSqlMemberProfileStore(db: Database) {
       return snapshot.exists ? toProfile(snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /**
-     * The member's own save; everything applies at once. Changes of the guarded fields (name,
-     * gender, birth date, PPI country, campus) are audited (actor the member, values redacted).
-     */
     save(profile, expectedVersion) {
       const ref = profiles.doc(safeId.parse(profile.userId));
       const userRef = users.doc(profile.userId);
@@ -152,7 +133,6 @@ export function createSqlMemberProfileStore(db: Database) {
         const direct = before ? guardedChanges(before, next) : {};
         const log = Object.keys(direct).length > 0 ? await auditLog.begin(tx) : null;
         tx.set(ref, toDoc(next));
-        // users/{uid} exists: the first sign-in created it before the member could get here.
         tx.update(userRef, { chapterId });
         if (log && before) {
           const snapshots = redacted(before, next, direct);
@@ -179,11 +159,6 @@ export function createSqlMemberProfileStore(db: Database) {
   return {
     ...repository,
 
-    /**
-     * The member marks, corrects or cancels their own graduation date; who marked it is kept
-     * (§67). `check` refuses with fresh data (throw). Version check, write and audit in one
-     * transaction.
-     */
     setGraduation(
       uid: string,
       expectedVersion: number,

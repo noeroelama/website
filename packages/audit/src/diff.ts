@@ -9,10 +9,6 @@ export interface FieldChange {
 const isObject = (v: JsonValue | undefined): v is { [key: string]: JsonValue } =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/**
- * Display diff between snapshots. Nested objects are walked; arrays are compared whole
- * (positional array diffs are misleading for reordered lists).
- */
 export function diffSnapshots(
   before: Snapshot | null,
   after: Snapshot | null,

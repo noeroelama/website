@@ -36,7 +36,6 @@ export interface AppointmentDeps {
 
 const SELF = "You cannot change your own appointment or roles. Ask another officer.";
 
-/** The appointment's entry (module `appointments`) and the account's (module `users`). */
 const appointmentAudit =
   (audit: AuditBuilder, action: "CREATE" | "UPDATE"): AppointmentAudit =>
   (appointment, account) => [
@@ -63,13 +62,6 @@ const appointmentAudit =
     }),
   ];
 
-/**
- * Appointments → roles (B7, PPIDK PenugasanService). Appointing someone to a seat gives the roles
- * of `settings/appointmentRoles` (period-bound, source "appointment") in the same transaction;
- * ending the appointment revokes exactly those. The same rules as a role change on the Users
- * page apply: no escalation, nothing on your own account, a second sign-in method for staff
- * roles, a recent sign-in, sessions ended afterwards.
- */
 export function createAppointmentActions(deps: AppointmentDeps) {
   const afterChange = async (actor: Principal, uid: string, details: object) => {
     await deps.authAdmin.revokeSessions(uid);
@@ -80,7 +72,6 @@ export function createAppointmentActions(deps: AppointmentDeps) {
     });
   };
 
-  /** The seat → role mapping is data: only existing custom roles (never a built-in one). */
   const saveRoleMap = createGuardedAction({
     permission: "roles.edit",
     input: z

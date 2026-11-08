@@ -16,7 +16,6 @@ import { can, canInSomeScope, type PagePermission, type Principal } from "@websi
 
 const DAY = 86_400_000;
 
-/** True when the domain rule lets this person take the step now (the same rule the action runs). */
 const allowed = (step: () => unknown) => {
   try {
     step();
@@ -46,10 +45,6 @@ interface Queue<K extends keyof QueueSources> {
 const queue = <K extends keyof QueueSources>(q: Queue<K>) =>
   q as unknown as Queue<keyof QueueSources>;
 
-/**
- * "Waiting for my action": a desk counts an item only when its permission covers the item's unit
- * AND the module's own rule would let this person act now (not the requester, not a second desk).
- */
 export const DASHBOARD_QUEUES = [
   queue({
     label: "Finance requests to review",
@@ -94,7 +89,6 @@ export const DASHBOARD_QUEUES = [
   }),
 ];
 
-/** Dashboard counters, each shown only to staff who can read its page. */
 export const DASHBOARD_COUNTERS: ReadonlyArray<{
   readonly key: DashboardCounter;
   readonly permission: PagePermission;
@@ -117,32 +111,22 @@ export const DASHBOARD_COUNTERS: ReadonlyArray<{
   },
 ];
 
-/**
- * The dashboard for one staff member: counters for the pages they can read (COUNT queries)
- * and, with audit.read, the 10 newest audit entries. Nothing is counted for hidden pages.
- */
 export function createDashboard(deps: {
   counts: Pick<SqlDashboardCounts, "count">;
   listAudit: (query: AuditListQuery) => Promise<{ items: AuditEvent[] }>;
-  /** Officers of the active period who graduated (B5): for whoever may end appointments. */
   graduatedOfficers: () => Promise<GraduatedOfficer[]>;
-  /** Accounts holding the LPJ secretariat desk globally (none = LPJs cannot be reviewed). */
   lpjSecretariatHolders: () => Promise<number>;
   activePeriod: () => Promise<{ id: string; name: string } | null>;
   finance: (periodId: string) => Promise<FinanceRequest[]>;
   lpj: (periodId: string) => Promise<LpjReport[]>;
   programs: (periodId: string) => Promise<Program[]>;
-  /** Bookings from now on (pending ones are the approval queue). */
   zoom: (from: Date) => Promise<ZoomRequest[]>;
-  /** The calendar read model (G2): the same items as the Calendar page. */
   agenda: (principal: Principal, from: Date, to: Date) => Promise<CalendarItem[]>;
-  /** My Tasks (G1). */
   myTasks: (uid: string) => Promise<Task[]>;
   now: () => Date;
 }) {
   return async (principal: Principal) => {
     const visible = DASHBOARD_COUNTERS.filter((c) => canInSomeScope(principal, c.permission));
-    // Whoever can fix it (roles) or depends on it (LPJ desks, programme approvers).
     const watchesLpj =
       can(principal, "roles.edit") ||
       canInSomeScope(principal, "lpj.read") ||
@@ -173,7 +157,6 @@ export function createDashboard(deps: {
       can(principal, "programs.read", { orgUnitPath: p.orgUnitPath }),
     );
     return {
-      /** Each desk the viewer holds, with what waits there in the units it covers. */
       queues: queues.map((q) => ({
         label: q.label,
         href: q.href,
@@ -183,11 +166,8 @@ export function createDashboard(deps: {
             q.waiting(item, principal.userId, now),
         ).length,
       })),
-      /** The next 7 days of the calendar (null without calendar.read). */
       agenda,
-      /** My open tasks due within 2 weeks, overdue ones included. */
       deadlines: tasks.filter((t) => !t.done && t.due !== null && t.due <= twoWeeks),
-      /** The active period's programmes the viewer can read. */
       period:
         period && seesPrograms
           ? {
@@ -199,13 +179,11 @@ export function createDashboard(deps: {
       counters: visible.map((c, i) => ({ ...c, value: values[i] as number })),
       audit: audit ? audit.items : null,
       graduatedOfficers: graduated,
-      /** True when nobody holds the LPJ secretariat desk (shown as a warning). */
       noLpjSecretariat: secretariat === 0,
     };
   };
 }
 
-/** One "graduated but still in office" item: the appointment stays until someone ends it. */
 export interface GraduatedOfficer {
   readonly name: string;
   readonly title: string;

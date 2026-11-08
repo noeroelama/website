@@ -6,7 +6,6 @@ import { requireAdminViewer } from "@/server/context";
 import { getAdminEnv } from "@/server/env";
 import { integrationStatus } from "@/server/settings";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
 const SECTIONS = [
@@ -15,10 +14,6 @@ const SECTIONS = [
   { key: "other", title: "Other integrations" },
 ] as const;
 
-/**
- * Settings (L3): where each setting lives. Zoom and letterhead settings are edited on their own
- * pages (with their own permissions); integrations are set in the cPanel app screen.
- */
 export default async function SettingsPage() {
   const viewer = await requireAdminViewer("/settings", "settings.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;

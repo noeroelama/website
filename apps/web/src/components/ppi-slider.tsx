@@ -3,11 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SocialLinks } from "./social-links";
 
-/**
- * Member councils (Figma "HOME PUBLIC" Frame 2399): one full-bleed slide per PPI country,
- * in the visual order of the frame (left to right). The photos live in public/home/1.png
- * .. 17.png and overlay the design's dark 70% panel with the country name and description.
- */
 const COUNTRIES = [
   {
     name: "PPI Selandia Baru",
@@ -88,7 +83,6 @@ export interface PpiSliderStrings {
   readonly social: string;
 }
 
-/** Placeholder contact email per country, e.g. "selandiabaru@example.com". */
 function emailFor(countryName: string): string {
   const slug = countryName
     .replace(/^PPI /, "")
@@ -99,10 +93,6 @@ function emailFor(countryName: string): string {
   return `${slug}@example.com`;
 }
 
-/**
- * Visible panel content of one slide (title, description, PIC, social). The previous
- * slide's panel is also rendered ("ghost", dimmed) next to the active one (user).
- */
 function SlideContent({
   country,
   t,
@@ -130,16 +120,10 @@ function SlideContent({
   );
 }
 
-/**
- * Swipeable country carousel: one full-bleed photo per member council, scrolled with mouse
- * wheel/trackpad, touch drag, or the arrow buttons (scroll-snap, no JS math of its own).
- */
 export function PpiSlider({ t }: { t: PpiSliderStrings }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [disabled, setDisabled] = useState({ prev: true, next: false });
 
-  // The arrows follow the visible slide. `round()` makes the last slide (shorter
-  // than the viewport) report the same index as the first shows after a hard right swipe.
   const sync = useCallback(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -157,8 +141,6 @@ export function PpiSlider({ t }: { t: PpiSliderStrings }) {
   const step = (delta: -1 | 1) => {
     const track = trackRef.current;
     if (!track) return;
-    // Scroll to the exact snap position: relative smooth scrollBy gets swallowed by
-    // mandatory scroll-snap in some browsers, so jump to the neighbouring slide.
     const next = Math.min(
       COUNTRIES.length - 1,
       Math.max(0, Math.round(track.scrollLeft / Math.max(track.clientWidth, 1)) + delta),
@@ -186,7 +168,6 @@ export function PpiSlider({ t }: { t: PpiSliderStrings }) {
             <div className="ppi-slider__panels">
               {i > 0 && (
                 <div className="ppi-slider__ghost" aria-hidden="true">
-                  {/* i > 0 guarantees `i - 1` is a valid index; `!` narrows it */}
                   <SlideContent country={COUNTRIES[i - 1]!} t={t} />
                 </div>
               )}

@@ -26,7 +26,6 @@ describe("first sign-in record (users/{uid})", () => {
       roleAssignments: DEFAULT_ROLE_ASSIGNMENTS,
     });
 
-    // Staff changed the roles in between: a new sign-in must not reset them.
     docs.set("users/uid-ana", {
       ...created,
       roleAssignments: [{ roleId: "member", scope: { type: "global" } }],
@@ -44,7 +43,6 @@ describe("first sign-in record (users/{uid})", () => {
   it("concurrent first sign-ins create one record (transaction)", async () => {
     const { users, writes } = setup();
     await Promise.all([users.recordSignIn(ana, first), users.recordSignIn(ana, later)]);
-    // A create carries a fresh Date; an update keeps the stored createdAt.
     const creates = writes.filter(
       (w) => w.path === "users/uid-ana" && w.data["createdAt"] instanceof Date,
     );
@@ -60,14 +58,14 @@ describe("principal from Firestore (admin user directory)", () => {
 
   it("an account record without role assignments is a Visitor: no permissions (and reads no roles)", async () => {
     const { users, docs, getAll } = setup();
-    await users.recordSignIn({ uid: "u2", email: null }, first); // e.g. a provider without a name
+    await users.recordSignIn({ uid: "u2", email: null }, first);
     expect(docs.get("users/u2")).toMatchObject({ email: null, name: null });
     docs.set("users/u2", { status: "active" });
     const principal = await users.findPrincipalByUid("u2");
     expect(principal).toMatchObject({ userId: "u2", active: true });
     expect(principal?.assignments.map((a) => a.roleId)).toEqual(["visitor"]);
     expect(canAccessAdmin(principal)).toBe(false);
-    expect(getAll).toHaveBeenCalledTimes(1); // user + active period together; no roles read
+    expect(getAll).toHaveBeenCalledTimes(1);
   });
 
   it("resolves custom roles from roles/{id} and drops assignments to missing roles", async () => {
@@ -88,9 +86,9 @@ describe("principal from Firestore (admin user directory)", () => {
     const principal = await users.findPrincipalByUid("u1");
     expect(principal?.assignments.map((a) => a.roleId)).toEqual(["editor", "visitor"]);
     expect(can(principal, "articles.publish", { chapterId: "jp" })).toBe(true);
-    expect(can(principal, "articles.read", { chapterId: "jp" })).toBe(true); // publish adds read
+    expect(can(principal, "articles.read", { chapterId: "jp" })).toBe(true);
     expect(can(principal, "articles.publish", { chapterId: "kr" })).toBe(false);
-    expect(getAll).toHaveBeenCalledTimes(2); // user + period, then all custom roles in one read
+    expect(getAll).toHaveBeenCalledTimes(2);
   });
 
   it("keeps period-bound assignments only for the active period (settings/activePeriod)", async () => {
@@ -104,7 +102,7 @@ describe("principal from Firestore (admin user directory)", () => {
         { roleId: "visitor", scope: { type: "global" } },
       ],
     });
-    const before = await users.findPrincipalByUid("u1"); // no active period yet
+    const before = await users.findPrincipalByUid("u1");
     expect(before?.assignments.map((a) => a.roleId)).toEqual(["visitor"]);
 
     docs.set("settings/activePeriod", { periodId: "p2026" });
@@ -174,7 +172,7 @@ describe("roles repository", () => {
     });
     docs.set("roles/superadmin", { name: "Hijack", permissions: [], deletedAt: null });
     docs.set("roles/old", { name: "Old", permissions: [], deletedAt: new Date() });
-    docs.set("roles/broken", { permissions: ["articles.read"] }); // no name
+    docs.set("roles/broken", { permissions: ["articles.read"] });
     docs.set("roles/admin", { name: "Admin", permissions: ["users.read"], deletedAt: null });
     const list = await roles.list();
     expect(list.map((r) => r.id)).toEqual(["superadmin", "visitor", "admin", "editor"]);
@@ -188,7 +186,7 @@ describe("roles repository", () => {
     expect((await roles.get("editor"))?.name).toBe("Editor");
     expect(await roles.get("old")).toBeNull();
     expect(await roles.get("missing")).toBeNull();
-    expect(await roles.get("../users/x")).toBeNull(); // never a path outside roles/
+    expect(await roles.get("../users/x")).toBeNull();
     const many = await roles.getMany(["editor", "visitor", "missing", "old"]);
     expect([...many.keys()]).toEqual(["editor", "visitor"]);
   });

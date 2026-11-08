@@ -396,7 +396,6 @@ describe("letters workflow", () => {
 
   it("issue numbers, codes and freezes the letter in one transaction; numbers never repeat", async () => {
     const { id, version } = await approvedLetter({ requiresCoordinator: true });
-    // Every desk step tells whoever acts next (notices.ts decides who, after the commit).
     expect(steps).toEqual(["review", "corrected", "corrected", "approved"]);
     const result = await actions().issue(...as(secretariat))({ id, version });
     expect(result).toMatchObject({
@@ -525,7 +524,6 @@ describe("letters workflow", () => {
     await actions().signSecretary(...as(staff("sekjen2", ["letters.sign"])))({ id, version: 3 });
     fake.docs.set("verificationCodes/AAAAA-AAAAA", { kind: "letter", letterId: "older" });
     let calls = 0;
-    // First code: all zeros (taken); then all ones.
     const store = createSqlLetterStore(db(), () => (calls++ < 10 ? 0 : 1));
     const issued = await store
       .issue(id, 4, DEFAULT_LETTERHEAD, () => ({}) as never, clock)
@@ -638,11 +636,9 @@ describe("upload path (D3)", () => {
     });
     expect(letter.verificationCode).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
     expect(afterIssue).toEqual([]);
-    // Nothing to preview or issue before the file is in.
     expect(await actions().issueFile(...as(secretariat))({ id, version })).toMatchObject({
       error: "refused",
     });
-    // Cancel is allowed while waiting for the file (the number is never reused).
     expect(
       await actions().cancel(...as(secretariat))({ id, version, reason: "Wrong type" }),
     ).toMatchObject({ ok: true, data: { status: "cancelled" } });
@@ -688,7 +684,6 @@ describe("upload path (D3)", () => {
     ]);
     const text = await send(id, version + 1, await pdfWith(SOP));
     expect(await text.json()).toEqual({ version: version + 2, numberChecked: true });
-    // The replaced file is removed; the letter records the new one.
     expect([...files.keys()]).toEqual([`letters/p1/${id}_upload_00000002.pdf`]);
     expect((await letters().get(id))?.upload).toMatchObject({
       numberChecked: true,
@@ -742,7 +737,6 @@ describe("upload path (D3)", () => {
     const kept = files.get(letter.archive?.path ?? "") as Uint8Array;
     expect(createHash("sha256").update(kept).digest("hex")).toBe(letter.archive?.sha256);
     expect(await pdfText(kept)).toContain(letter.verificationCode as string);
-    // Placing or uploading after issue is refused.
     expect(
       await actions().place(...as(secretariat))({ id, version: letter.version, placement }),
     ).toMatchObject({ error: "refused" });

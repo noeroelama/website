@@ -11,7 +11,6 @@ import { ApplyForm } from "./apply-form";
 
 export const metadata: Metadata = { title: "Application", robots: { index: false } };
 
-// Per user: needs the session, a complete profile and an application that can still change.
 export const instant = false;
 
 export default async function ApplyPage({ params }: PageProps<"/recruitment/[id]/apply">) {

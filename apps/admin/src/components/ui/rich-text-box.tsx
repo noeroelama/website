@@ -1,7 +1,5 @@
 "use client";
 
-// Editor toolbar icons are bundled 30×30 PNG tiles (public/Button-*.png): static assets with no
-// LCP or bandwidth concern, so plain <img> — not next/image — is deliberate here.
 /* eslint-disable @next/next/no-img-element */
 
 import {
@@ -17,26 +15,14 @@ import { moveItem } from "../list-model";
 import { Button } from "./button";
 import { Icon } from "./icon";
 
-/*
- * Rich-text content of the Article and Newsletter forms: a stack of "type boxes" (each a full
- * editor card: + / drag / delete strip, 10-button toolbar, contentEditable body). The + adds
- * a box below, the grip reorders, the trash removes a box (one always stays). Each box owns
- * its own selection, toolbar state and link popover; the HTML flows out through `onChange`
- * (the server sanitises it when saving). Styling: `admin-editor*` in globals.css.
- */
-
-/** One box: kept as {id, text} so React keys stay stable while boxes are added or moved. */
 export interface RichTextBlock {
   id: string;
-  /** The box's HTML. */
   text: string;
 }
 
 let BLOCK_SEQ = 0;
-/** A new box (ids are unique while the page lives). */
 export const newBlock = (text = ""): RichTextBlock => ({ id: `box-${++BLOCK_SEQ}`, text });
 
-/** The + menu (as in PPIT): each entry adds a box below, holding `html` or started with `command`. */
 interface BlockKind {
   label: string;
   tile: string;
@@ -56,7 +42,6 @@ const BLOCK_MENU: readonly BlockKind[] = [
   { label: "Code", tile: "/Button-9.png", html: "<code><br></code>" },
 ];
 
-/** Puts the caret at the end of a box's text (inside its last paragraph or item) and focuses it. */
 function focusEnd(el: HTMLElement) {
   el.focus();
   let target: Element = el;
@@ -69,12 +54,9 @@ function focusEnd(el: HTMLElement) {
   document.getSelection()?.addRange(range);
 }
 
-/** The saved content: each box's HTML in its own <div>, in order, so `splitBlocks` gets the
-    same boxes back when the content is edited again. */
 export const joinBlocks = (blocks: readonly RichTextBlock[]): string =>
   blocks.map((block) => `<div>${block.text}</div>`).join("");
 
-/** Tags that start a new box in content saved before boxes were kept (see `splitBlocks`). */
 const BLOCK_TAGS = [
   "P",
   "DIV",
@@ -90,11 +72,6 @@ const BLOCK_TAGS = [
   "FIGURE",
 ];
 
-/**
- * The boxes of saved content (browser only; the <template> parses without loading anything).
- * Content from `joinBlocks` is a row of <div>s, one per box. Older content was one long HTML:
- * each block element becomes a box, and text or inline tags next to each other share one.
- */
 export function splitBlocks(html: string): RichTextBlock[] {
   const template = document.createElement("template");
   template.innerHTML = html;
@@ -107,7 +84,7 @@ export function splitBlocks(html: string): RichTextBlock[] {
   if (nodes.every((n) => n instanceof Element && n.tagName === "DIV")) {
     for (const n of nodes) texts.push((n as Element).innerHTML);
   } else {
-    let inline = false; // the last box holds text or inline tags
+    let inline = false;
     for (const n of nodes) {
       if (!isBlock(n) && inline) texts[texts.length - 1] += outer(n);
       else texts.push(outer(n));
@@ -117,7 +94,6 @@ export function splitBlocks(html: string): RichTextBlock[] {
   return texts.length > 0 ? texts.map((text) => newBlock(text)) : [newBlock()];
 }
 
-/** The stack of boxes. `label` names the content for screen readers ("Article content"). */
 export function RichTextStack({
   blocks,
   onChange,
@@ -127,15 +103,12 @@ export function RichTextStack({
 }: {
   blocks: readonly RichTextBlock[];
   onChange: (blocks: RichTextBlock[]) => void;
-  /** Uploads an inline image; resolves to its public URL (null when the upload failed). */
   uploadImage: (file: File) => Promise<string | null>;
   label: string;
   readOnly?: boolean;
 }) {
   const [dragSource, setDragSource] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
-  /* The box that takes the caret next (a new box from the + menu, or the one above a removed
-     box), and the menu command it starts with. */
   const [focus, setFocus] = useState<{ id: string; command?: string | undefined } | null>(null);
   const endDrag = () => {
     setDragSource(null);
@@ -145,7 +118,6 @@ export function RichTextStack({
     <div
       className="admin-editor-list"
       onMouseDown={(e) => {
-        // A click on the empty space below the content continues the last box.
         const bodies = e.currentTarget.querySelectorAll<HTMLElement>(".admin-editor__body");
         const last = bodies[bodies.length - 1];
         if (e.target !== e.currentTarget || readOnly || !last) return;
@@ -198,7 +170,6 @@ export function RichTextStack({
   );
 }
 
-/** One entry of the + block menu. */
 function EditorButton({
   icon,
   label,
@@ -215,7 +186,6 @@ function EditorButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      /* Keep focus in the editor until the new box takes it. */
       onMouseDown={(e) => e.preventDefault()}
     >
       {icon}
@@ -223,7 +193,6 @@ function EditorButton({
   );
 }
 
-/** One box of the stack (internal: use `RichTextStack`). */
 function RichTextBox({
   value,
   onChange,
@@ -247,12 +216,10 @@ function RichTextBox({
   onChange: (text: string) => void;
   label: string;
   readOnly: boolean;
-  /** Take the caret (end of the text) when this turns true, then run `startCommand`. */
   autoFocus: boolean;
   startCommand: string | undefined;
   onFocused: () => void;
   uploadImage: (file: File) => Promise<string | null>;
-  /** Adds a box below: a paragraph, heading, list, image … picked in the + menu. */
   onAdd: (kind: BlockKind) => void;
   onDelete: () => void;
   canDelete: boolean;
@@ -267,16 +234,7 @@ function RichTextBox({
   const editorRef = useRef<HTMLDivElement>(null);
   const editorImageInputRef = useRef<HTMLInputElement>(null);
 
-  /* ---- Rich-text (contentEditable) editor commands ---- */
-  /* WYSIWYG like a mail composer: the toolbar buttons format the current
-   selection in place via document.execCommand. The selection is remembered
-   on blur (clicking the toolbar steals focus) and restored before each
-   command, and every command re-syncs the HTML back into the form. */
   const savedRangeRef = useRef<Range | null>(null);
-
-  /* Link is created through a small popup (the standard "insert link" dialog):
-   the modal below asks for the link Text and Hyperlink, then stamps an <a>
-   over the selection (or inserts one at the caret if nothing is selected). */
 
   const saveRange = () => {
     const sel = document.getSelection();
@@ -301,10 +259,6 @@ function RichTextBox({
     saveRange();
   };
 
-  /* The toolbar never lets the editor blur (see EditorButton), so commands can
-   run straight on the live selection; the saved range only takes over when
-   focus drifted (e.g. a window.prompt just closed), so the command never acts
-   on a stale anchor. */
   const selectionInEditor = () => {
     const el = editorRef.current;
     const sel = document.getSelection();
@@ -312,9 +266,6 @@ function RichTextBox({
     const node = sel.getRangeAt(0).startContainer;
     return node === el || el.contains(node);
   };
-  /* A formatting command needs an anchor. On first mount (or when focus has
-   drifted and nothing is saved) there is no caret in the editor yet, so park
-   one at the start of the content before running the command. */
   const ensureCaret = () => {
     const el = editorRef.current;
     const sel = document.getSelection();
@@ -336,24 +287,16 @@ function RichTextBox({
     ensureCaret();
     try {
       document.execCommand(cmd, false, arg);
-    } catch {
-      /* stale restored range — the live selection still applies */
-    }
+    } catch {}
     syncEditorText();
     editorRef.current?.focus();
   };
 
-  /* The + menu entries that need the new box itself: pick an image to upload, or open the
-   link popover. (Headings, lists, quotes, code and dividers arrive as the box's HTML.) */
   const runCommand = (cmd: string) => {
     if (cmd === "image") editorImageInputRef.current?.click();
     if (cmd === "link") openLinkModal();
   };
 
-  /* ---- Link popup (Text + Hyperlink) ---- */
-
-  /* Prepend https:// when the typed link has no scheme, so "google.com" links
-   like Gmail does. mailto:/tel:/# anchors keep their own prefix. */
   const normalizeLink = (raw: string): string => {
     const t = raw.trim();
     if (!t) return t;
@@ -361,16 +304,11 @@ function RichTextBox({
     return `https://${t}`;
   };
 
-  /* The link popover's two fields. The popover is a small card anchored at the
-   caret, not a blocking modal, so the page stays visible behind it. */
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkText, setLinkText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkPos, setLinkPos] = useState<{ top: number; left: number } | null>(null);
 
-  /* Open the insert-link popover. The live selection is remembered (so the link
-   survives the popover stealing focus); selected text prefills the Text field,
-   and the popover is parked just under the caret/selection. */
   const openLinkModal = () => {
     const el = editorRef.current;
     if (!el) return;
@@ -379,8 +317,6 @@ function RichTextBox({
     const text = sel && sel.rangeCount > 0 ? sel.toString() : "";
     setLinkText(text);
     setLinkUrl("");
-    /* anchor the card 12px below the caret so it floats over the text being
-     linked instead of covering it */
     if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
       const rect = sel.getRangeAt(0).getBoundingClientRect();
       setLinkPos({ top: rect.bottom + 12, left: Math.max(8, rect.left) });
@@ -394,24 +330,18 @@ function RichTextBox({
     setLinkOpen(true);
   };
 
-  /* Apply the link over the remembered selection (or at the caret), then close. */
   const applyLink = () => {
     const el = editorRef.current;
     if (!el) return;
     const url = linkUrl.trim();
     if (!url) return;
-    /* The modal's inputs grabbed focus, so restore the editor selection that
-     openLinkModal saved. */
     restoreRange();
     const sel = document.getSelection();
     const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
     const full = normalizeLink(url);
     const text = linkText.trim() || url;
     if (range && !range.collapsed) {
-      /* selected text becomes the link's visible text */
       document.execCommand("createLink", false, full);
-      /* set the visible text: the linked selection keeps the exact Text field
-       value, so adjusting it here swaps the wording without touching href */
       let node: Node | null = sel?.anchorNode ?? range.startContainer;
       if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
       const anchor =
@@ -422,7 +352,6 @@ function RichTextBox({
             : null;
       if (anchor) {
         anchor.textContent = text;
-        /* keep the caret just after the link */
         const r = document.createRange();
         r.setStartAfter(anchor);
         r.collapse(true);
@@ -431,7 +360,6 @@ function RichTextBox({
         savedRangeRef.current = r.cloneRange();
       }
     } else {
-      /* no selection — insert a new anchor with the Text as its visible text */
       const anchor = document.createElement("a");
       anchor.href = full;
       anchor.textContent = text;
@@ -460,13 +388,10 @@ function RichTextBox({
     syncEditorText();
   };
 
-  /* Clicking a toolbar button steals focus; remember the caret so the next
-   command acts on the right spot. The link popup relies on the same save. */
   const onEditorBlur = () => {
     saveRange();
   };
 
-  /* A box added from the + menu mounts with the caret: it comes in with an animation. */
   const [isNew] = useState(autoFocus);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -480,7 +405,6 @@ function RichTextBox({
     if (autoFocus) takeFocus();
   }, [autoFocus]);
 
-  /* Backspace in an empty box removes it (the caret moves to the box above). */
   const onEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     const empty = !el.textContent?.trim() && !el.querySelector("img, hr");
@@ -490,8 +414,6 @@ function RichTextBox({
     }
   };
 
-  /* The link popover is dismissed exactly like a small popup: Escape cancels it,
-   and clicking anywhere outside the card closes it without linking. */
   const linkPopRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!linkOpen) return;
@@ -509,8 +431,6 @@ function RichTextBox({
     };
   }, [linkOpen]);
 
-  /* Seed the contentEditable with the article's stored (server-sanitised) HTML the
-   first time the form mounts (after that the editor owns its own live content). */
   const editorSeededRef = useRef(false);
   useEffect(() => {
     const el = editorRef.current;
@@ -533,13 +453,9 @@ function RichTextBox({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        {/* Under each box, a plus that opens the block menu; the chosen entry adds a box below. Left of the text, a drag handle that reorders the box; when more
-            than one box exists, a trash button at the end removes it. Read-only content shows
-            none of them. */}
         {!readOnly ? (
           <div
             className="admin-editor__add"
-            /* The menu closes on Escape and when focus leaves the + and its menu. */
             onKeyDown={(e) => {
               if (e.key === "Escape") setMenuOpen(false);
             }}
@@ -555,7 +471,7 @@ function RichTextBox({
               aria-haspopup="true"
               aria-expanded={menuOpen}
               onClick={(e) => {
-                e.currentTarget.focus(); // Safari does not focus buttons on click
+                e.currentTarget.focus();
                 setMenuOpen((open) => !open);
               }}
             >
@@ -587,9 +503,8 @@ function RichTextBox({
               aria-label="Drag handle"
               title="Drag to reorder"
               onDragStart={(e) => {
-                // The drag preview is the box's text, not just the grip icon.
                 if (editorRef.current) e.dataTransfer.setDragImage(editorRef.current, 0, 0);
-                e.dataTransfer.setData("text/plain", ""); // Firefox only starts a drag with data
+                e.dataTransfer.setData("text/plain", "");
                 onDragStart();
               }}
               onDragEnd={onDragEnd}
@@ -617,7 +532,6 @@ function RichTextBox({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            /* uploaded first: the body stores the public https URL, never a data URL */
             e.target.value = "";
             void uploadImage(file).then((url) => {
               if (url) exec("insertImage", url);
@@ -641,10 +555,6 @@ function RichTextBox({
         />
       </div>
 
-      {/* Insert-link popover: a compact card floating just under the caret.
-              The page behind stays fully visible (no dimmed overlay) — it is a
-              small anchored card, like a context menu. Text prefills with the
-              selection; Hyperlink is the URL. */}
       {linkOpen && linkPos ? (
         <div
           ref={linkPopRef}

@@ -9,7 +9,6 @@ import {
 import { safeId } from "@website/security/validation";
 import { createSqlAuditWriter } from "./audit";
 
-/** Stored timestamp (or ISO string) → Date. */
 export const toDate = (value: unknown): Date | null => {
   if (value === null || value === undefined) return null;
   if (typeof value === "string") return new Date(value);
@@ -20,36 +19,21 @@ export const toDate = (value: unknown): Date | null => {
 type Meta = "id" | "version" | "createdAt" | "updatedAt";
 
 export interface SluggedConfig<T extends EntityMeta> {
-  /** Main collection, e.g. "content" or "events". */
   readonly collection: string;
-  /**
-   * Unique URL: index `<collection>/{key}` → { id } and the key of an item. Null for documents
-   * without a public URL (newsletter campaigns).
-   */
   readonly slug: {
     readonly collection: string;
     readonly key: (item: Omit<T, Meta>) => string;
-    /** Refusal when the key is taken (default: the URL message). */
     readonly taken?: string;
   } | null;
   readonly fromDoc: (id: string, data: Record<string, unknown>) => T;
-  /** Stored fields; the helper adds version and timestamps. Revert writes `snapshot` back. */
   readonly snapshot: (item: Omit<T, Meta>) => Snapshot;
-  /** Fields stored besides the snapshot (never changed by a revert). */
   readonly fixed: (item: T) => Record<string, unknown>;
 }
 
-/**
- * Versioned documents with soft delete and, usually, a unique URL slug (content, events, albums,
- * chapters, campaigns). `write` is ONE transaction: read (version check, trash refused) → `build`
- * (throw to refuse) → slug reserved → document + audit entry written. The audit `after` is null
- * for a delete.
- */
 export function createSluggedStore<T extends EntityMeta>(db: Database, config: SluggedConfig<T>) {
   const docs = db.collection(config.collection);
   const audit = createSqlAuditWriter(db);
   const slugs = config.slug ? db.collection(config.slug.collection) : null;
-  // Only called when config.slug is set (key !== null below).
   const slugRef = (key: string) => (slugs as CollectionReference).doc(safeId.parse(key));
   const read = (id: string, data: unknown) => config.fromDoc(id, data as Record<string, unknown>);
   const takenMessage =
@@ -65,7 +49,6 @@ export function createSluggedStore<T extends EntityMeta>(db: Database, config: S
       return snapshot.exists ? read(id, snapshot.data()) : null;
     },
 
-    /** The live (not deleted) document that owns this slug key, or null. */
     findBySlugKey: async (key: string): Promise<T | null> => {
       if (!safeId.safeParse(key).success) return null;
       const pointer = await slugRef(key).get();
@@ -79,7 +62,6 @@ export function createSluggedStore<T extends EntityMeta>(db: Database, config: S
     write: (
       id: string | null,
       expectedVersion: number | null,
-      /** May read other documents in the same transaction (before any write). */
       build: (current: T | null, tx: Transaction) => Omit<T, Meta> | Promise<Omit<T, Meta>>,
       auditFor: (
         before: Snapshot | null,

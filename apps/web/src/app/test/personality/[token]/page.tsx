@@ -5,14 +5,12 @@ import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { personalityTest } from "@/server/recruitment-wiring";
 import { PersonalityForm, PersonalityResultView } from "./personality-form";
 
-// The token is a capability: never indexed, read per request.
 export const metadata: Metadata = {
   title: "Personality test",
   robots: { index: false, follow: false },
 };
 export const instant = false;
 
-/** /test/personality/{token}: the 60 statements, or the stored result (taken once). */
 export default async function PersonalityPage({ params }: PageProps<"/test/personality/[token]">) {
   const { token } = await params;
   const [opened, jar] = await Promise.all([personalityTest().open(token), cookies()]);

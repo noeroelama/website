@@ -4,10 +4,8 @@ import { CalendarPage } from "@/components/calendar-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads, calendar } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Calendar (G2): one month (`?month=YYYY-MM`, default this month, UTC days). */
 export default async function AdminCalendarPage({
   searchParams,
 }: {

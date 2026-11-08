@@ -16,7 +16,6 @@ const SaveInput = EventInputSchema.and(
     .object({
       id: safeId.optional(),
       version: z.number().int().min(1).nullable(),
-      /** true = Publish now, false = Save draft. */
       publish: z.boolean(),
     })
     .strict(),
@@ -25,7 +24,6 @@ const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).stri
 
 type Action = "CREATE" | "UPDATE" | "PUBLISH" | "UNPUBLISH" | "DELETE";
 
-/** Audit entry for one event change (module `events`, resource `event`). */
 const eventAudit =
   (audit: AuditBuilder, action: Action, revertible = true) =>
   (
@@ -47,7 +45,6 @@ const eventAudit =
       revertible,
     });
 
-/** Admin Event page actions: save (draft / publish now), publish toggle, trash. */
 export function createEventActions(deps: EventDeps) {
   const save = createGuardedAction({
     permission: "events.edit",
@@ -63,7 +60,6 @@ export function createEventActions(deps: EventDeps) {
           const slug = input.slug || current?.slug || randomEventSlug(deps.uuid());
           if (current) {
             action = input.publish && !current.published ? "PUBLISH" : "UPDATE";
-            // A changed URL would leave the slug index behind on revert: never revertible.
             revertible = current.slug === slug;
           }
           return {

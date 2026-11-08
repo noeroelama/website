@@ -5,7 +5,6 @@ import { UnsubscribeButton } from "../link-action";
 
 export const metadata: Metadata = { title: "Newsletter", robots: { index: false } };
 
-// The signed link from a campaign e-mail; the visitor presses the button to unsubscribe.
 export const instant = false;
 
 export default async function UnsubscribePage({

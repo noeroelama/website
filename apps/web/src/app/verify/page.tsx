@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 };
 export const instant = false;
 
-/** /verify: type the code printed on a letter (the QR opens /verify/<code> directly). */
 export default async function VerifyPage({ searchParams }: PageProps<"/verify">) {
   const [{ code }, jar] = await Promise.all([searchParams, cookies()]);
   const typed = typeof code === "string" ? code : null;

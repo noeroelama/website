@@ -10,48 +10,28 @@ import {
 
 export interface GuardOptions {
   readonly store: RateLimitStore;
-  /** HMAC key for client IPs: counters never contain raw IP addresses. */
   readonly secret: string;
-  /**
-   * `same-site` (web/admin/shop): `/api/*` and every non-GET request must come from our own origin.
-   * `public-api` (gateway): server-to-server calls allowed; browsers on other websites refused.
-   */
   readonly mode: "same-site" | "public-api";
-  /** Path prefixes whose responses must never be stored by shared caches. */
   readonly privatePrefixes: readonly string[];
-  /**
-   * Incoming webhook paths (`/webhooks/<provider>`) that skip ONLY the origin check: providers
-   * post from their own servers. Rate limiting and private caching still apply, and each handler
-   * must verify the provider signature (DEC-5). A path matches itself and its sub-paths.
-   */
   readonly signedWebhookPaths?: readonly string[];
   readonly policy?: RateLimitPolicy;
-  /**
-   * Tighter limits for some requests, counted separately after the general one (e.g. public
-   * document verification: 20 per minute, so codes cannot be guessed in bulk).
-   */
   readonly extraLimits?: readonly {
     readonly name: string;
     readonly policy: RateLimitPolicy;
     readonly applies: (request: Request, path: string) => boolean;
   }[];
   readonly now?: () => Date;
-  /** Waits before continuing a throttled request (injectable for tests). */
   readonly sleep?: (ms: number) => Promise<unknown>;
-  /** Called when the counter store fails; the request is then allowed (fail-open). */
   readonly onStoreError?: (error: unknown) => void;
 }
 
 export interface GuardResult {
-  /** A response to return immediately (403/429), or null to continue. */
   readonly blocked: Response | null;
-  /** Headers to add to the normal response. */
   readonly headers: Record<string, string>;
 }
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-/** Client IP as set by the hosting reverse proxy (cPanel/Passenger sets these headers). */
 export function clientIp(headers: Headers): string {
   return (
     headers.get("x-real-ip")?.trim() ||
@@ -60,11 +40,6 @@ export function clientIp(headers: Headers): string {
   );
 }
 
-/**
- * Our public host. Behind a reverse proxy (cPanel/Passenger) `request.url` is the internal
- * address (http://localhost:<port>), so the forwarded/Host header is used — the same check
- * Next.js applies to Server Actions. Browsers cannot forge these headers cross-site.
- */
 function ownHost(request: Request): string {
   return (
     request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
@@ -94,7 +69,6 @@ function originAllowed(request: Request, options: GuardOptions, path: string): b
   return !mustBeOwn || isOwnOrigin(request);
 }
 
-/** Runs before every request: origin restriction, per-IP rate limit, private caching headers. */
 export async function guardRequest(request: Request, options: GuardOptions): Promise<GuardResult> {
   const path = new URL(request.url).pathname;
   const headers: Record<string, string> = {};
@@ -123,7 +97,6 @@ export async function guardRequest(request: Request, options: GuardOptions): Pro
       const tight = await options.store.consume(`${extra.name}_${key}`, extra.policy, now);
       if (!tight.allowed) return refused(tight.retryAfterSeconds);
     }
-    // Past the daily quota: still served, but slowed down.
     if (decision.throttled) await (options.sleep ?? delay)(policy.throttleDelayMs);
   } catch (error) {
     options.onStoreError?.(error);
@@ -131,10 +104,6 @@ export async function guardRequest(request: Request, options: GuardOptions): Pro
   return { blocked: null, headers };
 }
 
-/**
- * Builds the guard for an app. Development/test use an in-memory store and a random secret;
- * staging/production require RATE_LIMIT_SECRET and use the shared (MySQL) store, created once.
- */
 export function createRequestGuard(
   config: Omit<GuardOptions, "store" | "secret"> & {
     readonly appEnv: "development" | "test" | "staging" | "production";

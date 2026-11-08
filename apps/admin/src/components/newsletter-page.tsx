@@ -47,22 +47,18 @@ import { countText } from "./list-model";
 import type { CampaignItem as NewsletterItem, SubscriberItem } from "./newsletter-model";
 import { Select } from "@/components/ui/select";
 
-/** Dates on this page: UTC, same text on the server and in the browser ("24 Sep 2026"). */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dayMonth = (d: Date) => `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 const formatDate = (iso: string) => {
   const d = new Date(iso);
   return `${dayMonth(d)} ${d.getUTCFullYear()}`;
 };
-/** "3 Oct, 09:00 UTC" — when a scheduled campaign goes out. */
 const formatSendTime = (iso: string) => {
   const d = new Date(iso);
   return `${dayMonth(d)}, ${d.toISOString().slice(11, 16)} UTC`;
 };
 const formatCount = (n: number) => n.toLocaleString("en-US");
-/** 0.805 → "80.5%"; null → "—". */
 const formatRate = (rate: number | null) => (rate === null ? "—" : `${(rate * 100).toFixed(1)}%`);
-/** 0.031 → "+3.1 pts". */
 const formatPoints = (delta: number) =>
   `${delta >= 0 ? "+" : "−"}${Math.abs(delta * 100).toFixed(1)} pts`;
 
@@ -73,12 +69,9 @@ const STATUS_BADGE: Record<NewsletterItem["status"], { label: string; icon: Icon
   draft: { label: "Draft", icon: "dot" },
 };
 
-/** Campaigns that are e-mailed already: their results (chart icon), archive link. */
 const wentOut = (c: NewsletterItem) => c.status === "sent" || c.status === "sending";
-/** Drafts and scheduled campaigns can still be edited and sent. */
 const changeable = (c: NewsletterItem) => c.status === "draft" || c.status === "scheduled";
 
-/** Placeholder for a campaign saved in the composer before the list refreshed. */
 const EMPTY_ITEM: NewsletterItem = {
   id: "",
   version: 1,
@@ -96,7 +89,6 @@ const EMPTY_ITEM: NewsletterItem = {
   author: null,
 };
 
-/** Header numbers (computed on the server page from all campaigns and subscribers). */
 export interface NewsletterStats {
   active: number;
   thisMonth: number;
@@ -106,11 +98,8 @@ export interface NewsletterStats {
   clickDelta: number | null;
 }
 
-/** Pending delete (one row or the selection) on either tab. */
 type DeleteConfirm = { kind: "campaign"; ids: string[] } | { kind: "subscriber"; ids: string[] };
 
-/* A preview never runs scripts: the HTML is shown in a sandboxed frame (no scripts, no
-   same-origin access) — safe for unsaved composer content as well as saved campaigns. */
 function EmailPreview({ html }: { html: string }) {
   const doc =
     "<!doctype html><meta charset=utf-8><style>body{font-family:system-ui,sans-serif;" +
@@ -119,14 +108,6 @@ function EmailPreview({ html }: { html: string }) {
   return <iframe className="admin-newsletter-preview" sandbox="" srcDoc={doc} title="Preview" />;
 }
 
-/* ==================================================================
-   Newsletter — campaigns + subscribers. Tabs "Campaigns" / "Subscribers"
-   swap the table content (list view), plus the create/edit composer
-   (form view). Ported from the Figma "NEWSLETTER ADMIN" screens on the dark
-   page pattern of Event/Gallery; colours come from the shared design tokens.
-   ================================================================== */
-
-/* Sortable columns of the two tables. */
 type CampaignSortKey = "subject" | "status" | "recipients" | "open" | "click" | "sent";
 type SubscriberSortKey = "name" | "ppi" | "subscribed";
 
@@ -154,7 +135,6 @@ const subscriberSortValue = (s: SubscriberItem, key: SubscriberSortKey): string 
       ? (s.ppi ?? "").toLowerCase()
       : s.subscribed;
 
-/** A cell's text in its column's filter checklist (dates by day). */
 const campaignFilterText = (c: NewsletterItem, key: CampaignSortKey): string => {
   switch (key) {
     case "subject":
@@ -177,7 +157,6 @@ const campaignFilterText = (c: NewsletterItem, key: CampaignSortKey): string => 
 const subscriberFilterText = (s: SubscriberItem, key: SubscriberSortKey): string =>
   key === "name" ? (s.name ?? s.email) : key === "ppi" ? (s.ppi ?? "") : formatDate(s.subscribed);
 
-/** Form shape for create/edit. */
 interface NewsletterForm {
   subject: string;
   bodies: RichTextBlock[];
@@ -188,18 +167,11 @@ const EMPTY_FORM: NewsletterForm = {
   bodies: [newBlock()],
 };
 
-/* ==================================================================
-   NewsletterPage — the page itself: campaigns + subscribers lists and the composer form.
-   ================================================================== */
 interface NewsletterProps {
-  /** Rows from the server (src/app/(panel)/newsletter/page.tsx); refreshed after every change. */
   campaigns: NewsletterItem[];
-  /** Subscribers; addresses and names arrive hidden unless the viewer has newsletter.edit. */
   subscribers: SubscriberItem[];
-  /** PPIs a staff-added subscriber can belong to. */
   chapters: { id: string; name: string }[];
   stats: NewsletterStats;
-  /** WEB_URL, for "Copy Link" (public archive page /newsletter/{id}). */
   publicBase: string;
   canEdit: boolean;
   canSend: boolean;
@@ -208,16 +180,11 @@ interface NewsletterProps {
 
 export function NewsletterPage(props: NewsletterProps) {
   const pathname = usePathname();
-  // key={pathname} remounts the page when the newsletter route is (re)entered,
-  // so search/tab/filter state resets on every visit (same pattern as
-  // Events / Articles / Gallery).
   return <NewsletterList key={pathname} {...props} />;
 }
 
 const EMPTY_SUBSCRIBER = { email: "", name: "", chapterId: "" };
 
-/** Newsletter lists + composer form (all state lives here; remounted by
- *  NewsletterPage on navigation so it starts clean). */
 function NewsletterList({
   campaigns,
   subscribers,
@@ -232,9 +199,7 @@ function NewsletterList({
   const router = useRouter();
   const upload = useImageUpload("newsletter");
   const importInputRef = useRef<HTMLInputElement>(null);
-  /* Publish (send now) confirmation for one campaign or the selection. */
   const [publishFor, setPublishFor] = useState<NewsletterItem[] | null>(null);
-  /* Schedule popup: which campaign, and the chosen time (datetime-local, viewer zone). */
   const [scheduleFor, setScheduleFor] = useState<NewsletterItem | null>(null);
   const [sendAt, setSendAt] = useState("");
   const [previewFor, setPreviewFor] = useState<{ subject: string; body: string } | null>(null);
@@ -247,13 +212,12 @@ function NewsletterList({
   const [form, setForm] = useState<NewsletterForm>(EMPTY_FORM);
 
   const [tab, setTab] = useState<"campaign" | "subscriber">("campaign");
-  const [query, setQuery] = useState(""); // applied on Search / Enter
-  const [searchKey, setSearchKey] = useState(0); // a new key empties the search box
+  const [query, setQuery] = useState("");
+  const [searchKey, setSearchKey] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   const isCampaign = tab === "campaign";
 
-  /* ---- derived lists (one per table; `filtered` follows the active tab) ---- */
   const filteredCampaigns = useMemo(() => {
     const q = query.trim().toLowerCase();
     return campaigns.filter((c) => !q || c.subject.toLowerCase().includes(q));
@@ -266,7 +230,6 @@ function NewsletterList({
     );
   }, [subscribers, query]);
 
-  /* One table state per tab (sorting, paging, selection). */
   const campaignTable = useListTable(
     filteredCampaigns,
     campaignSortValue,
@@ -285,7 +248,6 @@ function NewsletterList({
     setTab(next);
     campaignTable.clearSelection();
     subTable.clearSelection();
-    /* Each tab is its own list — the searchbox starts fresh. */
     setQuery("");
     setSearchKey((k) => k + 1);
     resetPaging();
@@ -298,8 +260,6 @@ function NewsletterList({
     subTable.clearFilters();
     resetPaging();
   };
-
-  /* ---- mutations (server actions; the page re-reads after each) ---- */
 
   const bulk = useBulkActions({
     noun: "campaign",
@@ -316,7 +276,6 @@ function NewsletterList({
     if (ids.length > 0) setDeleteConfirm({ kind, ids });
   };
 
-  /* Soft delete (revertible on the Audit Log). A campaign that is being sent is skipped. */
   const doDelete = async () => {
     if (!deleteConfirm) return;
     const { kind, ids } = deleteConfirm;
@@ -340,7 +299,6 @@ function NewsletterList({
     );
   };
 
-  /* Publish = send now to every active subscriber (newsletter.send; audited SEND). */
   const doPublish = async () => {
     if (!publishFor) return;
     const rows = publishFor.filter(changeable);
@@ -353,7 +311,6 @@ function NewsletterList({
     setView("list");
   };
 
-  /* Schedule for a later time (newsletter.send). */
   const doSchedule = async () => {
     if (!scheduleFor || !sendAt) return;
     setBusy(true);
@@ -373,13 +330,11 @@ function NewsletterList({
     toast.show(result.data.status === "scheduled" ? "Campaign scheduled" : "Sending started");
   };
 
-  /* Copy Link: the public archive page of a campaign that went out. */
   const copyLink = (c: NewsletterItem) => {
     void navigator.clipboard?.writeText(`${publicBase}/newsletter/${c.id}`);
     toast.show("Link copied");
   };
 
-  /* Export CSV (newsletter.export): built on the server, logged as a security event. */
   const exportCsv = async () => {
     const result = await exportSubscribersAction();
     if (!result.ok) {
@@ -399,7 +354,6 @@ function NewsletterList({
     toast.show(`Exported ${subscribers.length} subscribers`);
   };
 
-  /* Import CSV (newsletter.edit): columns email, name, ppi. New people get the opt-in e-mail. */
   const importCsv = async (file: File) => {
     setBusy(true);
     const result = await importSubscribersAction({ csv: await file.text() });
@@ -424,7 +378,6 @@ function NewsletterList({
     );
   };
 
-  /* Add New Subscriber (newsletter.edit): pending until they confirm by e-mail. */
   const addSubscriber = async () => {
     setBusy(true);
     const result = await addSubscriberAction({
@@ -449,7 +402,6 @@ function NewsletterList({
     );
   };
 
-  /* ---- form ---- */
   const toForm = (mode: "create" | "edit", item?: NewsletterItem) => {
     setFormMode(mode);
     setEditingId(item?.id ?? null);
@@ -460,7 +412,6 @@ function NewsletterList({
 
   const formBody = () => joinBlocks(form.bodies);
 
-  /* Save draft (newsletter.edit). Returns the saved row's id and version, or null. */
   const saveDraft = async (): Promise<{ id: string; version: number } | null> => {
     const current = campaigns.find((c) => c.id === editingId);
     setBusy(true);
@@ -488,7 +439,6 @@ function NewsletterList({
     }
   };
 
-  /* Publish = save, then confirm sending the saved version now. */
   const publishCampaign = async () => {
     const saved = await saveDraft();
     if (!saved) return;
@@ -503,7 +453,6 @@ function NewsletterList({
     ]);
   };
 
-  /* Send Test: saves, then mails the saved campaign to your own address only. */
   const sendTest = async () => {
     const saved = await saveDraft();
     if (!saved) return;
@@ -517,8 +466,6 @@ function NewsletterList({
     return image ? (publicImage(image)?.url ?? null) : null;
   };
 
-  /* ---- table columns ---- */
-  /* The checkbox column of a table (header: this page; row: one row). */
   const checkboxCol = <T extends { id: string }>(
     table: {
       pageAll: boolean;
@@ -549,7 +496,6 @@ function NewsletterList({
     ),
   });
 
-  /* "—" until a campaign went out. */
   const numberCell = (r: NewsletterItem, text: string) => (
     <span className="admin-newsletter-number">{wentOut(r) ? text : "—"}</span>
   );
@@ -629,8 +575,6 @@ function NewsletterList({
       width: "10%",
       render: (r) => (
         <div className="admin-table__actions">
-          {/* Sent: results (chart). Draft/scheduled: edit (pencil), or a read-only look without
-              newsletter.edit. */}
           {wentOut(r) ? (
             <Button
               variant="ghost"
@@ -702,7 +646,6 @@ function NewsletterList({
     },
   ];
 
-  /* Subscribers table — Figma columns: Subscriber (name + e-mail), PPI Country, Joined, delete. */
   const subscriberColumns: Column<SubscriberItem>[] = [
     checkboxCol<SubscriberItem>(subTable, (r) => `Select ${r.name ?? r.email}`),
     {
@@ -767,7 +710,6 @@ function NewsletterList({
     },
   ];
 
-  /* ---- popups ---- */
   const deleteCount = deleteConfirm?.ids.length ?? 0;
   const deleteNoun = deleteConfirm?.kind === "subscriber" ? "Subscriber" : "Campaign";
   const deleteLabel =
@@ -786,7 +728,6 @@ function NewsletterList({
 
   const popups = (
     <>
-      {/* Delete confirmation (soft delete, revertible on the Audit Log). */}
       <ConfirmDialog
         open={deleteConfirm !== null}
         title={`${deleteLabel}?`}
@@ -801,7 +742,6 @@ function NewsletterList({
           : DELETE_HINT}
       </ConfirmDialog>
 
-      {/* Publish = send now (also opened by Publish in the composer). */}
       <ConfirmDialog
         open={publishFor !== null}
         title={`${publishLabel}?`}
@@ -855,7 +795,6 @@ function NewsletterList({
         </div>
       </Modal>
 
-      {/* Results of a campaign that went out (the chart icon of its row). */}
       <Modal
         open={resultsFor !== null}
         title={resultsFor?.subject ?? "Results"}
@@ -894,7 +833,6 @@ function NewsletterList({
         <EmailPreview html={previewFor?.body ?? ""} />
       </Modal>
 
-      {/* Add New Subscriber: the person still confirms by e-mail (double opt-in). */}
       <Modal
         asForm
         open={addOpen}
@@ -969,9 +907,6 @@ function NewsletterList({
     </>
   );
 
-  /* ---- form view ---- */
-  /* Sent campaigns are reviewed from the list (Preview, results); a draft or scheduled one
-     opens here — read only without newsletter.edit. */
   const formReadonly = !canEdit;
 
   if (view === "form") {
@@ -994,7 +929,7 @@ function NewsletterList({
 
         <form
           className="admin-dark-form admin-newsletter-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
+          onSubmit={(event) => event.preventDefault()}
         >
           <div className="admin-form-grid">
             <div className="admin-field admin-form-grid__full">
@@ -1015,8 +950,6 @@ function NewsletterList({
               <FieldError id="campaign-subject-error" />
             </div>
 
-            {/* Content Blocks — the article editor: blocks in one outlined frame (the + under a
-                block opens the block menu, the grip reorders). */}
             <div className="admin-field admin-form-grid__full">
               <span className="admin-field__label">Content Blocks *</span>
               <div className="admin-article-frame">
@@ -1084,7 +1017,6 @@ function NewsletterList({
     );
   }
 
-  /* ---- list view ---- */
   const kpi = (icon: IconName, label: string, value: string, trend: ReactNode) => (
     <div className="admin-newsletter-kpi">
       <span className="admin-newsletter-kpi__label">
@@ -1188,7 +1120,6 @@ function NewsletterList({
         </div>
       </div>
 
-      {/* Tabs sit directly under the header (Figma order: header → tabs → KPI strip → table). */}
       <Tabs
         label="Newsletter lists"
         tabs={[

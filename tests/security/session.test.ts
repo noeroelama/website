@@ -44,7 +44,6 @@ describe("OAuth session endpoint (Google sign-in via Firebase → server session
   });
 
   it("uses a __Secure- cookie so one session can be shared by web, admin and shop", () => {
-    // __Host- forbids the Domain attribute; __Secure- still forces Secure.
     expect(SESSION_COOKIE).toBe("__Secure-session");
   });
 
@@ -56,7 +55,6 @@ describe("OAuth session endpoint (Google sign-in via Firebase → server session
     const signOut = await routes.DELETE(
       new Request("https://admin.ppiasiania.id/api/session", { method: "DELETE" }),
     );
-    // A cookie set with a Domain can only be cleared with the same Domain.
     expect(signOut.headers.get("set-cookie")).toContain("Domain=ppiasiania.id");
     expect(signOut.headers.get("set-cookie")).toContain("Max-Age=0");
   });

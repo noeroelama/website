@@ -9,7 +9,6 @@ import { toPeriodItem } from "@/components/periods-model";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads, chapterRecords } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
 const VIEWS: readonly OrgView[] = ["period", "ppi", "universities"];
@@ -33,7 +32,6 @@ export default async function OrganizationsRoute({
   const signals = await chapterRecords().signals(chapters);
   const chapterItems = chapters.map(toChapterItem);
 
-  // Universities tab: approved campuses of one PPI country (`?country=JP`), plus the review queue.
   let universities = null;
   if (pending) {
     const countries = [

@@ -7,11 +7,6 @@ import { campusChoicesAction, proposeCampusAction } from "./actions";
 
 type Text = Dictionary["profile"];
 
-/**
- * University field of the profile (A3): the campuses of the chosen PPI country, filtered in the
- * browser as the member types (name or alias, anywhere in the name), plus "my campus is not
- * listed" to propose one. Typing without picking keeps the typed name (no campus id).
- */
 export function CampusPicker(props: {
   t: Text;
   countryCode: string;

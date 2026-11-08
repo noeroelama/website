@@ -1,22 +1,14 @@
 import { PRIVACY_POLICY_VERSION } from "@website/domain/members";
 
-/**
- * UI text of the public website in Indonesian (default) and English. No i18n library: two typed
- * dictionaries with the same shape (tests/unit/web-i18n.test.ts checks every key in both).
- * Content from the database (news, events) is shown in the language it was written in.
- */
 export const LANGUAGES = ["id", "en"] as const;
 export type Language = (typeof LANGUAGES)[number];
 
-/** Cookie holding the visitor's choice (not personal data; 1 year, SameSite=Lax). */
 export const LANG_COOKIE = "lang";
 
-/** Indonesian unless the cookie says exactly "en". */
 export function languageFrom(cookieValue: string | undefined): Language {
   return cookieValue === "en" ? "en" : "id";
 }
 
-/** Date the Terms and the Privacy Policy last changed (shown on both pages; members agree to it). */
 export const LEGAL_VERSION = PRIVACY_POLICY_VERSION;
 
 interface Section {
@@ -35,7 +27,6 @@ const id = {
     map: "Peta",
     about: "Tentang Kami",
   },
-  /** Account part of the header: Log in chip, or the signed-in user's menu. */
   account: {
     login: "Masuk",
     menu: "Akun",
@@ -130,7 +121,7 @@ const id = {
   news: {
     latest: "Berita terbaru",
     by: "Oleh",
-    allCategories: "Semua" /* same as the events/gallery pills (user) */,
+    allCategories: "Semua",
     category: "Kategori",
     filter: "Terapkan",
     tagged: "Tag",
@@ -142,7 +133,6 @@ const id = {
     next: "Berikutnya",
     pagination: "Navigasi halaman",
     all: "Lihat semua berita",
-    /* Panel labels of the news list (same shape as the events/gallery bar, user). */
     search: "Cari Berita",
     searchPlaceholder: "Cari judul berita…",
     showing: "Menampilkan {n} berita",
@@ -165,7 +155,7 @@ const id = {
     category: "Kategori",
     other: "Lainnya",
     period: "Rentang Waktu",
-    allPeriods: "Semua rentang waktu" /* shared by the news panel (user) */,
+    allPeriods: "Semua rentang waktu",
     periodOptions: {
       upcoming: "Mendatang",
       week: "Minggu ini",
@@ -173,7 +163,6 @@ const id = {
       year: "Tahun ini",
       custom: "Menyesuaikan",
     },
-    /* Pill labels exactly as the design mock (SEMINAR WORKSHOP WEBINAR CONFERENCE MEETUP). */
     pillTypes: {
       seminar: "Seminar",
       workshop: "Workshop",
@@ -246,15 +235,10 @@ const id = {
     brief: "Gambaran singkat sorotan acara. Lorem ipsum.",
   },
   map: {
-    /* Static map page (user): the design title and tagline. The keys below the divider
-       belong to the interactive chapter map used by About, Profile and the chapter cards. */
     title: "Peta PPI Negara Kawasan Asia Oseania",
     tagline:
       "Menghubungkan warga Indonesia di Asia-Oseania lewat kolaborasi, budaya, dan komunitas.",
-    /* Country list panel under the map image (user): side.svg recreated from data —
-       one row per chapter; inactive chapters dim. */
     list: "Daftar PPI Negara",
-    /* Region headings of the country table, in the design's order (lib/country-names.ts). */
     regions: {
       oceania: "OSEANIA",
       southeastAsia: "ASIA TENGGARA",
@@ -263,15 +247,12 @@ const id = {
       middleAsia: "ASIA TENGAH",
       others: "Lainnya",
     },
-    /* Chapter detail page /map/[slug] (user): the dashboard's plain rows — "Email:" /
-       "Phone:" lines, no field headers (user). Row click → the detail page. */
     detail: {
       back: "Kembali ke Peta",
       email: "E-mail",
       phone: "Telepon",
       instagram: "Instagram",
     },
-    /* ---- interactive chapter map (About/Profile/chapter cards) ---- */
     intro: "PPI Negara anggota PPIDK Asia-Oseania. Pilih titik di peta untuk melihat kontaknya.",
     count: "PPI Negara",
     label: "Peta PPI Negara di kawasan Asia-Oseania",
@@ -899,7 +880,7 @@ const en: Dictionary = {
   },
   pages: {
     activities: "Activities",
-    news: "Blog & Article" /* English heading like the design (user) */,
+    news: "Blog & Article",
     events: "Events",
     gallery: "Our Gallery",
     map: "Map",
@@ -907,7 +888,7 @@ const en: Dictionary = {
   news: {
     latest: "Latest news",
     by: "By",
-    allCategories: "All" /* same as the events/gallery pills (user) */,
+    allCategories: "All",
     category: "Category",
     filter: "Apply",
     tagged: "Tag",
@@ -941,7 +922,7 @@ const en: Dictionary = {
     category: "Category",
     other: "Others",
     period: "Date Range",
-    allPeriods: "Any date range" /* shared by the news panel (user) */,
+    allPeriods: "Any date range",
     periodOptions: {
       upcoming: "Upcoming",
       week: "This week",
@@ -949,7 +930,6 @@ const en: Dictionary = {
       year: "This year",
       custom: "Custom…",
     },
-    /* Pill labels exactly as the design mock (SEMINAR WORKSHOP WEBINAR CONFERENCE MEETUP). */
     pillTypes: {
       seminar: "Seminar",
       workshop: "Workshop",
@@ -957,7 +937,7 @@ const en: Dictionary = {
       conference: "Conference",
       meeting: "Meetup",
     },
-    region: "Country" /* label as in the design mock (user) */,
+    region: "Country",
     allRegions: "All regions",
     search: "Search",
     searchPlaceholder: "Search activities…",
@@ -1022,11 +1002,9 @@ const en: Dictionary = {
     brief: "A brief description of the event highlights. Lorem ipsum.",
   },
   map: {
-    /* Same design title and tagline as the Indonesian dictionary (user). */
     title: "Map PPI Negara Kawasan Asia Oseania",
     tagline:
       "Connecting Indonesian across Asia-Oceania through collaboration, culture, and community.",
-    /* Same list heading as the Indonesian dictionary; the country names are English. */
     list: "List PPI Negara",
     regions: {
       oceania: "OCEANIA",
@@ -1036,7 +1014,6 @@ const en: Dictionary = {
       middleAsia: "MIDDLE ASIA",
       others: "Others",
     },
-    /* Chapter detail page /map/[slug] (user): the same dashboard field labels. */
     detail: {
       back: "Back to Map",
       email: "Email",

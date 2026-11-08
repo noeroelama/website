@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { exportLog, meetingActions, minutesActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/meetings.ts (createGuardedAction).
 const done = <T extends { ok: boolean }>(result: T): T => {
   if (result.ok) revalidatePath("/meetings", "layout");
   return result;
@@ -44,7 +43,6 @@ export async function draftMinutesAction(input: unknown) {
   return done(await minutesActions().draft(getPrincipal, getAuditContext)(input));
 }
 
-/** Export CSV of personal data: logged as a data.export security event (M8). */
 export async function logAttendanceExportAction(input: unknown) {
   return exportLog().attendance(getPrincipal, getAuditContext)(input);
 }

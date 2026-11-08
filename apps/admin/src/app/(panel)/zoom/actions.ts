@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { zoomActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/zoom.ts (createGuardedAction).
 const done = <T extends { ok: boolean }>(result: T): T => {
   if (result.ok) revalidatePath("/zoom");
   return result;

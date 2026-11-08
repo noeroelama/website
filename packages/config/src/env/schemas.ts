@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { APP_ENVIRONMENTS } from "../environments";
 
-/**
- * Reusable env fragments. Apps compose only the fragments they need, so an app
- * cannot accidentally receive (or require) another app's secrets.
- */
 const nonEmpty = z.string().trim().min(1);
 const optionalUrl = z.url().optional();
 
@@ -13,25 +9,17 @@ export const baseEnv = z.object({
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
-/** Firebase Admin SDK (server only): Authentication only. Credentials are optional so that
- * Workload Identity Federation / ADC can be used instead of a JSON key. */
 export const firebaseAdminEnv = z.object({
   FIREBASE_PROJECT_ID: nonEmpty,
   FIREBASE_CLIENT_EMAIL: z.email().optional(),
   FIREBASE_PRIVATE_KEY: nonEmpty.optional(),
 });
 
-/** MySQL 8 on cPanel: all data except sign-in. Each app has its own MySQL user. */
 export const databaseEnv = z.object({
   DATABASE_URL: nonEmpty.regex(/^mysql:\/\//, "mysql://user:password@localhost:3306/database"),
-  /** Connections per server process (Passenger may run several processes per app). */
   DATABASE_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(20).default(5),
 });
 
-/**
- * Uploaded files on the cPanel disk (web and admin): an absolute folder outside every app folder,
- * e.g. /home/<user>/ppidk-files (C:\ppidk-files when developing on Windows). Empty = uploads are off.
- */
 export const filesEnv = z.object({
   FILE_STORAGE_DIR: z
     .string()
@@ -40,7 +28,6 @@ export const filesEnv = z.object({
     .optional(),
 });
 
-/** Firebase web config. Public by design — never put secrets here. */
 export const firebaseClientEnv = z.object({
   NEXT_PUBLIC_FIREBASE_API_KEY: nonEmpty,
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: nonEmpty,
@@ -49,12 +36,7 @@ export const firebaseClientEnv = z.object({
 });
 
 export const sessionEnv = z.object({
-  /** Session lifetime in hours (max 12 by policy). Use the same value in web, admin and shop. */
   SESSION_MAX_AGE_HOURS: z.coerce.number().int().min(1).max(12).default(8),
-  /**
-   * Parent domain on which the ONE session cookie is shared by web, admin and shop
-   * (e.g. `ppiasiania.id`). Empty = host-only (local development).
-   */
   SESSION_COOKIE_DOMAIN: z
     .string()
     .trim()
@@ -71,21 +53,14 @@ export const sessionEnv = z.object({
     .optional(),
 });
 
-/** Bearer secret for GET /cron/<job> (admin, cPanel Cron Jobs). Without it every cron call is 401. */
 export const cronEnv = z.object({
   CRON_SECRET: nonEmpty.min(32).optional(),
 });
 
-/** HMAC key for per-IP rate-limit counters. Required in staging/production (checked at startup). */
 export const rateLimitEnv = z.object({
   RATE_LIMIT_SECRET: nonEmpty.min(32).optional(),
 });
 
-/**
- * Outgoing messages (packages/domain/src/messaging). Every environment uses the live data, so
- * the default is `log` (record only). `live` sends in production; elsewhere only to the test
- * recipients (comma-separated e-mail addresses).
- */
 export const messagingEnv = z.object({
   MESSAGING_MODE: z.enum(["log", "live"]).default("log"),
   MESSAGING_TEST_RECIPIENTS: z
@@ -97,30 +72,22 @@ export const messagingEnv = z.object({
         .map((item) => item.trim().toLowerCase())
         .filter(Boolean),
     )
-    // E-mail addresses or E.164 WhatsApp numbers (+6281234567890).
     .pipe(z.array(z.union([z.email(), z.string().regex(/^\+[1-9]\d{6,14}$/)]))),
 });
 
-/** WAHA (WhatsApp HTTP API) for proactive WhatsApp messages (J1); unset = not configured. */
 export const wahaEnv = z.object({
   WAHA_BASE_URL: optionalUrl,
   WAHA_API_KEY: z.string().min(1).optional(),
   WAHA_SESSION: z.string().min(1).default("default"),
-  /** WAHA webhook HMAC key (poll votes, J3); unset = /webhooks/waha refuses everything. */
   WAHA_WEBHOOK_SECRET: z.string().min(16).optional(),
 });
 
-/** Short links (K1): goppi.id first, s.id as fallback; a provider without its key is skipped. */
 export const shortLinkEnv = z.object({
   GOPPI_BASE_URL: optionalUrl,
   GOPPI_API_KEY: z.string().min(1).optional(),
   SHORTLINK_API_KEY: z.string().min(1).optional(),
 });
 
-/**
- * Google Drive for the Zoom recording archive (F3): a service account with domain-wide delegation
- * (Drive scope) acting as one Workspace user, and the archive folder id. Unset = archive off.
- */
 export const driveEnv = z.object({
   GOOGLE_DRIVE_CLIENT_EMAIL: z.email().optional(),
   GOOGLE_DRIVE_PRIVATE_KEY: z.string().min(1).optional(),
@@ -128,11 +95,6 @@ export const driveEnv = z.object({
   GOOGLE_DRIVE_FOLDER_ID: z.string().min(1).optional(),
 });
 
-/**
- * Meta WhatsApp Cloud API for chatbot replies (C4): phone number id, system-user token, app
- * secret (webhook signatures), verify token (webhook handshake). Optional Gemini key for the
- * free-text campus matcher. Unset = the chatbot is off.
- */
 export const whatsappCloudEnv = z.object({
   WHATSAPP_CLOUD_PHONE_NUMBER_ID: z.string().min(1).optional(),
   WHATSAPP_CLOUD_TOKEN: z.string().min(1).optional(),
@@ -141,7 +103,6 @@ export const whatsappCloudEnv = z.object({
   GEMINI_API_KEY: z.string().min(1).optional(),
 });
 
-/** Anthropic for machine-drafted minutes (F6); no key = the feature is off. */
 export const anthropicEnv = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_MODEL: z.string().min(1).optional(),
@@ -169,27 +130,15 @@ export const zoomEnv = z.object({
   ZOOM_ACCOUNT_ID: nonEmpty,
   ZOOM_CLIENT_ID: nonEmpty,
   ZOOM_CLIENT_SECRET: nonEmpty,
-  /** The licensed Zoom user the meetings are created for (e-mail or user id). */
   ZOOM_HOST_USER: nonEmpty,
-  /** Event Subscriptions → Secret Token (webhook signatures, F2). */
   ZOOM_WEBHOOK_SECRET_TOKEN: nonEmpty,
 });
 
-/**
- * Newsletter (web sign-up, admin campaigns). SUBSCRIBER_HASH_SECRET turns an e-mail address into
- * the subscriber id — never rotate it. LINK_SIGNING_SECRET signs unsubscribe links. Both ≥ 32
- * characters and different per environment.
- */
 export const newsletterEnv = z.object({
   SUBSCRIBER_HASH_SECRET: nonEmpty.min(32),
   LINK_SIGNING_SECRET: nonEmpty.min(32),
 });
 
-/**
- * Documents (letters, certificates). VERIFICATION_HOST is the extra domain of the web app that
- * answers printed codes (`verif.ppiasiania.id/<CODE>`, as PPIDK printed them); empty = the QR
- * points to `<WEB_URL>/verify/<CODE>`.
- */
 export const documentsEnv = z.object({
   VERIFICATION_HOST: z
     .string()
@@ -199,11 +148,6 @@ export const documentsEnv = z.object({
     .optional(),
 });
 
-/**
- * AES-256-GCM key for data only its owner may see (personal signatures): 32 random bytes,
- * base64. The SAME value on web (encrypts) and admin (decrypts for letters). Losing it makes
- * every stored signature unreadable; empty = signatures are off.
- */
 export const fieldEncryptionEnv = z.object({
   FIELD_ENCRYPTION_KEY: z
     .string()
@@ -218,7 +162,6 @@ export const calendarEnv = z.object({
 
 export const gatewayEnv = z.object({
   PORT: z.coerce.number().int().positive().default(3003),
-  /** Pepper mixed into API-key hashes. Rotating it invalidates every key. */
   API_KEY_PEPPER: nonEmpty.min(32),
   GATEWAY_DB_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(20).default(5),
   GATEWAY_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),

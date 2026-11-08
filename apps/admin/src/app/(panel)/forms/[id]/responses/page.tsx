@@ -6,13 +6,10 @@ import { FormResponsesPage } from "@/components/form-responses-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Newest responses shown on the page; the CSV export reads up to EXPORT_LIMIT. */
 const SHOWN = 500;
 
-/** Forms → Responses (forms.responses). Answers are personal data: never cached, never logged. */
 export default async function FormResponsesRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/forms/${id}/responses`, "forms.responses");

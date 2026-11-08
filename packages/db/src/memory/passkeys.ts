@@ -1,7 +1,6 @@
 import type { PasskeyChallenge, PasskeyCredential, PasskeyStore } from "@website/auth";
 import { safeId } from "@website/security/validation";
 
-/** Development/test passkey store. Each method runs to completion, so it is atomic. */
 export function createMemoryPasskeyStore(): PasskeyStore {
   const credentials = new Map<string, PasskeyCredential>();
   const challenges = new Map<string, PasskeyChallenge>();
@@ -26,7 +25,6 @@ export function createMemoryPasskeyStore(): PasskeyStore {
       credentials.set(id, { ...stored, counter: newCounter, lastUsedAt: usedAt });
       return Promise.resolve(true);
     },
-    // `.then` turns an invalid id into a rejected promise; each callback still runs atomically.
     saveChallenge(id, challenge) {
       return Promise.resolve().then(() => {
         challenges.set(safeId.parse(id), challenge);

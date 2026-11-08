@@ -4,7 +4,6 @@ import { webStorage } from "./db";
 import { getWebEnv } from "./env";
 import { createFileRoutes } from "./files";
 
-/** `/files/…` and `/private-files` with the website's files folder and LINK_SIGNING_SECRET. */
 export const fileRoutes = lazyEnv(() =>
   createFileRoutes({
     storage: webStorage,

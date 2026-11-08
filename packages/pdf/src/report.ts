@@ -1,20 +1,16 @@
 import { PDFDocument } from "pdf-lib";
 import { embedTimes, Flow, MM, MUTED, plain, printable } from "./flow";
 
-/** A plain A4 report (LPJ): a title, then headed sections of text lines. */
 export interface ReportPdfInput {
   readonly title: string;
   readonly subtitle: string;
   readonly sections: ReadonlyArray<{
     readonly heading: string;
-    /** Paragraphs; "\n" inside one starts a new line. */
     readonly lines: readonly string[];
   }>;
-  /** Small print at the end (e.g. when it was printed). */
   readonly footer: string;
 }
 
-/** Rendered on request, never stored (the data is the record, the PDF only a view of it). */
 export async function renderReportPdf(input: ReportPdfInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(printable(input.title));

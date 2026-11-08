@@ -1,10 +1,5 @@
 import type { EmailSender } from "./index";
 
-/**
- * E-mail channel for the messenger (`@website/domain/messaging` MessageChannel, matched by
- * shape): sends over `sender`; the message key is the idempotency key. Without a sender, a
- * from-address or a recipient it answers `not_configured` (the message log records it).
- */
 export function emailChannel(sender: EmailSender | null, from: string | undefined) {
   return {
     async send(

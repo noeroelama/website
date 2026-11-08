@@ -7,10 +7,8 @@ import { requireAdminViewer } from "@/server/context";
 import { canSeeMeeting } from "@/server/meetings";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Meetings (F4) of one period (`?period=`, default the active one) the viewer may see. */
 export default async function AdminMeetingsPage({
   searchParams,
 }: {

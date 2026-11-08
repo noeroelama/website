@@ -20,7 +20,6 @@ import { Modal } from "@/components/ui/modal";
 import { label, ORG_UNIT_TYPE_LABELS } from "@/labels";
 import { Select } from "@/components/ui/select";
 
-/** An appointment row of the Structure page (mapped on the server from `appointments/{id}`). */
 export interface AppointmentItem {
   id: string;
   version: number;
@@ -37,7 +36,6 @@ const SEAT_LABELS: Record<AppointmentSeat, string> = {
   member: "Member",
 };
 
-/** The people of one unit with an End button (ending revokes the roles the appointment gave). */
 export function UnitPeople(props: {
   people: AppointmentItem[];
   canEdit: boolean;
@@ -69,7 +67,6 @@ export function UnitPeople(props: {
   );
 }
 
-/** Appoint someone (by account e-mail) to a seat of one unit of the active period. */
 export function AppointModal(props: {
   unit: { id: string; name: string } | null;
   onClose: () => void;
@@ -171,7 +168,6 @@ export function AppointModal(props: {
   );
 }
 
-/** Roles from appointments: which (custom) role each seat gives. Data, edited with roles.edit. */
 export function RoleMapModal(props: {
   open: boolean;
   current: { map: AppointmentRoleMap; version: number } | null;

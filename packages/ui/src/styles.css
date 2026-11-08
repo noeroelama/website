@@ -1,23 +1,15 @@
-/*
- * PPIDK design tokens + base styles. The ONE place for colours, type, radius, spacing, shadows
- * and motion. Every app imports it once in its root layout (`import "@website/ui/styles.css"`);
- * app CSS and components use `var(--…)` only (tests/unit/design-tokens.test.ts enforces this).
- * The Poppins font file is loaded by each app with next/font and exposed as --font-poppins.
- */
 :root {
-  /* ---- Brand palette ---- */
-  --color-brand-950: #1f0006; /* darkest wine — text, site header/footer */
-  --color-brand-800: #3a000c; /* main brand colour — primary, side panel */
-  --color-brand-600: #a8173a; /* crimson — accent, danger, focus (6.8:1 on cream) */
-  --color-brand-400: #e6b15a; /* champagne gold — highlight on wine (9.1:1 on brand-800) */
-  --color-brand-200: #ecd7d6; /* rose sand — borders */
-  --color-brand-50: #fcf4f3; /* blush cream — page background */
+  --color-brand-950: #1f0006;
+  --color-brand-800: #3a000c;
+  --color-brand-600: #a8173a;
+  --color-brand-400: #e6b15a;
+  --color-brand-200: #ecd7d6;
+  --color-brand-50: #fcf4f3;
   --color-white: #ffffff;
   --color-black: #000000;
-  --color-success: #1d6b47; /* deep emerald on cream (6:1) */
-  --color-warning: #8a4a0b; /* burnt amber on cream (6.3:1) */
+  --color-success: #1d6b47;
+  --color-warning: #8a4a0b;
 
-  /* ---- Semantic colours (use these in components) ---- */
   --color-bg: var(--color-brand-50);
   --color-surface: var(--color-white);
   --color-text: var(--color-brand-950);
@@ -25,21 +17,20 @@
   --color-primary: var(--color-brand-800);
   --color-on-primary: var(--color-brand-50);
   --color-accent: var(--color-brand-600);
-  --color-highlight: var(--color-brand-400); /* admin pop: active nav, primary buttons, focus */
+  --color-highlight: var(--color-brand-400);
   --color-on-highlight: var(--color-brand-950);
   --color-danger: var(--color-brand-600);
-  --color-danger-bright: #e8445e; /* rose red — destructive emphasis (Delete selected) */
-  --color-gold: var(--color-brand-400); /* "… days left" countdown under Event Date */
-  --color-success-bright: #5fd39a; /* mint on dark pages — "Sent", "+38 this month" */
-  --color-info: #8bb4f2; /* periwinkle on dark pages — "Scheduled", "Sends 3 Oct" */
-  --color-violet: #c3a5f2; /* lavender on dark pages — "Reverted" Audit Log entries */
+  --color-danger-bright: #e8445e;
+  --color-gold: var(--color-brand-400);
+  --color-success-bright: #5fd39a;
+  --color-info: #8bb4f2;
+  --color-violet: #c3a5f2;
   --color-border: var(--color-brand-200);
   --color-border-subtle: color-mix(in srgb, var(--color-brand-800) 12%, transparent);
   --color-hover: color-mix(in srgb, var(--color-brand-800) 7%, transparent);
   --color-focus: var(--color-brand-600);
   --color-overlay: color-mix(in srgb, var(--color-brand-950) 94%, transparent);
 
-  /* Dark (maroon) surfaces: side panel, top bars */
   --color-panel: var(--color-brand-800);
   --color-on-panel: var(--color-brand-50);
   --color-on-panel-muted: color-mix(in srgb, var(--color-brand-50) 68%, transparent);
@@ -48,10 +39,8 @@
   --color-panel-active: var(--color-brand-50);
   --color-on-panel-active: var(--color-brand-950);
 
-  /* Public site header and footer (darkest maroon band) */
   --color-frame: var(--color-brand-950);
 
-  /* ---- Typography (Poppins) ---- */
   --font-sans: var(--font-poppins), system-ui, sans-serif;
   --font-regular: 400;
   --font-medium: 500;
@@ -59,32 +48,31 @@
   --font-bold: 700;
   --tracking-wide: 0.08em;
 
-  --text-xs: 0.75rem; /* 12 — small label / date */
+  --text-xs: 0.75rem;
   --leading-xs: 1.5;
-  --text-2xs: 0.6875rem; /* 11 — micro label (dense admin tables, QR hints) */
+  --text-2xs: 0.6875rem;
   --leading-2xs: 1.4;
-  --text-3xs: 0.625rem; /* 10 — smallest admin table text (events list) */
+  --text-3xs: 0.625rem;
   --leading-3xs: 1.35;
-  --text-sm: 0.875rem; /* 14 — secondary text / meta */
+  --text-sm: 0.875rem;
   --leading-sm: 1.5;
-  --text-base: 1rem; /* 16 — main body text */
+  --text-base: 1rem;
   --leading-base: 1.5;
-  --text-lg: 1.125rem; /* 18 — intro paragraph */
+  --text-lg: 1.125rem;
   --leading-lg: 1.5;
-  --text-xl: 1.25rem; /* 20 — small heading */
+  --text-xl: 1.25rem;
   --leading-xl: 1.4;
-  --text-2xl: 1.5rem; /* 24 — section / card title */
+  --text-2xl: 1.5rem;
   --leading-2xl: 1.3;
-  --text-3xl: 1.875rem; /* 30 — hero sub-title */
+  --text-3xl: 1.875rem;
   --leading-3xl: 1.2;
-  --text-4xl: 2.25rem; /* 36 — page title / hero */
+  --text-4xl: 2.25rem;
   --leading-4xl: 1.2;
-  --text-5xl: 3rem; /* 48 — large title */
+  --text-5xl: 3rem;
   --leading-5xl: 1;
-  --text-6xl: 3.75rem; /* 60 — "PPIDK Asiania" */
+  --text-6xl: 3.75rem;
   --leading-6xl: 1;
 
-  /* ---- Spacing (4 px grid) ---- */
   --space-0-5: 0.125rem;
   --space-1: 0.25rem;
   --space-1-5: 0.375rem;
@@ -101,24 +89,21 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* ---- Sizes ---- */
-  --size-touch: 2.75rem; /* 44 px minimum touch target */
-  --size-control: 2.5rem; /* 40 px control row on pointer devices */
-  --size-control-sm: 1.75rem; /* 28 px compact control (search, icon actions, select) */
+  --size-touch: 2.75rem;
+  --size-control: 2.5rem;
+  --size-control-sm: 1.75rem;
   --size-avatar: 2.5rem;
   --size-icon: 1.125rem;
-  --measure: 22.5rem; /* narrow forms */
-  --measure-content: 45rem; /* readable content column */
-  --measure-page: 91.5rem; /* public site header/footer: 1416 px content + side padding */
+  --measure: 22.5rem;
+  --measure-content: 45rem;
+  --measure-page: 91.5rem;
 
-  /* ---- Radius ---- */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
 
-  /* ---- Elevation & motion ---- */
   --shadow-popover: 0 8px 24px color-mix(in srgb, var(--color-black) 28%, transparent);
   --duration-fast: 150ms;
   --duration-base: 220ms;
@@ -127,7 +112,6 @@
   --focus-ring-offset: 2px;
 }
 
-/* ---- Base ---- */
 *,
 *::before,
 *::after {
@@ -185,7 +169,6 @@ a {
   }
 }
 
-/* ---- Type scale utilities (same names as the design spec) ---- */
 .text-2xs {
   font-size: var(--text-2xs);
   line-height: var(--leading-2xs);
@@ -231,7 +214,6 @@ a {
   line-height: var(--leading-6xl);
 }
 
-/* ---- Shared components (packages/ui and simple app forms) ---- */
 .ui-shell {
   max-width: var(--measure-content);
   margin: var(--space-16) auto;
@@ -300,7 +282,6 @@ a {
   color: var(--color-success);
 }
 
-/* Error pages (ErrorPage) */
 .ui-error-status {
   margin: 0;
   color: var(--color-accent);
@@ -327,7 +308,6 @@ a.ui-button {
   text-decoration: none;
 }
 
-/* News article (ArticleView): public page and admin preview */
 .ui-article {
   max-width: var(--measure-content);
   margin: var(--space-12) auto;

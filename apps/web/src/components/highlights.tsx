@@ -7,10 +7,6 @@ import { publicHighlights } from "@/server/highlights";
 import { publishedRecruitments } from "@/server/recruitment-wiring";
 import { logger } from "@/server/session";
 
-/**
- * L1 / M4: open recruitments, public forms and upcoming events (streams in; a failing read is
- * logged and leaves the list out). `all` = the /activities page: no limit, an empty message.
- */
 export async function Highlights({ all = false }: { all?: boolean }) {
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language].home;

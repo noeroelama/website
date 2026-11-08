@@ -70,7 +70,6 @@ const letters = [
         dueDate: null,
         status: "waiting",
       },
-      // A unit that no longer exists: its path is just itself.
       {
         id: "d4",
         toUserId: null,
@@ -182,7 +181,6 @@ describe("unit boards (G1)", () => {
     expect(visibleTask(reader, board?.[0] as NonNullable<typeof board>[number]).href).toBe(
       "/meetings/m1",
     );
-    // Another unit is still closed to Budi.
     expect(await tasks().board(budi, "dirs")).toBeNull();
     const shares = createSqlTaskShareStore(fake.db as unknown as Db);
     expect(await shares.listForUnit("media")).toEqual(["budi"]);

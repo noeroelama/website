@@ -53,7 +53,6 @@ const toRequest = (id: string, data: Record<string, unknown>): ZoomRequest => ({
   deletedAt: toDate(data["deletedAt"]),
 });
 
-/** Zoom session UUIDs contain "/", "+" and "=": the document id is their hex. */
 const sessionId = (uuid: string) => Buffer.from(uuid).toString("hex");
 
 const toFile = (id: string, data: Record<string, unknown>): RecordingFile => ({
@@ -78,12 +77,6 @@ const toSlots = (value: unknown): HeldSlot[] =>
     endsAt: toDate(s["endsAt"]) as Date,
   }));
 
-/**
- * `zoomRequests/{id}` (F1) and `zoomCapacity/{yyyy-mm-dd}` (the approved bookings touching each
- * UTC day). Every write is ONE transaction: the request, then every capacity day it touches
- * (locked rows), the capacity check, the audit chain head; then all writes. A booking entering
- * "approved" takes its slot on every day; leaving "approved" frees it. Settings: `settings/zoom`.
- */
 export function createSqlZoomStore(db: Database) {
   const requests = db.collection("zoomRequests");
   const capacity = db.collection("zoomCapacity");
@@ -119,7 +112,6 @@ export function createSqlZoomStore(db: Database) {
         const version = (current.version ?? 0) + 1;
         const log = await audit.begin(tx);
         tx.set(settingsRef, { ...settings, version });
-        // The encrypted Host Key never goes into the audit log.
         const visible = (s: ZoomSettings) => ({
           ...s,
           hostKeyEncrypted: s.hostKeyEncrypted ? "(set)" : null,
@@ -135,7 +127,6 @@ export function createSqlZoomStore(db: Database) {
       return snapshot.exists ? read(id, snapshot.data()) : null;
     },
 
-    /** Requests starting in [from, to] (list page, calendar). */
     async listBetween(from: Date, to: Date): Promise<ZoomRequest[]> {
       const snapshot = await requests
         .where("startsAt", ">=", from)
@@ -146,7 +137,6 @@ export function createSqlZoomStore(db: Database) {
         .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
     },
 
-    /** A recorded session to archive (F3); kept once (webhook retries add nothing). */
     async addSession(uuid: string, bookingId: string, now: Date): Promise<void> {
       const ref = sessions.doc(sessionId(uuid));
       await db.runTransaction(async (tx) => {
@@ -155,7 +145,6 @@ export function createSqlZoomStore(db: Database) {
       });
     },
 
-    /** Sessions whose files are not listed yet (cron "recording-archive"). */
     async unlistedSessions(limit: number): Promise<Array<{ uuid: string; bookingId: string }>> {
       const snapshot = await sessions.where("listedAt", "==", null).limit(limit).get();
       return snapshot.docs.map((d) => ({
@@ -164,7 +153,6 @@ export function createSqlZoomStore(db: Database) {
       }));
     },
 
-    /** Records a session's files (new ones pending) and marks it listed, in one transaction. */
     async listSession(uuid: string, files: readonly RecordingFile[], now: Date): Promise<void> {
       const ref = sessions.doc(sessionId(uuid));
       await db.runTransaction(async (tx) => {
@@ -190,7 +178,6 @@ export function createSqlZoomStore(db: Database) {
       return Boolean((await sessions.doc(sessionId(uuid)).get()).get("trashedAt"));
     },
 
-    /** The next file to work on: one in progress first, else the oldest pending. */
     async nextFile(): Promise<RecordingFile | null> {
       for (const status of ["uploading", "pending"] as const) {
         const snapshot = await recordingFiles
@@ -211,7 +198,6 @@ export function createSqlZoomStore(db: Database) {
     async filesForBookings(bookingIds: readonly string[]): Promise<RecordingFile[]> {
       if (bookingIds.length === 0) return [];
       const found: RecordingFile[] = [];
-      // `in` takes at most 30 values per query.
       for (let i = 0; i < bookingIds.length; i += 30) {
         const snapshot = await recordingFiles
           .where("bookingId", "in", bookingIds.slice(i, i + 30))
@@ -221,14 +207,12 @@ export function createSqlZoomStore(db: Database) {
       return found;
     },
 
-    /** The booking whose Zoom meeting this is (webhooks match OUR meeting ids only). */
     async findByZoomMeetingId(zoomMeetingId: string): Promise<ZoomRequest | null> {
       const snapshot = await requests.where("zoomMeetingId", "==", zoomMeetingId).limit(1).get();
       const doc = snapshot.docs[0];
       return doc ? read(doc.id, doc.data()) : null;
     },
 
-    /** Approved bookings without a Zoom link yet (cron "zoom-rooms"), oldest first. */
     async withoutRoom(limit: number): Promise<ZoomRequest[]> {
       const snapshot = await requests
         .where("status", "==", "approved")
@@ -238,10 +222,6 @@ export function createSqlZoomStore(db: Database) {
       return snapshot.docs.map((doc) => read(doc.id, doc.data()));
     },
 
-    /**
-     * A change; `build` decides the next fields from the current request and the settings (read
-     * in the transaction). Capacity is checked and updated here, never by the caller.
-     */
     write(
       id: string | null,
       expectedVersion: number | null,

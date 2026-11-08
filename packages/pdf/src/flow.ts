@@ -13,10 +13,8 @@ export const A4 = { width: 210 * MM, height: 297 * MM };
 export const INK = rgb(0.067, 0.067, 0.067);
 export const MUTED = rgb(0.27, 0.27, 0.27);
 
-/** Characters the standard PDF fonts (WinAnsi) can draw besides Latin-1. */
 const WIN_ANSI_EXTRA = new Set("€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ");
 
-/** Text the standard fonts can print: tabs and odd spaces become spaces, the rest "?". */
 export function printable(text: string): string {
   let out = "";
   for (const ch of text.replace(/[\t\u00a0\u2000-\u200b\u202f]/g, " ")) {
@@ -36,7 +34,6 @@ export interface Fonts {
   readonly boldItalic: PDFFont;
 }
 
-/** Times (the PPI Dunia letter standard: Times New Roman 12 pt, 1.5 lines). */
 export async function embedTimes(doc: PDFDocument): Promise<Fonts> {
   const [regular, bold, italic, boldItalic] = await Promise.all([
     doc.embedFont(StandardFonts.TimesRoman),
@@ -56,7 +53,6 @@ export const fontOf = (fonts: Fonts, run: Pick<Run, "bold" | "italic">) =>
       ? fonts.italic
       : fonts.regular;
 
-/** One word (or space) of a line, already measured. */
 interface Piece {
   readonly text: string;
   readonly run: Run;
@@ -67,11 +63,9 @@ interface Piece {
 export interface Line {
   readonly pieces: Piece[];
   readonly width: number;
-  /** Ends the paragraph or a <br>: never justified. */
   readonly last: boolean;
 }
 
-/** Splits styled runs into lines of at most `width` points (long words are cut). */
 export function wrapRuns(
   runs: readonly Run[],
   fonts: Fonts,
@@ -102,7 +96,6 @@ export function wrapRuns(
       let text = token;
       let w = font.widthOfTextAtSize(text, size);
       if (!space && used + w > limit() && pieces.length > 0) finish(false);
-      // A word longer than the whole line is cut where it no longer fits.
       while (!space && w > limit()) {
         let cut = text.length - 1;
         while (cut > 1 && font.widthOfTextAtSize(text.slice(0, cut), size) > limit() - used)
@@ -130,11 +123,9 @@ export interface FlowOptions {
   readonly marginTop: number;
   readonly marginBottom: number;
   readonly marginX: number;
-  /** Draws what repeats on every page (letterhead and footer images, watermark). */
   readonly decorate: (page: PDFPage) => void;
 }
 
-/** Pages filled from the top; a new page starts (decorated) when the next item does not fit. */
 export class Flow {
   page: PDFPage;
   y: number;
@@ -161,7 +152,6 @@ export class Flow {
     return page;
   }
 
-  /** Room for `height` points, or a new page. */
   ensure(height: number) {
     if (this.y - height < this.options.marginBottom) {
       this.page = this.addPage();
@@ -173,7 +163,6 @@ export class Flow {
     this.y -= points;
   }
 
-  /** Wrapped, styled text; `x` and `width` default to the text column. */
   text(
     runs: readonly Run[],
     options: {
@@ -202,7 +191,6 @@ export class Flow {
       const baseline = this.y - size;
       for (const piece of line.pieces) {
         if (piece.space) {
-          // An underlined phrase stays underlined across its spaces.
           if (piece.run.underline) {
             this.page.drawLine({
               start: { x: cursor, y: baseline - 1.5 },
@@ -237,7 +225,6 @@ export class Flow {
   }
 }
 
-/** A plain run (no styles) or one bold run. */
 export const plain = (text: string, style: Partial<Omit<Run, "text">> = {}): Run[] => [
   { text, bold: false, italic: false, underline: false, ...style },
 ];

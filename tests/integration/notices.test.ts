@@ -171,7 +171,6 @@ describe("who is told (contacts and desk holders)", () => {
       (await reader.holders("letters.review", { orgUnitPath: ["koor", "media"] })).sort(),
     ).toEqual(["dir", "sekre"]);
     expect(await reader.holders("letters.cancel", { orgUnitPath: [] })).toEqual([]);
-    // No active period: period-bound assignments grant nothing, the others still count.
     fake.docs.delete("settings/activePeriod");
     expect(await reader.holders("letters.review", { orgUnitPath: ["sekjen"] })).toEqual(["sekre"]);
   });
@@ -258,7 +257,6 @@ describe("notification sources (J2)", () => {
     await notices().letter(letter({ status: "corrected", typeId: "missing" }));
     expect(sent.map((s) => s.to)).toEqual(["rina@example.org"]);
     sent.length = 0;
-    // One desk signed: the other was already told when the letter was passed.
     await notices().letter(letter({ status: "corrected", secretary: { uid: "rina", at: now } }));
     expect(sent).toEqual([]);
     await notices().letter(letter({ status: "approved" }));

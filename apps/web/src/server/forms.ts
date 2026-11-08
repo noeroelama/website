@@ -9,12 +9,8 @@ import {
   type PublicForm,
 } from "@website/domain/forms";
 
-/* Public forms at /f/{token} (feature C2). Recruitment applications never come through here:
-   the store only reaches forms whose usage is "public" (domain `publicAnswerState`). */
-
 export type FormView = { readonly form: PublicForm; readonly state: PublicAnswerState };
 
-/** /f/{token}: the form without ids, or null (→ 404) for unknown, draft or recruitment forms. */
 export function createPublicFormReader(deps: {
   readonly find: (
     token: string,
@@ -33,7 +29,6 @@ export interface FormSubmissionDeps {
     answers: unknown,
     now: Date,
   ) => Promise<SubmitOutcome>;
-  /** reCAPTCHA v3, action "form_submit". */
   readonly captcha: (token: string) => Promise<boolean>;
   readonly now: () => Date;
 }
@@ -59,10 +54,6 @@ const Input = z
   })
   .strict();
 
-/**
- * A guest's answers: the envelope is checked, then the captcha (before anything is read or
- * written), then the store validates the answers against the version in one transaction.
- */
 export function createFormSubmission(deps: FormSubmissionDeps) {
   return async (input: unknown): Promise<FormSubmitResult> => {
     const parsed = Input.safeParse(input);

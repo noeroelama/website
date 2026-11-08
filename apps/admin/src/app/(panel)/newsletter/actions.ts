@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { newsletterActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/newsletter.ts (createGuardedAction).
 export async function saveCampaignAction(input: unknown) {
   const result = await newsletterActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/newsletter", "layout");

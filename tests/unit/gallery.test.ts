@@ -88,7 +88,6 @@ describe("gallery album (GALLERY DASHBOARD)", () => {
     });
     expect(dto).not.toHaveProperty("version");
     expect(toPublicAlbum({ ...album, totalPhotos: 150 }).photoCount).toBe(150);
-    // Albums imported from PPIDK may have no featured image yet.
     expect(toPublicAlbum({ ...album, images: [] })).toMatchObject({ cover: null, photoCount: 0 });
   });
 });
@@ -139,7 +138,6 @@ describe("Gallery page rows (server mapping)", () => {
       resourceId,
       actor: { type: "staff" as const, id, email: `${id}@example.org` },
     });
-    // Audit entries come newest first: the first entry per album wins.
     const editors = lastEditors(
       [entry("a1", "ana"), entry("a2", "budi"), entry("a1", "citra"), entry("x", "dewi", "event")],
       "album",

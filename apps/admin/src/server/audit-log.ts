@@ -12,31 +12,16 @@ import { safeId } from "@website/security/validation";
 import { REVERT_REJECTION_LABELS, label } from "../labels";
 import { createGuardedAction } from "./guarded-action";
 
-/**
- * How each module's records are reverted: resourceType → database collection. A module adds
- * its row when its records become revertible. Role and account
- * changes, uploads and sends are never listed here.
- */
 export const REVERTIBLE_COLLECTIONS: RevertibleCollections = {
-  // News (Article page): fields of content/{id}; a changed URL is never revertible.
   content: "content",
-  // Event page: fields of events/{id}; a changed URL is never revertible.
   event: "events",
-  // Gallery page: fields of galleries/{id}; a changed URL is never revertible.
   album: "galleries",
-  // Organizations → PPI: fields of chapters/{id}; a changed URL is never revertible.
   chapter: "chapters",
-  // Organizations → Period and Structure: only DELETE entries are revertible (restores the item).
   period: "periods",
   orgUnit: "orgUnits",
-  // Newsletter: campaign edits and deletes (never a send); subscriber deletes (a staff "add" is
-  // not revertible: the confirmation e-mail is already out).
   campaign: "campaigns",
   subscriber: "subscribers",
-  // Forms: a CREATE (moves the new form to the trash) and a DELETE (restores it); edits create
-  // question versions and are never revertible.
   form: "forms",
-  // Recruitment: a CREATE (trash) and a DELETE (restore); edits also wrote the seat counters.
   recruitment: "recruitments",
 };
 
@@ -44,12 +29,10 @@ export interface AuditLogDeps {
   readonly audit: Pick<SqlAuditStore, "revert" | "revertContext">;
   readonly revertible: RevertibleCollections;
   readonly now: () => Date;
-  /** `audit.revert` security event (observability logger in production). */
   readonly logSecurityEvent: (actorId: string, details: Record<string, unknown>) => void;
 }
 
 export function createAuditLogActions(deps: AuditLogDeps) {
-  /** What each entry's REVERT button may do (disabled with this reason otherwise). */
   async function revertStatus(entries: readonly AuditEvent[]) {
     const { reverted, versions } = await deps.audit.revertContext(entries, deps.revertible);
     const now = deps.now();
@@ -58,7 +41,6 @@ export function createAuditLogActions(deps: AuditLogDeps) {
         entry.id,
         evaluateRevert({
           event: deps.revertible[entry.resourceType] ? entry : { ...entry, revertible: false },
-          // Only "is there one" matters for the decision.
           existingRevert: reverted.has(entry.id) ? entry : null,
           currentVersion: versions.get(entry.id) ?? null,
           now,
@@ -77,13 +59,12 @@ export function createAuditLogActions(deps: AuditLogDeps) {
         deps.revertible,
         deps.now(),
         (original, version) => {
-          // `audit` supplies the id, actor, request and operation of THIS action.
           const template = audit({
             module: "audit",
             action: "REVERT",
             resourceType: original.resourceType,
             resourceId: original.resourceId,
-            title: "revert", // not used: buildRevertEvent keeps the original title
+            title: "revert",
             before: null,
             after: null,
             versionBefore: null,

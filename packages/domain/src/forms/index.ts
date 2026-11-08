@@ -2,13 +2,6 @@ import { z } from "zod";
 import { safeText } from "@website/security/validation";
 import { RuleViolationError, type EntityMeta } from "../shared";
 
-/**
- * Versioned forms (feature C1). A form's questions live in numbered versions
- * (`formVersions/{formId}_{n}`); a version is FROZEN once anyone answered it, and an edit then
- * creates version n+1. Answers are validated on the server by a strict Zod schema built from the
- * version. Docs: packages/domain/docs/forms.md.
- */
-
 export const QUESTION_TYPES = [
   "short_text",
   "long_text",
@@ -22,7 +15,6 @@ export const QUESTION_TYPES = [
 ] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
-/** public = guests fill it at /f/{token} (C2); recruitment = only inside an application (C3). */
 export const FORM_USAGES = ["public", "recruitment"] as const;
 export type FormUsage = (typeof FORM_USAGES)[number];
 
@@ -31,23 +23,17 @@ export type FormStatus = (typeof FORM_STATUSES)[number];
 
 export const MAX_QUESTIONS = 100;
 export const MAX_OPTIONS = 50;
-/** Longest answer per text type. */
 export const TEXT_LIMITS = { short_text: 300, long_text: 5000, other: 200 } as const;
 
 export interface Question {
-  /** Stable across versions ("q_" + 8 characters), so answers of every version share a column. */
   readonly id: string;
   readonly type: QuestionType;
   readonly label: string;
   readonly description: string;
   readonly required: boolean;
-  /** Choices only (2–50, unique). */
   readonly options: readonly string[];
-  /** Choices only: an extra free-text "Other" answer. */
   readonly allowOther: boolean;
-  /** Multi choice only: at most this many ticks (null = any). */
   readonly maxSelections: number | null;
-  /** Number only (inclusive, null = no limit). */
   readonly min: number | null;
   readonly max: number | null;
 }
@@ -57,14 +43,10 @@ export interface Form extends EntityMeta {
   readonly description: string;
   readonly usage: FormUsage;
   readonly status: FormStatus;
-  /** Random token of the public URL /f/{token}; set on the first publish, never the form id. */
   readonly publicToken: string | null;
-  /** The version new answers use. */
   readonly currentVersion: number;
-  /** Answer window (public forms); null = no limit. */
   readonly opensAt: Date | null;
   readonly closesAt: Date | null;
-  /** Responses received (counted in the response transaction). */
   readonly responseCount: number;
 }
 
@@ -72,12 +54,10 @@ export interface FormVersion {
   readonly formId: string;
   readonly number: number;
   readonly questions: readonly Question[];
-  /** True once a response uses this version: it is frozen. */
   readonly answered: boolean;
   readonly createdAt: Date;
 }
 
-/** Uploaded file reference (private Storage path; read through a permission-checked route). */
 export interface FileAnswer {
   readonly path: string;
   readonly name: string;
@@ -97,15 +77,11 @@ export interface FormResponse {
 
 export const versionDocId = (formId: string, n: number) => `${formId}_${n}`;
 
-/* ---------------------------------------------------------------- builder input */
-
 const QUESTION_ID = /^q_[A-Za-z0-9]{1,32}$/;
 const isChoice = (type: QuestionType) => type === "single_choice" || type === "multi_choice";
 
-/** A new question id from a random UUID. */
 export const newQuestionId = (uuid: string) => `q_${uuid.replace(/-/g, "").slice(0, 8)}`;
 
-/** One question as the admin builder sends it (`id` empty for a new question). */
 export const QuestionInputSchema = z
   .object({
     id: z.string().refine((v) => v === "" || QUESTION_ID.test(v), "Invalid question id."),
@@ -142,7 +118,6 @@ export const QuestionInputSchema = z
       ctx.addIssue({ code: "custom", path: ["max"], message: "Max must be at least min." });
     }
   })
-  // Fields that do not belong to the type are cleared, so versions compare by meaning.
   .transform((q): Omit<Question, "id"> & { id: string } => ({
     id: q.id,
     type: q.type,
@@ -159,7 +134,6 @@ export type QuestionInput = z.output<typeof QuestionInputSchema>;
 
 const optionalDate = z.coerce.date().nullable();
 
-/** The form editor (settings + questions). */
 export const FormInputSchema = z
   .object({
     title: safeText(120).pipe(z.string().min(3, "Enter a title (at least 3 characters).")),
@@ -184,7 +158,6 @@ export const FormInputSchema = z
   });
 export type FormInput = z.output<typeof FormInputSchema>;
 
-/** Gives every new question (empty id) a fresh id; existing ids are kept. */
 export function withQuestionIds(
   questions: readonly QuestionInput[],
   uuid: () => string,
@@ -192,7 +165,6 @@ export function withQuestionIds(
   return questions.map((q) => ({ ...q, id: q.id || newQuestionId(uuid()) }));
 }
 
-/** Same questions in the same order (every field compared). */
 export function sameQuestions(a: readonly Question[], b: readonly Question[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -202,10 +174,6 @@ export type VersionPlan =
   | { readonly write: "overwrite"; readonly number: number }
   | { readonly write: "create"; readonly number: number };
 
-/**
- * The freezing rule: unchanged questions write nothing; a version nobody answered is edited in
- * place; an answered (frozen) version is never changed - the edit becomes version n+1.
- */
 export function planVersion(current: FormVersion | null, questions: readonly Question[]) {
   if (current === null) return { write: "create", number: 1 } as const satisfies VersionPlan;
   if (sameQuestions(current.questions, questions)) {
@@ -216,13 +184,6 @@ export function planVersion(current: FormVersion | null, questions: readonly Que
     : ({ write: "overwrite", number: current.number } as const satisfies VersionPlan);
 }
 
-/* ---------------------------------------------------------------- publishing, window */
-
-/**
- * A public form may be published when it has questions and none of them is a file question:
- * guests cannot upload files (uploads are for signed-in applicants, C3). Recruitment forms are
- * never published - they are only answered inside an application.
- */
 export function assertPublishable(form: Pick<Form, "usage">, questions: readonly Question[]) {
   if (form.usage !== "public") {
     throw new RuleViolationError("Recruitment forms are answered in the application, not here.");
@@ -233,13 +194,11 @@ export function assertPublishable(form: Pick<Form, "usage">, questions: readonly
   }
 }
 
-/** Public URL token: 128 random bits, base64url (never the form id). */
 export const PUBLIC_TOKEN_PATTERN = /^[A-Za-z0-9_-]{22,64}$/;
 export const isPublicToken = (value: string) => PUBLIC_TOKEN_PATTERN.test(value);
 
 export type FormWindow = "upcoming" | "open" | "closed";
 
-/** Where a form is in its answer window (closed forms and drafts count as closed). */
 export function formWindow(
   form: Pick<Form, "status" | "opensAt" | "closesAt">,
   now: Date,
@@ -252,11 +211,6 @@ export function formWindow(
 
 export type PublicAnswerState = FormWindow | "not_found";
 
-/**
- * The guard of the public path /f/{token} (C2): recruitment forms, deleted forms and forms
- * without a token do not exist there ("not_found"); otherwise the answer window decides.
- * Recruitment applications never go through this path.
- */
 export function publicAnswerState(
   form: Pick<Form, "usage" | "status" | "publicToken" | "deletedAt" | "opensAt" | "closesAt">,
   now: Date,
@@ -268,11 +222,9 @@ export function publicAnswerState(
   return formWindow(form, now);
 }
 
-/** What /f/{token} shows: no ids, no counts, no staff data. */
 export interface PublicForm {
   readonly title: string;
   readonly description: string;
-  /** The version the answers are checked against (sent back with the answers). */
   readonly version: number;
   readonly questions: readonly Question[];
   readonly opensAt: Date | null;
@@ -289,8 +241,6 @@ export function toPublicForm(form: Form, version: FormVersion): PublicForm {
     closesAt: form.closesAt,
   };
 }
-
-/* ---------------------------------------------------------------- answers */
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const isRealDate = (value: string) => {
@@ -314,7 +264,6 @@ export const FileAnswerSchema = z
 const chosen = (q: Question) => (value: string) =>
   q.options.includes(value) ? true : q.allowOther && value.length > 0;
 
-/** The schema of ONE answer. */
 function answerSchema(q: Question): z.ZodType<AnswerValue> {
   switch (q.type) {
     case "short_text":
@@ -351,7 +300,6 @@ function answerSchema(q: Question): z.ZodType<AnswerValue> {
   }
 }
 
-/** Empty answers (blank text, no ticks, unticked consent) count as "not answered". */
 const isBlank = (value: unknown) =>
   value === undefined ||
   value === null ||
@@ -359,10 +307,6 @@ const isBlank = (value: unknown) =>
   (typeof value === "string" && value.trim() === "") ||
   (Array.isArray(value) && value.length === 0);
 
-/**
- * A strict Zod schema for the answers of one version: keys are question ids, unknown keys are
- * refused, required questions must be answered, optional blank answers are dropped.
- */
 export function answersSchema(questions: readonly Question[]) {
   const shape = Object.fromEntries(
     questions.map((q) => {
@@ -376,7 +320,6 @@ export function answersSchema(questions: readonly Question[]) {
         ? Object.fromEntries(
             Object.entries(raw as Record<string, unknown>).filter(([key, value]) => {
               const question = questions.find((q) => q.id === key);
-              // Unknown keys stay, so .strict() refuses them.
               return question === undefined || !(isBlank(value) && !question.required);
             }),
           )
@@ -391,7 +334,6 @@ export type AnswersResult =
 
 const REQUIRED_MESSAGE = "This question is required.";
 
-/** Validates answers; `fields` maps each question id (or "form") to its first message. */
 export function parseAnswers(questions: readonly Question[], raw: unknown): AnswersResult {
   const parsed = answersSchema(questions).safeParse(raw);
   if (parsed.success) return { ok: true, answers: parsed.data as Answers };
@@ -409,9 +351,6 @@ export function parseAnswers(questions: readonly Question[], raw: unknown): Answ
   return { ok: false, fields };
 }
 
-/* ---------------------------------------------------------------- responses table */
-
-/** One cell's text (choices joined with "; ", files by name). */
 export function answerText(value: AnswerValue | undefined): string {
   if (value === undefined) return "";
   if (Array.isArray(value)) return value.join("; ");
@@ -420,10 +359,6 @@ export function answerText(value: AnswerValue | undefined): string {
   return String(value);
 }
 
-/**
- * Header + one row per response. Columns are the questions of the given (current) version
- * followed by questions only older versions had; ids keep answers in the right column.
- */
 export function responseTable(
   versions: readonly FormVersion[],
   responses: readonly FormResponse[],

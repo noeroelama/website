@@ -9,10 +9,8 @@ import { requireAdminViewer } from "@/server/context";
 import { adminReads, certificateSending } from "@/server/wiring";
 import { CertificateSendPanel } from "@/components/certificate-send-panel";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** Letters → a certificate batch's participants (D5): paste, remove, open each sheet. */
 export default async function ParticipantsRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/letters/${id}/participants`, "letters.read");

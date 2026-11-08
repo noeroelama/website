@@ -61,7 +61,6 @@ const plan = {
 const slots = () => createSqlInterviewStore(db()).listForRecruitment(recruitmentId);
 const booked = (id: string) => fake.docs.get(`interviewSlots/${id}`)?.["booked"];
 
-/** An application in "interview" for `uid`. */
 const inInterview = async (uid: string) => {
   await applying().saveDraft({ uid }, { recruitmentId, choices: ["finance"], answers: {} });
   await applying().submit({ uid }, { recruitmentId });
@@ -121,7 +120,6 @@ describe("interview times (recruitment.review)", () => {
       "2026-11-15T00:00:00.000Z",
       "2026-11-15T00:30:00.000Z",
     ]);
-    // 09:00 in Tokyo is 07:00 for an applicant in Jakarta.
     expect(utcToWallTime(list[0]!.startsAt, "Asia/Jakarta")).toBe("2026-11-15T07:00");
     expect(list[0]).toMatchObject({ capacity: 1, booked: 0, location: plan.location });
     const entry = [...fake.docs.values()].find((d) => d["resourceType"] === "interviewSlot");
@@ -200,7 +198,6 @@ describe("booking an interview (applicant in `interview`)", () => {
     expect(
       await applying().bookInterview({ uid: "ari" }, { recruitmentId, slotId: first!.id }),
     ).toMatchObject({ ok: true });
-    // Booking the same time again changes nothing.
     expect(
       await applying().bookInterview({ uid: "ari" }, { recruitmentId, slotId: first!.id }),
     ).toMatchObject({ ok: true });
@@ -213,7 +210,6 @@ describe("booking an interview (applicant in `interview`)", () => {
       slotId: second!.id,
       startsAt: second!.startsAt,
     });
-    // A slot with a booking cannot be deleted; a free one can.
     expect(await interviews().removeSlot(...as(reviewer))({ id: second!.id })).toMatchObject({
       error: "refused",
       issues: ["Someone booked this time; it stays."],
@@ -225,7 +221,6 @@ describe("booking an interview (applicant in `interview`)", () => {
     expect(await interviews().removeSlot(...as(reviewer))({ id: first!.id })).toMatchObject({
       error: "refused",
     });
-    // The deleted time cannot be booked.
     expect(
       await applying().bookInterview({ uid: "ari" }, { recruitmentId, slotId: first!.id }),
     ).toEqual({

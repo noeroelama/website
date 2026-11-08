@@ -11,7 +11,6 @@ import {
   universityActions,
 } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/{chapters,periods,org-units,appointments,universities}.ts (createGuardedAction).
 export async function saveChapterAction(input: unknown) {
   const result = await chapterActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/organizations", "layout");

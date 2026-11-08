@@ -12,7 +12,6 @@ import { toAuthor } from "@/components/authors";
 import { requireAdminViewer, signInAgainUrl } from "@/server/context";
 import { adminReads, auditLogActions } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
 export default async function AuditLogPage({
@@ -30,7 +29,6 @@ export default async function AuditLogPage({
     from: rangeStart(range, new Date()),
     limit: AUDIT_PAGE_LIMIT,
   });
-  // Names from users/{uid} in one batched read; revert decisions for the whole list in one go.
   const [users, status] = await Promise.all([
     adminReads.getUsers([...new Set(page.items.map((e) => e.actor.id))]),
     auditLogActions().revertStatus(page.items),

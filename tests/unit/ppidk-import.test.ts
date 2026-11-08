@@ -337,7 +337,6 @@ describe("PPIDK people import (block J)", () => {
       addressIndonesia: { city: "Kota Bandung", province: "Jawa Barat" },
       chapterId: "ppidk-chapter-7",
     });
-    // No verification here: a verified PPIDK profile only gives the member role (below).
     expect(doc("memberProfiles/firebase-ana")).not.toHaveProperty("verificationStatus");
     expect(doc("memberProfiles/firebase-ana")?.["privacyPolicyVersion"]).not.toBe("2026-10-18");
     expect(doc("appointments/ppidk-appointment-501")).toMatchObject({

@@ -19,11 +19,9 @@ interface Row {
   due: string | null;
   done: boolean;
   overdue: boolean;
-  /** null = the viewer may not open the source page (a shared board shows the task only). */
   href: string | null;
 }
 
-/** My Tasks and unit boards (G1): one list; done in the source module, never here. */
 export function TasksPage({
   title,
   description,
@@ -34,9 +32,7 @@ export function TasksPage({
   title: string;
   description: string;
   rows: Row[];
-  /** Unit boards to open (My Tasks only). */
   boards: Array<{ id: string; name: string }>;
-  /** Sharing of this board (tasks.share), or null. */
   share: { orgUnitId: string; with: Array<{ uid: string; email: string }> } | null;
 }) {
   const router = useRouter();

@@ -3,23 +3,15 @@ import type { PublicEvent } from "@website/domain/events";
 import { publicAnswerState, type Form } from "@website/domain/forms";
 import { isRecruitmentOpen, type Recruitment } from "@website/domain/recruitment";
 
-/** One item of the home panel (L1): what anyone may open, nothing internal. */
 export interface Highlight {
   readonly kind: "recruitment" | "form" | "event";
   readonly title: string;
   readonly href: string;
-  /** Closing time (recruitment, form) or start (event); null = none. */
   readonly at: Date | null;
 }
 
-/** At most this many per kind on the home panel (the /activities page passes Infinity). */
 const LIMIT = 3;
 
-/**
- * The home highlights: open recruitments, public forms in their answer window and upcoming
- * published events (also the public /activities page, M4). Its inputs are those three PUBLIC lists only, so meetings, Zoom bookings
- * and unit agendas can never reach it (tests/integration/highlights.test.ts).
- */
 export function publicHighlights(
   input: {
     readonly recruitments: readonly Recruitment[];

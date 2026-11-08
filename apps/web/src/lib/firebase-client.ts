@@ -4,11 +4,6 @@ import { firebaseClientEnv } from "@website/config/env";
 
 let auth: Promise<Auth> | undefined;
 
-/**
- * Browser-side Firebase Auth, used only to sign in. Nothing is persisted in the browser
- * (in-memory persistence): the signed-in state is our HttpOnly session cookie.
- * NEXT_PUBLIC_* values must be referenced literally so Next.js can inline them.
- */
 export function clientAuth(): Promise<Auth> {
   auth ??= (async () => {
     const env = firebaseClientEnv.parse({

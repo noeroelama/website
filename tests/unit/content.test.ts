@@ -128,7 +128,6 @@ describe("news form validation (strict)", () => {
     expect(issues({ ...valid, tags: Array.from({ length: 11 }, (_, i) => `t${i}`) })).toContain(
       "tags",
     );
-    // Unknown keys (e.g. a client-chosen status) are refused as a whole.
     expect(NewsInputSchema.safeParse({ ...valid, status: "published" }).success).toBe(false);
     expect(
       issues({

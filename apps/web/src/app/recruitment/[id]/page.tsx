@@ -13,19 +13,16 @@ import { OfferButtons } from "./offer-buttons";
 import { PactUpload } from "./pact-upload";
 import { WithdrawButton } from "./withdraw-button";
 
-// Per request: the applicant's own application and the window.
 export const instant = false;
 
 export async function generateMetadata({
   params,
 }: PageProps<"/recruitment/[id]">): Promise<Metadata> {
-  // Params first: the store (and its env) is only touched at request time, never at build.
   const { id } = await params;
   const r = await recruitmentStore().getVisible(id);
   return r ? { title: r.title } : {};
 }
 
-/** A recruitment and, for a signed-in member, their application with ONE next action. */
 export default async function RecruitmentPage({ params }: PageProps<"/recruitment/[id]">) {
   const { id } = await params;
   const [r, user, jar] = await Promise.all([
@@ -43,9 +40,7 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
         recruitmentStore().ownRevisions(r.id, user.uid),
       ])
     : [null, false, []];
-  // An unpublished recruitment is shown only to applicants who are already in it.
   if (!r.published && !application) notFound();
-  // After submitting, the applicant gets a signed 7-day link to the personality test (C5).
   const tested =
     user && application && application.submittedAt
       ? await personalityResults().get(user.uid)
@@ -161,7 +156,6 @@ export default async function RecruitmentPage({ params }: PageProps<"/recruitmen
               {p.done}: {tested.full}
             </p>
           )}
-          {/* ONE next action (C3): a button when the applicant can act, else what happens next. */}
           {canApply ? (
             <a className="ui-button" href={`${path}/apply`}>
               {t.actions[action]}

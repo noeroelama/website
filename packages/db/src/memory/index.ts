@@ -3,10 +3,6 @@ import type { ApiKeyRecord } from "@website/apikeys";
 import type { EventEntity } from "@website/domain/events";
 import type { GatewayRepositories } from "../roles";
 
-/**
- * In-memory repositories for local development and tests. Never used when
- * APP_ENV is staging or production (enforced by the app composition roots).
- */
 export function createMemoryGatewayRepositories(
   seed: {
     events?: readonly EventEntity[];

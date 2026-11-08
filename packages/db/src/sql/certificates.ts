@@ -15,28 +15,16 @@ import { createSqlAuditWriter } from "./audit";
 import { nextNumbers } from "./counters";
 import { toCertificate, toLetter } from "./letters";
 
-/** Audit entry of a participant change on a batch (module letters). */
 export type CertificateAudit = (
   batch: Letter,
   change: { readonly added: number } | { readonly removed: Pick<Certificate, "seq" | "name"> },
 ) => AuditEvent;
 
-/**
- * `certificates/{batchId}_{seq}` (D5): the sheets of a certificate batch. Each gets its sequence
- * (`certificateCounters/{batchId}`) and its verification code (`verificationCodes/{code}`, kind
- * "certificate") when it is added, in transactions of at most CERTIFICATE_CHUNK sheets. Sheets
- * change only while the batch can be edited (before the secretariat passes it).
- */
-export function createSqlCertificateStore(
-  db: Database,
-  /** Random index 0..n-1 for verification codes (injectable for tests). */
-  random: (n: number) => number = randomInt,
-) {
+export function createSqlCertificateStore(db: Database, random: (n: number) => number = randomInt) {
   const sheets = db.collection("certificates");
   const codes = db.collection("verificationCodes");
   const audit = createSqlAuditWriter(db);
 
-  /** The batch, which must exist and still be editable. */
   async function editableBatch(tx: Transaction, batchId: string): Promise<Letter> {
     const snapshot = await tx.get(db.collection("letters").doc(safeId.parse(batchId)));
     const batch = snapshot.exists
@@ -51,7 +39,6 @@ export function createSqlCertificateStore(
     return batch;
   }
 
-  /** `count` free codes (a taken one is drawn again, never reused). */
   async function freeCodes(tx: Transaction, count: number): Promise<string[]> {
     const chosen = new Set<string>();
     for (let tries = 0; chosen.size < count; tries += 1) {
@@ -66,7 +53,6 @@ export function createSqlCertificateStore(
   }
 
   return {
-    /** The batch's sheets by sequence. */
     async list(batchId: string): Promise<Certificate[]> {
       const snapshot = await sheets.where("batchId", "==", safeId.parse(batchId)).get();
       return snapshot.docs.map((d) => toCertificate(d.id, d.data())).sort((a, b) => a.seq - b.seq);
@@ -78,10 +64,6 @@ export function createSqlCertificateStore(
       return snapshot.exists ? toCertificate(id, snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /**
-     * Adds the participants in order, CERTIFICATE_CHUNK per transaction. Returns how many. An
-     * e-mail arrives already hashed (`emailHash`): the address itself is never stored.
-     */
     async add(
       batchId: string,
       participants: readonly Pick<Certificate, "name" | "note" | "emailHash">[],
@@ -130,7 +112,6 @@ export function createSqlCertificateStore(
       return participants.length;
     },
 
-    /** Removes one sheet and its code; the others keep their numbers. */
     remove(batchId: string, id: string, auditFor: CertificateAudit): Promise<void> {
       return db.runTransaction(async (tx) => {
         const batch = await editableBatch(tx, batchId);

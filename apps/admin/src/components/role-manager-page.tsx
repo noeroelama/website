@@ -62,14 +62,6 @@ import {
   type PersonSortKey,
 } from "./role-manager-model";
 
-/* ==================================================================
-   Role Manager — one page for people and roles (docs: apps/admin/docs/users-and-roles.md).
-   People: tabs per role, search, Add New People (with suggestions) and the person popup.
-   Edit Role: the roles with their colour and permissions, Create / Edit Role popup.
-   Every change is re-checked on the server (src/server/accounts.ts, roles.ts).
-   Classes: `.admin-role-*` in globals.css; popups use the cream popup (`.admin-modal--side`).
-   ================================================================== */
-
 export interface RoleOption {
   readonly id: string;
   readonly name: string;
@@ -84,7 +76,6 @@ const STATUS_TONE = { active: "success", inactive: "danger", invited: "warn" } a
 const lastSignIn = (row: PersonRow) =>
   formatUtc(row.lastSignInAt ? new Date(row.lastSignInAt) : null);
 
-/** A role badge in the role's colour (text colour picked for contrast). */
 export function RolePill({ name, color }: { name: string; color: string }) {
   return (
     <span
@@ -96,7 +87,6 @@ export function RolePill({ name, color }: { name: string; color: string }) {
   );
 }
 
-/** A dark chip with a remove (×) button, as in "Permissions" of Create Role. */
 function RemovableChip({ label, onRemove }: { label: string; onRemove: (() => void) | null }) {
   return (
     <span className="admin-role-chip">
@@ -110,7 +100,6 @@ function RemovableChip({ label, onRemove }: { label: string; onRemove: (() => vo
   );
 }
 
-/** Popup footer: Cancel + the action, bottom right (design). */
 function Footer({ onCancel, children }: { onCancel: () => void; children?: ReactNode }) {
   return (
     <div className="admin-modal__footer-row">
@@ -121,10 +110,6 @@ function Footer({ onCancel, children }: { onCancel: () => void; children?: React
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* People                                                              */
-/* ------------------------------------------------------------------ */
 
 export function RoleManagerPeople({
   rows,
@@ -137,15 +122,13 @@ export function RoleManagerPeople({
   rows: PersonRow[];
   roles: RoleOption[];
   selfId: string;
-  /** users.edit (global): Add New People and the popup's changes. */
   canEdit: boolean;
-  /** roles.read: the Edit Role button. */
   canEditRoles: boolean;
   reauthUrl: string | null;
 }) {
   const toast = useToastMessage();
   const [tab, setTab] = useState("all");
-  const [query, setQuery] = useState(""); // applied on Search / Enter
+  const [query, setQuery] = useState("");
   const [searchKey, setSearchKey] = useState(0);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PersonRow | null>(null);
@@ -160,7 +143,6 @@ export function RoleManagerPeople({
     () => rows.filter((row) => matchesPerson(row, { tab, query })),
     [rows, tab, query],
   );
-  // A cell's text in its column's filter checklist (last sign-in by day).
   const filterText = useCallback(
     (row: PersonRow, key: PersonSortKey) =>
       key === "name"
@@ -182,7 +164,6 @@ export function RoleManagerPeople({
   );
   const tabs = useMemo(() => roleTabs(rows, roles), [rows, roles]);
 
-  /* Any filter change starts again on page 1. */
   const reset =
     <T,>(set: (value: T) => void) =>
     (value: T) => {
@@ -195,7 +176,6 @@ export function RoleManagerPeople({
     setSearchKey((k) => k + 1);
     table.setPage(1);
   };
-  /** Role badge, or "Visitor" for an account with only organizational roles. */
   const pill = (id: string | null) =>
     id === null ? (
       "Visitor"
@@ -345,20 +325,14 @@ export function RoleManagerPeople({
   );
 }
 
-/** One suggestion under "Email or Name" (an account that already exists). */
 interface Suggestion {
   readonly uid: string;
   readonly name: string | null;
   readonly email: string | null;
 }
 
-/** Wait this long after the last key before asking the server for suggestions. */
 const SUGGEST_DELAY_MS = 300;
 
-/**
- * "Add New People": e-mail or exact name + role → the role is given, or an invite is sent. While
- * typing, accounts whose e-mail or name starts with the text are suggested (debounced).
- */
 function AddPeopleModal({
   open,
   roles,
@@ -386,7 +360,6 @@ function AddPeopleModal({
   const [listOpen, setListOpen] = useState(false);
   const [active, setActive] = useState(0);
   const text = person.trim();
-  // Only the answer for the text shown now (an older, slower answer is ignored).
   const suggestions = listOpen && found.text === text ? found.items : [];
 
   useEffect(() => {
@@ -397,7 +370,6 @@ function AddPeopleModal({
         (result) => {
           if (live && result.ok) setFound({ text, items: result.data });
         },
-        // Suggestions are optional: without them the person can still be typed in full.
         () => undefined,
       );
     }, SUGGEST_DELAY_MS);
@@ -565,7 +537,6 @@ function AddPeopleModal({
   );
 }
 
-/** The person popup: the website role, sign-in methods, deactivate; or an invite. */
 function PersonModal({
   row,
   roles,
@@ -586,7 +557,7 @@ function PersonModal({
   onDone: (message: string) => void;
 }) {
   const router = useRouter();
-  const [chosen, setChosen] = useState(row.roleId ?? ""); // "" = Visitor (no website role)
+  const [chosen, setChosen] = useState(row.roleId ?? "");
   const [methods, setMethods] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -594,7 +565,6 @@ function PersonModal({
   const uid = row.uid;
   const names = new Map(roles.map((r) => [r.id, r]));
 
-  // Sign-in methods are read on demand (one Firebase Auth call per opened popup).
   useEffect(() => {
     if (uid === null) return;
     let live = true;
@@ -621,7 +591,6 @@ function PersonModal({
     };
   }, [uid]);
 
-  /** A new role replaces the old one on the server; Visitor removes it. */
   const save = async () => {
     const before = row.roleId ?? "";
     if (uid === null || chosen === before) return onDone("Nothing changed");
@@ -808,28 +777,21 @@ function PersonModal({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Edit Role                                                           */
-/* ------------------------------------------------------------------ */
-
 export interface RoleRow {
   readonly id: string;
   readonly name: string;
   readonly color: string;
   readonly permissions: readonly string[];
-  /** null for built-in roles (never stored). */
   readonly version: number | null;
   readonly holders: number;
   readonly builtIn: boolean;
 }
 
-/** The permission checkboxes of the role popup: one group per admin page. */
 const PERMISSION_GROUPS = permissionGroups();
 
 type RoleSortKey = "role" | "permissions";
 const roleSortValue = (row: RoleRow, key: RoleSortKey): string | number =>
   key === "role" ? row.name.toLowerCase() : row.permissions.length;
-/** A cell's text in its column's filter checklist. */
 const roleFilterText = (row: RoleRow, key: RoleSortKey): string =>
   key === "role" ? row.name : String(row.permissions.length);
 
@@ -840,9 +802,7 @@ export function RoleManagerRoles({
   reauthUrl,
 }: {
   roles: RoleRow[];
-  /** roles.edit: Add New Role, edit and delete (the server re-checks every change). */
   canEdit: boolean;
-  /** users.read: "Role Manager" in the title links back to the people. */
   canSeePeople: boolean;
   reauthUrl: string | null;
 }) {
@@ -1020,7 +980,6 @@ export function RoleManagerRoles({
   );
 }
 
-/** Create Role / Edit Role: name, preview, colour and permissions. */
 function RoleModal({
   role,
   reauthUrl,
@@ -1039,8 +998,6 @@ function RoleModal({
       ? (role?.color as RoleColor)
       : ROLE_COLORS[0],
   );
-  // Whole pages (all their permissions) and single permissions are ticked separately: a ticked
-  // page disables its single checkboxes, a ticked single permission disables its page.
   const [initial] = useState(() => splitPermissions(role?.permissions ?? []));
   const [pages, setPages] = useState<ReadonlySet<string>>(initial.pages);
   const [single, setSingle] = useState<ReadonlySet<string>>(initial.single);
@@ -1192,11 +1149,6 @@ function RoleModal({
   );
 }
 
-/**
- * "Add more permissions": a dropdown with a search box and the permission checkboxes per page.
- * A ticked page gives all its permissions and disables its single boxes; a ticked single
- * permission disables its page box.
- */
 function PermissionPicker({
   pages,
   single,
@@ -1209,7 +1161,6 @@ function PermissionPicker({
   onTogglePermission: (value: string) => void;
 }) {
   const panelId = useId();
-  // Same panel as the searchable Select: fixed to the window, closes on a click outside.
   const { trigger, box, open, position, show, hide } = useDropdown<HTMLButtonElement>();
   const [query, setQuery] = useState("");
   const groups = filterPermissionGroups(PERMISSION_GROUPS, query);
@@ -1220,7 +1171,6 @@ function PermissionPicker({
       ref={box}
       onKeyDown={(event) => {
         if (event.key !== "Escape" || !open) return;
-        // Close only the dropdown: the popup ignores an Escape that was handled (preventDefault).
         event.preventDefault();
         hide();
         trigger.current?.focus();

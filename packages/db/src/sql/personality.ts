@@ -15,10 +15,6 @@ const toResult = (data: Record<string, unknown>): PersonalityResult => ({
   completedAt: toDate(data["completedAt"]) as Date,
 });
 
-/**
- * `personalityResults/{uid}` (feature C5): ONE result per person, written once (`create` in a
- * transaction) and never overwritten. Only the scores are stored, not the 60 answers.
- */
 export function createSqlPersonalityStore(db: Database) {
   const results = db.collection("personalityResults");
   return {
@@ -28,7 +24,6 @@ export function createSqlPersonalityStore(db: Database) {
       return snapshot.exists ? toResult(snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /** The results of many people (one batched read), by uid. */
     async getMany(uids: readonly string[]): Promise<Map<string, PersonalityResult>> {
       const found = await getDocumentsByIds<Record<string, unknown>>(
         db,

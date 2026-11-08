@@ -105,7 +105,6 @@ describe("dropdown options and search (more than 5 options get a search box)", (
   ];
 
   it("reads value and label from <option> children, including mapped lists and fragments", () => {
-    // The shape of React elements (type + props), as a <select> receives them as children.
     const option = (props: Record<string, unknown>, ...text: unknown[]) => ({
       type: "option",
       props: { ...props, children: text.length === 1 ? text[0] : text },

@@ -102,10 +102,8 @@ describe("image upload route (POST /api/uploads/<preset>)", () => {
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({ message: "File type not supported" });
     }
-    // No body at all.
     const empty = new Request("https://admin.example/api/uploads/banner", { method: "POST" });
     expect((await asEditor("banner", empty)).status).toBe(400);
-    // Right magic bytes, broken image.
     const broken = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
     expect((await asEditor("banner", post(broken))).status).toBe(400);
     expect(saved.size).toBe(0);

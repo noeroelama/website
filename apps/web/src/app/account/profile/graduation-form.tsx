@@ -5,10 +5,6 @@ import { useState } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { setGraduationAction } from "./actions";
 
-/**
- * Graduation (B5): the member marks or corrects the date at once; "cancel" only for a mark they
- * set themselves (the server checks; an officer's mark is cancelled by the secretariat).
- */
 export function GraduationForm(props: {
   t: Dictionary["profile"];
   version: number;

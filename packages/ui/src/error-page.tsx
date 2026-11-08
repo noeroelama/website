@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-/** Fixed, generic copy per status. Nothing here comes from the error itself. */
 const COPY = {
   401: { title: "Sign-in required", message: "Please sign in to view this page." },
   403: { title: "Access denied", message: "You do not have permission to view this page." },
@@ -16,11 +15,6 @@ const COPY = {
 
 export type ErrorStatus = keyof typeof COPY;
 
-/**
- * Error page shared by web, admin and shop (their not-found, forbidden, unauthorized, error and
- * global-error files). It never receives the error: details are logged on the server only.
- * `reference` is the opaque Next.js error digest, which matches the server log line.
- */
 export function ErrorPage(props: {
   status: ErrorStatus;
   reference?: string | undefined;

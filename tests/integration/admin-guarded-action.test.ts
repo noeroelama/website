@@ -14,7 +14,6 @@ const publishNews = createGuardedAction({
   handler: (input) => Promise.resolve({ published: input.id }),
 });
 
-// Custom roles as created in the admin Roles page.
 const roles = new Map([
   [
     "editor",

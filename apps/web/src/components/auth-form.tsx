@@ -5,9 +5,6 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { continueWithGoogle } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 
-/** Small building blocks shared by the sign-in, sign-up and reset forms. */
-
-/** Styling: classes from @website/ui/styles.css (design tokens), never inline values. */
 export const formClass = "ui-form";
 
 export function Field(props: {
@@ -63,22 +60,17 @@ export function Button(props: {
 
 type Navigate = (path: string) => void;
 
-/**
- * Runs an auth action with busy/error state. On success it goes to `next` (already validated on
- * the server with `safeReturnUrl`; another app such as admin shares the session cookie) or to the
- * account page.
- */
 export function useAuthAction(next: string | null = null) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const go: Navigate = (path) => {
     if (!path.startsWith("/")) {
-      window.location.assign(path); // another of our apps (full page load)
+      window.location.assign(path);
       return;
     }
     router.push(path);
-    router.refresh(); // re-render server components with the new session cookie
+    router.refresh();
   };
   async function run(
     action: () => Promise<void>,
@@ -110,7 +102,6 @@ export function GoogleButton(props: { next?: string | null }) {
   );
 }
 
-/** Reads named string fields from a submitted form. */
 export function formValues(
   event: FormEvent<HTMLFormElement>,
   ...names: string[]

@@ -10,7 +10,6 @@ import {
 } from "@website/domain/recruitment";
 import { APPLICATION_STATUS_LABELS, label } from "../labels";
 
-/** Tabs of the selection queue (one per step of C3; "closed" = the ends). */
 export const QUEUE_TABS = [
   { key: "all", label: "All" },
   { key: "review", label: "To review" },
@@ -45,18 +44,15 @@ export interface ApplicationItem {
   email: string;
   status: ApplicationStatus;
   statusLabel: string;
-  /** Ordered choices with unit names. */
   choices: { id: string; name: string }[];
   submittedAt: string | null;
   revisionRound: number;
   offer: { orgUnitId: string; unitName: string; expiresAt: string; expired: boolean } | null;
   answers: { id: string; label: string; text: string; file: FileAnswer | null }[];
   portfolio: FileAnswer | null;
-  /** Every uploaded integrity pact, oldest first (the last one counts). */
   pacts: FileAnswer[];
   pactNote: string | null;
   appointmentId: string | null;
-  /** Personality test result (C5), e.g. "ENFJ-A" with the axes; null = not taken. */
   personality: { full: string; axes: string } | null;
   revisions: {
     round: number;

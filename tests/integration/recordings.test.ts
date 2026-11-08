@@ -43,7 +43,6 @@ const bookingDoc = {
   deletedAt: null,
 };
 
-/** Zoom and Drive fakes: a 20 MB video and a small chat file. */
 function world(
   options: {
     driveHas?: Record<string, number>;
@@ -193,7 +192,6 @@ describe("recording archive job (F3)", () => {
     ]);
     expect(w.log).toContain("GET /meetings/s%2F1%3D%3D/recordings");
     expect(isArchived(["s/1=="], await store().filesForBookings(["b1"]))).toBe(true);
-    // Auto-delete is OFF by default.
     expect(w.log.some((l) => l.startsWith("TRASH"))).toBe(false);
   });
 
@@ -230,7 +228,6 @@ describe("recording archive job (F3)", () => {
     expect(await archive(w)()).toMatchObject({ trashed: true });
     expect(w.log.filter((l) => l.startsWith("TRASH"))).toEqual(["TRASH s%2F1%3D%3D"]);
     expect(await store().sessionTrashed("s/1==")).toBe(true);
-    // Already trashed: never twice.
     const file = (await store().filesForBookings(["b1"]))[0] as RecordingFile;
     await store().saveFile({ ...file, status: "pending" });
     expect(await archive(w)()).toMatchObject({ trashed: false });

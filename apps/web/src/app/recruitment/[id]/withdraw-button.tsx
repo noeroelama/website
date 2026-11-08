@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { withdrawApplicationAction } from "./actions";
 
-/** Withdraw the own application (asks first; the server re-checks the status). */
 export function WithdrawButton(props: {
   recruitmentId: string;
   labels: Dictionary["recruitment"];

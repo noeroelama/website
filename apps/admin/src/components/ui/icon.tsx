@@ -1,10 +1,5 @@
 import type { ReactNode, SVGProps } from "react";
 
-/**
- * Admin icon set. Stroke SVGs (viewBox 24, stroke width 1.8) ported from the earlier
- * Vite admin. Styling follows the shared design tokens: color is currentColor so the
- * surrounding CSS decides it; no hex values live here.
- */
 const ICON_PATHS: Record<string, ReactNode> = {
   dashboard: (
     <>
@@ -137,7 +132,6 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <circle cx="12" cy="10" r="3" />
     </>
   ),
-  /* Minimal line globe (rim, equator, one meridian): the Publish button. */
   globeSimple: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -145,10 +139,6 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9s1.3-6.4 3.8-9Z" />
     </>
   ),
-  /* Round globe (outline) with the Asia continent as a SOLID filled mass in
-     its proper map position — upper-east side, at a realistic continent size
-     (does not touch the rim). Shape scaled/translated under <g> so it reads
-     as a small landmass inside the sphere. */
   globe: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -239,8 +229,6 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <circle cx="15" cy="18" r="1.5" fill="currentColor" stroke="none" />
     </>
   ),
-  /* Bolder grip for the type box drag handle: same two-column dot layout with
-     thicker dots so the handle reads clearly at small sizes. */
   gripBold: (
     <>
       <circle cx="9" cy="6" r="2.4" fill="currentColor" stroke="none" />
@@ -259,7 +247,6 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M16 2v4M8 2v4M3 10h18" />
     </>
   ),
-  /* Three bars: campaign results (Newsletter) and the click-rate card. */
   chart: <path d="M6 20v-6M12 20V4M18 20v-9" />,
   clock: (
     <>
@@ -311,14 +298,12 @@ const ICON_PATHS: Record<string, ReactNode> = {
   ),
   qr: (
     <>
-      {/* Finder eyes (top-left, top-right, bottom-left): outlined square with a centre dot. */}
       <rect x="3" y="3" width="7" height="7" rx="1" />
       <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
       <rect x="14" y="3" width="7" height="7" rx="1" />
       <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
       <rect x="3" y="14" width="7" height="7" rx="1" />
       <circle cx="6.5" cy="17.5" r="1.2" fill="currentColor" stroke="none" />
-      {/* Data modules (bottom-right): dots at the four edge ends (corners) plus a centre dot. */}
       <circle cx="14.5" cy="14.5" r="1.2" fill="currentColor" stroke="none" />
       <circle cx="20.5" cy="14.5" r="1.2" fill="currentColor" stroke="none" />
       <circle cx="14.5" cy="20.5" r="1.2" fill="currentColor" stroke="none" />
@@ -332,7 +317,6 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </>
   ),
-  /* "↳" — points from a short link to the URL it redirects to (Tools list). */
   cornerDownRight: <path d="M4 4v7a4 4 0 0 0 4 4h12m-5-5 5 5-5 5" />,
   shield: <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5z" />,
   warning: (
@@ -359,8 +343,6 @@ const ICON_PATHS: Record<string, ReactNode> = {
       <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
     </>
   ),
-  /* Laptop/computer glyph for passkey devices (MacBook Pro row, Add/Edit Passkey
-     container). Feather-style laptop; matches the stroke style of the icon set. */
   laptop: (
     <>
       <path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9" />

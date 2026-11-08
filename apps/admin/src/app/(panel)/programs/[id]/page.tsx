@@ -10,10 +10,8 @@ import { canManageProgram } from "@/server/programs";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** One programme (E2, E3): plan, workflow, milestones, health and weekly check-ins. */
 export default async function ProgramRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/programs/${id}`, "programs.read");

@@ -28,7 +28,6 @@ const TAB_STATUSES: Readonly<Record<Exclude<FinanceTab, "all">, readonly Finance
 export const inTab = (tab: FinanceTab, status: FinanceStatus) =>
   tab === "all" || TAB_STATUSES[tab].includes(status);
 
-/** The amount as typed in the form ("1500000.00"), from minor units. */
 export const amountText = majorText;
 
 export interface FinanceItem {
@@ -50,7 +49,6 @@ export interface FinanceItem {
   status: FinanceStatus;
   statusLabel: string;
   requester: string;
-  /** The viewer made it: they never act at its desks. */
   mine: boolean;
   documents: { path: string; name: string }[];
   treasurer: string | null;
@@ -62,7 +60,6 @@ export interface FinanceItem {
 
 export function toFinanceItem(
   request: FinanceRequest,
-  /** uid → person name. */
   names: ReadonlyMap<string, string>,
   unitName: string,
   viewerId: string,
@@ -122,7 +119,6 @@ export interface CashSection {
   }[];
 }
 
-/** The report, formatted for the cash book page (one section per currency). */
 export function toCashSections(report: readonly CurrencyReport[]): CashSection[] {
   return report.map((r) => {
     const money = (amountMinor: number) => formatMoney({ amountMinor, currency: r.currency });

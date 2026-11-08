@@ -7,12 +7,10 @@ import type { LpjReport } from "@website/domain/programs";
 import type { Application, ApplicationStatus } from "@website/domain/recruitment";
 import type { PagePermission } from "@website/permissions";
 
-/** Text in both languages, as the other system messages (invites). */
 const both = (id: string, en: string) => `${id}\n\n${en}`;
 const html = (text: string) =>
   `<p>${text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\n/g, "<br>")}</p>`;
 
-/** What the applicant is told when a desk moves their application (J2). */
 const APPLICATION_NOTICES: Partial<Record<ApplicationStatus, readonly [string, string]>> = {
   revision: [
     "Panitia meminta perbaikan pada lamaranmu. Buka halaman lamaran untuk melihat permintaannya.",
@@ -49,12 +47,10 @@ type Content = { subject: string; text: string };
 export interface NoticeDeps {
   readonly contacts: Pick<SqlContactReader, "contacts" | "holders">;
   readonly send: Messenger["send"];
-  /** The letter's type (which signing desks it has). */
   readonly letterType: (id: string) => Promise<Pick<LetterType, "requiresCoordinator"> | null>;
   readonly webUrl: string;
   readonly adminUrl: string;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
-  /** Satisfaction poll after selected notices (J3); never throws. */
   readonly poll: (
     uids: readonly string[],
     source: SurveySource,
@@ -62,12 +58,6 @@ export interface NoticeDeps {
   ) => Promise<unknown>;
 }
 
-/**
- * Notification sources (J2): recruitment decisions to the applicant, letter and finance desk
- * requests to the desk holders (returns to the author or requester), each on their own channel (WhatsApp when a number exists, else e-mail).
- * Called AFTER the action's transaction committed; a failure is logged, never thrown (the
- * decision already stands, and failed messages wait on the Email page).
- */
 export function createNotices(deps: NoticeDeps) {
   async function tell(uids: readonly string[], content: Content, key: (uid: string) => string) {
     const contacts = await deps.contacts.contacts(uids);
@@ -87,7 +77,6 @@ export function createNotices(deps: NoticeDeps) {
     }
   };
 
-  /** The applicant, after a committee decision. */
   const application = (next: Application, recruitmentTitle: string) =>
     safely("application", next.id, async () => {
       const notice = APPLICATION_NOTICES[next.status];
@@ -105,7 +94,6 @@ export function createNotices(deps: NoticeDeps) {
       if (next.status === "confirmed") await deps.poll([next.userId], "recruitment", next.id);
     });
 
-  /** Whoever must act next on the letter (its desk holders in the letter's unit, or the author). */
   const letter = (saved: Letter) =>
     safely("letter", saved.id, async () => {
       const link = `${deps.adminUrl}/letters`;
@@ -119,7 +107,6 @@ export function createNotices(deps: NoticeDeps) {
       if (saved.status === "review") {
         await desk("letters.review", "Surat menunggu koreksi.", "A letter waits for review.");
       } else if (saved.status === "corrected" && !saved.secretary && !saved.coordinator) {
-        // Just passed review: every desk still to sign.
         const type = await deps.letterType(saved.typeId);
         for (const d of desksOf(type ?? { requiresCoordinator: false })) {
           await desk(
@@ -142,11 +129,6 @@ export function createNotices(deps: NoticeDeps) {
       }
     });
 
-  /**
-   * LPJ (E4, J2): opened → its PICs (with the due date); submitted → both review desks; both
-   * reviews in → the approval desk; returned or approved → the PICs. One key per LPJ version
-   * and person, so a re-submission is a new message and a retry is not.
-   */
   const lpj = (saved: LpjReport) =>
     safely("lpj", saved.id, async () => {
       const link = `${deps.adminUrl}/lpj/${saved.id}`;
@@ -187,7 +169,6 @@ export function createNotices(deps: NoticeDeps) {
       }
     });
 
-  /** Finance requests (I1): the next desk's holders in the request's unit, or the requester. */
   const finance = (saved: FinanceRequest) =>
     safely("finance", saved.id, async () => {
       const link = `${deps.adminUrl}/finance`;

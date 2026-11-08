@@ -11,11 +11,6 @@ import {
 import { RuleViolationError } from "@website/domain/shared";
 import { signLink, verifyLink } from "@website/security";
 
-/**
- * The personality test (C5) at /test/personality/{token}. The token is a signed 7-day link
- * (LINK_SIGNING_SECRET, purpose "personality") that names the applicant, so the page needs no
- * sign-in; scoring happens here, and a result is stored once and never overwritten.
- */
 export interface PersonalityDeps {
   readonly results: Pick<SqlPersonalityStore, "get" | "saveOnce">;
   readonly secret: string;
@@ -29,11 +24,9 @@ export type PersonalitySubmitResult =
 const Input = z.object({ token: z.string().max(2000), answers: z.unknown() }).strict();
 
 export function createPersonalityTest(deps: PersonalityDeps) {
-  // A valid signature means the body is ours (JSON), so verifyLink does not throw here.
   const userOf = (token: string) => personalityLinkUser(verifyLink(token, deps.secret, deps.now()));
 
   return {
-    /** A new 7-day link for the applicant (shown on the application page). */
     linkFor: (uid: string) =>
       signLink(
         personalityLinkData(uid),
@@ -41,7 +34,6 @@ export function createPersonalityTest(deps: PersonalityDeps) {
         new Date(deps.now().getTime() + PERSONALITY_LINK_DAYS * 86_400_000),
       ),
 
-    /** The applicant of a valid link and their result (null = not taken yet); null for a bad link. */
     async open(token: string): Promise<{ uid: string; result: PersonalityResult | null } | null> {
       const uid = userOf(token);
       return uid ? { uid, result: await deps.results.get(uid) } : null;

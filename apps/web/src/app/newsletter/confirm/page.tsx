@@ -5,7 +5,6 @@ import { ConfirmButton } from "../link-action";
 
 export const metadata: Metadata = { title: "Newsletter", robots: { index: false } };
 
-// Depends on the link's query string; nothing is written until the visitor presses Confirm.
 export const instant = false;
 
 export default async function ConfirmPage({ searchParams }: PageProps<"/newsletter/confirm">) {

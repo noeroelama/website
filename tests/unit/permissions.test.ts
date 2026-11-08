@@ -29,7 +29,6 @@ import {
 const global: Scope = { type: "global" };
 const jp: Scope = { type: "chapter", chapterId: "jp" };
 
-/** Custom roles as an admin would create them in the Roles page. */
 const roles: RoleDefinition[] = [
   {
     id: "editor",
@@ -147,7 +146,6 @@ describe("resolving role assignments", () => {
       "editor",
       "viewer",
     ]);
-    // No active period: only period-independent assignments count.
     expect(resolveAssignments(stored, lookup, null).map((a) => a.roleId)).toEqual(["editor"]);
   });
 
@@ -189,7 +187,6 @@ describe("can()", () => {
     const director = principal([
       { roleId: "chapter_admin", scope: { type: "orgUnit", orgUnitId: "dir-edu" } },
     ]);
-    // orgUnitPath = the resource's unit + its ancestors (root first).
     expect(can(director, "events.edit", { orgUnitPath: ["root", "dir-edu"] })).toBe(true);
     expect(can(director, "events.edit", { orgUnitPath: ["root", "dir-edu", "div-lang"] })).toBe(
       true,
@@ -208,7 +205,7 @@ describe("can()", () => {
     ]);
     expect(scopedChapterIds(twoChapters, "events.edit")).toEqual(["jp", "kr"]);
     expect(scopedChapterIds(twoChapters, "gallery.read")).toEqual([]);
-    expect(scopedChapterIds(twoChapters, "articles.read")).toEqual([]); // unit scope: no chapter
+    expect(scopedChapterIds(twoChapters, "articles.read")).toEqual([]);
     const national = principal([
       { roleId: "chapter_admin", scope: jp },
       { roleId: "chapter_admin" },
@@ -357,12 +354,12 @@ describe("no privilege escalation through the Roles page", () => {
   });
 
   it("deleting a custom role needs roles.edit and its permissions", () => {
-    expect(canDeleteRole(manager, role("viewer"))).toBe(false); // lacks events.read
+    expect(canDeleteRole(manager, role("viewer"))).toBe(false);
     expect(canDeleteRole(superadmin, role("viewer"))).toBe(true);
   });
 
   it("assigning a role needs users.edit and every permission of that role", () => {
-    expect(canAssignRole(manager, role("editor"))).toBe(false); // lacks gallery.edit / publish
+    expect(canAssignRole(manager, role("editor"))).toBe(false);
     expect(canAssignRole(manager, role("visitor"))).toBe(true);
     expect(canAssignRole(principal([{ roleId: "viewer" }]), role("visitor"))).toBe(false);
   });

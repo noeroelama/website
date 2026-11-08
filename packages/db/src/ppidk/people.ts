@@ -1,10 +1,3 @@
-/**
- * PPIDK → platform import of people and the organisation (block J, step 3.9): pure mapping from
- * the MariaDB tables (exported as TSV) to database documents. The local script
- * infrastructure/scripts/import-ppidk-people.mjs reads the files, resolves Firebase uids, and
- * writes what this returns. Every id is derived from the PPIDK id (`ppidk-…`), so a second run
- * writes the same documents again (idempotent).
- */
 import {
   normalizeUniversityName,
   PRIVACY_POLICY_VERSION,
@@ -20,10 +13,6 @@ import {
 
 export type TsvRow = Readonly<Record<string, string | null>>;
 
-/**
- * `mysql --batch` output: a header line, tab-separated values, `NULL` for null and the escapes
- * \\t, \\n, \\r, \\0 and \\\\ inside values.
- */
 export function parseTsv(text: string): TsvRow[] {
   const unescape = (value: string) =>
     value.replace(/\\(.)/g, (_, c: string) =>
@@ -42,7 +31,6 @@ export function parseTsv(text: string): TsvRow[] {
   });
 }
 
-/** The tables the import reads (one `<name>.tsv` file each). */
 export const PPIDK_TABLES = [
   "users",
   "chapters",
@@ -64,7 +52,6 @@ export interface PpidkPerson {
   readonly active: boolean;
 }
 
-/** `set` replaces the document; `user` adds to an account that may exist already. */
 export interface PlannedWrite {
   readonly path: string;
   readonly data: Record<string, unknown>;
@@ -99,20 +86,12 @@ const json = <T>(value: string | null | undefined, fallback: T): T => {
   }
 };
 
-/**
- * Maps the PPIDK tables. `uidOf` gives the Firebase uid of a PPIDK user (an existing account with
- * the same e-mail, or `ppidk-<id>` created by the script); `roleMap` is
- * `settings/appointmentRoles`, so active appointments of the active period get their roles.
- * Manual PPIDK role assignments are not imported (roles are data here; they are listed in
- * `skipped` so the owner can grant them again in Role Manager).
- */
 export function mapPpidk(
   tables: PpidkTables,
   options: {
     uidOf: (ppidkUserId: string) => string;
     roleMap: AppointmentRoleMap;
     now: Date;
-    /** Chapters staff already added (country code → id): reused, not imported again. */
     chapterIdByCountry?: ReadonlyMap<string, string>;
   },
 ): PpidkPlan {
@@ -138,7 +117,6 @@ export function mapPpidk(
   const uid = (ppidkUserId: string | null | undefined) =>
     ppidkUserId && known.has(ppidkUserId) ? uidOf(ppidkUserId) : null;
 
-  // Chapters (A2): map position and public contact are filled in by staff afterwards.
   const chapterId = new Map<string, string>();
   const chapterCountry = new Map<string, string>();
   for (const c of tables.chapters) {
@@ -167,7 +145,6 @@ export function mapPpidk(
     set(`chapterSlugs/${c["slug"] ?? ""}`, { id: docId });
   }
 
-  // Universities (A3): ROR rows keep the ROR import's id, proposals get their own.
   const universityId = new Map<string, string>();
   const universityName = new Map(tables.universities.map((u) => [u["id"] ?? "", u["name"] ?? ""]));
   for (const u of tables.universities) {
@@ -201,7 +178,6 @@ export function mapPpidk(
     });
   }
 
-  // Periods (A1): one active (settings/activePeriod), archived ones read-only.
   let activePeriod: string | null = null;
   for (const p of tables.periods) {
     const docId = id("period", p["id"]);
@@ -221,7 +197,6 @@ export function mapPpidk(
   }
   if (activePeriod) set("settings/activePeriod", { periodId: activePeriod, updatedAt: now });
 
-  // Org units (A5): parentId + ancestor path, code unique per period.
   const unitRows = new Map(tables.org_units.map((u) => [u["id"] ?? "", u]));
   const pathOf = (row: TsvRow): string[] => {
     const path: string[] = [];
@@ -256,8 +231,6 @@ export function mapPpidk(
     set(`orgUnitCodes/${periodId}_${(u["code"] ?? "").toUpperCase()}`, { id: docId });
   }
 
-  // Member profiles (B3–B5): imported answers; the member agrees to the privacy policy (and
-  // completes what PPIDK did not ask, e.g. the emergency contact) on the first sign-in.
   const provinces = new Map(tables.provinces.map((p) => [p["code"] ?? "", p["name"] ?? ""]));
   const regencies = new Map(tables.regencies.map((r) => [r["code"] ?? "", r["name"] ?? ""]));
   const chapterOfUser = new Map<string, string | null>();
@@ -302,7 +275,6 @@ export function mapPpidk(
       whatsappNumber: p["phone_wa"],
       emergencyContact: null,
       timezone: person?.["timezone"] ?? "UTC",
-      // Not the current policy: the profile counts as incomplete until the member agrees.
       privacyPolicyVersion: `ppidk-import (current ${PRIVACY_POLICY_VERSION})`,
       consentedAt: now,
       chapterId: chapter,
@@ -312,7 +284,6 @@ export function mapPpidk(
     });
   }
 
-  // Appointments (B7) and the roles active ones give in the active period.
   const assignments = new Map<string, Array<{ roleId: string } & Record<string, unknown>>>();
   for (const a of tables.appointments) {
     const owner = uid(a["user_id"]);
@@ -365,7 +336,6 @@ export function mapPpidk(
     });
   }
 
-  // Accounts: the default role (Visitor) and the appointment roles.
   for (const person of people) {
     const owner = uidOf(person.ppidkId);
     const roleAssignments = [

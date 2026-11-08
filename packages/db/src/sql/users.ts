@@ -36,7 +36,6 @@ import { createSqlAuditWriter } from "./audit";
 import { getDocumentsByIds } from "./batch";
 import { toDate } from "./slugged";
 
-/** `invites/{id}`: one document per invited e-mail; the id never contains the address. */
 export const inviteId = (email: string): string =>
   createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
 
@@ -49,14 +48,6 @@ const toInvite = (data: Record<string, unknown>): Invite => ({
   version: data["version"] as number,
 });
 
-/**
- * `users/{uid}`: uid, email, name, status, roleAssignments[], roleIds[] (for queries), version,
- * createdAt, lastSignInAt. The record is created on the first sign-in with the default role
- * (`visitor`); later sign-ins refresh lastSignInAt, email and name. The only role change a sign-in
- * makes is applying a pending invite (Role Manager → Add New People) for a VERIFIED e-mail: a
- * role with admin pages only once `twoSignInMethods()` says the account has two sign-in methods
- * (asked only then); the rest of the invite waits for a later sign-in.
- */
 export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory {
   const roles = createSqlRoleStore(db);
   const auditLog = createSqlAuditWriter(db);
@@ -69,7 +60,6 @@ export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory
       const ref = db.collection("users").doc(safeId.parse(uid));
       const inviteRef =
         email && emailVerified ? db.collection("invites").doc(inviteId(email)) : null;
-      // Before the transaction (no network calls inside it): the invited roles and the methods.
       const pending = inviteRef ? await inviteRef.get() : null;
       const invitedIds =
         pending?.exists && pending.get("status") === "pending"
@@ -103,7 +93,6 @@ export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory
           (id) => staffAllowed || (invited.get(id) as RoleDefinition).permissions.length === 0,
         );
         const after: RoleAssignment[] = [
-          // One website role per account: an applied invite replaces it.
           ...before.filter((a) => applied.length === 0 || !isWebsiteRole(a)),
           ...applied.map((roleId) => ({
             roleId,
@@ -142,11 +131,10 @@ export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory
           actor: { type: "system", id: "invite" },
           action: "UPDATE",
           module: "users",
-          title: String(email), // an invite exists only for an e-mail
+          title: String(email),
           resourceType: "user",
           resourceId: uid,
           operationId: randomUUID(),
-          // Only active accounts can sign in.
           before: accountSnapshot({ status: "active", roleAssignments: before }),
           after: accountSnapshot({ status: "active", roleAssignments: after }),
           versionBefore,
@@ -161,10 +149,6 @@ export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory
       });
     },
 
-    /**
-     * The principal for a request: the user record and `settings/activePeriod` in one round
-     * trip; assignments of other periods and revoked ones grant nothing.
-     */
     async findPrincipalByUid(uid) {
       const [snapshot, period] = await db.getAll(
         db.collection("users").doc(safeId.parse(uid)),
@@ -184,16 +168,11 @@ export function createSqlUserStore(db: Database): SignInRecorder & UserDirectory
   };
 }
 
-/** Admin Role Manager: list, read and change accounts (roles, status) and invites, audited. */
 export function createSqlAccountStore(db: Database) {
   const users = db.collection("users");
   const invites = db.collection("invites");
   const audit = createSqlAuditWriter(db);
   return {
-    /**
-     * Accounts holding an active (not ended) assignment of one of `roleIds`. With `chapterIds`
-     * (chapter-scoped staff, at most 30) only accounts of those chapters; empty = nobody.
-     */
     async listRoleHolders(
       roleIds: readonly string[],
       chapterIds?: readonly string[],
@@ -206,7 +185,6 @@ export function createSqlAccountStore(db: Database) {
             ? []
             : (await users.where("chapterId", "in", [...chapterIds]).get()).docs;
       } else {
-        // array-contains-any takes at most 30 values per query.
         const chunks: string[][] = [];
         for (let i = 0; i < roleIds.length; i += 30) chunks.push(roleIds.slice(i, i + 30));
         const snapshots = await Promise.all(
@@ -222,11 +200,6 @@ export function createSqlAccountStore(db: Database) {
       );
     },
 
-    /**
-     * Add New People suggestions: accounts whose e-mail (lower case) or name starts with `text`.
-     * MySQL JSON compares letter case, so the name is also tried with capital initials
-     * ("ana putri" → "Ana Putri"). At most `limit` accounts, e-mail matches first.
-     */
     async searchByPrefix(text: string, limit: number): Promise<UserSummary[]> {
       const capitalized = text.replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
       const prefix = (field: string, value: string) =>
@@ -242,23 +215,16 @@ export function createSqlAccountStore(db: Database) {
       return [...found.values()].slice(0, limit);
     },
 
-    /** Accounts whose name is exactly `name` (at most 2: enough to tell "several"). */
     async findByName(name: string): Promise<UserSummary[]> {
       const snapshot = await users.where("name", "==", name).limit(2).get();
       return snapshot.docs.map((doc) => toUserSummary(doc.id, doc.data()));
     },
 
-    /** Pending invites (Role Manager shows them as "Invited"). */
     async listInvites(): Promise<Invite[]> {
       const snapshot = await invites.where("status", "==", "pending").get();
       return snapshot.docs.map((doc) => toInvite(doc.data()));
     },
 
-    /**
-     * Invites an e-mail into a role, with its audit entry, in one transaction: a new (or no
-     * longer pending) invite is created, a pending one gets this role instead of its old one (one
-     * website role per account). Refuses the role the invite already has.
-     */
     invite(
       email: string,
       roleId: string,
@@ -304,7 +270,6 @@ export function createSqlAccountStore(db: Database) {
       });
     },
 
-    /** Cancels a pending invite (kept as history: status `cancelled`), with its audit entry. */
     cancelInvite(
       email: string,
       auditFor: (change: AuditChange, id: string) => AuditEvent,
@@ -343,7 +308,6 @@ export function createSqlAccountStore(db: Database) {
       });
     },
 
-    /** Accounts by uid in one batched read; missing and invalid ids are left out. */
     async getMany(uids: readonly string[]): Promise<Map<string, UserSummary>> {
       const ids = uids.filter((uid) => safeId.safeParse(uid).success);
       const docs =
@@ -363,14 +327,12 @@ export function createSqlAccountStore(db: Database) {
         : null;
     },
 
-    /** The account with this sign-in e-mail (appointments find people by it), or null. */
     async findByEmail(email: string): Promise<UserSummary | null> {
       const snapshot = await users.where("email", "==", email.trim().toLowerCase()).limit(1).get();
       const doc = snapshot.docs[0];
       return doc ? toUserSummary(doc.id, doc.data()) : null;
     },
 
-    /** Active global superadmins (the last one must never lose the role or be deactivated). */
     async countActiveSuperadmins(): Promise<number> {
       const snapshot = await users.where("roleIds", "array-contains", "superadmin").get();
       return snapshot.docs.filter((doc) =>
@@ -378,10 +340,6 @@ export function createSqlAccountStore(db: Database) {
       ).length;
     },
 
-    /**
-     * Changes roles and/or status in ONE transaction: reads the account and every superadmin,
-     * lets `decide` refuse (throw) with fresh data, then writes the change + its audit entry.
-     */
     change(
       uid: string,
       expectedVersion: number,
@@ -444,7 +402,6 @@ const roleSnapshot = (role: CustomRole) => ({
   permissions: [...role.permissions],
 });
 
-/** `roles/{id}`: name, color, permissions[], version, createdAt, updatedAt, deletedAt (custom only). */
 export function createSqlRoleStore(db: Database) {
   const collection = db.collection("roles");
   const users = db.collection("users");
@@ -490,7 +447,6 @@ export function createSqlRoleStore(db: Database) {
   return {
     ...(reader satisfies RoleReader),
 
-    /** Accounts holding each role (any status), one count query per role. */
     async countHolders(ids: readonly string[]): Promise<Map<string, number>> {
       const counts = await Promise.all(
         ids.map(async (id) => {
@@ -501,10 +457,6 @@ export function createSqlRoleStore(db: Database) {
       return new Map(counts);
     },
 
-    /**
-     * Creates (expectedVersion null) or updates a custom role. `decide` sees the stored role
-     * (null when new) and throws to refuse; a deleted role id counts as new.
-     */
     save(
       role: CustomRole,
       expectedVersion: number | null,
@@ -516,7 +468,6 @@ export function createSqlRoleStore(db: Database) {
       return db.runTransaction(async (tx) => {
         const snapshot = await tx.get(ref);
         const previous = snapshot.exists ? stored(role.id, snapshot.data()) : null;
-        // A create (null) that finds an existing role is for `decide` to refuse with a message.
         if (expectedVersion !== null && previous?.version !== expectedVersion) {
           throw new ConcurrencyConflictError("roles version changed");
         }
@@ -542,7 +493,6 @@ export function createSqlRoleStore(db: Database) {
       });
     },
 
-    /** Soft-deletes a custom role; `decide` also sees how many accounts still hold it. */
     remove(
       id: string,
       expectedVersion: number,

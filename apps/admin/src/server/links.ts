@@ -14,7 +14,6 @@ import { safeId, safeText } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
 
 export interface LinkDeps {
-  /** In order of preference: goppi.id, then s.id. */
   readonly shorteners: readonly Shortener[];
   readonly links: Pick<SqlShortLinkStore, "get" | "write">;
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
@@ -37,11 +36,9 @@ const linkAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // The provider already changed; reverting the record would not change the provider.
       revertible: false,
     });
 
-/** What the Tools page lists. */
 export const linkRow = (l: ShortLink) => ({
   id: l.id,
   version: l.version,
@@ -54,11 +51,6 @@ export const linkRow = (l: ShortLink) => ({
   createdAt: l.createdAt.toISOString().slice(0, 10),
 });
 
-/**
- * Short links (K1). Tools page actions are INTERACTIVE (a refusal says why); `shorten` is the
- * SILENT mode for links made by the system (Zoom join URLs): it never throws and gives back the
- * long URL when no provider works.
- */
 export function createLinkActions(deps: LinkDeps) {
   const shortenerOf = (link: ShortLink) => {
     const shortener = deps.shorteners.find((s) => s.provider === link.provider);
@@ -104,7 +96,6 @@ export function createLinkActions(deps: LinkDeps) {
     },
   });
 
-  /** Archive (provider soft delete; the slug stays taken) or restore. */
   const setArchived = createGuardedAction({
     permission: "tools.edit",
     input: Ref.extend({ archived: z.boolean() }).strict(),
@@ -127,7 +118,6 @@ export function createLinkActions(deps: LinkDeps) {
     },
   });
 
-  /** The title is ours only (the history list); the provider's link does not change. */
   const rename = createGuardedAction({
     permission: "tools.edit",
     input: Ref.extend({ title: safeText(200, { allowEmpty: true }) }).strict(),
@@ -143,7 +133,6 @@ export function createLinkActions(deps: LinkDeps) {
     },
   });
 
-  /** Click count fetched when a link is opened (null = the provider gives none). */
   const clicks = createGuardedAction({
     permission: "tools.read",
     input: z.object({ id: safeId }).strict(),
@@ -154,10 +143,6 @@ export function createLinkActions(deps: LinkDeps) {
     },
   });
 
-  /**
-   * SILENT mode for automatic links: the short URL, or the long URL when every provider fails
-   * (logged). Recorded in the history with its source and no audit actor.
-   */
   async function shorten(longUrl: string, title: string, source: string): Promise<string> {
     try {
       const input = { longUrl, title, slug: null };

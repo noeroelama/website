@@ -42,11 +42,9 @@ export interface MeetingView {
   endsAt: string;
   timeZone: string;
   status: MeetingStatus;
-  /** The start has passed (manual ticks allowed). */
   started: boolean;
   externalUrl: string | null;
   zoomRequestId: string | null;
-  /** Approved Zoom bookings made for this meeting (F1), to use as the room. */
   zoomBookings: Array<{ id: string; label: string }>;
   cancelReason: string | null;
   agenda: string[];
@@ -62,7 +60,6 @@ export interface MeetingView {
   }>;
 }
 
-/** The projector screen: a fresh code (and its QR) every 90 seconds while it is open. */
 function CodeScreen({ meetingId, onClose }: { meetingId: string; onClose: () => void }) {
   const [code, setCode] = useState<{ code: string; qr: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +102,6 @@ function CodeScreen({ meetingId, onClose }: { meetingId: string; onClose: () => 
   );
 }
 
-/** One meeting (F4): details, room, attendance; minutes come below (F5). */
 export function MeetingPage({
   meeting: m,
   runs,
@@ -115,9 +111,7 @@ export function MeetingPage({
 }: {
   meeting: MeetingView;
   canApprove: boolean;
-  /** Machine drafts are set up (ANTHROPIC_API_KEY). */
   canDraft: boolean;
-  /** The viewer runs it (chair, secretary or the unit's meetings.edit) and it is not cancelled. */
   runs: boolean;
   edit: { units: Array<{ id: string; name: string }>; values: MeetingValues } | null;
 }) {

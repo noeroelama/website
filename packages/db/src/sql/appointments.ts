@@ -45,7 +45,6 @@ export const appointmentSnapshot = (a: Appointment): Snapshot => ({
   endsOn: a.endsOn,
 });
 
-/** The audit entries of one appointment change: the appointment's and the account's. */
 export type AppointmentAudit = (
   appointment: { before: Snapshot | null; after: Snapshot; next: Appointment },
   account: { change: AuditChange; user: UserSummary },
@@ -53,7 +52,6 @@ export type AppointmentAudit = (
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
 
-/** Who is appointed where (the caller vetted escalation and the second factor). */
 export interface AppointmentRequest {
   readonly userId: string;
   readonly orgUnitId: string;
@@ -61,20 +59,12 @@ export interface AppointmentRequest {
   readonly title: string;
 }
 
-/** Everything an appointment writes, read and checked inside the caller's transaction. */
 export interface PreparedAppointment {
   readonly appointment: Appointment;
   readonly user: UserSummary;
   readonly added: readonly RoleAssignment[];
 }
 
-/**
- * The reads and rules of an appointment (step 3.7), inside `tx`: the unit must be active in the
- * ACTIVE period, the account must exist, nobody is appointed twice in one unit, and the roles of
- * `settings/appointmentRoles` must still be the ones the caller `checked` (else a conflict).
- * Used by `appoint` and by the recruitment ratification (C3 step 9), so roles are derived the
- * same way. Nothing is written here.
- */
 export async function prepareAppointment(
   db: Database,
   tx: Transaction,
@@ -133,7 +123,6 @@ export async function prepareAppointment(
   return { appointment, user, added };
 }
 
-/** Writes a prepared appointment, its roles and its audit entries in the same transaction. */
 export function writeAppointment(
   db: Database,
   tx: Transaction,
@@ -168,12 +157,6 @@ export function writeAppointment(
   return appointment;
 }
 
-/**
- * `appointments/{id}` and the roles they give (`users/{uid}.roleAssignments`, source
- * "appointment", bound to the period, linked by `appointmentId`), changed together in ONE
- * transaction so nobody keeps a role after their appointment ended. The seat → role mapping is
- * the settings document `settings/appointmentRoles` ({ map, version }).
- */
 export function createSqlAppointmentStore(db: Database) {
   const docs = db.collection("appointments");
   const users = db.collection("users");
@@ -188,7 +171,6 @@ export function createSqlAppointmentStore(db: Database) {
       return snapshot.exists ? toAppointment(id, snapshot.data() as Record<string, unknown>) : null;
     },
 
-    /** Every appointment of a period (active and ended), oldest first. */
     async listForPeriod(periodId: string): Promise<Appointment[]> {
       const snapshot = await docs.where("periodId", "==", safeId.parse(periodId)).get();
       return snapshot.docs
@@ -196,7 +178,6 @@ export function createSqlAppointmentStore(db: Database) {
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
     },
 
-    /** A person's active appointments (any period), oldest first: whose unit they act for. */
     async activeForUser(uid: string): Promise<Appointment[]> {
       const snapshot = await docs.where("userId", "==", uid).where("status", "==", "active").get();
       return snapshot.docs
@@ -204,10 +185,6 @@ export function createSqlAppointmentStore(db: Database) {
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
     },
 
-    /**
-     * Officers of the active period who already graduated (B5, §67): a dashboard item for whoever
-     * may end appointments. Graduation never ends an appointment by itself.
-     */
     async graduatedOfficers(today: string): Promise<Array<Appointment & { graduatedOn: string }>> {
       const active = await settings.doc("activePeriod").get();
       const periodId = active.get("periodId") as string | undefined;
@@ -257,11 +234,6 @@ export function createSqlAppointmentStore(db: Database) {
       });
     },
 
-    /**
-     * Appoints `userId` to a seat of a unit of the ACTIVE period and gives the derived roles.
-     * `checked` is what the caller vetted (escalation, second factor); if the unit or the mapping
-     * changed meanwhile, the roles would differ and the appointment is refused as a conflict.
-     */
     appoint(
       input: AppointmentRequest,
       checked: readonly DerivedAssignment[],
@@ -275,10 +247,6 @@ export function createSqlAppointmentStore(db: Database) {
       });
     },
 
-    /**
-     * Ends an appointment ("ended" at the end of the term, "revoked" in between) and revokes
-     * exactly the roles it gave (`revokedAt`; kept for history). `decide` may refuse (throw).
-     */
     end(
       id: string,
       expectedVersion: number,

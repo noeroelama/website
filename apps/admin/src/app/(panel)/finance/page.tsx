@@ -6,10 +6,8 @@ import { FinancePage } from "@/components/finance-page";
 import { requireAdminViewer } from "@/server/context";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** The newest requests of the active period the viewer covers (unit-scoped staff: their units). */
 const LIMIT = 300;
 
 export default async function AdminFinancePage() {

@@ -13,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # CI never receives staging/production secrets. Everything runs with APP_ENV=test.
   APP_ENV: test
   NEXT_TELEMETRY_DISABLED: "1"
   TURBO_TELEMETRY_DISABLED: "1"
@@ -23,7 +22,6 @@ jobs:
     name: Install · format · lint · typecheck · test · build · secrets
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # The same MySQL major version as the cPanel host: tests/integration/sql-store.test.ts.
     services:
       mysql:
         image: mysql:8.0
@@ -36,7 +34,7 @@ jobs:
           --health-interval=5s --health-timeout=5s --health-retries=30
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4 # reads "packageManager" from package.json
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -49,7 +47,7 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
-      - run: pnpm lint # includes architecture boundary check
+      - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
         env:

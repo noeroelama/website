@@ -13,7 +13,6 @@ import { createEventRegistration } from "./registrations";
 const reader = lazyEnv(() => createSqlEventReader(webDb()));
 export const registrations = lazyEnv(() => createSqlRegistrationStore(webDb()));
 
-/** Published events, newest first (cached for minutes under the tag "events"). */
 export async function publicEvents(): Promise<PublicEvent[]> {
   "use cache";
   cacheTag("events");
@@ -28,7 +27,6 @@ export async function publicEventBySlug(slug: string): Promise<PublicEvent | nul
   return reader().findPublishedBySlug(slug);
 }
 
-/** Register button (src/app/events/[slug]/actions.ts). Reads the event uncached. */
 export const registerForEvent = lazyEnv(() => {
   const env = getWebEnv();
   const verifier = env.RECAPTCHA_SECRET_KEY

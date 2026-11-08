@@ -32,13 +32,6 @@ import {
 } from "./audit-model";
 import { Select } from "@/components/ui/select";
 
-/* ==================================================================
-   Audit Log — dark list page like the Event page (tabs, search, header
-   filters, pagination) with expandable rows showing Before / After.
-   Times are UTC. Classes: `.admin-audit*` in globals.css.
-   ================================================================== */
-
-/** Badge colour per action (`.admin-audit-badge--*`). */
 const ACTION_TONE: Record<AuditAction, string> = {
   CREATE: "created",
   UPDATE: "updated",
@@ -54,11 +47,9 @@ type SortKey = "date" | "action";
 
 const sortValue = (r: AuditRow, key: SortKey): string =>
   key === "date" ? r.occurredAt : r.actionLabel;
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (r: AuditRow, key: SortKey): string =>
   key === "date" ? formatInZone(r.occurredAt, "UTC", false) : r.actionLabel;
 
-/** Before / After cell of one changed field. */
 function FieldCell({
   value,
   other,
@@ -109,7 +100,6 @@ function FieldCell({
   );
 }
 
-/** "+2 −1" under an image field's name. */
 function photoCounts(change: ChangeRow): string | null {
   if (change.after.kind !== "images" || change.before.kind !== "images") return null;
   const added = change.after.images.filter((i) => i.change === "added").length;
@@ -117,7 +107,6 @@ function photoCounts(change: ChangeRow): string | null {
   return `+${added} −${removed}`;
 }
 
-/** Expanded panel: Field / Before / After, Change ID (copy) and the raw JSON. */
 function ChangePanel({ row, onCopy }: { row: AuditRow; onCopy: (text: string) => void }) {
   const [raw, setRaw] = useState(false);
   return (
@@ -190,9 +179,7 @@ export function AuditPage({
 }: {
   rows: AuditRow[];
   range: AuditRange;
-  /** More entries exist in the range than `AUDIT_PAGE_LIMIT`. */
   truncated: boolean;
-  /** audit.revert (the server checks it again). */
   canRevert: boolean;
   reauthUrl: string | null;
 }) {
@@ -202,14 +189,13 @@ export function AuditPage({
   const [tab, setTab] = useState<AuditTab>("all");
   const [user, setUser] = useState("");
   const [action, setAction] = useState<AuditAction | "">("");
-  const [query, setQuery] = useState(""); // applied on Search / Enter
+  const [query, setQuery] = useState("");
   const [reversibleOnly, setReversibleOnly] = useState(false);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [confirm, setConfirm] = useState<AuditRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  /* Users seen in the loaded entries (e-mail → name) for the "User" picker. */
   const users = useMemo(
     () => [...new Map(rows.map((r) => [r.author.email || r.author.name, r.author.name]))],
     [rows],
@@ -227,7 +213,6 @@ export function AuditPage({
     );
   }, [rows, tab, user, action, reversibleOnly, query]);
 
-  /* Newest first until a header is clicked. */
   const table = useListTable<AuditRow, SortKey>(
     filtered,
     sortValue,
@@ -246,7 +231,6 @@ export function AuditPage({
     [rows],
   );
 
-  /* Any filter change starts again on page 1. */
   const reset =
     <T,>(set: (value: T) => void) =>
     (value: T) => {

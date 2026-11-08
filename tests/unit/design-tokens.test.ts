@@ -71,7 +71,6 @@ describe("design tokens (one global stylesheet shared by every app)", () => {
   });
 });
 
-/** The admin stylesheet as { selector, body } rules (comments removed). */
 const adminRules = [
   ...readFileSync(join(ROOT, "apps/admin/src/app/globals.css"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -84,7 +83,6 @@ describe("admin popups", () => {
   it("every popup sits in the middle of the page", () => {
     const overlay = rules.find((rule) => rule.selector === ".admin-modal-overlay");
     expect(overlay?.body).toMatch(/place-items:\s*center/);
-    // No popup variant may move itself away from the centre the overlay gives it.
     for (const rule of rules.filter((r) => /\.admin-modal\b(?!-overlay)/.test(r.selector))) {
       expect(rule.body, rule.selector).not.toMatch(
         /(justify|align)-self\s*:|margin(-left|-right|-inline(-start|-end)?)?\s*:[^;]*auto/,
@@ -98,7 +96,6 @@ describe("admin tables", () => {
     adminRules.filter((rule) => rule.selector.split(/,\s*/).includes(selector));
 
   it("a table card fills the rest of the screen and grows with its rows", () => {
-    // The content area and every wrapper down to the table card are columns…
     for (const selector of [
       ".admin-dark-page:has(.admin-list-card)",
       ".admin-dark-page :has(.admin-list-card)",
@@ -109,7 +106,6 @@ describe("admin tables", () => {
       expect(body, selector).toMatch(/display:\s*flex/);
       expect(body, selector).toMatch(/flex-direction:\s*column/);
     }
-    // …that take the free height but never shrink below their rows (long tables scroll the page).
     for (const selector of [
       ".admin-dark-page :has(.admin-list-card)",
       ".admin-dark-page .admin-list-card",
@@ -122,7 +118,6 @@ describe("admin tables", () => {
         selector,
       ).toMatch(/flex:\s*1 0 auto/);
     }
-    // The height comes from the page itself, not from a guessed offset or blank filler rows.
     for (const rule of adminRules.filter((r) => r.selector.includes(".admin-list-card"))) {
       expect(rule.body, rule.selector).not.toMatch(/100dvh|100vh/);
     }
@@ -136,7 +131,6 @@ describe("admin tables", () => {
       .map((rule) => rule.body)
       .join("");
     expect(cells).toMatch(/overflow-wrap:\s*break-word/);
-    // Links and e-mails (the line under a title) have no spaces, so they may break anywhere.
     expect(
       ruleFor(".admin-table__sub")
         .map((rule) => rule.body)
@@ -172,11 +166,9 @@ describe("admin tabs", () => {
     expect(base).toMatch(/overflow-y:\s*hidden/);
     expect(base).toMatch(/scrollbar-width:\s*none/);
     expect(adminRules.some((r) => r.selector === ".admin-tabs::-webkit-scrollbar")).toBe(true);
-    // One place decides the scrolling: page-specific tab rules must not change it.
     for (const rule of tabRules.filter((r) => r.selector !== ".admin-tabs")) {
       expect(rule.body, rule.selector).not.toMatch(/overflow/);
     }
-    // The active underline sits inside the tab row (a line below it would need vertical scroll).
     for (const rule of adminRules.filter((r) => r.selector.includes(".admin-tabs__btn::after"))) {
       expect(rule.body, rule.selector).not.toMatch(/bottom:\s*(-|calc\(-)/);
     }
@@ -220,7 +212,6 @@ describe("admin scrollbar", () => {
 });
 
 describe("admin tables on a phone", () => {
-  // The phone rules sit between two markers, in one @media block, at the end of the stylesheet.
   const source = readFileSync(join(ROOT, "apps/admin/src/app/globals.css"), "utf8");
   const [, afterBegin = ""] = source.split("/* Mobile list cards: begin */");
   const [block = ""] = afterBegin.split("/* Mobile list cards: end */");
@@ -249,7 +240,6 @@ describe("admin tables on a phone", () => {
   });
 
   it("the cream card flips the surface colours like every other cream surface", () => {
-    // Only on a phone: on a wide screen the same rows are dark, so the flip stays in this block.
     const card = bodyOf(".admin-dark-page .admin-table tbody tr");
     for (const flipped of [
       /--admin-ink:\s*var\(--color-brand-950\)/,
@@ -266,7 +256,6 @@ describe("admin tables on a phone", () => {
       expect(wide.map((rule) => rule.body).join(""), selector).toMatch(/display:\s*none/);
       expect(bodyOf(selector), selector).toMatch(/display:/);
     }
-    // Long button words ("Delete Event", "Copy Link") shrink to the design's "Delete", "Copy".
     expect(bodyOf(".admin-long")).toMatch(/display:\s*none/);
   });
 
@@ -279,9 +268,7 @@ describe("admin tables on a phone", () => {
   });
 
   it("a card is readable and thumb-friendly: no micro text, 44 px targets, selection shows", () => {
-    // 11 px is for dense desktop tables only; on a phone every card text is 12 px or more.
     expect(block).not.toMatch(/--text-2xs/);
-    // Long selectors are wrapped over lines (prettier) and hold commas inside :is().
     const button = rules
       .filter((rule) =>
         rule.selector
@@ -295,7 +282,6 @@ describe("admin tables on a phone", () => {
       /width:\s*var\(--size-touch\)/,
     );
     expect(bodyOf(".admin-list-summary__btn")).toMatch(/min-height:\s*var\(--size-touch\)/);
-    // The action row is one line of equal buttons (no orphan button on a second line).
     expect(bodyOf('.admin-dark-page .admin-table td[data-card="actions"]')).toMatch(
       /grid-auto-columns:\s*minmax\(0,\s*1fr\)/,
     );
@@ -307,7 +293,6 @@ describe("admin tables on a phone", () => {
   it("the Add / Export buttons float at the bottom right and the bulk bar sticks to the bottom", () => {
     expect(bodyOf(".admin-fab")).toMatch(/position:\s*fixed/);
     expect(bodyOf(".admin-dark-page .admin-list-card .admin-bulkbar")).toMatch(/position:\s*fixed/);
-    // Outside the phone block the wrapper does not exist as a box.
     expect(
       adminRules
         .filter((rule) => rule.selector === ".admin-fab")
@@ -340,7 +325,6 @@ describe("admin side panel", () => {
   });
 
   it("puts the menu's scrollbar on the very right edge of the panel", () => {
-    // The scroll box reaches both edges of the panel; its padding keeps the links where they were.
     expect(body(".admin-nav")).toMatch(/margin-inline:\s*calc\(-1 \* var\(--space-3-5\)\)/);
     expect(body(".admin-nav")).toMatch(/padding-inline:\s*var\(--space-3-5\)/);
     expect(body(".admin-panel")).toMatch(/padding:[^;]*var\(--space-3-5\)/);
@@ -389,7 +373,6 @@ describe("admin controls", () => {
     expect(adminCss).toMatch(
       /:root\s*\{[^}]*--admin-control-height:\s*calc\(var\(--size-control-sm\) \+ var\(--space-1-5\)\)/,
     );
-    // Phones: the same height for every control, at the 40 px row size.
     expect(adminCss).toMatch(
       /@media \(max-width: 767px\)\s*\{\s*:root\s*\{\s*--admin-control-height:\s*var\(--size-control\);/,
     );
@@ -403,7 +386,6 @@ describe("admin controls", () => {
     expect(height(".admin-select")).toMatch(/(^|[^-])height:\s*var\(--admin-control-height\)/);
     expect(height(".admin-searchbox")).toMatch(/(^|[^-])height:\s*var\(--admin-control-height\)/);
     expect(height(".admin-url-slug")).toMatch(/(^|[^-])height:\s*var\(--admin-control-height\)/);
-    // No page or size variant sets its own control height.
     for (const rule of controlRules) {
       for (const [declaration] of rule.body.matchAll(/(?:^|;|\s)(?:min-)?height:\s*[^;]+/g)) {
         expect(declaration, rule.selector).toMatch(/var\(--admin-control-height\)|100%|auto/);
@@ -479,7 +461,6 @@ describe("admin motion and overflow (UI/UX rules)", () => {
           /transition:[^;]*scale[^;]*admin-ease-spring/.test(r.body),
       ),
     ).toBe(true);
-    // The slide-out panel motion was dropped (no visible gain).
     expect(source("components/ui/select.tsx")).not.toMatch(/transformOrigin|--admin-drop/);
   });
 
@@ -489,7 +470,6 @@ describe("admin motion and overflow (UI/UX rules)", () => {
         r.selector.includes(".admin-row-menu__panel") &&
         /::-webkit-scrollbar-thumb$/.test(r.selector),
     );
-    // Both the panel itself (column menus) and boxes inside it (Select's list).
     expect(thumb?.selector).toMatch(/\.admin-row-menu__panel,\s*\.admin-row-menu__panel \*/);
     expect(thumb?.body).toMatch(/background:[^;]*brand-950/);
   });
@@ -500,7 +480,6 @@ describe("admin motion and overflow (UI/UX rules)", () => {
     expect(sidebar).toMatch(
       /<ViewTransition>\s*<main id="main"[\s\S]*?<\/main>\s*<\/ViewTransition>/,
     );
-    // Reduced motion: no fade (the `*` rule does not reach the view-transition pseudo-elements).
     expect(css).toMatch(
       /prefers-reduced-motion: reduce\)\s*\{[\s\S]*?::view-transition-group\(\*\)[\s\S]*?animation:\s*none/,
     );
@@ -545,7 +524,6 @@ describe("admin buttons, forms, gaps and corners (UI/UX rules)", () => {
     /\/\*[\s\S]*?\*\//g,
     "",
   );
-  // Sources without comments (docs mention `<button>` and type="submit").
   const tsx = files("apps/admin/src", [".tsx"]).map((path) => ({
     path,
     source: readFileSync(join(ROOT, path), "utf8").replace(/\/\*[\s\S]*?\*\/|^\s*\/\/[^\n]*/gm, ""),
@@ -570,13 +548,12 @@ describe("admin buttons, forms, gaps and corners (UI/UX rules)", () => {
   });
 
   it("styles the six button states; hover only on devices that can hover", () => {
-    expect(body(".admin-btn")).toMatch(/min-height/); // default
-    expect(body(".admin-btn:focus-visible")).toMatch(/outline:/); // focus
-    expect(body(".admin-btn:active:not(:disabled)")).toMatch(/scale:/); // press
-    expect(body('.admin-btn[aria-busy="true"]')).toMatch(/cursor:\s*progress/); // loading
+    expect(body(".admin-btn")).toMatch(/min-height/);
+    expect(body(".admin-btn:focus-visible")).toMatch(/outline:/);
+    expect(body(".admin-btn:active:not(:disabled)")).toMatch(/scale:/);
+    expect(body('.admin-btn[aria-busy="true"]')).toMatch(/cursor:\s*progress/);
     expect(body('.admin-btn[aria-busy="true"]::after')).toMatch(/animation:/);
-    expect(body(".admin-btn:disabled")).toMatch(/cursor:\s*not-allowed/); // disabled
-    // Every button hover rule sits inside @media (hover: hover).
+    expect(body(".admin-btn:disabled")).toMatch(/cursor:\s*not-allowed/);
     const outsideHover = css.replace(/@media \(hover: hover\)\s*\{(?:[^{}]*\{[^{}]*\})*\s*\}/g, "");
     expect(outsideHover).not.toMatch(/\.admin-btn[^{},]*:hover/);
   });
@@ -601,7 +578,6 @@ describe("admin buttons, forms, gaps and corners (UI/UX rules)", () => {
       expect(source, name).toMatch(/<form\b/);
       expect(source, name).toMatch(/<Button\s+type="submit"/);
     }
-    // A submit button always has a form: its own, a popup form (asForm) or form="id".
     for (const { path, source } of tsx) {
       if (!/type="submit"/.test(source)) continue;
       expect(source, path).toMatch(/<form\b|\basForm\b|\bform="/);
@@ -661,10 +637,9 @@ describe("admin tabs and table columns", () => {
       expect(source, path).not.toMatch(/FiltersButton|admin-filter-panel|admin-filters-btn/);
     }
     const menu = readFileSync(join(ROOT, "apps/admin/src/components/ui/column-menu.tsx"), "utf8");
-    expect(menu).toContain('name="filter"'); // same icon as the old Filters button
+    expect(menu).toContain('name="filter"');
     expect(menu).toMatch(/onSort\("asc"\)[\s\S]*onSort\("desc"\)/);
     expect(menu).toMatch(/type="checkbox"/);
-    // Sortable headers come from useListTable's `header()`, which wires sort and filter together.
     for (const { path, source } of adminSources) {
       if (path.replaceAll("\\", "/").endsWith("components/ui/list-controls.tsx")) continue;
       if (path.replaceAll("\\", "/").endsWith("components/ui/data-table.tsx")) continue;
@@ -674,7 +649,6 @@ describe("admin tabs and table columns", () => {
 
   it("makes each Audit Log picker one button as tall as the other controls, ringed only from the keyboard", () => {
     const audit = readFileSync(join(ROOT, "apps/admin/src/components/audit-page.tsx"), "utf8");
-    // A <label> around the picker sent clicks on its text to the hidden native select.
     expect(audit).not.toMatch(/<label className="admin-audit-pick"/);
     expect(audit.match(/<Select\s+className="admin-audit-pick"/g)).toHaveLength(3);
     const pick = adminRules.filter((r) => /\.admin-audit-pick\b/.test(r.selector));
@@ -694,11 +668,10 @@ describe("admin tabs and table columns", () => {
       for (const icon of icons) expect(icon, path).toBe("globeSimple");
       count += labels.length;
     }
-    expect(count).toBeGreaterThanOrEqual(13); // 8 form/bulk buttons + 5 row menus
+    expect(count).toBeGreaterThanOrEqual(13);
   });
 
   it("opens a dropdown above its button when there is no room below (Rows per page)", () => {
-    // useDropdown sets `bottom`; the menu's own `top: 100%` would squash it to nothing.
     const panel = adminRules.filter((r) => r.selector === ".admin-combo__panel");
     expect(panel.map((r) => r.body).join("")).toMatch(/top:\s*auto/);
   });

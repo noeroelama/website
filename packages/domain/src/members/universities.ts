@@ -2,39 +2,28 @@ import { z } from "zod";
 import { safeText } from "@website/security/validation";
 import type { EntityMeta } from "../shared";
 
-/**
- * Universities master (feature A3), as in PPIDK: imported from the ROR dump (status approved)
- * or proposed by a member ("my campus is not listed", status pending until staff review it).
- * A duplicate proposal is merged into the existing campus (`mergedInto`), never deleted.
- */
 export const UNIVERSITY_STATUSES = ["approved", "pending", "rejected"] as const;
 export type UniversityStatus = (typeof UNIVERSITY_STATUSES)[number];
 
 export interface University extends EntityMeta {
   readonly name: string;
-  /** `normalizeUniversityName(name)`: finds obvious duplicates of a proposal. */
   readonly normalizedName: string;
   readonly countryCode: string;
   readonly city: string | null;
   readonly website: string | null;
-  /** Other names from ROR (acronyms, local names), e.g. "UTokyo". */
   readonly aliases: readonly string[];
   readonly aliasesNormalized: readonly string[];
-  /** e.g. https://ror.org/057zh3y96; null for a proposed campus. */
   readonly rorId: string | null;
   readonly source: "ror" | "manual";
   readonly status: UniversityStatus;
   readonly submittedBy: string | null;
-  /** Set on a duplicate: the campus it was merged into. */
   readonly mergedInto: string | null;
   readonly reviewedBy: string | null;
   readonly reviewedAt: Date | null;
   readonly reviewNote: string | null;
 }
 
-/** Words that never tell two campuses apart. */
 const STOP_WORDS = new Set(["the", "of", "de", "da", "di", "dan", "and", "at"]);
-/** Common short forms, made equal to the long form. */
 const EXPANSIONS: Readonly<Record<string, string>> = {
   univ: "university",
   universiti: "university",
@@ -45,11 +34,6 @@ const EXPANSIONS: Readonly<Record<string, string>> = {
   teknologi: "technology",
 };
 
-/**
- * Normalised name for duplicate detection, deliberately CONSERVATIVE (PPIDK DECISIONS §6): only
- * case, accents, punctuation, spacing, linking words and common short forms. Generic words such as
- * "national" stay, or "National University of Singapore" would collide with other campuses.
- */
 export function normalizeUniversityName(name: string): string {
   const words = name
     .normalize("NFKD")
@@ -62,10 +46,6 @@ export function normalizeUniversityName(name: string): string {
   return words.join(" ").slice(0, 255).trimEnd();
 }
 
-/**
- * Tidies a proposed name mechanically: extra spaces, and ALL CAPS or all lower case become title
- * case (linking words stay lower case). Any other spelling is left as typed; the reviewer decides.
- */
 export function tidyUniversityName(name: string): string {
   const spaced = name.trim().replace(/\s+/g, " ");
   if (spaced !== spaced.toUpperCase() && spaced !== spaced.toLowerCase()) return spaced;
@@ -76,7 +56,6 @@ export function tidyUniversityName(name: string): string {
   return titled.charAt(0).toUpperCase() + titled.slice(1);
 }
 
-/** A member's proposal of a campus that is not listed. */
 export const UniversityProposalSchema = z
   .object({
     name: safeText(200).pipe(z.string().min(3, "Enter the campus name.")),
@@ -90,7 +69,6 @@ export const UniversityProposalSchema = z
   .strict();
 export type UniversityProposal = z.infer<typeof UniversityProposalSchema>;
 
-/** One `universities/{id}` row from the ROR dump (the import script writes these). */
 export interface UniversityImportRow {
   readonly id: string;
   readonly rorId: string;
@@ -108,11 +86,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
-/**
- * One ROR v2 organisation → zero or more rows: active education organisations only, one row per
- * country of `countries` it has a location in, keyed `{rorKey}_{countryCode}` (DECISIONS §7b: an
- * organisation in two countries appears in both lists). Names come from `ror_display`.
- */
 export function universityRowsFromRor(
   item: unknown,
   countries: ReadonlySet<string>,
@@ -154,7 +127,6 @@ export function universityRowsFromRor(
   return [...rows.values()];
 }
 
-/** Words too common to hint at a duplicate (PPIDK CocokUniversitas). */
 const GENERIC = new Set([
   "university",
   "institute",
@@ -171,10 +143,6 @@ const distinctiveWords = (name: string) =>
     .split(" ")
     .filter((w) => w.length >= 3 && !GENERIC.has(w));
 
-/**
- * Review queue hint: approved campuses of the same country sharing a distinctive word with the
- * proposal (at most 15, by name). The reviewer decides; nothing is merged automatically.
- */
 export function mergeCandidates<T extends { name: string; countryCode: string }>(
   proposal: { name: string; countryCode: string },
   approved: readonly T[],

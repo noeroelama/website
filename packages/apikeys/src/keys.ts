@@ -1,15 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-/** Scopes third parties can be granted. Separate vocabulary from staff permissions. */
 export const API_SCOPES = ["events.read", "registrations.write"] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 export type KeyEnvironment = "live" | "test";
 
-/**
- * Keys look like `pk_live_<id>_<secret>`. Only the HMAC of the secret is stored;
- * the full key is shown to the admin exactly once.
- */
 const KEY_ID_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 const KEY_PATTERN = /^pk_(live|test)_([a-z0-9]{12})_([A-Za-z0-9_-]{43})$/;
 
@@ -24,7 +19,6 @@ export interface ApiKeyRecord {
   readonly rateLimitPerMinute: number | null;
 }
 
-/** Storage port. Implemented in @website/db. */
 export interface ApiKeyStore {
   findByKeyId(keyId: string): Promise<ApiKeyRecord | null>;
 }
@@ -34,7 +28,6 @@ export function hashSecret(secret: string, pepper: string): string {
 }
 
 export function generateApiKey(environment: KeyEnvironment, pepper: string) {
-  // keyId is an identifier, not a secret; a slight modulo bias is irrelevant here.
   const keyId = Array.from(
     randomBytes(12),
     (byte) => KEY_ID_ALPHABET[byte % KEY_ID_ALPHABET.length],

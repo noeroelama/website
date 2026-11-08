@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 
 type Photo = { url: string; thumbUrl: string; width: number; height: number };
 
-/** Featured photos as a grid; a click opens a native <dialog> lightbox (no library). */
 export function Lightbox(props: {
   photos: readonly Photo[];
   labels: { close: string; previous: string; next: string; open: string };

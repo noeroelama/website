@@ -78,7 +78,6 @@ describe("audit helper handed to every admin mutation", () => {
         module: "articles",
         action: "UPDATE",
         title: "New",
-        // Only changed fields are kept.
         before: { title: "Old" },
         after: { title: "New" },
         revertible: true,

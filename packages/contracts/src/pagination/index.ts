@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { safeId } from "@website/security/validation";
 
-/** Opaque cursor pagination. Offsets are not offered (unstable under concurrent writes). */
 export const CursorQuerySchema = z.object({
   cursor: safeId.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),

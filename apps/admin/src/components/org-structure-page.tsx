@@ -17,19 +17,11 @@ import type { PeriodItem } from "./periods-model";
 
 interface Props {
   period: PeriodItem;
-  /** Every period, for the period switch. */
   periods: PeriodItem[];
-  /** The period's units. */
   units: OrgUnitItem[];
-  /** structure.edit and the period is not archived. */
   canEdit: boolean;
 }
 
-/**
- * Organizations → Period → Structure (feature A5): the units of one period with how many people
- * each shows on its cabinet page. Add and Edit open the unit page
- * (/organizations/periods/[id]/units/…); Delete is soft (revertible in the Audit Log).
- */
 export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
   const router = useRouter();
   const toast = useToastMessage();
@@ -119,7 +111,6 @@ export function OrgStructurePage({ period, periods, units, canEdit }: Props) {
           </p>
         </div>
         <div className="admin-page-header__actions">
-          {/* Period switch (Figma: cream dropdown with a calendar icon). */}
           <div className="admin-row-menu">
             {periodMenu ? (
               <div className="admin-row-menu__backdrop" onClick={() => setPeriodMenu(false)} />

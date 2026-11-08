@@ -93,7 +93,6 @@ describe("question builder input (C1)", () => {
     for (const value of bad) {
       expect(QuestionInputSchema.safeParse(value).success, JSON.stringify(value)).toBe(false);
     }
-    // "Other" counts towards the multi-choice limit.
     expect(
       QuestionInputSchema.safeParse(
         input({ type: "multi_choice", options: ["a", "b"], allowOther: true, maxSelections: 3 }),
@@ -125,7 +124,6 @@ describe("question builder input (C1)", () => {
         false,
       );
     }
-    // Two new questions both have an empty id: not a duplicate.
     expect(FormInputSchema.safeParse({ ...form, questions: [input(), input()] }).success).toBe(
       true,
     );
@@ -173,7 +171,6 @@ describe("version freezing (C1)", () => {
       write: "create",
       number: 2,
     });
-    // Order matters (the renderer shows questions in order).
     expect(sameQuestions([q1, q2], [q2, q1])).toBe(false);
   });
 });
@@ -301,9 +298,7 @@ describe("answers schema built from a version (C1)", () => {
       ok: true,
       answers: { ...valid, q_short: "Ari", q_mail: "ari@example.org" },
     });
-    // "Other" free text when allowed.
     expect(parseAnswers(all, { ...valid, q_one: "Purple" })).toMatchObject({ ok: true });
-    // A number without limits takes any finite number.
     expect(parseAnswers([question("q_n", "number")], { q_n: -1e9 })).toMatchObject({ ok: true });
   });
 
@@ -323,7 +318,6 @@ describe("answers schema built from a version (C1)", () => {
       ok: false,
       fields: { q_mail: "This question is required." },
     });
-    // Blank answers to required questions are refused too.
     const blank = parseAnswers(all, { ...valid, q_short: "  " });
     expect(blank.ok === false && Object.keys(blank.fields)).toEqual(["q_short"]);
     expect(parseAnswers(all, { ...valid, q_ok: false })).toMatchObject({
@@ -382,7 +376,6 @@ describe("answers schema built from a version (C1)", () => {
     const many = [question("q_many", "multi_choice", { allowOther: true })];
     expect(parseAnswers(many, { q_many: ["Red", "Pink"] })).toMatchObject({ ok: true });
     expect(parseAnswers(many, { q_many: ["Pink", "Black"] })).toMatchObject({ ok: false });
-    // No limit set: every option may be ticked.
     expect(parseAnswers(many, { q_many: ["Red", "Blue", "Green"] })).toMatchObject({ ok: true });
   });
 });

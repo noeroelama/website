@@ -1,7 +1,3 @@
-/**
- * Every collection (= MySQL table). The store refuses other names, and creates missing tables on
- * first use, so a new collection is one line here.
- */
 export const COLLECTIONS = [
   "applicationRevisions",
   "applications",
@@ -53,31 +49,23 @@ export const COLLECTIONS = [
   "verificationCodes",
   "webauthnChallenges",
   "webhookEvents",
-  // Phase 6: programmes (E1-E5)
   "objectives",
   "programs",
   "programCheckins",
   "lpjReports",
-  // Finance (I1, I2)
   "financeRequests",
   "cashEntries",
-  // Meetings (F4-F6)
   "meetings",
   "attendanceCodes",
   "actionItems",
-  // Short links (K1)
   "shortLinks",
   "shortLinkSlugs",
-  // Zoom (F1-F3)
   "zoomRequests",
   "zoomCapacity",
   "recordingSessions",
   "recordingFiles",
-  // Satisfaction polls (J3)
   "surveys",
-  // WhatsApp chatbot (C4)
   "whatsappConversations",
-  // Phase 8: daily views
   "taskBoardShares",
   "holidays",
   "calendarFeeds",

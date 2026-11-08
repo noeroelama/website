@@ -70,7 +70,6 @@ describe("the member's own profile changes (PPIDK §63 without verification)", (
       before: { fullName: "Siti Rahma", dateOfBirth: "[previous]" },
       after: { fullName: "Siti Rahmawati", dateOfBirth: "[changed]" },
     });
-    // Free fields are not audited.
     const entries = audit().length;
     await own().save(member("siti"), {
       version: 2,
@@ -146,7 +145,6 @@ describe("graduation: student, graduating, alumni (B5, PPIDK §67)", () => {
       message: "conflict",
     });
 
-    // Marked by an officer in PPIDK (imported): the member cannot cancel it.
     fake.docs.set("memberProfiles/siti", {
       ...fake.docs.get("memberProfiles/siti"),
       graduatedOn: "2026-09-30",

@@ -29,7 +29,6 @@ export function ForgotPasswordForm() {
       <p>Enter your email and we will send you a link to choose a new password.</p>
       <Field label="Email" name="email" type="email" autoComplete="email" />
       <Message text={error} />
-      {/* Same message whether or not the email has an account. */}
       <Message
         tone="info"
         text={sent ? "If an account exists for that email, a reset link is on its way." : ""}

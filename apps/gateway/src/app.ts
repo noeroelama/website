@@ -14,7 +14,6 @@ import type { GatewayDeps, GatewayVariables } from "./types";
 
 export function createGatewayApp(deps: GatewayDeps) {
   const app = new OpenAPIHono<{ Variables: GatewayVariables }>({
-    // Zod validation failures become RFC 9457 problems with field paths, never raw errors.
     defaultHook: (result, c) => {
       if (!result.success) {
         return problem(c, "validation", {
@@ -26,7 +25,7 @@ export function createGatewayApp(deps: GatewayDeps) {
   });
 
   app.use("*", requestId);
-  app.use("*", secureHeaders()); // includes Strict-Transport-Security (HTTPS only)
+  app.use("*", secureHeaders());
   app.use("*", requestGuard(deps));
   app.use(
     "*",
@@ -37,7 +36,6 @@ export function createGatewayApp(deps: GatewayDeps) {
     }),
   );
 
-  // Unauthenticated liveness probes.
   app.route("/", healthRoutes());
   app.route(`/${CURRENT_API_VERSION}`, healthRoutes());
 
@@ -52,9 +50,7 @@ export function createGatewayApp(deps: GatewayDeps) {
     description: "API key issued by an administrator: `Authorization: Bearer pk_live_…`",
   });
 
-  // Everything else under /v1 requires an API key.
   const v1 = `/${CURRENT_API_VERSION}`;
-  // Hono's "/x/*" also matches "/x" itself — register each guard exactly once.
   app.use(`${v1}/events/*`, requireApiKey(deps), requireScope("events.read"));
   app.use(`${v1}/*`, requireIdempotencyKey);
   app.route(v1, eventRoutes(deps));

@@ -42,13 +42,9 @@ export interface FinanceDeps {
     SqlFinanceStore,
     "get" | "create" | "update" | "remove" | "change" | "pay" | "addEntry" | "listEntries"
   >;
-  /** The active board period (the cash book is per period), null when none. */
   readonly period: () => Promise<{ readonly id: string; readonly name: string } | null>;
-  /** Exports are security events (who took the report, which range). */
   readonly logExport: (actorId: string, details: Record<string, unknown>) => void;
-  /** Period of a work programme, null when it does not exist (a budget line is optional). */
   readonly programPeriod: (programId: string) => Promise<string | null>;
-  /** `orgUnitPath` of a unit (unit + ancestors), null when it does not exist. */
   readonly unitPath: (orgUnitId: string) => Promise<readonly string[] | null>;
   readonly storage: {
     save(
@@ -58,7 +54,6 @@ export interface FinanceDeps {
     ): Promise<unknown>;
     read(path: string): Promise<Uint8Array | null>;
   };
-  /** After a step committed: tells whoever acts next (J2; never throws). */
   readonly afterStep: (request: FinanceRequest) => Promise<void>;
   readonly now: () => Date;
   readonly uuid: () => string;
@@ -84,17 +79,14 @@ const cashAudit =
       after,
       versionBefore: null,
       versionAfter: 1,
-      // A cash book line is corrected by a new line, never removed by a revert.
       revertible: false,
     });
 
-/** A quoted CSV text cell; one starting like a formula gets a ' (spreadsheet injection). */
 const cell = (value: string) =>
   `"${(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value).replace(/"/g, '""')}"`;
 
 const CSV_HEADER = "currency,date,kind,category,description,in,out,balance,source";
 
-/** The report as CSV (standard library only): opening, lines, closing per currency. */
 function reportCsv(report: readonly CurrencyReport[], from: string | null, to: string | null) {
   const lines = [CSV_HEADER];
   for (const r of report) {
@@ -125,7 +117,6 @@ function reportCsv(report: readonly CurrencyReport[], from: string | null, to: s
   return "\ufeff" + lines.join("\r\n") + "\r\n";
 }
 
-/** The report as PDF (the shared renderer): one table per currency, totals under it. */
 function reportPdf(
   report: readonly CurrencyReport[],
   period: string,
@@ -184,11 +175,9 @@ const financeAudit =
       after,
       versionBefore: current?.version ?? null,
       versionAfter: next.version,
-      // A desk step is undone by a return or a new request, never by a revert.
       revertible: false,
     });
 
-/** The browser sends the file name URL-encoded; anything unreadable becomes "document.pdf". */
 function fileName(header: string | null): string {
   try {
     return decodeURIComponent(header ?? "").slice(0, 200) || "document.pdf";
@@ -197,13 +186,7 @@ function fileName(header: string | null): string {
   }
 }
 
-/**
- * Finance requests (I1). Scope: an org-unit assignment covers its unit's requests (and units
- * below); a global one every request. Desks are separate permissions: review (treasurer),
- * authorize (coordinator), pay (marks the transfer with its proof).
- */
 export function createFinanceActions(deps: FinanceDeps) {
-  /** The request's place in the structure, read on the server (never from the input). */
   const scopeOf = async ({ id }: { id: string }): Promise<ResourceContext> => ({
     orgUnitPath: (await deps.requests.get(id))?.orgUnitPath ?? [],
   });
@@ -214,12 +197,10 @@ export function createFinanceActions(deps: FinanceDeps) {
   const save = createGuardedAction({
     permission: "finance.edit",
     input: SaveRequest,
-    // New request: the chosen unit; existing one: where it is now (the new unit is checked below).
     resource: (input) => (input.id ? scopeOf({ id: input.id }) : unitScope(input.orgUnitId)),
     handler: async ({ id, version, ...input }, principal, audit) => {
       const now = deps.now();
       const period = await deps.period();
-      // Without an active period the store refuses the save with its own message.
       if (input.programId && period && (await deps.programPeriod(input.programId)) !== period.id) {
         throw new RuleViolationError("The programme is not one of the active period.");
       }
@@ -293,7 +274,6 @@ export function createFinanceActions(deps: FinanceDeps) {
     (r, { path }) => removeDocument(r, path),
   );
 
-  /** Reads a PDF body (≤ 10 MB) and stores it privately for the request. */
   const storePdf = async (
     request: Request,
     current: FinanceRequest,
@@ -316,7 +296,6 @@ export function createFinanceActions(deps: FinanceDeps) {
 
   const Upload = Ref.extend({ name: safeText(200), request: z.instanceof(Request) }).strict();
 
-  /** POST /api/finance/<id>/files?kind=doc: a required document (proposal, RAB, receipts). */
   const uploadDocument = createGuardedAction({
     permission: "finance.edit",
     input: Upload,
@@ -334,14 +313,12 @@ export function createFinanceActions(deps: FinanceDeps) {
     },
   });
 
-  /** POST /api/finance/<id>/files?kind=proof&amount=<minor>: marks paid with the proof. */
   const pay = createGuardedAction({
     permission: "finance.pay",
     input: Upload.extend({ amountMinor: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER) }),
     resource: scopeOf,
     handler: async ({ id, version, name, request, amountMinor }, principal, audit) => {
       const current = await existing(id);
-      // Refused before the file is stored (status, requester), and again in the transaction.
       markPaid(
         current,
         principal.userId,
@@ -351,7 +328,6 @@ export function createFinanceActions(deps: FinanceDeps) {
       );
       const proof = await storePdf(request, current, "proof", name);
       const now = deps.now();
-      // The cash book line (if any) is written in the same transaction (I2).
       const saved = await deps.requests.pay(
         id,
         version,
@@ -365,7 +341,6 @@ export function createFinanceActions(deps: FinanceDeps) {
     },
   });
 
-  /** Route form of the uploads: version, kind and amount from the query, body = the PDF. */
   const uploadFile =
     (getPrincipal: () => Promise<Principal | null>, getAuditContext: () => Promise<AuditContext>) =>
     async (id: string, request: Request): Promise<Response> => {
@@ -402,7 +377,6 @@ export function createFinanceActions(deps: FinanceDeps) {
       );
     };
 
-  /** GET /api/finance/<id>/files?path=…: a document or the proof, for finance.read in scope. */
   async function readFile(id: string, path: string, principal: Principal | null) {
     if (principal === null || !principal.active) return jsonError("unauthenticated");
     const request = await deps.requests.get(id);
@@ -429,7 +403,6 @@ export function createFinanceActions(deps: FinanceDeps) {
     });
   }
 
-  /** A manual cash book line (finance.cashbook, global: the book is the organisation's). */
   const addCashEntry = createGuardedAction({
     permission: "finance.cashbook",
     input: CashEntryInputSchema,
@@ -444,10 +417,6 @@ export function createFinanceActions(deps: FinanceDeps) {
     },
   });
 
-  /**
-   * GET /api/finance/report?from=&to=&format=csv|pdf (finance.export, global): the report of the
-   * active period's cash book for the range, recomputed here; the query chooses the range only.
-   */
   async function reportFile(url: URL, principal: Principal | null): Promise<Response> {
     if (principal === null || !principal.active) return jsonError("unauthenticated");
     if (!canAccessAdmin(principal) || !can(principal, "finance.export")) {

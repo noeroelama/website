@@ -1,23 +1,4 @@
 #!/usr/bin/env node
-/**
- * Imports meetings (participants, agenda, minutes, action items), Zoom bookings and recorded
- * sessions, short links and the outgoing message log from PPIDK (block J, step 7.12, DEC-10). Run
- * locally by the owner with the admin service account AFTER the people import (step 3.9) and
- * after freezing the PPIDK meeting, Zoom and Tools screens. Dry run unless --apply is given; safe
- * to run again (ids come from PPIDK).
- *
- *   1. Export each table from MariaDB as TSV into one folder, e.g.
- *        for t in users org_units meetings meeting_participants meeting_agenda_items \
- *                 meeting_action_items zoom_meetings zoom_recording_sessions shortlinks \
- *                 outgoing_messages; do
- *          mysql --batch -e "SELECT * FROM $t" asiania_my > ppidk/$t.tsv; done
- *   2. node --experimental-strip-types --import ./infrastructure/scripts/ts-register.mjs \
- *        --env-file=apps/admin/.env.local infrastructure/scripts/import-ppidk-meetings.mjs \
- *        --dir ./ppidk [--apply]
- *   3. Read the report (ppidk/import-meetings-report.json): counts and every skipped row.
- *
- * Needs DATABASE_URL, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.
- */
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -45,7 +26,6 @@ if (missing.length > 0) {
   process.exit(2);
 }
 
-// firebase-admin (Authentication only) is a dependency of @website/auth; resolve it from there.
 const require = createRequire(new URL("../../packages/auth/package.json", import.meta.url));
 const { cert, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -71,7 +51,6 @@ if (!periods.docs.some((doc) => doc.id.startsWith("ppidk-"))) {
   process.exit(1);
 }
 
-// Same accounts as the people import: existing ones by e-mail, otherwise ppidk-<id>.
 const existing = new Map();
 const emails = users.map((u) => u.email?.trim().toLowerCase()).filter(Boolean);
 for (let i = 0; i < emails.length; i += 100) {

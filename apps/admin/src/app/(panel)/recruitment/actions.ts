@@ -9,7 +9,6 @@ import {
   recruitmentActions,
 } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/recruitment.ts (createGuardedAction).
 export async function saveRecruitmentAction(input: unknown) {
   const result = await recruitmentActions().save(getPrincipal, getAuditContext)(input);
   if (result.ok) revalidatePath("/recruitment");
@@ -27,8 +26,6 @@ export async function removeRecruitmentAction(input: unknown) {
   if (result.ok) revalidatePath("/recruitment");
   return result;
 }
-
-/* ---- selection queue (src/server/applications.ts) ---- */
 
 const queued = <T extends { ok: boolean }>(result: T): T => {
   if (result.ok) revalidatePath("/recruitment", "layout");
@@ -63,17 +60,13 @@ export async function returnPactAction(input: unknown) {
   return queued(await applicationActions().returnPact(getPrincipal, getAuditContext)(input));
 }
 
-/** Ratify: confirmed + the appointment (needs a recent sign-in). */
 export async function ratifyApplicationAction(input: unknown) {
   return queued(await applicationActions().ratify(getPrincipal, getAuditContext)(input));
 }
 
-/** A 15-minute link to a portfolio or file answer of the application. */
 export async function applicationFileUrlAction(input: unknown) {
   return applicationActions().fileUrl(getPrincipal, getAuditContext)(input);
 }
-
-/* ---- interview times (src/server/interviews.ts) ---- */
 
 export async function createInterviewPlanAction(input: unknown) {
   return queued(await interviewActions().createPlan(getPrincipal, getAuditContext)(input));
@@ -83,7 +76,6 @@ export async function removeInterviewSlotAction(input: unknown) {
   return queued(await interviewActions().removeSlot(getPrincipal, getAuditContext)(input));
 }
 
-/** Export CSV of personal data: logged as a data.export security event (M8). */
 export async function logApplicantsExportAction(input: unknown) {
   return exportLog().applicants(getPrincipal, getAuditContext)(input);
 }

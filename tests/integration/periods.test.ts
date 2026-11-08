@@ -23,7 +23,6 @@ const secretary = staff(["periods.edit"]);
 const context = () =>
   Promise.resolve({ actorEmail: "sekjen@example.org", requestId: "req-123456", authTime: null });
 const as = (principal: Principal) => [() => Promise.resolve(principal), context] as const;
-/** The admin form has only the period (its years) and the cabinet. */
 const period = { name: "2026/2027", cabinet: "Kolaborasi Asiania" };
 
 let fake: ReturnType<typeof fakeDb>;
@@ -109,7 +108,6 @@ describe("board periods (Organizations → Period)", () => {
   });
 
   it("an edit keeps the notes and the dates; the dates change only with the years", async () => {
-    // A period written before the form shrank (e.g. imported), with its own dates and notes.
     fake.docs.set("periods/old", {
       name: "2025/2026",
       cabinet: "Lama",
@@ -165,7 +163,6 @@ describe("board periods (Organizations → Period)", () => {
     expect(await actions().activate(...as(secretary))({ id: second, version: 2 })).toMatchObject({
       error: "refused",
     });
-    // The active period can still be corrected; a stale version is refused.
     expect(
       await actions().save(...as(secretary))({
         ...period,
@@ -197,7 +194,6 @@ describe("board periods (Organizations → Period)", () => {
     const deleted = auditEntries().at(-1);
     expect(deleted).toMatchObject({ action: "DELETE", resourceType: "period", revertible: true });
     expect((await store.listForAdmin()).map((p) => p.name)).toEqual(["2026/2027"]);
-    // A deleted period cannot be activated or edited.
     expect(await actions().activate(...as(secretary))({ id: draft, version: 2 })).toMatchObject({
       error: "refused",
       issues: [expect.stringContaining("trash")],

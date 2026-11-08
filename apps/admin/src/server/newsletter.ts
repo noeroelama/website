@@ -31,25 +31,17 @@ export interface NewsletterDeps {
   readonly campaigns: Pick<SqlCampaignStore, "write" | "get" | "listActive" | "progress">;
   readonly subscribers: Pick<SqlSubscriberReader, "listForAdmin" | "confirmedAfter"> &
     Pick<SqlSubscriberStore, "staffAdd" | "remove">;
-  /** Messenger send (idempotent per key: a re-run never mails anyone twice). */
   readonly send: (message: Message, key: string) => Promise<MessageStatus | "duplicate">;
-  /** Signed unsubscribe link for one subscriber (web /newsletter/unsubscribe). */
   readonly unsubscribeUrl: (subscriberId: string) => string;
-  /** Signed open pixel and click links (web /newsletter/o and /newsletter/c). */
   readonly openUrl: (campaignId: string, subscriberId: string) => string;
   readonly clickUrl: (campaignId: string, subscriberId: string, url: string) => string;
-  /** Add / Import: subscriber id (keyed hash, same as web), a random token, the confirm link. */
   readonly subscriberId: (email: string) => string;
   readonly newToken: () => string;
   readonly confirmUrl: (subscriberId: string, token: string) => string;
-  /** PPIs (chapters) a subscriber can belong to. */
   readonly chapters: () => Promise<readonly { id: string; name: string }[]>;
-  /** The signed-in staff member's e-mail (Send Test goes there only). */
   readonly staffEmail: (userId: string) => Promise<string | null>;
-  /** Security event for every subscriber export. */
   readonly logExport: (actorId: string, rows: number) => void;
   readonly now: () => Date;
-  /** Recipients per cron run (100 in production). */
   readonly batchSize: number;
 }
 
@@ -62,7 +54,6 @@ const RefInput = z.object({ id: safeId, version: z.number().int().min(1) }).stri
 
 type Action = "CREATE" | "UPDATE" | "SEND" | "DELETE";
 
-/** Audit entry for one campaign change (module `newsletter`, resource `campaign`). */
 const campaignAudit =
   (audit: AuditBuilder, action: Action, revertible = true) =>
   (
@@ -89,10 +80,6 @@ const changeable = (current: Campaign | null): Campaign => {
   return current;
 };
 
-/**
- * One campaign e-mail for one subscriber, with that subscriber's unsubscribe link and, when
- * `tracking` is given, tracked links and an open pixel (Send Test has neither).
- */
 export function campaignMessage(
   campaign: Campaign,
   to: string,
@@ -111,7 +98,6 @@ export function campaignMessage(
   };
 }
 
-/** Confirmation e-mail for someone staff added (bilingual: admin has no visitor language). */
 function optInMessage(to: string, link: string): Message {
   const body =
     "PPIDK Asia-Oseania menambahkan alamat ini ke newsletter kami. Buka tautan di bawah untuk " +
@@ -131,7 +117,6 @@ function optInMessage(to: string, link: string): Message {
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
-/** Admin Newsletter page actions, subscriber export and the "newsletter-send" cron job. */
 export function createNewsletterActions(deps: NewsletterDeps) {
   const save = createGuardedAction({
     permission: "newsletter.edit",
@@ -160,7 +145,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /** Send now or schedule (newsletter.send). Audited SEND; e-mails cannot be taken back. */
   const send = createGuardedAction({
     permission: "newsletter.send",
     input: RefInput.extend({ sendAt: z.coerce.date().nullable() }).strict(),
@@ -202,7 +186,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /** Send Test: the saved campaign, to the signed-in staff member only. */
   const sendTest = createGuardedAction({
     permission: "newsletter.edit",
     input: z.object({ id: safeId }).strict(),
@@ -222,10 +205,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /**
-   * One staff-added address: the double opt-in e-mail goes out after the transaction committed
-   * (key newsletter:{id}:optin:{n}, shared with the website, so nobody gets it twice).
-   */
   const addOne = async (
     input: { email: string; name: string | null; chapterId: string | null },
     audit: AuditBuilder,
@@ -251,7 +230,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
           after,
           versionBefore,
           versionAfter,
-          // The confirmation e-mail is already out; delete the subscriber instead.
           revertible: false,
         }),
     );
@@ -272,7 +250,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     }
   };
 
-  /** "Add New Subscriber" (newsletter.edit): pending until the person confirms by e-mail. */
   const addSubscriber = createGuardedAction({
     permission: "newsletter.edit",
     input: SubscriberInputSchema,
@@ -282,7 +259,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /** "Import CSV" (newsletter.edit): every new address gets its own opt-in e-mail. */
   const importSubscribers = createGuardedAction({
     permission: "newsletter.edit",
     input: z.object({ csv: z.string().max(500_000) }).strict(),
@@ -308,7 +284,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /** Delete a subscriber (newsletter.edit): soft delete, revertible on the Audit Log. */
   const removeSubscriber = createGuardedAction({
     permission: "newsletter.edit",
     input: z.object({ id: safeId }).strict(),
@@ -331,7 +306,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /** CSV of the subscriber list (newsletter.export), logged as a security event. */
   const exportSubscribers = createGuardedAction({
     permission: "newsletter.export",
     input: z.object({}).strict(),
@@ -352,11 +326,6 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     },
   });
 
-  /**
-   * Cron job "newsletter-send": the next batch (default 100) of confirmed subscribers of the
-   * oldest due campaign. Each e-mail has the key newsletter:{campaignId}:{subscriberId}, so a run
-   * that crashed half-way repeats its batch without mailing anyone twice.
-   */
   const runBatch = async (): Promise<Record<string, unknown>> => {
     const now = deps.now();
     const limit = deps.batchSize;

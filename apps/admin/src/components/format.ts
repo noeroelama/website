@@ -1,14 +1,11 @@
-/** Dates on admin pages are shown in UTC (the viewer's zone is not known on the server). */
 export function formatUtc(date: Date | null): string {
   return date ? `${date.toISOString().slice(0, 16).replace("T", " ")} UTC` : "—";
 }
 
-/** URL shown without its scheme or trailing slash, e.g. "https://goppi.id/" → "goppi.id". */
 export function withoutScheme(url: string): string {
   return url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
 }
 
-/** Humanised "x time ago" (e.g. "2 hours ago", "3 days ago") from an ISO timestamp. */
 export function timeAgo(iso: string, now = Date.now()): string {
   const d = new Date(iso);
   const diff = Math.max(0, now - d.getTime());
@@ -25,10 +22,6 @@ export function timeAgo(iso: string, now = Date.now()): string {
   return `${years} year${years === 1 ? "" : "s"} ago`;
 }
 
-/**
- * ISO instant shown on the clock of `timeZone`, e.g. "20 Nov 2026, 11:00", or "20 Nov 2026" with
- * `withTime = false` (same on server and browser).
- */
 export function formatInZone(iso: string, timeZone: string, withTime = true): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone,
@@ -37,9 +30,4 @@ export function formatInZone(iso: string, timeZone: string, withTime = true): st
   }).format(new Date(iso));
 }
 
-/**
- * One CSV cell, quoted (inner quotes doubled); rows go to `downloadCsv` (csv.ts). A cell that a
- * spreadsheet would run as a formula (starts with = + - @, tab or carriage return) gets a
- * leading apostrophe, so typed-in answers can never execute ("CSV injection").
- */
 export const esc = (v: string) => `"${(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`;

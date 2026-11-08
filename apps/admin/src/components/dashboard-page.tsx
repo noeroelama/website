@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatCard, type StatCardProps } from "@/components/ui/badge";
 
-/** One recent audit entry, already formatted on the server. */
 export interface DashboardAuditRow {
   id: string;
   when: string;
@@ -10,15 +9,10 @@ export interface DashboardAuditRow {
   what: string;
 }
 
-/**
- * Dashboard content (server-rendered; no interaction). Counters only for the pages the viewer
- * can read (src/server/dashboard.ts); the newest audit entries only with audit.read.
- */
 export function DashboardPage(props: {
   name: string;
   counters: StatCardProps[];
   audit: DashboardAuditRow[] | null;
-  /** Queues, agenda, deadlines, period numbers and warnings (src/server/dashboard.ts). */
   children?: ReactNode;
 }) {
   return (

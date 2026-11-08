@@ -3,7 +3,6 @@
 import { getAuditContext, getPrincipal } from "@/server/context";
 import { linkActions } from "@/server/wiring";
 
-// Thin server-action wrappers: every rule lives in src/server/links.ts (createGuardedAction).
 export async function createLinkAction(input: unknown) {
   return linkActions().create(getPrincipal, getAuditContext)(input);
 }

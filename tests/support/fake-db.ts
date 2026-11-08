@@ -2,7 +2,6 @@ import { vi } from "vitest";
 
 type Data = Record<string, unknown>;
 
-/** "actor.email" → data.actor.email (field paths). */
 const at = (data: Data, field: string): unknown =>
   field.split(".").reduce<unknown>((value, key) => (value as Data | undefined)?.[key], data);
 type Doc = {
@@ -12,7 +11,6 @@ type Doc = {
   get: (f: string) => unknown;
 };
 
-/** The store returns timestamps (`toDate()`) for stored Dates; mimic that so adapters convert them. */
 function asStored(data: Data): Data {
   return Object.fromEntries(
     Object.entries(data).map(([key, value]) =>
@@ -32,16 +30,9 @@ const sortable = (value: unknown): string | number =>
           ? value
           : JSON.stringify(value ?? "");
 
-/**
- * Minimal in-memory stand-in for the document store our adapters use (packages/db/src/sql/store.ts):
- * documents, simple queries (==, array-contains(-any), in, <=, >=, orderBy, startAfter, limit,
- * count)
- * and transactions (serializable, reads before writes, writes applied only on success).
- */
 export function fakeDb(options: { failWith?: Error } = {}) {
   const docs = new Map<string, Data>();
   const writes: Array<{ path: string; data: Data }> = [];
-  // Like the store, a snapshot is a copy taken at read time.
   const snapshot = (path: string, id: string): Doc => {
     const data = docs.get(path);
     return { id, exists: data !== undefined, data: () => data, get: (f) => data?.[f] };
@@ -150,10 +141,6 @@ export function fakeDb(options: { failWith?: Error } = {}) {
   const db = {
     collection: (name: string) => ({ ...query(name), doc: (id: string) => ref(name, id) }),
     getAll,
-    /**
-     * Like the store: every read must come before the first write, and the writes are applied
-     * only when the callback succeeds (an error rolls everything back).
-     */
     runTransaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
       if (options.failWith) return Promise.reject(options.failWith);
       const run = queue.then(async () => {

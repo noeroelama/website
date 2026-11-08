@@ -40,7 +40,7 @@ describe("Firestore audit writer (append-only, hash chain, same transaction)", (
     await db.runTransaction(async (tx) => {
       const audit = await writer.begin(tx);
       audit.append(event("a1", "First"));
-      audit.append(event("a2", "Second")); // one operation may write several entries
+      audit.append(event("a2", "Second"));
     });
     await db.runTransaction(async (tx) => (await writer.begin(tx)).append(event("a3", "Third")));
 
@@ -90,11 +90,9 @@ describe("architecture: the audit log has no update or delete path", () => {
   it("audit entries are only ever created, inside a transaction", () => {
     const source = readFileSync("packages/db/src/sql/audit.ts", "utf8");
     expect(source).toMatch(/tx\.create\(logs\.doc\(/);
-    // `logs` (the auditLogs collection) is never set, updated or deleted, in or out of a transaction.
     expect(source).not.toMatch(/tx\.(set|update|delete)\(\s*logs\b/);
     expect(source).not.toMatch(/logs\.doc\([^)]*\)\.(set|update|delete|create)\(/);
     expect(source).not.toMatch(/recursiveDelete|bulkWriter|batch\(\)/);
-    // No other database code touches the audit collection (collections.ts only declares its table).
     const others = execFileSync(
       "git",
       ["grep", "--untracked", "-l", '"auditLogs"', "--", "packages", "apps"],

@@ -9,10 +9,8 @@ import { deskPermission } from "@/server/lpj";
 import { canManageProgram } from "@/server/programs";
 import { adminReads } from "@/server/wiring";
 
-// Login required (blocks on the session). Signed-out visitors get a 307 from src/proxy.ts first.
 export const instant = false;
 
-/** One LPJ: the frozen plan, the PICs' part, the desks (lpj.read, or the programme's readers). */
 export default async function LpjRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await requireAdminViewer(`/lpj/${id}`);

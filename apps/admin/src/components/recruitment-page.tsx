@@ -29,18 +29,11 @@ import { Select } from "@/components/ui/select";
 import { ToastBanner, useToastMessage } from "@/components/ui/toast";
 import { unitDrafts, unitsInput, type RecruitmentItem, type UnitDraft } from "./recruitment-model";
 
-/* ==================================================================
-   Recruitment (Oprec) — set-up: window, units with seat quotas and
-   portfolio rule, choices, offer validity and the recruitment form.
-   Applications (review, offers, interviews) follow in the queue.
-   ================================================================== */
-
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 type SortKey = "title" | "opens";
 const sortValue = (r: RecruitmentItem, key: SortKey) =>
   key === "title" ? r.title.toLowerCase() : r.opensAt;
-/** A cell's text in its column's filter checklist (dates by day). */
 const filterText = (r: RecruitmentItem, key: SortKey): string =>
   key === "title" ? r.title : formatInZone(r.opensAt, "UTC", false);
 
@@ -59,11 +52,8 @@ interface Draft {
 
 interface Props {
   initial: RecruitmentItem[];
-  /** Periods that can still change (draft or active). */
   periods: { id: string; name: string }[];
-  /** The units of each of those periods, in tree order. */
   unitsByPeriod: Record<string, { id: string; name: string; path: string[] }[]>;
-  /** Recruitment-usage forms. */
   forms: { id: string; title: string; currentVersion: number }[];
   canEdit: boolean;
 }
@@ -277,10 +267,7 @@ function RecruitmentList({ initial: items, periods, unitsByPeriod, forms, canEdi
             </p>
           </div>
         </div>
-        <form
-          className="admin-dark-form"
-          onSubmit={(event) => event.preventDefault() /* actions run from the submit buttons */}
-        >
+        <form className="admin-dark-form" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-form-grid">
             <div className="admin-field">
               <label className="admin-field__label" htmlFor="rec-title">

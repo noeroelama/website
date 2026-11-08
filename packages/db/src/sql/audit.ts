@@ -11,21 +11,10 @@ import {
 import { safeId } from "@website/security/validation";
 import { getDocumentsByIds } from "./batch";
 
-/**
- * Append-only audit log: `auditLogs/{id}` entries and the chain head `auditChain/head`
- * ({ hash, seq }). Each entry stores `seq`, `prevHash` and
- * `hash = sha256(prevHash + canonicalJson(event))`, so a changed or missing entry breaks the
- * chain. There is deliberately no update or delete code path for `auditLogs` (tested).
- */
 export function createSqlAuditWriter(db: Database) {
   const logs = db.collection("auditLogs");
   const head = db.collection("auditChain").doc("head");
 
-  /**
-   * Binds the writer to the caller's transaction. Call it after the transaction's own reads
-   * and before its writes (it reads the chain head); `append` only queues writes, which commit
-   * — or roll back — with the record change.
-   */
   async function begin(tx: Transaction): Promise<AuditAppender> {
     const snapshot = await tx.get(head);
     const stored = snapshot.exists ? (snapshot.data() as { hash: string; seq: number }) : null;
@@ -49,7 +38,6 @@ export function createSqlAuditWriter(db: Database) {
 
   return {
     begin,
-    /** An entry without a record change (e.g. an upload), in its own transaction. */
     appendAlone(event: AuditEvent): Promise<void> {
       return db.runTransaction(async (tx) => (await begin(tx)).append(event));
     },
@@ -60,7 +48,6 @@ export type SqlAuditWriter = ReturnType<typeof createSqlAuditWriter>;
 
 const toDate = (value: unknown): Date => (value as { toDate(): Date }).toDate();
 
-/** A stored entry back as an AuditEvent (Timestamps → Dates). */
 function toEvent(data: Record<string, unknown>): AuditEvent {
   return { ...(data as unknown as AuditEvent), occurredAt: toDate(data["occurredAt"]) };
 }
@@ -71,26 +58,18 @@ export interface AuditListQuery {
   readonly action?: AuditAction | undefined;
   readonly from?: Date | undefined;
   readonly to?: Date | undefined;
-  /** `nextCursor` of the previous page. */
   readonly cursor?: string | undefined;
   readonly limit: number;
 }
 
-/** Where each revertible resource type lives: resourceType → collection. */
 export type RevertibleCollections = Readonly<Record<string, string>>;
 
 export type RevertOutcome = "reverted" | "missing" | RevertRejection;
 
-/**
- * Audit Log page: read entries (newest first, filters, cursor), what each entry's revert
- * button may do, and the revert itself (one transaction: the record's listed fields + a NEW
- * REVERT entry; the original entry is never changed).
- */
 export function createSqlAuditStore(db: Database) {
   const logs = db.collection("auditLogs");
   const writer = createSqlAuditWriter(db);
 
-  /** Per entry: already reverted? current version of its record (null = no record/unknown). */
   async function revertContext(entries: readonly AuditEvent[], collections: RevertibleCollections) {
     const ids = entries.map((e) => e.id);
     const reverted = new Set<string>();
@@ -146,12 +125,6 @@ export function createSqlAuditStore(db: Database) {
 
     revertContext,
 
-    /**
-     * Reverts one entry in ONE transaction: reads the entry, an existing revert of it, the
-     * record and the chain head; refuses per `evaluateRevert`; otherwise writes the Before values
-     * of the listed fields (create → trash, delete → restore) with version + 1, and appends the
-     * REVERT entry built by `buildEvent`.
-     */
     revert(
       id: string,
       collections: RevertibleCollections,

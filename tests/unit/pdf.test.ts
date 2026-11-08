@@ -261,12 +261,10 @@ describe("letter PDF", () => {
         draws.push(options ?? {});
       },
     };
-    // Upright: top-left corner at (x, top), the requested width.
     expect(
       drawTurned(spy, image, { x: 10, top: 500, width: 100, max: 200, rotation: 0 }),
     ).toBeCloseTo(100);
     expect(draws[0]).toMatchObject({ x: 10, y: 400, width: 100, height: 100 });
-    // A quarter turn of a square keeps the same box; 45° fits the diagonal into the column.
     const turned = drawTurned(spy, image, {
       x: 0,
       top: 100,

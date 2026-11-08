@@ -7,10 +7,6 @@ import { webDb } from "./db";
 
 const reader = lazyEnv(() => createSqlNewsReader(webDb()));
 
-/**
- * Visible news, newest first (shared by Home, /news and the related list). Cached for minutes
- * under the tag "news": a scheduled article appears at most a few minutes after its date.
- */
 export async function publicNews(): Promise<PublicNews[]> {
   "use cache";
   cacheTag("news");

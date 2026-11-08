@@ -67,7 +67,6 @@ describe("origin restriction (requests must come from our own site)", () => {
   });
 
   it("behind a reverse proxy (cPanel/Passenger) compares against the Host header, not the internal URL", async () => {
-    // Next.js standalone behind Passenger sees http://localhost:<port> as request.url.
     const proxied = (headers: Record<string, string>) =>
       new Request("http://localhost:3000/api/session", {
         method: "POST",
@@ -258,7 +257,7 @@ describe("createRequestGuard (environment wiring)", () => {
     });
     await prod(req("/news"));
     await prod(req("/news"));
-    expect(shared).toHaveBeenCalledOnce(); // created once, reused
+    expect(shared).toHaveBeenCalledOnce();
 
     const devShared = vi.fn(() => createMemoryRateLimitStore());
     const dev = createRequestGuard({

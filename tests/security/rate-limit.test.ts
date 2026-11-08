@@ -28,7 +28,7 @@ describe("rate limit policy (100/min, 10k/day, then slowed down)", () => {
       retryAfterSeconds: 40,
       limit: 100,
     });
-    expect(denied.state).toEqual(state); // denied requests are not counted
+    expect(denied.state).toEqual(state);
     expect(
       applyRateLimit(state, DEFAULT_RATE_LIMIT, at("2026-10-07T10:01:00Z")).decision.allowed,
     ).toBe(true);
@@ -58,7 +58,6 @@ describe("rate limit policy (100/min, 10k/day, then slowed down)", () => {
       expect(r.decision).toMatchObject({ allowed: true, throttled: true, limit: 100 });
       s = r.state;
     }
-    // The per-minute limit still applies.
     expect(applyRateLimit(s, DEFAULT_RATE_LIMIT, now).decision).toMatchObject({
       allowed: false,
       throttled: true,
@@ -94,6 +93,6 @@ describe("rate limit policy (100/min, 10k/day, then slowed down)", () => {
       Array.from({ length: 150 }, () => store.consume("ip-a", DEFAULT_RATE_LIMIT, now)),
     );
     expect(results.filter((r) => r.allowed)).toHaveLength(100);
-    expect((await store.consume("ip-b", DEFAULT_RATE_LIMIT, now)).allowed).toBe(true); // keys are independent
+    expect((await store.consume("ip-b", DEFAULT_RATE_LIMIT, now)).allowed).toBe(true);
   });
 });

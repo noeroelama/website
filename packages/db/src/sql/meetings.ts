@@ -66,7 +66,6 @@ const toMeeting = (id: string, data: Record<string, unknown>): Meeting => ({
   deletedAt: toDate(data["deletedAt"]),
 });
 
-/** What staff edit (audited and revertible); attendance and room are kept as they are. */
 export function meetingSnapshot(m: MeetingFields): Snapshot {
   return {
     title: m.title,
@@ -82,14 +81,8 @@ export function meetingSnapshot(m: MeetingFields): Snapshot {
   };
 }
 
-/** sha256 of an attendance code: the stored document id (never the code itself). */
 const codeHash = (code: string) => createHash("sha256").update(`attend:${code}`).digest("hex");
 
-/**
- * `meetings/{id}` (F4) with participants and attendance inside (at most 300 people, so one
- * document). Attendance codes live in `attendanceCodes/{sha256(code)}` → { meetingId, expiresAt }
- * (only the hash is stored; the `expire` cron job removes old ones).
- */
 export function createSqlMeetingStore(db: Database) {
   const store = createSluggedStore<Meeting>(db, {
     collection: "meetings",
@@ -98,7 +91,6 @@ export function createSqlMeetingStore(db: Database) {
     snapshot: meetingSnapshot,
     fixed: (m) => ({
       ...meetingSnapshot(m),
-      // Dates as dates (range queries), not as the snapshot's strings.
       startsAt: m.startsAt,
       endsAt: m.endsAt,
       periodId: m.periodId,
@@ -123,13 +115,11 @@ export function createSqlMeetingStore(db: Database) {
       return live(snapshot.docs).sort(byStart);
     },
 
-    /** Meetings the person takes part in (any period), newest first. */
     async listForUser(uid: string): Promise<Meeting[]> {
       const snapshot = await store.docs.where("participantIds", "array-contains", uid).get();
       return live(snapshot.docs).sort((a, b) => byStart(b, a));
     },
 
-    /** Meetings that start or end between `from` and `to` (calendar, agenda). */
     async listBetween(from: Date, to: Date): Promise<Meeting[]> {
       const snapshot = await store.docs
         .where("startsAt", ">=", from)
@@ -138,7 +128,6 @@ export function createSqlMeetingStore(db: Database) {
       return live(snapshot.docs).sort(byStart);
     },
 
-    /** Meetings that may need a start or end reminder now (bounded by the reminder windows). */
     async dueForReminders(now: Date): Promise<Meeting[]> {
       const [starting, ending] = await Promise.all([
         store.docs
@@ -154,7 +143,6 @@ export function createSqlMeetingStore(db: Database) {
       return [...found.values()];
     },
 
-    /** A new or edited meeting; `build` may read other documents (unit, period) first. */
     write(
       id: string | null,
       version: number | null,
@@ -165,12 +153,10 @@ export function createSqlMeetingStore(db: Database) {
       return store.write(id, version, build, audit, now);
     },
 
-    /** Stores a code's hash for a meeting (the plain code is only shown on the screen). */
     async saveCode(code: string, meetingId: string, expiresAt: Date): Promise<void> {
       await codes.doc(codeHash(code)).set({ meetingId, expiresAt });
     },
 
-    /** The meeting of an unexpired code (normalized), or null. */
     async findCode(code: string, now: Date): Promise<string | null> {
       const snapshot = await codes.doc(codeHash(code)).get();
       const expiresAt = toDate(snapshot.get("expiresAt"));
@@ -178,10 +164,6 @@ export function createSqlMeetingStore(db: Database) {
       return snapshot.get("meetingId") as string;
     },
 
-    /**
-     * A participant's own attendance (web /attend): no staff audit entry, the attendance record
-     * itself says who and when. `step` decides (markAttendance); version moves on.
-     */
     async attend(meetingId: string, step: (m: Meeting) => Meeting, now: Date): Promise<Meeting> {
       const ref = store.docs.doc(safeId.parse(meetingId));
       return db.runTransaction(async (tx) => {
@@ -228,10 +210,6 @@ const toActionItem = (id: string, data: Record<string, unknown>): ActionItem => 
   deletedAt: toDate(data["deletedAt"]),
 });
 
-/**
- * `actionItems/{id}` (F5): follow-ups of a meeting, one document each (My Tasks reads them by
- * PIC). Title, PIC, due date and done are audited and revertible.
- */
 export function createSqlActionItemStore(db: Database) {
   const store = createSluggedStore<ActionItem>(db, {
     collection: "actionItems",
@@ -259,17 +237,14 @@ export function createSqlActionItemStore(db: Database) {
       const snapshot = await store.docs.where("meetingId", "==", meetingId).get();
       return live(snapshot.docs).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     },
-    /** Open and done follow-ups of one person (My Tasks). */
     async listForPic(uid: string): Promise<ActionItem[]> {
       const snapshot = await store.docs.where("pic", "==", uid).get();
       return live(snapshot.docs);
     },
-    /** All follow-ups of a period (unit boards). */
     async listForPeriod(periodId: string): Promise<ActionItem[]> {
       const snapshot = await store.docs.where("periodId", "==", periodId).get();
       return live(snapshot.docs);
     },
-    /** A change; `build` reads the meeting in the same transaction (PIC must be a participant). */
     write(
       id: string | null,
       version: number | null,
@@ -282,7 +257,6 @@ export function createSqlActionItemStore(db: Database) {
     ) {
       return store.write(id, version, build, audit, now);
     },
-    /** The meeting, read inside an action item's transaction. */
     async readMeeting(tx: Transaction, meetingId: string): Promise<Meeting> {
       const snapshot = await tx.get(db.collection("meetings").doc(safeId.parse(meetingId)));
       const data = snapshot.data();

@@ -25,7 +25,6 @@ export const identity = lazyEnv(() => {
 
 export const logger = lazyEnv(() => createLogger({ service: "web", level: getWebEnv().LOG_LEVEL }));
 
-/** Sign-in records (`users/{uid}`): web only ever writes the signed-in user's own record. */
 const users = lazyEnv(() => {
   const env = getWebEnv();
   return createSqlUserStore(
@@ -42,14 +41,10 @@ export const sessionRoutes = lazyEnv(() =>
     identity: identity(),
     maxAgeHours: getWebEnv().SESSION_MAX_AGE_HOURS,
     cookieDomain: getWebEnv().SESSION_COOKIE_DOMAIN,
-    // Every sign-in method ends here: creates users/{uid} on the first one, then lastSignInAt.
-    // A pending invite (admin Role Manager) applies here; its staff roles only once the account
-    // has two sign-in methods (asked only for such an invite).
     onSignIn: async (signedIn) => {
       const { roleIds } = await users().recordSignIn(signedIn, new Date(), async () =>
         hasTwoSignInMethods(await ownSignInMethods(signedIn.uid)),
       );
-      // Staff sign-ins are security events (DEC-16); Role Manager shows "last sign-in".
       if (roleIds.some((id) => id !== "visitor")) {
         logSecurityEvent(logger(), { type: "staff.login", actorId: signedIn.uid });
       }
@@ -57,7 +52,6 @@ export const sessionRoutes = lazyEnv(() =>
   }),
 );
 
-/** The signed-in user (verified session cookie, revocation checked), or null. */
 export async function getSignedInUser(): Promise<VerifiedIdentity | null> {
   const cookie = (await cookies()).get(SESSION_COOKIE)?.value;
   return cookie ? identity().verifySessionCookie(cookie) : null;

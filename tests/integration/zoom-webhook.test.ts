@@ -56,7 +56,6 @@ const route = (secret = SECRET, failUpdate = false, withClient = true) =>
           },
         }
       : null,
-    // The requester has no contact on record: the message is still logged (as skipped).
     contacts: () => Promise.resolve(new Map()),
     send: (_message, key) => {
       sent.push(key);
@@ -149,7 +148,6 @@ describe("Zoom webhooks (F2)", () => {
       { id: "81234567890", patch: { settings: { waiting_room: true, join_before_host: false } } },
     ]);
     expect((await stored()).closedAt).toEqual(clock);
-    // A replay (same event) and a second "ended" change nothing.
     await route()(signed(event("meeting.ended", { id: 81234567890, uuid: "u1" }, 2)));
     await route()(signed(event("meeting.ended", { id: 81234567890, uuid: "u2" }, 3)));
     expect(updates).toHaveLength(1);

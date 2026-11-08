@@ -2,9 +2,6 @@ import type { PublicNews } from "@website/domain/content";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatEventDate } from "@/lib/event-time";
 
-/** News cards (/news, related articles): thumbnail, category, title and a meta line
- * with dot separators — date · category, the events/gallery card format. No
- * description on the news cards (user). */
 export function NewsCards({ items, t }: { items: readonly PublicNews[]; t: Dictionary }) {
   return (
     <ul className="site-cards">

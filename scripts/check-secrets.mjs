@@ -1,17 +1,11 @@
 #!/usr/bin/env node
-/**
- * Fails if anything that would be committed looks like a secret.
- * Scans tracked + untracked-but-not-ignored files (i.e. what `git add -A` would stage).
- * This is a safety net, not a replacement for GitHub secret scanning / push protection.
- */
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const git = (/** @type {string[]} */ args) =>
-  execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
+const git = (args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
 
 const files = git(["ls-files", "--cached", "--others", "--exclude-standard"])
   .split("\n")
@@ -29,7 +23,6 @@ const FORBIDDEN_NAMES = [
   /^credentials\.json$/,
 ];
 
-/** @type {Array<[RegExp, string]>} */
 const CONTENT_PATTERNS = [
   [/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----(?!\\n\.\.\.)/, "private key"],
   [/"type"\s*:\s*"service_account"/, "Google service account JSON"],
@@ -42,7 +35,6 @@ const CONTENT_PATTERNS = [
   [/\bgh[pousr]_[A-Za-z0-9]{36,}\b/, "GitHub token"],
 ];
 
-/** In .env.example files only these keys may have values (non-secret defaults). */
 const EXAMPLE_ALLOWED_VALUES = new Set([
   "APP_ENV",
   "LOG_LEVEL",
@@ -79,7 +71,6 @@ for (const file of files) {
   }
 }
 
-// .gitignore must actually ignore the dangerous paths.
 const mustBeIgnored = [
   ".env",
   ".env.local",

@@ -66,7 +66,6 @@ interface Props {
     milestones: MilestoneItem[];
   };
   plan: PlanValues;
-  /** null = the viewer cannot edit the plan. */
   options: PlanOptions | null;
   checkins: Array<{
     id: string;
@@ -81,7 +80,6 @@ interface Props {
 type Dialog =
   "plan" | "return" | "cancel" | "health" | "checkin" | { milestone: MilestoneItem | null };
 
-/** One programme: plan, workflow buttons the viewer may use, milestones, health, check-ins. */
 export function ProgramPage({ program, plan, options, checkins, can }: Props) {
   const router = useRouter();
   const toast = useToastMessage();

@@ -14,10 +14,6 @@ export type RevertRejection = (typeof REVERT_REJECTIONS)[number];
 export type RevertDecision =
   { readonly allowed: true } | { readonly allowed: false; readonly reason: RevertRejection };
 
-/**
- * Server-side revert policy. The client never decides; it can only ask.
- * `currentVersion` must be read inside the same transaction that applies the revert.
- */
 export function evaluateRevert(input: {
   event: AuditEvent;
   existingRevert: AuditEvent | null;
@@ -31,16 +27,10 @@ export function evaluateRevert(input: {
   if (now.getTime() - event.occurredAt.getTime() > REVERT_WINDOW_MS) {
     return { allowed: false, reason: "window_expired" };
   }
-  // Optimistic concurrency: only revert if nobody edited the entity since this event.
   if (currentVersion !== event.versionAfter) return { allowed: false, reason: "version_conflict" };
   return { allowed: true };
 }
 
-/**
- * Builds the NEW audit event that records a revert. The original is never modified.
- * Restoring `before` (or un-deleting when `after` was null) is done by the caller's
- * repository in the same transaction.
- */
 export function buildRevertEvent(input: {
   original: AuditEvent;
   id: string;

@@ -35,7 +35,6 @@ function toChapter(id: string, data: Record<string, unknown>): Chapter {
     socials: data["socials"] as SocialLink[],
     latitude: data["latitude"] as number,
     longitude: data["longitude"] as number,
-    // Chapters saved before these fields existed read as "nothing entered yet".
     memberCount: (data["memberCount"] as number | undefined) ?? 0,
     conditions: (data["conditions"] as string[] | undefined) ?? [],
     risk: (data["risk"] as ChapterRisk | undefined) ?? "none",
@@ -73,10 +72,6 @@ export function chapterSnapshot(c: ChapterFields): Snapshot {
   };
 }
 
-/**
- * `chapters/{id}` + `chapterSlugs/{slug}`. A delete is soft (`deletedAt`); the slug stays
- * reserved so reverting the delete in the Audit Log brings the chapter back unchanged.
- */
 const chapters = (db: Database) =>
   createSluggedStore<Chapter>(db, {
     collection: "chapters",
@@ -86,11 +81,9 @@ const chapters = (db: Database) =>
     fixed: () => ({}),
   });
 
-/** Admin store (Organizations → PPI). */
 export function createSqlChapterStore(db: Database) {
   const store = chapters(db);
   return {
-    /** Every chapter that is not deleted (active and inactive), by name. */
     async listForAdmin(): Promise<Chapter[]> {
       const snapshot = await store.docs.orderBy("name").get();
       return snapshot.docs.map((doc) => store.read(doc.id, doc.data())).filter((c) => !c.deletedAt);
@@ -102,15 +95,9 @@ export function createSqlChapterStore(db: Database) {
 
 export type SqlChapterStore = ReturnType<typeof createSqlChapterStore>;
 
-/**
- * Chapters for the website (role web_ro). ONE list drives the map markers, the member
- * councils on About and the /map country table, so they can never disagree. Only active
- * chapters ever appear; `region` decides the /map table group (null = also hidden).
- */
 export function createSqlChapterReader(db: Database) {
   const store = chapters(db);
   return {
-    /** Every active chapter that is not deleted, by name. */
     async listActive(): Promise<PublicChapter[]> {
       const snapshot = await store.docs.where("active", "==", true).orderBy("name").get();
       return snapshot.docs

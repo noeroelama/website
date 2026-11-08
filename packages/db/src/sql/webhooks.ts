@@ -3,14 +3,8 @@ import { safeId } from "@website/security/validation";
 
 const KEEP_DAYS = 30;
 
-/**
- * Webhook de-duplication: `webhookEvents/{provider}_{eventId}` is created in a transaction the
- * first time an event arrives; a replay (or a provider retry) finds it and is ignored.
- * `expiresAt` lets the cron job `expire` delete old rows.
- */
 export function createSqlWebhookEventStore(db: Database) {
   return {
-    /** true = first time (process it); false = already seen. */
     async record(provider: string, eventId: string, now: Date): Promise<boolean> {
       const ref = db.collection("webhookEvents").doc(safeId.parse(`${provider}_${eventId}`));
       return await db.runTransaction(async (tx) => {

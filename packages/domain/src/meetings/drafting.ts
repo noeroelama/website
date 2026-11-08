@@ -1,12 +1,5 @@
 import { z } from "zod";
 
-/**
- * Machine-drafted minutes (F6), ported from PPIDK `MesinNotulen`: a transcript (pasted, or the
- * Zoom VTT) → notes per agenda item and proposed action items. The machine is a port (an
- * Anthropic adapter lives in admin); its answer is validated here and only ever fills EMPTY agenda
- * items (`mergeDraft`). Proposed PICs are checked again when a person saves the action item.
- */
-
 export interface DraftRequest {
   readonly title: string;
   readonly agenda: ReadonlyArray<{ id: string; title: string }>;
@@ -34,16 +27,13 @@ export const DraftOutputSchema = z
   .strip();
 export type DraftOutput = z.infer<typeof DraftOutputSchema>;
 
-/** The machine. Throws on any failure (the action reports it; nothing is written). */
 export interface MinutesDrafter {
   draft(request: DraftRequest): Promise<DraftOutput>;
 }
 
-/** Draft → notes by agenda id (unknown ids dropped by `mergeDraft`). */
 export const draftNotes = (draft: DraftOutput): Record<string, string> =>
   Object.fromEntries(draft.items.map((i) => [i.agendaItemId, i.notes]));
 
-/** Proposed action items; a PIC who is not a participant becomes null (a person picks one). */
 export const draftProposals = (draft: DraftOutput, participantIds: readonly string[]) =>
   draft.actionItems.map((a) => ({
     title: a.title,
@@ -54,12 +44,6 @@ export const draftProposals = (draft: DraftOutput, participantIds: readonly stri
 const TIMING = /^\d{1,2}:\d{2}(?::\d{2})?[.,]\d{3}\s+-->\s+/;
 const SPEAKER = /^([^:]{1,60}):\s+(.*)$/;
 
-/**
- * WebVTT (Zoom transcript) → plain lines "Speaker: text". Cue numbers, timings, the header and
- * NOTE blocks go; every spoken line stays (nothing is ever dropped). A "Name: " prefix counts as a
- * speaker only when it is seen at least twice (a single "Note: …" is speech); lines of the same
- * speaker in a row are joined.
- */
 export function parseVtt(vtt: string): string {
   const lines: string[] = [];
   let inNote = false;
@@ -85,7 +69,6 @@ export function parseVtt(vtt: string): string {
   const out: Array<{ speaker: string | null; text: string }> = [];
   for (const line of lines) {
     const m = SPEAKER.exec(line);
-    // Every "Name: " line was counted above, so the count exists.
     const said = m && (counts.get(m[1] as string) as number) >= 2 ? m : null;
     const speaker = said ? (said[1] as string) : null;
     const text = said ? (said[2] as string) : line;

@@ -12,13 +12,11 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { saveProfileAction } from "./actions";
 import { CampusPicker } from "./campus-picker";
 
-/** The stored answers (everything but the consent, which is given again on every save). */
 export type ProfileFormValues = Omit<MemberProfileInput, "consent">;
 
 type Text = Dictionary["profile"];
 type Flat = Record<string, string>;
 
-/** Flat form state → the profile input. Empty optional text is left out (not sent as ""). */
 function toInput(f: Flat): Record<string, unknown> {
   const optional = (value: string | undefined) => (value?.trim() ? value : undefined);
   return {
@@ -91,10 +89,6 @@ function fromValues(v: ProfileFormValues | null): Flat {
   };
 }
 
-/**
- * The member profile form (B3). The server validates everything again with the same schema
- * (memberProfileInputSchema); the e-mail comes from the session, never from this form.
- */
 export function ProfileForm(props: {
   t: Text;
   initial: ProfileFormValues | null;
@@ -180,7 +174,7 @@ export function ProfileForm(props: {
         router.refresh();
         if (props.next) {
           if (props.next.startsWith("/")) router.push(props.next);
-          else window.location.assign(props.next); // e.g. back to the admin app
+          else window.location.assign(props.next);
         }
         return;
       }

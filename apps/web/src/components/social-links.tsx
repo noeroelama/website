@@ -1,9 +1,3 @@
-/**
- * Social logo row shared by the page footer and the PPI country slider (user: same logos,
- * same function — "agar tidak menumpuk"). Icons: Simple Icons (CC0) paths, 24 x 24,
- * fill: currentColor. Icon paths: the networks' home pages until the organisation's own
- * profiles are set here.
- */
 export const SOCIAL_LINKS = [
   {
     name: "LinkedIn",
@@ -32,7 +26,6 @@ export const SOCIAL_LINKS = [
   },
 ] as const;
 
-/** The row of social logo links, sized by the caller's CSS (`svg { width/height; fill: currentColor }`). */
 export function SocialLinks({ className, label }: { className: string; label: string }) {
   return (
     <ul className={className} aria-label={label}>

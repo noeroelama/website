@@ -18,13 +18,13 @@ describe("return URL after sign-in (no open redirect)", () => {
       "",
       "https://evil.example",
       "https://admin.ppiasiania.id.evil.example/",
-      "https://evil.example@admin.ppiasiania.id/", // userinfo trick
-      "http://admin.ppiasiania.id/", // downgrade: origin differs
-      "//evil.example/path", // protocol-relative
-      "/\\evil.example", // backslash is treated as a slash by browsers
+      "https://evil.example@admin.ppiasiania.id/",
+      "http://admin.ppiasiania.id/",
+      "//evil.example/path",
+      "/\\evil.example",
       "javascript:alert(1)",
       "data:text/html,x",
-      "account", // not absolute, not a path
+      "account",
       "x".repeat(3000),
     ]) {
       expect(safeReturnUrl(value, apps), String(value).slice(0, 40)).toBeNull();

@@ -22,7 +22,6 @@ const ReviewInput = z
   })
   .strict();
 
-/** Organizations → Universities tab: add a listed campus and review proposed ones (approve, merge, reject). */
 export function createUniversityActions(deps: UniversityDeps) {
   const review = createGuardedAction({
     permission: "universities.edit",
@@ -33,7 +32,6 @@ export function createUniversityActions(deps: UniversityDeps) {
         version,
         decision,
         principal.userId,
-        // Not revertible: profiles moved with the decision would not move back.
         (before, after, current: University, next: University) =>
           audit({
             module: "universities",
@@ -70,7 +68,6 @@ export function createUniversityActions(deps: UniversityDeps) {
             after,
             versionBefore: null,
             versionAfter: next.version,
-            // Not revertible: members may pick the campus right away.
             revertible: false,
           }),
         deps.now(),

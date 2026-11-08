@@ -1,4 +1,3 @@
-// Used by src/proxy.ts. No "server-only" import: the proxy is not a React Server Component.
 import { readCookie, SESSION_COOKIE, signInUrl } from "@website/auth";
 import {
   baseEnv,
@@ -13,7 +12,6 @@ import { createLogger } from "@website/observability";
 import { createRequestGuard, type GuardResult } from "@website/security";
 import { isVerificationPath, verificationRewrite } from "../lib/verification-host";
 
-// `next dev` without a .env.local runs as development; deployments must set APP_ENV.
 const getEnv = lazyEnv(() =>
   loadEnv(baseEnv.extend(rateLimitEnv.shape).extend(documentsEnv.shape), {
     APP_ENV: process.env["NODE_ENV"] === "development" ? "development" : undefined,
@@ -29,7 +27,6 @@ const getGuard = lazyEnv(() => {
     secret: env.RATE_LIMIT_SECRET,
     mode: "same-site",
     privatePrefixes: ["/api/", "/account"],
-    // Public document verification: codes must not be guessed in bulk (D7, PPIDK throttle:20,1).
     extraLimits: [
       {
         name: "verify",
@@ -38,7 +35,6 @@ const getGuard = lazyEnv(() => {
           isVerificationPath(path) || verificationTarget(request, path) !== null,
       },
     ],
-    // Staging/production: counters shared by all server instances (MySQL, pooled).
     sharedStore: () => {
       const db = loadEnv(baseEnv.extend(databaseEnv.shape), process.env);
       return createSqlRateLimitStore(
@@ -53,16 +49,10 @@ const getGuard = lazyEnv(() => {
   });
 });
 
-/** Origin check + per-IP rate limit + private caching headers for every request. */
 export function guardRequest(request: Request): Promise<GuardResult> {
   return getGuard()(request);
 }
 
-/**
- * Login-required page (/account) without a session cookie → the sign-in URL, for a real 307 from
- * the proxy (with Cache Components a page's redirect() is streamed: 200 + client-side redirect).
- * Only checks that the cookie exists; the page still verifies it.
- */
 export function signInRedirect(request: Request): string | null {
   const { pathname, search } = new URL(request.url);
   if (pathname !== "/account" && !pathname.startsWith("/account/")) return null;
@@ -74,7 +64,6 @@ const requestHost = (request: Request) =>
   request.headers.get("host") ??
   new URL(request.url).host;
 
-/** On VERIFICATION_HOST the printed short addresses map to /verify pages (null elsewhere). */
 export function verificationTarget(request: Request, path: string): string | null {
   return verificationRewrite(requestHost(request), path, getEnv().VERIFICATION_HOST ?? null);
 }

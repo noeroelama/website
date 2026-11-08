@@ -143,7 +143,6 @@ describe("derived roles of an appointment (B7, PPIDK PenugasanService)", () => {
       { roleId: "officer", scope: { type: "global" } },
       { roleId: "coordinator", scope: { type: "global" } },
     ]);
-    // A member or secretary of a core unit (e.g. the Secretary General's staff) is an officer.
     expect(derivedAssignments("secretary", { id: "sj", type: "sekjen" }, map)).toEqual([
       { roleId: "officer", scope: { type: "global" } },
     ]);
@@ -238,7 +237,6 @@ describe("appointments → roles (B7)", () => {
     ]);
     expect((await appointments.listForPeriod("p2026")).map((a) => a.id)).toEqual([id]);
 
-    // Roles bound to the period stop counting when another period is activated.
     fake.docs.set("settings/activePeriod", { periodId: "p2027" });
     expect(can(await principalOf("ana"), "events.edit", { orgUnitPath: ["koor", "media"] })).toBe(
       false,
@@ -253,7 +251,6 @@ describe("appointments → roles (B7)", () => {
         issues: [expect.stringContaining(text)],
       });
     await refused("boss", appointInput("boss@example.org", "media", "member"), "your own");
-    // The Secretary General may appoint, but not into roles holding permissions they lack.
     await refused("sec", appointInput("ana@example.org", "media", "head"), "permissions you hold");
     await refused("boss", appointInput("sec@example.org", "media", "member"), "second sign-in");
     await refused("boss", appointInput("ana@example.org", "old", "member"), "active period");
@@ -275,7 +272,6 @@ describe("appointments → roles (B7)", () => {
       appointInput("ana@example.org", "koor", "member"),
     );
     const headId = head.ok ? head.data.id : "";
-    // A manual director role for the same unit is not the appointment's to take away.
     const ana = await createSqlAccountStore(fake.db as unknown as Db).get("ana");
     await createAccountActions({
       accounts: createSqlAccountStore(fake.db as unknown as Db),
@@ -307,7 +303,7 @@ describe("appointments → roles (B7)", () => {
       .map((a) => [a["roleId"], a["source"]]);
     expect(live).toEqual([
       ["visitor", "manual"],
-      ["officer", "appointment"], // from the koor appointment
+      ["officer", "appointment"],
       ["director", "manual"],
     ]);
     expect(
@@ -318,7 +314,6 @@ describe("appointments → roles (B7)", () => {
     expect(
       await actions.end(...as("boss"))({ id: headId, version: 2, status: "ended" }),
     ).toMatchObject({ error: "refused", issues: [expect.stringContaining("already ended")] });
-    // Nobody ends their own appointment.
     const koorId = koor.ok ? koor.data.id : "";
     fake.docs.set("users/ana", {
       ...fake.docs.get("users/ana"),

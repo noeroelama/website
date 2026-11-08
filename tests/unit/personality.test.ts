@@ -41,9 +41,8 @@ describe("personality test (C5, PPIDK TesKepribadian)", () => {
     const score = scorePersonality(PERSONALITY_ITEMS.map(() => 0));
     expect(score.full).toBe("ENFJ-A");
     expect(score.axes.tactics).toEqual({ letter: "J", pct: 50, lean: 0 });
-    // One strong answer moves one axis a little.
     const answers = PERSONALITY_ITEMS.map(() => 0);
-    answers[1] = 3; // item 2: "I have a rich vocabulary." (energy, +1)
+    answers[1] = 3;
     expect(scorePersonality(answers).axes.energy).toEqual({ letter: "N", pct: 54, lean: 0.0833 });
   });
 

@@ -137,12 +137,10 @@ describe("form builder (Forms page, C1)", () => {
     expect((await store.getVersion(id, 1))?.questions[0]?.label).toBe("Full name");
     expect(await store.getVersion(id, 2)).toMatchObject({ number: 2, answered: false });
     expect((await store.listVersions(id)).map((v) => v.number)).toEqual([1, 2]);
-    // The list page reads every form's current version in one batched read.
     const listed = await store.listForAdmin();
     const current = await store.currentVersions(listed);
     expect(current.get(id)).toMatchObject({ number: 2, answered: false });
     expect(fake.getAll).toHaveBeenCalledTimes(1);
-    // Saving the settings only (same questions) writes no new version.
     const again = await actions().save(...as(editor))({
       ...form({
         title: "Feedback Kongres",
@@ -164,7 +162,6 @@ describe("form builder (Forms page, C1)", () => {
     expect(
       await actions().save(...as(editor))({ ...form(), id: "missing", version: 1 }),
     ).toMatchObject({ ok: false, error: "refused" });
-    // A draft may still switch between public and recruitment.
     expect(
       await actions().save(...as(editor))({ ...form({ usage: "recruitment" }), id, version: 1 }),
     ).toMatchObject({ ok: true });
@@ -188,7 +185,6 @@ describe("form builder (Forms page, C1)", () => {
       error: "refused",
       issues: ["Public forms cannot ask for files."],
     });
-    // Recruitment drafts may ask for files (answered by signed-in applicants).
     expect(
       await create({ usage: "recruitment", questions: [question({ type: "file", label: "CV" })] }),
     ).toMatchObject({ version: 1 });
@@ -210,7 +206,6 @@ describe("form builder (Forms page, C1)", () => {
     const deleted = auditEntries().at(-1);
     expect(deleted).toMatchObject({ action: "DELETE", resourceType: "form", revertible: true });
     expect((await store.listForAdmin()).map((f) => f.title)).toEqual(["Second form"]);
-    // The questions are kept (answers will point to them).
     expect(await store.getVersion(first.id, 1)).not.toBeNull();
     expect(await revertEntry(fake.db, deleted?.["id"] as string, now)).toMatchObject({ ok: true });
     expect((await store.listForAdmin()).map((f) => f.title).sort()).toEqual([
@@ -223,7 +218,6 @@ describe("form builder (Forms page, C1)", () => {
     expect(await revertEntry(fake.db, created?.["id"] as string, now)).toMatchObject({ ok: true });
     expect((await store.listForAdmin()).map((f) => f.title)).toEqual(["First form"]);
     expect(await store.getVersion("../x", 1)).toBeNull();
-    // A form in the trash cannot be edited.
     await actions().remove(...as(editor))({ id: first.id, version: 3 });
     expect(
       await actions().save(...as(editor))({ ...form(), id: first.id, version: 4 }),

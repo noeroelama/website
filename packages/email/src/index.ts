@@ -1,14 +1,9 @@
-/**
- * Email sending port + adapters. Called synchronously with a timeout; failures are
- * recorded by the caller (email_log) and retried manually from admin. No queue.
- */
 export interface EmailMessage {
   readonly to: string;
   readonly from: string;
   readonly subject: string;
   readonly html: string;
   readonly text: string;
-  /** Required: makes retries safe (provider de-duplicates). */
   readonly idempotencyKey: string;
   readonly headers?: Readonly<Record<string, string>>;
 }
@@ -21,7 +16,6 @@ export interface EmailSender {
   send(message: EmailMessage): Promise<SendResult>;
 }
 
-/** Resend adapter over plain fetch (no SDK dependency). */
 export function createResendSender(options: {
   apiKey: string;
   timeoutMs?: number;
@@ -68,7 +62,6 @@ export function createResendSender(options: {
   };
 }
 
-/** Development/test adapter: records messages in memory, sends nothing. */
 export function createMemorySender(): EmailSender & { readonly sent: EmailMessage[] } {
   const sent: EmailMessage[] = [];
   return {

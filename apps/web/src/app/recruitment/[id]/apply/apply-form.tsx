@@ -15,10 +15,6 @@ interface Unit {
   portfolioRequired: boolean;
 }
 
-/**
- * The application form: ordered unit choices, the portfolio (when a chosen unit asks for one)
- * and the questions. "Submit" saves the draft first; the server checks everything again.
- */
 export function ApplyForm(props: {
   recruitmentId: string;
   maxChoices: number;
@@ -37,7 +33,6 @@ export function ApplyForm(props: {
     valuesFrom(props.questions, props.initial.answers),
   );
   const [portfolio, setPortfolio] = useState(props.initial.portfolio);
-  /** Names of uploaded file answers (the files themselves stay on the server). */
   const [files, setFiles] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       props.questions.flatMap((q) => {
@@ -110,12 +105,10 @@ export function ApplyForm(props: {
     }
   };
 
-  /** Portfolio (questionId null) or a file question: saved as a draft first, then uploaded. */
   const upload = async (file: File, questionId: string | null = null) => {
     setBusy(true);
     setMessage(t.uploading);
     try {
-      // The application must exist before the file is attached to it.
       const draft = await saveDraft();
       if (!draft.ok) {
         show(draft, t.saved);
