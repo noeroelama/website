@@ -21,7 +21,10 @@ export async function generateMetadata({ params }: PageProps<"/map/[slug]">): Pr
   const chapter = await find((await params).slug);
   if (!chapter) return {};
   return {
-    title: countryName(chapter.countryCode),
+    title: countryName(
+      chapter.countryCode,
+      languageFrom((await cookies()).get(LANG_COOKIE)?.value),
+    ),
     description: chapter.description || undefined,
   };
 }
@@ -66,8 +69,9 @@ export async function generateMetadata({ params }: PageProps<"/map/[slug]">): Pr
 export default async function ChapterPage({ params }: PageProps<"/map/[slug]">) {
   const chapter = await find((await params).slug);
   if (!chapter) notFound();
-  const t = DICTIONARIES[languageFrom((await cookies()).get(LANG_COOKIE)?.value)].map;
-  const title = countryName(chapter.countryCode);
+  const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
+  const t = DICTIONARIES[language].map;
+  const title = countryName(chapter.countryCode, language);
   // The left column is the chapter's design MAP — only New Zealand's exists, so every
   // chapter uses it for now (user: "Sementara untuk map nya gunakan map new Zealand
   // saja"). The panel photo is the chapter's OWN photo from the database, the admin

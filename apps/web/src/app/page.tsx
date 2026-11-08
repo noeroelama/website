@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { Highlights } from "@/components/highlights";
+import { NewsletterField } from "@/components/newsletter-field";
 import { PpiSlider } from "@/components/ppi-slider";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { Localized } from "@/i18n/localized";
@@ -140,6 +141,21 @@ export default function HomePage() {
           </section>
         )}
       />
+      <Localized
+        render={(t) => (
+          <div className="ui-shell">
+            <p>{t.home.tagline}</p>
+            <section>
+              <h2>{t.home.purposeHeading}</h2>
+              <p>{t.home.purpose}</p>
+            </section>
+            <section>
+              <h2>{t.newsletter.label}</h2>
+              <NewsletterField t={t.newsletter} />
+            </section>
+          </div>
+        )}
+      />
       <Suspense fallback={null}>
         <Highlights />
       </Suspense>
@@ -176,6 +192,17 @@ export default function HomePage() {
         )}
       />
       <Localized render={(t) => <PpiSlider t={t.home.slider} />} />
+      <Localized
+        render={(t) => (
+          <div className="ui-shell">
+            <section className="site-notice">
+              <h2>{t.home.googleHeading}</h2>
+              <p>{t.home.google}</p>
+              <a href="/privacy">{t.home.googleMore}</a>
+            </section>
+          </div>
+        )}
+      />
     </main>
   );
 }

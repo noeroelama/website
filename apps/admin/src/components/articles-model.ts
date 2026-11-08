@@ -22,8 +22,6 @@ export interface ArticleItem {
   /** Category key and its label (shown under the title). */
   categoryKey: NewsCategory;
   category: string;
-  /** Where the news happened (the public cards show "date • location • category"). */
-  location: string;
   /** The stored byline (sent back unchanged on save). */
   author: string;
   /** The byline for the Author column ("Nevyllo K." / "NK"); null when empty. */
@@ -49,7 +47,7 @@ export interface ArticleItem {
 }
 
 /** Save fields edited in the Settings panel (the editor page only has the image and the content). */
-const SETTINGS_FIELDS = ["title", "category", "location", "publishAt", "slug", "summary", "tags"];
+const SETTINGS_FIELDS = ["title", "category", "publishAt", "slug", "summary", "tags"];
 
 /** True when the server refused a Settings field, so the editor opens the Settings panel. */
 export function needsSettings(fields: Readonly<Record<string, string>>): boolean {
@@ -81,7 +79,6 @@ export function toArticleItem(item: ContentItem, now: Date, editor: Author | nul
     title: item.title,
     categoryKey: item.category,
     category: label(NEWS_CATEGORY_LABELS, item.category),
-    location: item.location ?? "",
     author,
     byline: toAuthor(author, null),
     editor,

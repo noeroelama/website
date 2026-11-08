@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
-import StructureTree from "@/components/site-structure-tree";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
-import { publicStructure } from "@/server/structure";
 
 export const metadata: Metadata = { title: "Tentang kami · About us" };
 
@@ -17,7 +15,6 @@ const ABOUT_BANNER = "/about/banner.svg";
 
 async function AboutContent() {
   const t = DICTIONARIES[languageFrom((await cookies()).get(LANG_COOKIE)?.value)];
-  const units = await publicStructure();
   return (
     <>
       {/* Hero: just the board photo (the page title is screen-reader only —
@@ -80,35 +77,11 @@ async function AboutContent() {
 
         <section className="site-about__section">
           <h2 className="site-about__heading">{t.about.structureHeading}</h2>
-          {units.length === 0 ? (
-            <p className="site-about__text">{t.about.structure}</p>
-          ) : (
-            // Round 31 (user: "Di halaman about, nama2nya jangan ditampilkan.
-            // Cukup di bagian detil saja"): the tree gets only the unit rows —
-            // members never cross the server/client boundary here, the names
-            // live on the /struktur/[unitId] detail pages alone.
-            // Round 37 (user: "Diatas Bapelha masukan dulu gambar
-            // Organization.png"): the organization chart sits at the top of
-            // the Struktur section, above the Bapelha tree. Round 38 (user:
-            // "Pada gambar struktur organisasi, gunakan BG yang sama seperti
-            // Visi-Misi"): the chart sits on the same maroon panel card.
-            <>
-              <div className="site-about__structure-frame">
-                {/* eslint-disable-next-line @next/next/no-img-element -- organization chart asset, sized by CSS */}
-                <img className="site-about__structure-img" src="/organization.png" alt="" />
-              </div>
-              <StructureTree
-                units={units.map((u) => ({
-                  id: u.id,
-                  parentId: u.parentId,
-                  name: u.name,
-                  code: u.code,
-                  type: u.type,
-                  divisions: u.divisions.map((d) => ({ name: d.name })),
-                }))}
-              />
-            </>
-          )}
+          {/* The organisation chart on the same maroon panel card as Visi-Misi (user). */}
+          <div className="site-about__structure-frame">
+            {/* eslint-disable-next-line @next/next/no-img-element -- organization chart asset, sized by CSS */}
+            <img className="site-about__structure-img" src="/organization.png" alt="" />
+          </div>
         </section>
       </div>
     </>
@@ -121,17 +94,11 @@ async function AboutContent() {
  * anymore: "Tulisan Tentang Kami dan garis dibawah teks itu dihapus aja"; the
  * h1 still exists for screen readers), then the cream page in a narrow
  * centred column with the sections: "Profil PPIDK Asia-Oseania" (the design
- * copy, static dictionary text, with a Cinzel drop cap on the first
- * paragraph), "Kolaborasi ASIANIA", "VISI" and "MISI" on ONE maroon card
- * (the gold A—K—S—I initials), and "Struktur Organisasi". Headings use
- * Cinzel Decorative 700 with a gold ornament rule; the body Poppins,
- * justified (user: "Font Header: Cinzel Decorative Bold, Font teks:
- * Poppins"). Profil, Kolaborasi, VISI and MISI are the static dictionary
- * texts (the user's copy); the STRUCTURE comes from the ACTIVE period's data
- * in the database (the admin Organizations period form; cached under
- * "structure"; with no units the section says the board has not been
- * announced yet). Static shell; the language cookie and the board data
- * stream in (like /map).
+ * copy, static dictionary text, with a drop cap on the first paragraph),
+ * "Kolaborasi ASIANIA", "VISI" and "MISI" on ONE maroon card (the gold
+ * A—K—S—I initials), and "Struktur Organisasi" (the static organisation
+ * chart). Headings have a gold ornament rule; the body is justified. Static
+ * shell; the language cookie streams in (like /map).
  */
 export default function AboutPage() {
   return (

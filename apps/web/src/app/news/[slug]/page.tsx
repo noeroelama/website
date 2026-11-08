@@ -5,7 +5,7 @@ import { isValidSlug } from "@website/domain/shared";
 import { sanitizeRichText } from "@website/security/html";
 import { NewsCards } from "@/components/news-cards";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
-import { cityOf, formatEventDate } from "@/lib/event-time";
+import { formatEventDate } from "@/lib/event-time";
 import { publicNews, publicNewsBySlug } from "@/server/news";
 
 // Unknown, draft, future or deleted slug → the 404 page. With Cache Components the response has
@@ -47,12 +47,6 @@ export default async function NewsArticlePage({ params }: PageProps<"/news/[slug
         <h1 className="site-lists__title">{item.title}</h1>
         <p className="site-article__meta">
           {formatEventDate(item.publishAt, "UTC")}
-          {item.location && (
-            <>
-              <span aria-hidden="true">•</span>
-              {cityOf(item.location)}
-            </>
-          )}
           <span aria-hidden="true">•</span>
           {t.news.categories[item.category]}
         </p>

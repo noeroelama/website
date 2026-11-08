@@ -34,4 +34,50 @@ describe("public site language (ID / EN)", () => {
       expect(at(DICTIONARIES.en, path), `en ${path}`).toMatch(/\S/);
     }
   });
+
+  it("the design's headings, footer and buttons are translated, not English in both", () => {
+    const translated = [
+      "footer.tagline",
+      "footer.explore",
+      "footer.services",
+      "footer.community",
+      "footer.address",
+      "footer.rights",
+      "footer.terms",
+      "footer.privacy",
+      "home.heroSubtitle",
+      "home.eventsHeading",
+      "home.newsHeading",
+      "home.readMore",
+      "home.register",
+      "pages.news",
+      "pages.events",
+      "pages.gallery",
+      "news.backToArticles",
+      "news.recentNews",
+      "news.tagline",
+      "events.region",
+      "events.tagline",
+      "events.about",
+      "events.speakers",
+      "events.schedule",
+      "events.sponsors",
+      "events.register",
+      "gallery.tagline",
+      "gallery.viewAlbum",
+      "gallery.brief",
+      "map.title",
+      "map.tagline",
+      "map.list",
+      "map.detail.back",
+      "map.detail.phone",
+      "map.regions.oceania",
+      "map.regions.others",
+      "home.slider.chair",
+      "home.slider.phone",
+    ];
+    for (const path of translated) {
+      expect(at(DICTIONARIES.id, path), path).not.toBe(at(DICTIONARIES.en, path));
+    }
+  });
 });

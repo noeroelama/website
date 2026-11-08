@@ -1,32 +1,11 @@
-/**
- * Reference data for the /map country list, transcribed from the design (side.svg):
- * ISO 3166-1 alpha-2 → English display name, and the region headings. A chapter's
- * GROUP and BADGE NUMBER come from the chapter's own data (`region`, `mapNo` — set by
- * the admin, so a new PPI shows with the next number without code); only the heading
- * order is a design constant here. Unknown country codes fall back to the code itself
- * (still one row per chapter).
- */
-const COUNTRY_NAMES: Readonly<Record<string, string>> = {
-  AU: "Australia",
-  BD: "Bangladesh",
-  BN: "Brunei Darussalam",
-  CN: "China",
-  IN: "India",
-  JP: "Japan",
-  KG: "Kyrgyzstan",
-  KR: "South Korea",
-  KZ: "Kazakhstan",
-  LK: "Sri Lanka",
-  MY: "Malaysia",
-  NP: "Nepal", // added for the dummy chapter demo (user); outside the design's 17
-  NZ: "New Zealand",
-  PH: "Phillippine", // spelling as in the design (user)
-  SG: "Singapore",
-  TH: "Thailand",
-  TW: "Taiwan",
-  VN: "Vietnam",
-};
+import type { Language } from "@/i18n/dictionaries";
 
+/**
+ * Reference data for the /map country list (design side.svg). A chapter's GROUP and
+ * BADGE NUMBER come from the chapter's own data (`region`, `mapNo` — set by the admin,
+ * so a new PPI shows with the next number without code); only the heading order is a
+ * design constant here. Region headings are in the dictionaries (`map.regions`).
+ */
 export type MapRegion = "oceania" | "southeastAsia" | "eastAsia" | "southAsia" | "middleAsia";
 
 /** The design's region headings, in the design's order, then the "Others" group. */
@@ -39,18 +18,9 @@ export const REGION_ORDER: readonly (MapRegion | "others")[] = [
   "others",
 ];
 
-/** The design's region headings (English in both languages, like the page title). */
-export const REGION_LABELS: Readonly<Record<MapRegion | "others", string>> = {
-  oceania: "OCEANIA",
-  southeastAsia: "SOUTH EAST ASIA",
-  eastAsia: "EAST ASIA",
-  southAsia: "SOUTH ASIA",
-  middleAsia: "MIDDLE ASIA",
-  others: "Others",
-};
-
-export function countryName(code: string): string {
-  return COUNTRY_NAMES[code] ?? code;
+/** The country's name in the page language ("Selandia Baru" / "New Zealand"); unknown codes stay as is. */
+export function countryName(code: string, language: Language): string {
+  return new Intl.DisplayNames([language], { type: "region", fallback: "code" }).of(code) ?? code;
 }
 
 /**

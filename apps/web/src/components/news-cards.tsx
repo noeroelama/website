@@ -1,9 +1,9 @@
 import type { PublicNews } from "@website/domain/content";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { cityOf, formatEventDate } from "@/lib/event-time";
+import { formatEventDate } from "@/lib/event-time";
 
 /** News cards (/news, related articles): thumbnail, category, title and a meta line
- * with dot separators — date · location · category, the events/gallery card format. No
+ * with dot separators — date · category, the events/gallery card format. No
  * description on the news cards (user). */
 export function NewsCards({ items, t }: { items: readonly PublicNews[]; t: Dictionary }) {
   return (
@@ -25,12 +25,6 @@ export function NewsCards({ items, t }: { items: readonly PublicNews[]; t: Dicti
           </h3>
           <p className="site-card__meta">
             {formatEventDate(n.publishAt, "UTC")}
-            {n.location && (
-              <>
-                <span aria-hidden="true">•</span>
-                {cityOf(n.location)}
-              </>
-            )}
             <span aria-hidden="true">•</span>
             {t.news.categories[n.category]}
           </p>

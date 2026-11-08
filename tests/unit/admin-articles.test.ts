@@ -18,8 +18,7 @@ const item: ContentItem = {
   publishAt: new Date("2026-10-19T00:00:00Z"),
   chapterId: null,
   author: "Nevyllo Kalangi",
-  category: "workshop",
-  location: "Jakarta, Indonesia",
+  category: "academic",
   summary: "Ringkas",
   tags: ["riset"],
   featuredImage: null,
@@ -41,8 +40,8 @@ describe("Article page rows (server mapping)", () => {
     const editor = { name: "Ana B.", email: "ana@example.org", initials: "AB" };
     const row = toArticleItem(item, NOW, editor);
     expect(row).toMatchObject({
-      category: "Workshop",
-      categoryKey: "workshop",
+      category: "Academic",
+      categoryKey: "academic",
       author: "Nevyllo Kalangi",
       byline: { name: "Nevyllo K.", initials: "NK" },
       editor,

@@ -100,12 +100,11 @@ export const MESSAGE_STATUS_LABELS = {
 } as const satisfies Record<MessageStatus, Label>;
 
 export const NEWS_CATEGORY_LABELS = {
-  seminar: { id: "Seminar", en: "Seminar" },
-  workshop: { id: "Workshop", en: "Workshop" },
-  webinar: { id: "Webinar", en: "Webinar" },
-  conference: { id: "Conference", en: "Conference" },
-  meeting: { id: "Meetup", en: "Meetup" },
-  other: { id: "Lainnya", en: "Other" },
+  general: { id: "Umum", en: "General" },
+  academic: { id: "Akademik", en: "Academic" },
+  community: { id: "Komunitas", en: "Community" },
+  announcement: { id: "Pengumuman", en: "Announcement" },
+  international: { id: "Internasional", en: "International" },
 } as const satisfies Record<NewsCategory, Label>;
 
 export const EVENT_TYPE_LABELS = {

@@ -45,18 +45,16 @@ const id = {
     signOutFailed: "Gagal keluar. Silakan coba lagi.",
   },
   footer: {
-    /* Footer text is English in every language (user), like the header; only the address
-       block in site-frame.tsx stays Indonesian. */
-    tagline: "Overseas Indonesian Students' Association Alliance for Asia-Oceania Region",
-    explore: "Explore",
-    services: "Services",
+    tagline: "Aliansi Perhimpunan Pelajar Indonesia di Luar Negeri Kawasan Asia-Oseania",
+    explore: "Jelajahi",
+    services: "Layanan",
     shop: "E-Commerce",
-    community: "Our Community",
-    address: "Address",
-    social: "Social media",
-    rights: "All Rights Reserved",
-    terms: "Terms of Use",
-    privacy: "Privacy Policy",
+    community: "Komunitas Kami",
+    address: "Alamat",
+    social: "Media sosial",
+    rights: "Hak cipta dilindungi",
+    terms: "Syarat dan Ketentuan",
+    privacy: "Kebijakan Privasi",
   },
   home: {
     title: "PPIDK Asia-Oseania",
@@ -76,13 +74,12 @@ const id = {
     allActivities: "Semua kegiatan",
     noActivities: "Belum ada kegiatan yang dibuka.",
     heroTitle: "Menyatukan Pelajar Indonesia di Asia & Oseania",
-    heroSubtitle: "Connecting Indonesian Students All Across Asia & Oceania", // English like the design (user)
+    heroSubtitle: "Menghubungkan pelajar Indonesia di seluruh Asia & Oseania",
     heroCta: "Pelajari Lebih Lanjut",
-    // Heading dan tombol berita/acara mengikuti desain (bahasa Inggris); lihat HOME PUBLIC.
-    eventsHeading: "Latest Events",
-    newsHeading: "Latest News",
-    readMore: "Read",
-    register: "Register",
+    eventsHeading: "Acara Terbaru",
+    newsHeading: "Berita Terbaru",
+    readMore: "Baca",
+    register: "Daftar",
     welcomeHeading: "Sambutan Sekretaris Jenderal",
     welcomeQuote:
       "“Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nSed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.”",
@@ -92,6 +89,10 @@ const id = {
     slider: {
       previous: "PPI sebelumnya",
       next: "PPI berikutnya",
+      chair: "Ketua",
+      email: "E-mail",
+      phone: "Telepon",
+      social: "Media sosial",
     },
     fallbackEvents: [
       {
@@ -121,9 +122,9 @@ const id = {
   },
   pages: {
     activities: "Kegiatan",
-    news: "Blog & Article" /* English heading like the design (user) */,
-    events: "Events" /* English heading like the design (user) */,
-    gallery: "Our Gallery" /* English heading like the design (user) */,
+    news: "Blog & Artikel",
+    events: "Acara",
+    gallery: "Galeri Kami",
     map: "Peta",
   },
   news: {
@@ -145,21 +146,16 @@ const id = {
     search: "Cari Berita",
     searchPlaceholder: "Cari judul berita…",
     showing: "Menampilkan {n} berita",
-    /* Article page (user): English headings like the design; the back link reads
-       "← Back to Blog & Articles", the card row is "Recent News". */
-    backToArticles: "Back to Blog & Articles",
-    recentNews: "Recent News",
+    backToArticles: "Kembali ke Blog & Artikel",
+    recentNews: "Berita Terkini",
     tagline:
-      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community." /* same tagline as events and gallery (user) */,
-    /* News categories are the events/gallery activity types (user): the pill row
-       reads exactly "Semua Seminar Workshop Webinar Conference Meetup Lainnya". */
+      "Menghubungkan warga Indonesia di Asia & Oseania lewat kolaborasi, budaya, dan komunitas.",
     categories: {
-      seminar: "Seminar",
-      workshop: "Workshop",
-      webinar: "Webinar",
-      conference: "Conference",
-      meeting: "Meetup",
-      other: "Lainnya",
+      general: "Umum",
+      academic: "Akademik",
+      community: "Komunitas",
+      announcement: "Pengumuman",
+      international: "Internasional",
     },
   },
   events: {
@@ -185,13 +181,13 @@ const id = {
       conference: "Conference",
       meeting: "Meetup",
     },
-    region: "Country" /* label as in the design mock (user) */,
+    region: "Negara",
     allRegions: "Seluruh Asiania",
     search: "Cari Kegiatan",
     searchPlaceholder: "Cari nama event…",
     showing: "Menampilkan {n} kegiatan",
     tagline:
-      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
+      "Menghubungkan warga Indonesia di Asia & Oseania lewat kolaborasi, budaya, dan komunitas.",
     from: "Dari",
     to: "Sampai",
     clear: "Hapus filter",
@@ -201,13 +197,11 @@ const id = {
     eventTime: "waktu setempat",
     yourTime: "waktumu",
     deadline: "Pendaftaran ditutup",
-    /* Event detail design (Figma EVENT-PUBLIC / user mock): these labels are English
-       in every language, the way the footer stays English. */
-    about: "About",
-    speakers: "Guest Speaker",
-    schedule: "Event schedule",
-    sponsors: "Our Network & Partners",
-    register: "Register Now",
+    about: "Tentang",
+    speakers: "Pembicara Tamu",
+    schedule: "Susunan acara",
+    sponsors: "Jaringan & Mitra Kami",
+    register: "Daftar Sekarang",
     registering: "Mendaftarkan…",
     signInToRegister: "Masuk untuk mendaftar",
     profileNeeded: "Lengkapi profil anggotamu dulu untuk mendaftar.",
@@ -241,35 +235,40 @@ const id = {
     photos: "foto",
     seeAll: "Lihat semua foto",
     tagline:
-      "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
+      "Menghubungkan warga Indonesia di Asia & Oseania lewat kolaborasi, budaya, dan komunitas.",
     empty: "Belum ada album.",
     close: "Tutup",
     previous: "Sebelumnya",
     next: "Berikutnya",
     open: "Buka foto",
     eventAlbum: "Album foto acara ini",
-    viewAlbum:
-      "View Full Album on Google Drive" /* button label, English in every language (user mock) */,
-    brief:
-      "A brief description of the event highlights. Lorem ipsum." /* fixed dummy text, English in every language (user mock) */,
+    viewAlbum: "Lihat Album Lengkap di Google Drive",
+    brief: "Gambaran singkat sorotan acara. Lorem ipsum.",
   },
   map: {
-    /* Static map page (user): the design title and tagline, verbatim — English
-       headings like the other list pages. The keys below the divider belong to the
-       interactive chapter map used by About, Profile and the chapter cards. */
-    title: "Map PPI Negara Kawasan Asia Oseania",
+    /* Static map page (user): the design title and tagline. The keys below the divider
+       belong to the interactive chapter map used by About, Profile and the chapter cards. */
+    title: "Peta PPI Negara Kawasan Asia Oseania",
     tagline:
-      "Connecting Indonesian across Asia-Oceania through collaboration, culture, and community.",
+      "Menghubungkan warga Indonesia di Asia-Oseania lewat kolaborasi, budaya, dan komunitas.",
     /* Country list panel under the map image (user): side.svg recreated from data —
        one row per chapter; inactive chapters dim. */
-    list: "List PPI Negara",
+    list: "Daftar PPI Negara",
+    /* Region headings of the country table, in the design's order (lib/country-names.ts). */
+    regions: {
+      oceania: "OSEANIA",
+      southeastAsia: "ASIA TENGGARA",
+      eastAsia: "ASIA TIMUR",
+      southAsia: "ASIA SELATAN",
+      middleAsia: "ASIA TENGAH",
+      others: "Lainnya",
+    },
     /* Chapter detail page /map/[slug] (user): the dashboard's plain rows — "Email:" /
-       "Phone:" lines, no field headers (user). English in both languages, like the map
-       headings. Row click → the detail page. */
+       "Phone:" lines, no field headers (user). Row click → the detail page. */
     detail: {
-      back: "Back to Map",
-      email: "Email",
-      phone: "Phone",
+      back: "Kembali ke Peta",
+      email: "E-mail",
+      phone: "Telepon",
       instagram: "Instagram",
     },
     /* ---- interactive chapter map (About/Profile/chapter cards) ---- */
@@ -697,22 +696,6 @@ const id = {
     structureHeading: "Struktur organisasi",
     structure:
       "Kepengurusan disusun per periode. Visi, misi, dan susunan pengurus periode berjalan ditampilkan di sini setelah ditetapkan.",
-    unitMembers: "Pengurus",
-    // Round 15: "Bagian di dalamnya" → "Bagian Terkait" (user: "Bagian di
-    // dalamnya seharusnya ganti dengan Bagian Terkaiit" — typo corrected);
-    // the back link shortens to a plain "Back" (user: "← Kembali ke Tentang
-    // kami ganti jadi ← Back").
-    unitChildren: "Bagian Terkait",
-    // Round 19 (user: "ada tambahan Wakilnya yang mungkin lebih dari satu"):
-    // on the SEKTIF & BEND detail pages the children section is headed
-    // "Wakil" — those children ARE the wakil of the officer.
-    unitDeputies: "Wakil",
-    // Round 35 (user: "Buat urutan fotonya begini: Kepala/Dir. Wakil.
-    // Sekretaris. Staff."): on the biro/direktorat pages the non-head team
-    // lists under its own headings.
-    unitSekretaris: "Sekretaris",
-    unitStaff: "Staff",
-    unitBack: "Back",
   },
   terms: {
     title: "Syarat dan Ketentuan",
@@ -880,6 +863,10 @@ const en: Dictionary = {
     slider: {
       previous: "Previous PPI",
       next: "Next PPI",
+      chair: "Chair",
+      email: "Email",
+      phone: "Phone",
+      social: "Social media",
     },
     fallbackEvents: [
       {
@@ -935,18 +922,16 @@ const en: Dictionary = {
     search: "Search news",
     searchPlaceholder: "Search news titles…",
     showing: "Showing {n} news",
-    /* Same English article page headings as the Indonesian dictionary (user). */
     backToArticles: "Back to Blog & Articles",
     recentNews: "Recent News",
     tagline:
       "Connecting Indonesians across Asia & Oceania through collaboration, culture, and community.",
     categories: {
-      seminar: "Seminar",
-      workshop: "Workshop",
-      webinar: "Webinar",
-      conference: "Conference",
-      meeting: "Meetup",
-      other: "Others" /* same label as the events "Lainnya" pill */,
+      general: "General",
+      academic: "Academic",
+      community: "Community",
+      announcement: "Announcement",
+      international: "International",
     },
   },
   events: {
@@ -1033,10 +1018,8 @@ const en: Dictionary = {
     next: "Next",
     open: "Open photo",
     eventAlbum: "Photo album of this event",
-    viewAlbum:
-      "View Full Album on Google Drive" /* button label, English in every language (user mock) */,
-    brief:
-      "A brief description of the event highlights. Lorem ipsum." /* fixed dummy text, English in every language (user mock) */,
+    viewAlbum: "View Full Album on Google Drive",
+    brief: "A brief description of the event highlights. Lorem ipsum.",
   },
   map: {
     /* Same design title and tagline as the Indonesian dictionary (user). */
@@ -1045,8 +1028,15 @@ const en: Dictionary = {
       "Connecting Indonesian across Asia-Oceania through collaboration, culture, and community.",
     /* Same list heading as the Indonesian dictionary; the country names are English. */
     list: "List PPI Negara",
-    /* Chapter detail page /map/[slug] (user): the same dashboard field labels
-       (English in both languages). */
+    regions: {
+      oceania: "OCEANIA",
+      southeastAsia: "SOUTH EAST ASIA",
+      eastAsia: "EAST ASIA",
+      southAsia: "SOUTH ASIA",
+      middleAsia: "MIDDLE ASIA",
+      others: "Others",
+    },
+    /* Chapter detail page /map/[slug] (user): the same dashboard field labels. */
     detail: {
       back: "Back to Map",
       email: "Email",
@@ -1478,12 +1468,6 @@ const en: Dictionary = {
     structureHeading: "Organisation structure",
     structure:
       "The board is formed per period. The vision, mission and board of the current period appear here once they are set.",
-    unitMembers: "Officers",
-    unitChildren: "Related parts",
-    unitDeputies: "Deputies",
-    unitSekretaris: "Secretary",
-    unitStaff: "Staff",
-    unitBack: "Back",
   },
   terms: {
     title: "Terms and Conditions",

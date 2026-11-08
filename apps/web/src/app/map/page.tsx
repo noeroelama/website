@@ -3,8 +3,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import type { PublicChapter } from "@website/domain/organizations";
-import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
-import { REGION_LABELS, REGION_ORDER, chapterAlias, countryName } from "@/lib/country-names";
+import { DICTIONARIES, LANG_COOKIE, languageFrom, type Language } from "@/i18n/dictionaries";
+import { REGION_ORDER, chapterAlias, countryName } from "@/lib/country-names";
 import { activeChapters } from "@/server/chapters";
 
 export const metadata: Metadata = { title: "Map" };
@@ -33,7 +33,7 @@ export default function MapPage() {
 /** The chapter's badge number (its own mapNo), or "last", for sorting the rows of a group. */
 const rank = (c: PublicChapter): number => c.mapNo ?? Number.MAX_SAFE_INTEGER;
 
-function MapRow({ chapter }: { chapter: PublicChapter }) {
+function MapRow({ chapter, language }: { chapter: PublicChapter; language: Language }) {
   const no = chapter.mapNo;
   const alias = chapterAlias(chapter.name);
   return (
@@ -41,7 +41,7 @@ function MapRow({ chapter }: { chapter: PublicChapter }) {
       {/* The whole row links to the chapter's detail page (user); the row is the <a>. */}
       <Link className="site-map__row" href={`/map/${chapter.slug}`}>
         {no !== null && <span className="site-map__no">{no}</span>}
-        <span className="site-map__label">{countryName(chapter.countryCode)}</span>
+        <span className="site-map__label">{countryName(chapter.countryCode, language)}</span>
         {alias && <span className="site-map__alias">{alias}</span>}
       </Link>
     </li>
@@ -49,7 +49,8 @@ function MapRow({ chapter }: { chapter: PublicChapter }) {
 }
 
 async function LocalizedMapPage() {
-  const t = DICTIONARIES[languageFrom((await cookies()).get(LANG_COOKIE)?.value)].map;
+  const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
+  const t = DICTIONARIES[language].map;
   const chapters = await activeChapters();
   const shown = chapters.filter((c) => c.region !== null);
   const groups = REGION_ORDER.map((region) => ({
@@ -72,10 +73,10 @@ async function LocalizedMapPage() {
             <div className="site-map__groups">
               {groups.map(({ region, rows }) => (
                 <section className="site-map__group" key={region}>
-                  <h3 className="site-map__group-title">{REGION_LABELS[region]}</h3>
+                  <h3 className="site-map__group-title">{t.regions[region]}</h3>
                   <ul className="site-map__list">
                     {rows.map((chapter) => (
-                      <MapRow key={chapter.slug} chapter={chapter} />
+                      <MapRow key={chapter.slug} chapter={chapter} language={language} />
                     ))}
                   </ul>
                 </section>

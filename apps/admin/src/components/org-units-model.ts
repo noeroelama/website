@@ -12,8 +12,6 @@ export interface OrgUnitItem {
   version: number;
   periodId: string;
   parentId: string | null;
-  /** The unit this unit reports to (its functional chain; independent of the display tree). */
-  reportTo: string | null;
   /** Ancestor ids, root first (its length is the indent in the tree). */
   path: string[];
   name: string;
@@ -34,7 +32,6 @@ export function toOrgUnitItem(u: OrgUnit): OrgUnitItem {
     version: u.version,
     periodId: u.periodId,
     parentId: u.parentId,
-    reportTo: u.reportTo,
     path: [...u.path],
     name: u.name,
     code: u.code,

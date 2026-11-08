@@ -8,13 +8,13 @@ import { SitePager } from "@/components/site-pager";
 import { SubmitOnChangeSelect } from "@/components/submit-on-change-select";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { Localized } from "@/i18n/localized";
-import { newsHref, newsQuery, newsRegionsOf, NEWS_TIME_RANGES, pageOfNews } from "@/lib/news-query";
+import { newsHref, newsQuery, NEWS_TIME_RANGES, pageOfNews } from "@/lib/news-query";
 import { publicNews } from "@/server/news";
 
 export const metadata: Metadata = { title: "News" };
 
 // Design (user): the news list gets the Events/Gallery look — the dark filter bar with
-// date range, Country and search, category pills with a count, 3-up cards, numbered
+// date range and search, category pills with a count, 3-up cards, numbered
 // pager — but with INVERTED colours: black page, cream filter panel. Static shell
 // (title); the filtered list streams in (cached news + language cookie).
 export default function NewsPage({ searchParams }: PageProps<"/news">) {
@@ -42,14 +42,9 @@ async function NewsList({ searchParams }: Pick<PageProps<"/news">, "searchParams
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
   const all = await publicNews();
-  const countries = newsRegionsOf(all);
   const { items, count, page, pages } = pageOfNews(all, query);
   const filtered =
-    query.category !== null ||
-    query.tag !== null ||
-    query.q !== null ||
-    query.time !== null ||
-    query.region !== null;
+    query.category !== null || query.tag !== null || query.q !== null || query.time !== null;
   return (
     <>
       <form className="site-lists__bar" action="/news" method="get">
@@ -71,29 +66,6 @@ async function NewsList({ searchParams }: Pick<PageProps<"/news">, "searchParams
                   {NEWS_TIME_RANGES.map((range) => (
                     <option key={range} value={range}>
                       {t.events.periodOptions[range]}
-                    </option>
-                  ))}
-                </SubmitOnChangeSelect>
-              </span>
-            </span>
-          </label>
-          <label className="site-lists__field">
-            <span className="site-lists__field-label">
-              <FieldIcon name="region" className="site-lists__field-label-icon" />
-              {t.events.region}
-            </span>
-            <span className="site-lists__field-controls">
-              <span className="site-lists__box">
-                <FieldIcon name="region" className="site-lists__box-icon" />
-                <SubmitOnChangeSelect
-                  className="ui-input"
-                  name="region"
-                  defaultValue={query.region ?? ""}
-                >
-                  <option value="">{t.events.allRegions}</option>
-                  {countries.map((region) => (
-                    <option key={region} value={region}>
-                      {region}
                     </option>
                   ))}
                 </SubmitOnChangeSelect>

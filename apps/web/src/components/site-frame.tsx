@@ -1,7 +1,11 @@
 import { cacheLife } from "next/cache";
+import { Suspense } from "react";
+import { initials } from "@website/ui";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { LEGAL_VERSION } from "@/i18n/dictionaries";
 import { getAppUrls } from "@/server/env";
+import { getSignedInUser } from "@/server/session";
+import { LoginChip, SiteAccount } from "./site-account";
 import { SocialLinks } from "./social-links";
 import { SiteNav } from "./site-nav";
 
@@ -26,26 +30,40 @@ function Logo({ t }: { t: Dictionary }) {
   );
 }
 
-/**
- * Header of every public page: links only, no account chip. Labels are English in every
- * language, per the HOME PUBLIC design ("About Us, Events, Gallery, News, Map").
- */
-const HEADER_LINKS = [
-  ["/about", "About Us"],
-  ["/events", "Events"],
-  ["/gallery", "Gallery"],
-  ["/news", "News"],
-  ["/map", "Map"],
-] as const;
-
+/** Header of every public page. Personal data only in HeaderAccount (streamed, not prerendered). */
 export function SiteHeader({ t }: { t: Dictionary }) {
+  const links = [
+    ["/about", t.nav.about],
+    ["/events", t.nav.events],
+    ["/gallery", t.nav.gallery],
+    ["/news", t.nav.news],
+    ["/map", t.nav.map],
+  ] as const;
   return (
     <header className="site-header">
       <div className="site-frame__inner site-header__inner">
         <Logo t={t} />
-        <SiteNav label={t.nav.label} links={HEADER_LINKS} />
+        <SiteNav label={t.nav.label} links={links} />
+        <Suspense fallback={<LoginChip t={t.account} />}>
+          <HeaderAccount t={t} />
+        </Suspense>
       </div>
     </header>
+  );
+}
+
+/** Right side of the header: request-time only (the session), so never in the prerendered shell. */
+async function HeaderAccount({ t }: { t: Dictionary }) {
+  const user = await getSignedInUser();
+  if (!user) return <LoginChip t={t.account} />;
+  const name = user.name ?? user.email ?? t.account.menu;
+  return (
+    <SiteAccount
+      name={name}
+      initials={initials(name)}
+      picture={user.picture ?? null}
+      t={t.account}
+    />
   );
 }
 
@@ -58,16 +76,14 @@ async function CopyrightYear() {
 }
 
 export function SiteFooter({ t }: { t: Dictionary }) {
-  // English in every language, like the header and the rest of the footer (user:
-  // "Beranda Tentang Kami dll dirubah ke bahasa inggris").
   const explore = [
-    ["/", "Home"],
-    ["/about", "About Us"],
-    ["/activities", "Activities"],
-    ["/events", "Events"],
-    ["/gallery", "Gallery"],
-    ["/news", "News"],
-    ["/map", "Map"],
+    ["/", t.nav.home],
+    ["/about", t.nav.about],
+    ["/activities", t.pages.activities],
+    ["/events", t.nav.events],
+    ["/gallery", t.nav.gallery],
+    ["/news", t.nav.news],
+    ["/map", t.nav.map],
   ] as const;
   const shopUrl = getAppUrls().SHOP_URL;
   return (

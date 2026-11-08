@@ -82,6 +82,10 @@ const COUNTRIES = [
 export interface PpiSliderStrings {
   readonly previous: string;
   readonly next: string;
+  readonly chair: string;
+  readonly email: string;
+  readonly phone: string;
+  readonly social: string;
 }
 
 /** Placeholder contact email per country, e.g. "selandiabaru@example.com". */
@@ -99,19 +103,29 @@ function emailFor(countryName: string): string {
  * Visible panel content of one slide (title, description, PIC, social). The previous
  * slide's panel is also rendered ("ghost", dimmed) next to the active one (user).
  */
-function SlideContent({ country }: { country: (typeof COUNTRIES)[number] }) {
+function SlideContent({
+  country,
+  t,
+}: {
+  country: (typeof COUNTRIES)[number];
+  t: PpiSliderStrings;
+}) {
   return (
     <>
       <h2>{country.name}</h2>
       <p className="ppi-slider__desc">{country.desc}</p>
       <div className="ppi-slider__pic">
         <strong>Budi Setiawan</strong>
-        <span className="ppi-slider__pic-role">Ketua {country.name}</span>
-        <span>Email: {emailFor(country.name)}</span>
-        <span>Phone: +00 000 0000 000</span>
+        <span className="ppi-slider__pic-role">
+          {t.chair} {country.name}
+        </span>
+        <span>
+          {t.email}: {emailFor(country.name)}
+        </span>
+        <span>{t.phone}: +00 000 0000 000</span>
       </div>
       <p className="ppi-slider__social-label">{country.name}</p>
-      <SocialLinks className="ppi-slider__social" label={`Media sosial ${country.name}`} />
+      <SocialLinks className="ppi-slider__social" label={`${t.social} ${country.name}`} />
     </>
   );
 }
@@ -173,11 +187,11 @@ export function PpiSlider({ t }: { t: PpiSliderStrings }) {
               {i > 0 && (
                 <div className="ppi-slider__ghost" aria-hidden="true">
                   {/* i > 0 guarantees `i - 1` is a valid index; `!` narrows it */}
-                  <SlideContent country={COUNTRIES[i - 1]!} />
+                  <SlideContent country={COUNTRIES[i - 1]!} t={t} />
                 </div>
               )}
               <div className="ppi-slider__panel">
-                <SlideContent country={country} />
+                <SlideContent country={country} t={t} />
               </div>
             </div>
           </article>

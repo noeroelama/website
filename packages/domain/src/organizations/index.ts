@@ -311,12 +311,6 @@ export interface OrgUnit extends EntityMeta {
   readonly parentId: string | null;
   /** Where this unit sits in the DISPLAY tree (the About page's three blocks). Null = root. */
   readonly path: readonly string[];
-  /**
-   * The unit this unit reports to (the functional chain — display tree and reporting line
-   * are independent since round 23: e.g. KSA displays under Biro but reports to Sektif).
-   * Null = reports to nobody. A cycle is refused on save.
-   */
-  readonly reportTo: string | null;
   readonly name: string;
   /** Short and unique within the period, e.g. MED or MED-DSN. */
   readonly code: string;
@@ -340,8 +334,6 @@ export const OrgUnitInputSchema = z
   .object({
     periodId: safeId,
     parentId: safeId.nullable(),
-    /** Who this unit reports to (free on save; the store refuses dead targets and cycles). */
-    reportTo: safeId.nullable().default(null),
     name: safeText(120).pipe(z.string().min(2, "Enter the unit name.")),
     code: z
       .string()
@@ -392,28 +384,6 @@ export function placeOrgUnit(
 export function assertNoCycle(unitId: string, parent: Pick<OrgUnit, "id" | "path"> | null): void {
   if (parent && orgUnitPath(parent).includes(unitId)) {
     throw new RuleViolationError("A unit cannot be moved inside itself or one of its units.");
-  }
-}
-
-/**
- * Validates a unit's reporting line: the target must be a live unit of the same period and not
- * the unit itself (the store walks the target's chain to refuse longer cycles).
- */
-export function placeReportTo(
-  periodId: string,
-  period: Pick<Period, "status"> | null,
-  unitId: string | null,
-  reportTo: string | null,
-  target: OrgUnit | null,
-): void {
-  if (reportTo === null) return;
-  if (!period) throw new RuleViolationError("Choose a period first.");
-  if (!canChangePeriod(period.status)) {
-    throw new RuleViolationError("This period is archived; its structure can no longer change.");
-  }
-  if (reportTo === unitId) throw new RuleViolationError("A unit cannot report to itself.");
-  if (!target || target.deletedAt || target.periodId !== periodId) {
-    throw new RuleViolationError("The unit this unit reports to does not exist in this period.");
   }
 }
 

@@ -37,8 +37,8 @@ These members are display data for the cabinet page only — not accounts and no
   (`periods/{id}`, `settings/activePeriod`); admin `apps/admin/src/server/periods.ts`, the Period
   tab in `organizations-page.tsx`, rows in `periods-model.ts`
 - Structure: `OrgUnit`, `OrgUnitInputSchema`, `UnitMemberSchema`, `UnitDivisionSchema`,
-  `unitPeopleCount`, `placeOrgUnit`, `placeReportTo`, `assertNoCycle`, `movedPath`,
-  `orgUnitPath`, `inTreeOrder` in the same domain file; database
+  `unitPeopleCount`, `placeOrgUnit`, `assertNoCycle`, `movedPath`, `orgUnitPath`, `inTreeOrder` in
+  the same domain file; database
   `packages/db/src/sql/org-units.ts` (`orgUnits/{id}`, code index
   `orgUnitCodes/{periodId}_{code}`); admin `apps/admin/src/server/org-units.ts`,
   `src/app/(panel)/organizations/periods/[id]/page.tsx`, `src/components/org-structure-page.tsx`,
@@ -108,11 +108,6 @@ These members are display data for the cabinet page only — not accounts and no
   structure is read-only.
 - The code is upper-cased and unique per period. New units from the unit page sit at the top
   level; units imported under a parent keep their place (Move has no button in the redesign).
-- A unit also stores `reportTo` (nullable): who it reports to — the _functional_ chain, which is
-  independent of the display tree (`parentId`) since round 23 (e.g. KSA displays under Biro but
-  reports to Sektif). The target must be a live unit of the same period, never the unit itself,
-  and a cycle is refused (the store walks the target's line). A unit other units report to
-  cannot be deleted until their reports are changed. The About page tree does not use it yet.
 - A unit keeps at most 50 core members and 30 divisions of at most 50 members each, in display
   order. Photos use the public upload preset `cabinet` (`structure.edit`).
 - A unit is deleted only when no live unit sits below it and nobody holds an active appointment
