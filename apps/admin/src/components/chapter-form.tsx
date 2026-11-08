@@ -154,8 +154,6 @@ export function ChapterForm(props: {
       asForm
       open
       title={props.chapter ? "Edit PPI" : "Create PPI"}
-      width={640}
-      hideClose
       onClose={props.onClose}
       footer={
         <div className="admin-modal__footer-row">

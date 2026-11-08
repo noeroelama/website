@@ -547,7 +547,7 @@ function FormsList({
 
   return (
     <div>
-      <div className="admin-page-header">
+      <div className="admin-page-header admin-events-header">
         <div>
           <h1 className="admin-page-header__title">Forms</h1>
           <p className="admin-page-header__desc">

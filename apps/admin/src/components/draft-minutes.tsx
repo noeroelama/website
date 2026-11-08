@@ -61,43 +61,13 @@ export function DraftMinutes({
       <Button size="sm" variant="outline" icon="note" onClick={() => setOpen(true)}>
         Draft from transcript
       </Button>
-      <Modal open={open} title="Draft minutes from a transcript" onClose={() => setOpen(false)}>
-        <form onSubmit={(e) => void submit(e)}>
-          <div className="admin-field">
-            <label className="admin-field__label" htmlFor="vtt-file">
-              Zoom transcript (.vtt) or paste below
-            </label>
-            <input
-              id="vtt-file"
-              type="file"
-              accept=".vtt,.txt,text/vtt,text/plain"
-              onChange={(e) => void e.target.files?.[0]?.text().then(setTranscript)}
-            />
-          </div>
-          <textarea
-            className="admin-textarea"
-            rows={10}
-            aria-label="Transcript"
-            value={transcript}
-            maxLength={200_000}
-            onChange={(e) => setTranscript(e.target.value)}
-          />
-          {message ? <p role="status">{message}</p> : null}
-          {proposals.length > 0 ? (
-            <ul>
-              {proposals.map((p, i) => (
-                <li key={`${p.title}-${i}`}>
-                  {p.title} — {p.pic ? (names.get(p.pic) ?? p.pic) : "no PIC (add it by hand)"}
-                  {p.dueOn ? `, due ${p.dueOn}` : ""}{" "}
-                  {p.pic ? (
-                    <Button size="sm" variant="ghost" icon="plus" onClick={() => add(p, i)}>
-                      Add
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+      <Modal
+        asForm
+        open={open}
+        title="Draft minutes from a transcript"
+        onClose={() => setOpen(false)}
+        onSubmit={(e) => void submit(e)}
+        footer={
           <div className="admin-modal__footer-row">
             <Button variant="outline" icon="chevronLeft" onClick={() => setOpen(false)}>
               Back
@@ -112,11 +82,53 @@ export function DraftMinutes({
                 Pull Zoom transcript
               </Button>
             ) : null}
-            <Button type="submit" loading={busy} disabled={transcript.trim().length < 20}>
+            <Button
+              type="submit"
+              variant="primary"
+              icon="note"
+              loading={busy}
+              disabled={transcript.trim().length < 20}
+            >
               {busy ? "Drafting…" : "Draft"}
             </Button>
           </div>
-        </form>
+        }
+      >
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="vtt-file">
+            Zoom transcript (.vtt) or paste below
+          </label>
+          <input
+            id="vtt-file"
+            type="file"
+            accept=".vtt,.txt,text/vtt,text/plain"
+            onChange={(e) => void e.target.files?.[0]?.text().then(setTranscript)}
+          />
+        </div>
+        <textarea
+          className="admin-textarea"
+          rows={10}
+          aria-label="Transcript"
+          value={transcript}
+          maxLength={200_000}
+          onChange={(e) => setTranscript(e.target.value)}
+        />
+        {message ? <p role="status">{message}</p> : null}
+        {proposals.length > 0 ? (
+          <ul>
+            {proposals.map((p, i) => (
+              <li key={`${p.title}-${i}`}>
+                {p.title} — {p.pic ? (names.get(p.pic) ?? p.pic) : "no PIC (add it by hand)"}
+                {p.dueOn ? `, due ${p.dueOn}` : ""}{" "}
+                {p.pic ? (
+                  <Button size="sm" variant="ghost" icon="plus" onClick={() => add(p, i)}>
+                    Add
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </Modal>
     </>
   );

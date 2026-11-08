@@ -409,33 +409,28 @@ function AddPeopleModal({
 
   return (
     <Modal
+      asForm
       open={open}
       title="Add New People"
-      className="admin-modal--side"
-      width={548}
-      hideClose
       onClose={close}
+      onSubmit={() => void submit()}
       footer={
-        <Footer onCancel={close}>
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={close}>
+            Back
+          </Button>
           <Button
-            variant="primary"
             type="submit"
-            form="add-people-form"
+            variant="primary"
+            icon="send"
             disabled={busy || !person.trim() || !roleId}
           >
             Invite
           </Button>
-        </Footer>
+        </div>
       }
     >
-      <form
-        id="add-people-form"
-        className="admin-role-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
+      <div className="admin-role-form">
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="people-person">
             Email or Name
@@ -532,7 +527,7 @@ function AddPeopleModal({
           </Select>
         </div>
         <ActionError text={error} reauthUrl={reauthUrl} />
-      </form>
+      </div>
     </Modal>
   );
 }
@@ -664,20 +659,27 @@ function PersonModal({
 
   return (
     <Modal
+      asForm
       open
       title="Edit People"
-      className="admin-modal--side"
-      width={548}
-      hideClose
       onClose={onClose}
       footer={
-        <Footer onCancel={onClose}>
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={onClose}>
+            Back
+          </Button>
           {canEdit ? (
-            <Button variant="primary" disabled={busy} onClick={() => save()}>
+            <Button
+              type="submit"
+              variant="primary"
+              icon="cloud"
+              disabled={busy}
+              onClick={() => save()}
+            >
               Save
             </Button>
           ) : null}
-        </Footer>
+        </div>
       }
     >
       <dl className="admin-role-facts">
@@ -1036,28 +1038,23 @@ function RoleModal({
 
   return (
     <Modal
+      asForm
       open
       title={role ? "Edit Role" : "Create Role"}
-      className="admin-modal--side"
-      width={548}
-      hideClose
       onClose={onClose}
+      onSubmit={() => void submit()}
       footer={
-        <Footer onCancel={onClose}>
-          <Button variant="primary" type="submit" form="role-form" loading={busy}>
+        <div className="admin-modal__footer-row">
+          <Button variant="outline" icon="chevronLeft" onClick={onClose}>
+            Back
+          </Button>
+          <Button type="submit" variant="primary" icon="cloud" loading={busy}>
             {role ? "Save Role" : "Create Role"}
           </Button>
-        </Footer>
+        </div>
       }
     >
-      <form
-        id="role-form"
-        className="admin-role-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
+      <div className="admin-role-form">
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="role-name">
             Role Name *
@@ -1144,7 +1141,7 @@ function RoleModal({
           )}
         </fieldset>
         <ActionError text={error} reauthUrl={reauthUrl} />
-      </form>
+      </div>
     </Modal>
   );
 }

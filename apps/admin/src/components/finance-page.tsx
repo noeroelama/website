@@ -648,30 +648,36 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
           title={noteStep?.title ?? ""}
           onClose={() => setNoteStep(null)}
           footer={
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={busy || (noteStep?.required === true && !noteStep.note.trim())}
-              onClick={() =>
-                noteStep && void run(noteStep.action, { note: noteStep.note }, noteStep.done)
-              }
-            >
-              Confirm
-            </Button>
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setNoteStep(null)}>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="check"
+                disabled={busy || (noteStep?.required === true && !noteStep.note.trim())}
+                onClick={() =>
+                  noteStep && void run(noteStep.action, { note: noteStep.note }, noteStep.done)
+                }
+              >
+                Confirm
+              </Button>
+            </div>
           }
         >
-          <label className="admin-field">
-            <span className="admin-field__label">
+          <div className="admin-field">
+            <label className="admin-field__label" htmlFor="finance-note">
               {noteStep?.required ? "Note (required)" : "Note (optional)"}
-            </span>
+            </label>
             <textarea
+              id="finance-note"
               className="admin-input admin-textarea"
               rows={3}
               value={noteStep?.note ?? ""}
               onChange={(e) => noteStep && setNoteStep({ ...noteStep, note: e.target.value })}
             />
-          </label>
+          </div>
         </Modal>
         <Modal
           asForm
@@ -679,42 +685,53 @@ function FinanceList({ periodName, initial: items, units, desks }: Props) {
           title="Mark paid with the proof of transfer"
           onClose={() => setPaying(null)}
           footer={
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={busy || !paying?.file}
-              onClick={() => {
-                if (!paying?.file) return;
-                const minor = toMinor(paying.amount, r.currency);
-                if (!minor) return toast.show("Type the amount paid, more than zero.");
-                void upload(paying.file, `kind=proof&amount=${minor}`, "Marked paid");
-              }}
-            >
-              Mark paid
-            </Button>
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setPaying(null)}>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="check"
+                disabled={busy || !paying?.file}
+                onClick={() => {
+                  if (!paying?.file) return;
+                  const minor = toMinor(paying.amount, r.currency);
+                  if (!minor) return toast.show("Type the amount paid, more than zero.");
+                  void upload(paying.file, `kind=proof&amount=${minor}`, "Marked paid");
+                }}
+              >
+                Mark paid
+              </Button>
+            </div>
           }
         >
           {paying ? (
             <div className="admin-form-grid">
-              <label className="admin-field">
-                <span className="admin-field__label">Amount paid ({r.currency})</span>
+              <div className="admin-field">
+                <label className="admin-field__label" htmlFor="finance-amount-paid">
+                  Amount paid ({r.currency})
+                </label>
                 <input
+                  id="finance-amount-paid"
                   className="admin-input"
                   inputMode="decimal"
                   value={paying.amount}
                   onChange={(e) => setPaying({ ...paying, amount: e.target.value })}
                 />
-              </label>
-              <label className="admin-field">
-                <span className="admin-field__label">Proof of transfer (PDF)</span>
+              </div>
+              <div className="admin-field">
+                <label className="admin-field__label" htmlFor="finance-proof">
+                  Proof of transfer (PDF)
+                </label>
                 <input
+                  id="finance-proof"
                   className="admin-input"
                   type="file"
                   accept="application/pdf"
                   onChange={(e) => setPaying({ ...paying, file: e.target.files?.[0] ?? null })}
                 />
-              </label>
+              </div>
             </div>
           ) : null}
         </Modal>

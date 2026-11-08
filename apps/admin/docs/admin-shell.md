@@ -84,8 +84,16 @@ router.push("/things"); router.refresh();
   focus ring), `outline` is cream, `danger` is red. Popups use `Modal` without a
   theme class: big title, fields, then **Back** (`outline`, `chevronLeft`) and the action at the
   bottom right (`ConfirmDialog` does this for confirmations). Every popup is centred on the page;
-  `className="admin-modal--side"` only makes it a cream surface (Article Settings, Role Manager).
+  `className="admin-modal--side"` only makes it a cream surface.
   A test (`tests/unit/design-tokens.test.ts`) fails if a popup rule moves it off centre.
+- **Form popups** are built like Article Settings: pass `asForm` (no `className`, `width` or
+  `hideClose`) and `Modal` makes the body and footer one `<form>` on the cream surface, 548px
+  wide, without the X. Each field is `.admin-field` with a `<label htmlFor>` above the control
+  (not a `<label>` wrapped around it); pairs go in `.admin-form-grid`. The footer is
+  `.admin-modal__footer-row`: **Back** (`outline`, `chevronLeft`) and one
+  `type="submit" variant="primary"` button with an icon. Give the submit button the work in
+  `onClick`, or, for a form read with `FormData`, pass `onSubmit` to `Modal` (no inner `<form>`).
+  Test "admin form modals" checks every popup that has fields.
 - **Fields.** Put each control in `.admin-field` with a label and a `FieldError` last. Declare
   the rules on the control with HTML attributes — `required`, `type` (`email`, `url`, `number`),
   `minLength`, `min`/`max`, `pattern` + `title` (the text shown) — mirroring the domain schema.
@@ -192,16 +200,15 @@ router.push("/things"); router.refresh();
 - **Rich text** (Article body, Newsletter campaign): `RichTextStack` edits a list of type boxes
   (add, delete, drag to reorder, format toolbar, links, inline images through `uploadImage`;
   `readOnly` for sent campaigns). Save the HTML with `joinBlocks(blocks)`.
-- **Dashboard** (`/`, every staff member): counters for events, albums, news articles and
-  confirmed subscribers — each only when the viewer can read that page (`COUNT` queries,
-  `src/server/dashboard.ts`, `packages/db/src/sql/dashboard.ts`) — and the 10 newest
-  audit entries with `audit.read`. G3 adds: **Waiting for my action** — one line per desk the
-  viewer holds (finance review/authorise/pay, the three LPJ desks, Zoom approval), counting items
-  of the active period in the units the desk covers that the module's own domain rule would let
-  this person act on (never their own request, never a second desk); **Next 7 days** (the
-  Calendar read model, `calendar.read`); **My deadlines** (My Tasks due within 2 weeks, overdue
-  included); and the period's programme numbers (`programs.read`, in scope). No new data.
-  Tests: `tests/integration/dashboard.test.ts`.
+- **Dashboard** (`/`, every staff member) shows only what needs the viewer, in this order, and
+  hides a section when it is empty: (1) **action tiles** — one `StatCard` per desk with items
+  waiting (finance review/authorise/pay, the three LPJ desks, Zoom approval; items of the active
+  period in the units the desk covers that the module's own rule would let this person act on),
+  **My overdue tasks** and, with `appointments.edit`, **Graduated officers still in office**; the
+  header says how many; (2) **Setup to fix** — missing environment variables (superadmin) and
+  "nobody can review LPJs"; (3) **Page views** (superadmin). Counters, latest changes, the 7-day
+  agenda and period numbers were removed (they live on their own pages). `src/server/dashboard.ts`;
+  tests: `tests/integration/dashboard.test.ts`.
 - **Data-backed pages.** No page runs on mock data any more (the Tools short-link list was the
   last, step 7.5). Articles (`packages/domain/docs/content.md`), Events
   (`packages/domain/docs/events.md`), Gallery (`packages/domain/docs/gallery.md`), Newsletter
@@ -243,15 +250,21 @@ router.push("/things"); router.refresh();
 - **Zoom** (`/zoom`, `zoom-page.tsx`): bookings 30 days back to 180 ahead, the booking form,
   approve/reject, cancel, the invitation with its QR, and Settings (`zoom.settings`). Rules:
   `packages/domain/docs/zoom.md`.
-- **Page Views** (`/analytics`, superadmin only — `isSuperadmin`, not a Role Manager permission):
-  views of the public website like the PPIT statistics page (today / this month / this year,
-  averages, last 30 days, 12 months, 5 years) plus a table per web page for the chosen period: views
-  (every load), visits (one per visitor per page per UTC day), mobile/desktop visits, top referrer
-  hosts and last view. Clicking a page shows its own series. Data: `pageViewStats`
+- **Page views** (on the Dashboard, superadmin only — `isSuperadmin`, not a Role Manager
+  permission; `src/components/page-views-card.tsx`): like the PPIT statistics page — one chart with
+  Daily (last 30 days, line) / Monthly (12 months, bars) / Yearly (5 years, bars), then Total /
+  Average. The card header has a page dropdown (All pages + pages viewed in the period) left of the
+  Daily / Monthly / Yearly switch (`page-views-controls.tsx`, `.admin-segmented`;
+  `?views=…&page=…`). The chart (`page-views-chart.tsx`) draws at its real width, so its text is
+  `--text-xs` on every screen; hovering shows a dashed guide line and the date and views of the
+  nearest point (`.admin-views__tip`); axis steps and labels come from `page-views-model.ts`. Each
+  period tab is as tall as the page dropdown. Dashboard
+  card titles are `--text-xl`, one step below the page title. Data: `pageViewStats`
   (`packages/db/src/sql/page-views.ts`), recorded by apps/web (`apps/web/docs/public-site.md`).
-  Tests: `tests/integration/page-views.test.ts`.
+  Tests: `tests/integration/page-views.test.ts`, `tests/unit/admin-navigation.test.ts`,
+  `tests/unit/admin-page-views.test.ts`.
 - **Integration status** (L3, on the Dashboard; the Settings page was removed): superadmins see a
-  card "Environment variables not set" listing each integration (WAHA, Cloud API, Zoom, Drive,
+  "Setup to fix" table listing each integration (WAHA, Cloud API, Zoom, Drive,
   Anthropic, short links, calendar feed, Resend) whose variables are missing, with the missing
   names, and a note when `MESSAGING_MODE` is `log`. Never a value (`src/server/settings.ts`,
   `tests/unit/admin-settings.test.ts`). Zoom settings stay on `/zoom` (`zoom.settings`), the

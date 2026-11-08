@@ -696,3 +696,95 @@ describe("admin tabs and table columns", () => {
     ]);
   });
 });
+
+describe("admin status menu", () => {
+  const body = (selector: string) =>
+    adminRules.find((rule) => rule.selector === selector)?.body ?? "";
+
+  it("is as tall as the other header controls", () => {
+    expect(body(".admin-newsletter-status")).toMatch(/height:\s*var\(--admin-control-height\)/);
+  });
+
+  it("keeps the width of its longest option, so picking one does not resize it", () => {
+    const controls = readFileSync(
+      join(ROOT, "apps/admin/src/components/ui/list-controls.tsx"),
+      "utf8",
+    );
+    expect(controls).toMatch(/admin-newsletter-status__value[\s\S]*options\.map/);
+    expect(body(".admin-newsletter-status__value")).toMatch(/display:\s*inline-grid/);
+    expect(body(".admin-newsletter-status__value > span")).toMatch(/grid-area:\s*1\s*\/\s*1/);
+    expect(body('.admin-newsletter-status__value > span:not([data-current="true"])')).toMatch(
+      /visibility:\s*hidden/,
+    );
+  });
+});
+
+describe("admin list headers", () => {
+  it("the forms list lays out its header actions like every other list page", () => {
+    const forms = readFileSync(join(ROOT, "apps/admin/src/components/forms-page.tsx"), "utf8");
+    expect(forms).toMatch(
+      /className="admin-page-header admin-events-header">\s*<div>\s*<h1 className="admin-page-header__title">Forms</,
+    );
+  });
+});
+
+describe("admin form modals (built like Article Settings)", () => {
+  /** Each `<Modal …>` with its opening tag (props) and its body, in every admin component. */
+  const modals = files("apps/admin/src/components", [".tsx"]).flatMap((path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    return [...source.matchAll(/<Modal\b/g)].map((match) => {
+      let i = match.index + match[0].length;
+      let depth = 0;
+      for (; i < source.length; i++) {
+        const c = source[i];
+        if (c === "{") depth++;
+        else if (c === "}") depth--;
+        else if (c === ">" && depth === 0 && source[i - 1] !== "=") break;
+      }
+      const tag = source.slice(match.index, i + 1);
+      const body = source.slice(i + 1, source.indexOf("</Modal>", i));
+      const line = source.slice(0, match.index).split("\n").length;
+      return { where: `${path}:${line}`, tag, body };
+    });
+  });
+  // A form modal has fields (directly, through a field helper, or as children of a form wrapper).
+  const formModals = modals.filter(({ tag, body }) =>
+    /<input\b|<textarea\b|<Select\b|<form\b|\{(field|select)\(|type="submit"/.test(tag + body),
+  );
+
+  it("finds the form modals", () => {
+    expect(formModals.length).toBeGreaterThanOrEqual(25);
+  });
+
+  it("gives every form modal the Settings frame: a real <form>, cream side panel, no X", () => {
+    const modal = readFileSync(join(ROOT, "apps/admin/src/components/ui/modal.tsx"), "utf8");
+    expect(modal).toMatch(/asForm \? "admin-modal--side"/);
+    expect(modal).toMatch(/width = asForm \? 548/);
+    expect(modal).toMatch(/hideClose = asForm/);
+    for (const { where, tag, body } of formModals) {
+      expect(tag, where).toMatch(/\basForm\b/);
+      // The frame comes from asForm; one width for every form.
+      const props = tag.slice(0, tag.indexOf("footer={"));
+      expect(props, where).not.toMatch(/\b(className|width|hideClose)=|\bhideClose\b/);
+      expect(body, where).not.toMatch(/<form\b/);
+    }
+  });
+
+  it("ends every form modal with Back and one primary submit button with an icon", () => {
+    for (const { where, tag } of formModals) {
+      const footer = tag.slice(tag.indexOf("footer={"));
+      expect(footer, where).toContain('className="admin-modal__footer-row"');
+      expect(footer, where).toMatch(
+        /<Button\s+variant="outline"\s+icon="chevronLeft"[\s\S]*?>\s*Back\s*<\/Button>/,
+      );
+      expect(footer, where).toMatch(/<Button\s+type="submit"\s+variant="primary"\s+icon="\w+"/);
+      expect(footer, where).not.toMatch(/size="sm"/);
+    }
+  });
+
+  it("labels each field above it with a linked <label> (no label wrapped around a Select)", () => {
+    for (const { where, body } of formModals) {
+      expect(body, where).not.toMatch(/<label className="admin-field(?!__label)/);
+    }
+  });
+});

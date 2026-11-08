@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { Icon } from "./icon";
 
 export interface ModalProps {
@@ -15,7 +15,14 @@ export interface ModalProps {
   className?: string;
   hideClose?: boolean;
   style?: CSSProperties;
+  /**
+   * A form popup, built like Article Settings: the body and footer are one `<form>` (the footer's
+   * submit button runs native validation), on the cream side panel, 548px wide, without the X
+   * (the footer has Back). `onSubmit` is for forms read with `FormData`; otherwise the submit
+   * button's `onClick` does the work.
+   */
   asForm?: boolean;
+  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 }
 
 export function Modal({
@@ -25,11 +32,12 @@ export function Modal({
   onClose,
   children,
   footer,
-  width = 560,
-  className,
-  hideClose,
-  style,
   asForm = false,
+  width = asForm ? 548 : 560,
+  className,
+  hideClose = asForm,
+  style,
+  onSubmit,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -53,7 +61,9 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={["admin-modal", className].filter(Boolean).join(" ")}
+        className={["admin-modal", asForm ? "admin-modal--side" : "", className]
+          .filter(Boolean)
+          .join(" ")}
         style={{ maxWidth: width, ...style }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -74,7 +84,13 @@ export function Modal({
           ) : null}
         </div>
         {asForm ? (
-          <form className="admin-modal__form" onSubmit={(event) => event.preventDefault()}>
+          <form
+            className="admin-modal__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSubmit?.(event);
+            }}
+          >
             <div className="admin-modal__body">{children}</div>
             {footer ? <div className="admin-modal__footer">{footer}</div> : null}
           </form>

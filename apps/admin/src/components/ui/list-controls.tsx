@@ -339,7 +339,14 @@ export function StatusMenu<K extends string>({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        Status <strong>{options.find((o) => o.key === value)?.label}</strong>
+        Status
+        <strong className="admin-newsletter-status__value">
+          {options.map((o) => (
+            <span key={o.key} data-current={o.key === value}>
+              {o.label}
+            </span>
+          ))}
+        </strong>
         <Icon name="chevronDown" size={14} />
       </button>
       {open ? (

@@ -463,36 +463,44 @@ function IncomingList({
           title={disposing?.parentId ? "Forward the disposition" : "Dispose the letter"}
           onClose={() => setDisposing(null)}
           footer={
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={busy || !disposing?.target || !disposing.instruction.trim()}
-              onClick={() => {
-                if (!disposing) return;
-                const [kind, id] = disposing.target.split(":");
-                void run(
-                  disposeIncomingAction,
-                  {
-                    parentId: disposing.parentId,
-                    toOrgUnitId: kind === "unit" ? id : null,
-                    toUserId: kind === "user" ? id : null,
-                    instruction: disposing.instruction,
-                    dueDate: disposing.dueDate || null,
-                  },
-                  disposing.parentId ? "Disposition forwarded" : "Letter disposed",
-                );
-              }}
-            >
-              Send
-            </Button>
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setDisposing(null)}>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="send"
+                disabled={busy || !disposing?.target || !disposing.instruction.trim()}
+                onClick={() => {
+                  if (!disposing) return;
+                  const [kind, id] = disposing.target.split(":");
+                  void run(
+                    disposeIncomingAction,
+                    {
+                      parentId: disposing.parentId,
+                      toOrgUnitId: kind === "unit" ? id : null,
+                      toUserId: kind === "user" ? id : null,
+                      instruction: disposing.instruction,
+                      dueDate: disposing.dueDate || null,
+                    },
+                    disposing.parentId ? "Disposition forwarded" : "Letter disposed",
+                  );
+                }}
+              >
+                Send
+              </Button>
+            </div>
           }
         >
           {disposing ? (
             <div className="admin-form-grid">
-              <label className="admin-field admin-form-grid__full">
-                <span className="admin-field__label">To</span>
+              <div className="admin-field admin-form-grid__full">
+                <label className="admin-field__label" htmlFor="incoming-to">
+                  To
+                </label>
                 <Select
+                  id="incoming-to"
                   className="admin-select"
                   value={disposing.target}
                   onChange={(e) => setDisposing({ ...disposing, target: e.target.value })}
@@ -513,26 +521,32 @@ function IncomingList({
                     ))}
                   </optgroup>
                 </Select>
-              </label>
-              <label className="admin-field admin-form-grid__full">
-                <span className="admin-field__label">Instruction</span>
+              </div>
+              <div className="admin-field admin-form-grid__full">
+                <label className="admin-field__label" htmlFor="incoming-instruction">
+                  Instruction
+                </label>
                 <textarea
+                  id="incoming-instruction"
                   className="admin-input admin-textarea"
                   rows={3}
                   value={disposing.instruction}
                   onChange={(e) => setDisposing({ ...disposing, instruction: e.target.value })}
                 />
-              </label>
-              <label className="admin-field">
-                <span className="admin-field__label">Due date</span>
+              </div>
+              <div className="admin-field">
+                <label className="admin-field__label" htmlFor="incoming-due-date">
+                  Due date
+                </label>
                 <input
+                  id="incoming-due-date"
                   className="admin-input"
                   type="date"
                   min={today()}
                   value={disposing.dueDate}
                   onChange={(e) => setDisposing({ ...disposing, dueDate: e.target.value })}
                 />
-              </label>
+              </div>
             </div>
           ) : null}
         </Modal>
@@ -542,27 +556,35 @@ function IncomingList({
           title="Mark the disposition done"
           onClose={() => setCompleting(null)}
           footer={
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={busy}
-              onClick={() =>
-                completing &&
-                void run(
-                  completeDispositionAction,
-                  { dispositionId: completing.id, response: completing.response },
-                  "Disposition done",
-                )
-              }
-            >
-              Mark done
-            </Button>
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setCompleting(null)}>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="check"
+                disabled={busy}
+                onClick={() =>
+                  completing &&
+                  void run(
+                    completeDispositionAction,
+                    { dispositionId: completing.id, response: completing.response },
+                    "Disposition done",
+                  )
+                }
+              >
+                Mark done
+              </Button>
+            </div>
           }
         >
-          <label className="admin-field">
-            <span className="admin-field__label">What was done (optional)</span>
+          <div className="admin-field">
+            <label className="admin-field__label" htmlFor="incoming-response">
+              What was done (optional)
+            </label>
             <textarea
+              id="incoming-response"
               className="admin-input admin-textarea"
               rows={3}
               value={completing?.response ?? ""}
@@ -570,7 +592,7 @@ function IncomingList({
                 completing && setCompleting({ ...completing, response: e.target.value })
               }
             />
-          </label>
+          </div>
         </Modal>
         <ConfirmDialog
           open={archiving}

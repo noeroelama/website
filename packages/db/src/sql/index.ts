@@ -86,11 +86,6 @@ export {
   type SqlMessageLog,
 } from "./messages";
 export {
-  createSqlDashboardCounts,
-  type DashboardCounter,
-  type SqlDashboardCounts,
-} from "./dashboard";
-export {
   createSqlSubscriberReader,
   createSqlSubscriberStore,
   subscriberSnapshot,

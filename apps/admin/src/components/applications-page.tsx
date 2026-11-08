@@ -398,26 +398,20 @@ export function ApplicationsPage(props: {
           subtitle="The applicant sees this note, changes the application and submits it again."
           onClose={() => setPending(null)}
           footer={
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                icon="chevronLeft"
-                onClick={() => setPending(null)}
-              >
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setPending(null)}>
                 Back
               </Button>
               <Button
                 type="submit"
-                variant="outline"
-                size="sm"
+                variant="primary"
                 icon="send"
                 disabled={busy}
                 onClick={() => run(requestRevisionAction, { request }, "Revision requested")}
               >
                 Send request
               </Button>
-            </>
+            </div>
           }
         >
           <div className="admin-field">
@@ -443,19 +437,13 @@ export function ApplicationsPage(props: {
           subtitle="The offer expires after the recruitment's offer days. The seat is taken when the applicant accepts."
           onClose={() => setPending(null)}
           footer={
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                icon="chevronLeft"
-                onClick={() => setPending(null)}
-              >
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setPending(null)}>
                 Back
               </Button>
               <Button
                 type="submit"
-                variant="outline"
-                size="sm"
+                variant="primary"
                 icon="send"
                 disabled={busy || !unit}
                 onClick={() =>
@@ -464,7 +452,7 @@ export function ApplicationsPage(props: {
               >
                 Offer
               </Button>
-            </>
+            </div>
           }
         >
           <div className="admin-field">
@@ -493,26 +481,20 @@ export function ApplicationsPage(props: {
           subtitle="The applicant sees this note and uploads the pact again; earlier files are kept."
           onClose={() => setPending(null)}
           footer={
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                icon="chevronLeft"
-                onClick={() => setPending(null)}
-              >
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setPending(null)}>
                 Back
               </Button>
               <Button
                 type="submit"
-                variant="outline"
-                size="sm"
+                variant="primary"
                 icon="send"
                 disabled={busy}
                 onClick={() => run(returnPactAction, { note: request }, "Pact sent back")}
               >
                 Send back
               </Button>
-            </>
+            </div>
           }
         >
           <div className="admin-field">
@@ -538,19 +520,13 @@ export function ApplicationsPage(props: {
           subtitle={`${current.name} is confirmed and appointed to ${current.offer?.unitName ?? "the unit"} (member seat) of the active period, with the roles of that seat.`}
           onClose={() => setPending(null)}
           footer={
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                icon="chevronLeft"
-                onClick={() => setPending(null)}
-              >
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setPending(null)}>
                 Back
               </Button>
               <Button
                 type="submit"
-                variant="outline"
-                size="sm"
+                variant="primary"
                 icon="crown"
                 disabled={busy}
                 onClick={() =>
@@ -559,7 +535,7 @@ export function ApplicationsPage(props: {
               >
                 Ratify
               </Button>
-            </>
+            </div>
           }
         >
           <div className="admin-field">

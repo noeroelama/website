@@ -98,14 +98,19 @@ export function AppointModal(props: {
       asForm
       open={unit !== null}
       title={`Appoint to ${unit?.name ?? ""}`}
-      width={480}
       onClose={props.onClose}
       footer={
         <div className="admin-modal__footer-row">
           <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
             Back
           </Button>
-          <Button type="submit" variant="primary" disabled={busy} onClick={() => appoint()}>
+          <Button
+            type="submit"
+            variant="primary"
+            icon="check"
+            disabled={busy}
+            onClick={() => appoint()}
+          >
             Appoint
           </Button>
         </div>
@@ -194,32 +199,43 @@ export function RoleMapModal(props: {
 
   const select = (text: string, value: string, onChange: (id: string) => void) => (
     <div className="admin-field" key={text}>
-      <label className="admin-field__label">
+      <label className="admin-field__label" htmlFor={`role-map-${text}`}>
         {text}
-        <Select className="admin-select" value={value} onChange={(e) => onChange(e.target.value)}>
-          {props.roles.some((r) => r.id === value) ? null : <option value={value}>{value}</option>}
-          {props.roles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </Select>
       </label>
+      <Select
+        id={`role-map-${text}`}
+        className="admin-select"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {props.roles.some((r) => r.id === value) ? null : <option value={value}>{value}</option>}
+        {props.roles.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name}
+          </option>
+        ))}
+      </Select>
     </div>
   );
 
   return (
     <Modal
+      asForm
       open={props.open}
       title="Roles from appointments"
-      width={560}
       onClose={props.onClose}
       footer={
         <div className="admin-modal__footer-row">
           <Button variant="outline" icon="chevronLeft" onClick={props.onClose}>
             Back
           </Button>
-          <Button variant="primary" disabled={busy} onClick={() => save()}>
+          <Button
+            type="submit"
+            variant="primary"
+            icon="cloud"
+            disabled={busy}
+            onClick={() => save()}
+          >
             Save
           </Button>
         </div>

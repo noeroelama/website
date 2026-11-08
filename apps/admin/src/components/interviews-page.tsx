@@ -195,30 +195,26 @@ export function InterviewsPage(props: {
       </Card>
 
       <Modal
+        asForm
         open={planning}
         title="Add a day of interviews"
         subtitle={`Times on your clock (${zone}); stored in UTC.`}
         onClose={() => setPlanning(false)}
         footer={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              icon="chevronLeft"
-              onClick={() => setPlanning(false)}
-            >
+          <div className="admin-modal__footer-row">
+            <Button variant="outline" icon="chevronLeft" onClick={() => setPlanning(false)}>
               Back
             </Button>
             <Button
-              variant="outline"
-              size="sm"
+              type="submit"
+              variant="primary"
               icon="plus"
               disabled={busy}
               onClick={() => create()}
             >
               Create times
             </Button>
-          </>
+          </div>
         }
       >
         <div className="admin-form-grid">

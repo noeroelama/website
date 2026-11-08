@@ -1,186 +1,157 @@
-import { ADMIN_PAGES, isSuperadmin, type AdminPageId } from "@website/permissions";
+import { isSuperadmin } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
+import { PageViewsCard, VIEW_PERIODS } from "@/components/page-views-card";
+import { StatCard, type StatCardProps } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { DashboardPage } from "@/components/dashboard-page";
-import { formatUtc } from "@/components/format";
-import { AUDIT_ACTION_LABELS, label } from "@/labels";
 import { requireAdminViewer } from "@/server/context";
 import { getAdminEnv } from "@/server/env";
+import { pageViewReport, pageViewStore } from "@/server/page-views";
 import { integrationStatus } from "@/server/settings";
-import { visibleTask } from "@/server/tasks";
 import { dashboard } from "@/server/wiring";
-
-const ICONS = {
-  events: "event",
-  albums: "gallery",
-  articles: "article",
-  subscribers: "newsletter",
-} as const;
 
 export const instant = false;
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const viewer = await requireAdminViewer("/");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
-  const {
-    counters,
-    audit,
-    graduatedOfficers,
-    noLpjSecretariat,
-    queues,
-    agenda,
-    deadlines,
-    period,
-  } = await dashboard()(viewer.principal);
-  const setup = isSuperadmin(viewer.principal) ? integrationStatus(getAdminEnv()) : null;
-  const missing = setup?.integrations.filter((i) => !i.configured) ?? [];
-  const link = (href: string | null, text: string) => (href ? <a href={href}>{text}</a> : text);
+  const { queues, overdue, graduatedOfficers, noLpjSecretariat } = await dashboard()(
+    viewer.principal,
+  );
+  const superadmin = isSuperadmin(viewer.principal);
+  const setup = superadmin ? integrationStatus(getAdminEnv()) : null;
+  const params = await searchParams;
+  const viewPeriod = VIEW_PERIODS.find((p) => p.key === params["views"]) ?? VIEW_PERIODS[0];
+  const viewPage = typeof params["page"] === "string" ? params["page"] : null;
+  const views = superadmin
+    ? await pageViewReport(pageViewStore(), new Date(), { range: viewPeriod.kind, page: viewPage })
+    : null;
+  const viewsHref = (next: { views?: string; page?: string | null }) => {
+    const query = new URLSearchParams({ views: next.views ?? viewPeriod.key });
+    const page = next.page === undefined ? viewPage : next.page;
+    if (page) query.set("page", page);
+    return `/?${query}#page-views`;
+  };
+
+  // One tile per thing waiting for this person; nothing is shown when it is zero.
+  const actions: StatCardProps[] = [
+    ...queues.map((q) => ({
+      label: q.label,
+      value: q.count,
+      href: q.href,
+      icon: "inbox" as const,
+    })),
+    ...(overdue.length > 0
+      ? [
+          {
+            label: "My overdue tasks",
+            value: overdue.length,
+            href: "/tasks",
+            icon: "clock" as const,
+          },
+        ]
+      : []),
+    ...(graduatedOfficers && graduatedOfficers.length > 0
+      ? [
+          {
+            label: "Graduated officers still in office",
+            value: graduatedOfficers.length,
+            href: `/organizations/periods/${graduatedOfficers[0]?.periodId ?? ""}`,
+            icon: "users" as const,
+          },
+        ]
+      : []),
+  ];
+  const issues = [
+    ...(setup?.integrations
+      .filter((i) => !i.configured)
+      .map((i) => ({ key: i.name, text: `${i.name} is off`, detail: i.missing.join(", ") })) ?? []),
+    ...(setup?.messagingMode === "log"
+      ? [
+          {
+            key: "messaging",
+            text: "Messages are only logged, not sent",
+            detail: "MESSAGING_MODE=live",
+          },
+        ]
+      : []),
+    ...(noLpjSecretariat
+      ? [
+          {
+            key: "lpj",
+            text: "Nobody can review LPJs — give the secretariat desk in Role Manager",
+            detail: "lpj.review_secretariat",
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <DashboardPage
-      name={viewer.name ?? viewer.email ?? "Admin"}
-      counters={counters.map((c) => ({
-        label: c.label,
-        value: c.value.toLocaleString("en"),
-        icon: ICONS[c.key],
-        href: c.href,
-      }))}
-      audit={
-        audit &&
-        audit.map((entry) => {
-          const page = ADMIN_PAGES[entry.module as AdminPageId] as { label: string } | undefined;
-          return {
-            id: entry.id,
-            when: formatUtc(entry.occurredAt),
-            who: entry.actor.email ?? entry.actor.id,
-            what: `${label(AUDIT_ACTION_LABELS, entry.action)} ${page?.label ?? entry.resourceType}${entry.title ? ` “${entry.title}”` : ""}`,
-          };
-        })
-      }
-    >
-      {setup && (missing.length > 0 || setup.messagingMode === "log") ? (
-        <Card>
-          <CardHeader title="Environment variables not set" />
-          <CardBody>
-            <p>
-              Set them in the hosting app screen (see docs/environment.md), never in the database.
-              Only superadmins see this.
-            </p>
-            <ul>
-              {missing.map((i) => (
-                <li key={i.name}>
-                  {i.name} is off: <code>{i.missing.join(", ")}</code>
-                </li>
-              ))}
-              {setup.messagingMode === "log" ? (
-                <li>
-                  WhatsApp and e-mail messages are only logged: <code>MESSAGING_MODE=live</code> is
-                  not set.
-                </li>
-              ) : null}
-            </ul>
-          </CardBody>
-        </Card>
-      ) : null}
-      {queues.length > 0 ? (
-        <Card>
-          <CardHeader title="Waiting for my action" />
-          <CardBody>
-            <ul>
-              {queues.map((q) => (
-                <li key={q.label}>
-                  {link(q.href, q.label)}: <strong>{q.count}</strong>
-                </li>
-              ))}
-            </ul>
-          </CardBody>
-        </Card>
-      ) : null}
-      {agenda ? (
-        <Card>
-          <CardHeader title="Next 7 days" />
-          <CardBody>
-            {agenda.length === 0 ? (
-              <p>Nothing scheduled.</p>
-            ) : (
-              <ul>
-                {agenda.map((item) => (
-                  <li key={item.id}>
-                    <span className="admin-table__sub">{item.day ?? formatUtc(item.start)}</span> —{" "}
-                    {link(item.href, item.title)}
-                    {item.warnings.length ? ` (${item.warnings.join("; ")})` : ""}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <a href="/calendar">Open the calendar</a>
-          </CardBody>
-        </Card>
-      ) : null}
-      <Card>
-        <CardHeader title="My deadlines (next 2 weeks)" />
-        <CardBody>
-          {deadlines.length === 0 ? (
-            <p>Nothing due.</p>
-          ) : (
-            <ul>
-              {deadlines.map((t) => (
-                <li key={t.id}>
-                  <span className="admin-table__sub">
-                    {t.due}
-                    {t.overdue ? " (overdue)" : ""}
-                  </span>{" "}
-                  — {link(visibleTask(viewer.principal, t).href, t.title)}
-                </li>
-              ))}
-            </ul>
-          )}
-          <a href="/tasks">Open My Tasks</a>
-        </CardBody>
-      </Card>
-      {period ? (
-        <Card>
-          <CardHeader title={`Period ${period.name}`} />
-          <CardBody>
-            <p>
-              {period.programs} programmes, {period.running} running.{" "}
-              <a href="/programs">Open Programmes</a>
-            </p>
-          </CardBody>
-        </Card>
-      ) : null}
-      {noLpjSecretariat ? (
-        <Card>
-          <CardHeader title="Nobody can review LPJs" />
-          <CardBody>
-            <p>
-              No account holds the LPJ secretariat desk (<code>lpj.review_secretariat</code>,
-              global). Give it to the Secretariat bureau in Role Manager, otherwise no LPJ can be
-              approved.
-            </p>
-          </CardBody>
-        </Card>
-      ) : null}
-      {graduatedOfficers && graduatedOfficers.length > 0 ? (
-        <Card>
-          <CardHeader title="Graduated officers still in office" />
-          <CardBody>
-            <p>
-              Graduation never ends an appointment by itself: decide on the period&apos;s Structure
-              page whether to end it.
-            </p>
-            <ul>
-              {graduatedOfficers.map((o) => (
-                <li key={`${o.periodId}-${o.name}-${o.title}`}>
-                  <a href={`/organizations/periods/${o.periodId}`}>
-                    {o.title} — {o.name}
-                  </a>{" "}
-                  <span className="admin-table__sub">graduated {o.graduatedOn}</span>
-                </li>
-              ))}
-            </ul>
-          </CardBody>
-        </Card>
-      ) : null}
-    </DashboardPage>
+    <>
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-header__title">Dashboard</h1>
+          <p className="admin-page-header__desc">
+            {actions.length === 0
+              ? "Nothing is waiting for you."
+              : `${actions.length} ${actions.length === 1 ? "thing needs" : "things need"} your action.`}
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-dashboard">
+        {actions.length > 0 ? (
+          <div className="admin-stat-grid">
+            {actions.map((a) => (
+              <StatCard key={a.label} {...a} />
+            ))}
+          </div>
+        ) : null}
+
+        {issues.length > 0 ? (
+          <Card>
+            <CardHeader
+              title={`Setup to fix (${issues.length})`}
+              subtitle={
+                setup
+                  ? "Set environment variables in the hosting app (docs/environment.md), never here."
+                  : undefined
+              }
+            />
+            <CardBody>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Problem</th>
+                      <th>Set</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {issues.map((issue) => (
+                      <tr key={issue.key}>
+                        <td>{issue.text}</td>
+                        <td>
+                          <code>{issue.detail}</code>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+        ) : null}
+
+        {views ? (
+          <div id="page-views">
+            <PageViewsCard report={views} period={viewPeriod} href={viewsHref} />
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }

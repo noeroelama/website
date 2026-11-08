@@ -496,9 +496,6 @@ function ArticleList({
       asForm
       open={settingsIntent !== null}
       title="Settings"
-      className="admin-modal--side"
-      width={548}
-      hideClose
       onClose={closeSettings}
       footer={
         <div className="admin-modal__footer-row">

@@ -51,19 +51,25 @@ export function FormModal({
     router.refresh();
   };
   return (
-    <Modal open={open} title={title} onClose={close}>
-      <form onSubmit={(e) => void submit(e)}>
-        <FieldMessages.Provider value={fields}>{children}</FieldMessages.Provider>
-        <ActionError text={error} />
+    <Modal
+      asForm
+      open={open}
+      title={title}
+      onClose={close}
+      onSubmit={(e) => void submit(e)}
+      footer={
         <div className="admin-modal__footer-row">
           <Button variant="outline" icon="chevronLeft" onClick={close}>
             Back
           </Button>
-          <Button type="submit" loading={busy}>
+          <Button type="submit" variant="primary" icon="cloud" loading={busy}>
             {submitLabel}
           </Button>
         </div>
-      </form>
+      }
+    >
+      <FieldMessages.Provider value={fields}>{children}</FieldMessages.Provider>
+      <ActionError text={error} />
     </Modal>
   );
 }

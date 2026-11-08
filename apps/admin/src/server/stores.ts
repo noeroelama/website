@@ -14,7 +14,6 @@ import {
   createSqlChapterStore,
   createSqlChapterRecordStore,
   createSqlContentStore,
-  createSqlDashboardCounts,
   createSqlEventStore,
   createSqlFinanceStore,
   createSqlFormStore,
@@ -110,7 +109,6 @@ export const adminStores = lazyEnv(() => {
       ...createSqlSubscriberReader(db),
       ...createSqlSubscriberStore(db),
     },
-    dashboardCounts: createSqlDashboardCounts(db),
     authAdmin: createFirebaseAccountAdmin({
       appEnv: env.APP_ENV,
       projectId: env.FIREBASE_PROJECT_ID,

@@ -215,26 +215,43 @@ export function CashbookPage({
         title="Manual cash book entry"
         onClose={() => setDraft(null)}
         footer={
-          <Button type="submit" variant="primary" size="sm" disabled={busy} onClick={() => save()}>
-            Add
-          </Button>
+          <div className="admin-modal__footer-row">
+            <Button variant="outline" icon="chevronLeft" onClick={() => setDraft(null)}>
+              Back
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              icon="plus"
+              disabled={busy}
+              onClick={() => save()}
+            >
+              Add
+            </Button>
+          </div>
         }
       >
         {draft ? (
           <div className="admin-form-grid">
-            <label className="admin-field">
-              <span className="admin-field__label">Date</span>
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="cash-date">
+                Date
+              </label>
               <input
+                id="cash-date"
                 className="admin-input"
                 type="date"
                 value={draft.date}
                 onChange={(e) => setDraft({ ...draft, date: e.target.value })}
               />
               <FieldError id="cash-date-error" message={fieldErrors["date"]} />
-            </label>
-            <label className="admin-field">
-              <span className="admin-field__label">Kind</span>
+            </div>
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="cash-kind">
+                Kind
+              </label>
               <Select
+                id="cash-kind"
                 className="admin-select"
                 value={draft.kind}
                 onChange={(e) => {
@@ -245,10 +262,13 @@ export function CashbookPage({
                 <option value="in">Money in</option>
                 <option value="out">Money out</option>
               </Select>
-            </label>
-            <label className="admin-field">
-              <span className="admin-field__label">Category</span>
+            </div>
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="cash-category">
+                Category
+              </label>
               <Select
+                id="cash-category"
                 className="admin-select"
                 value={draft.category}
                 onChange={(e) => setDraft({ ...draft, category: e.target.value as CashCategory })}
@@ -259,29 +279,38 @@ export function CashbookPage({
                   </option>
                 ))}
               </Select>
-            </label>
-            <label className="admin-field admin-form-grid__full">
-              <span className="admin-field__label">Description</span>
+            </div>
+            <div className="admin-field admin-form-grid__full">
+              <label className="admin-field__label" htmlFor="cash-description">
+                Description
+              </label>
               <input
+                id="cash-description"
                 className="admin-input"
                 value={draft.description}
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
               />
               <FieldError id="cash-description-error" message={fieldErrors["description"]} />
-            </label>
-            <label className="admin-field">
-              <span className="admin-field__label">Amount</span>
+            </div>
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="cash-amount">
+                Amount
+              </label>
               <input
+                id="cash-amount"
                 className="admin-input"
                 inputMode="decimal"
                 value={draft.amount}
                 onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
               />
               <FieldError id="cash-amount-error" message={fieldErrors["amountMinor"]} />
-            </label>
-            <label className="admin-field">
-              <span className="admin-field__label">Currency</span>
+            </div>
+            <div className="admin-field">
+              <label className="admin-field__label" htmlFor="cash-currency">
+                Currency
+              </label>
               <Select
+                id="cash-currency"
                 className="admin-select"
                 value={draft.currency}
                 onChange={(e) => setDraft({ ...draft, currency: e.target.value })}
@@ -292,7 +321,7 @@ export function CashbookPage({
                   </option>
                 ))}
               </Select>
-            </label>
+            </div>
           </div>
         ) : null}
       </Modal>

@@ -276,7 +276,7 @@ per-unit public pages.
 - Page views: `src/components/page-view-tracker.tsx` (in the root layout; calls the server action
   `src/app/page-view-action.ts` on every path change), `src/server/page-views.ts` (`pageViewHit`:
   path check, bot filter, device, external referrer host, visitor = HMAC of UTC day + IP + user
-  agent with `LINK_SIGNING_SECRET`; the IP is never stored). Shown to superadmins in admin Page Views.
+  agent with `LINK_SIGNING_SECRET`; the IP is never stored). Shown to superadmins on the admin Dashboard.
   Tests: `tests/integration/page-views.test.ts`.
 - Tests: `tests/unit/web-i18n.test.ts`, `tests/unit/web-news.test.ts`,
   `tests/unit/web-events.test.ts`, `tests/integration/web-registration.test.ts`,

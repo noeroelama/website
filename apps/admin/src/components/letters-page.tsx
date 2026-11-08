@@ -691,34 +691,40 @@ function LettersList(props: Props) {
           title={asking === "return" ? "Return to draft" : "Cancel this letter?"}
           onClose={() => setAsking(null)}
           footer={
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={busy || !note.trim()}
-              onClick={() =>
-                void (asking === "return"
-                  ? act(returnLetterAction, "Returned to draft", { note })
-                  : act(cancelLetterAction, "Letter cancelled", { reason: note }))
-              }
-            >
-              {asking === "return" ? "Return" : "Cancel letter"}
-            </Button>
+            <div className="admin-modal__footer-row">
+              <Button variant="outline" icon="chevronLeft" onClick={() => setAsking(null)}>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="check"
+                disabled={busy || !note.trim()}
+                onClick={() =>
+                  void (asking === "return"
+                    ? act(returnLetterAction, "Returned to draft", { note })
+                    : act(cancelLetterAction, "Letter cancelled", { reason: note }))
+                }
+              >
+                {asking === "return" ? "Return" : "Cancel letter"}
+              </Button>
+            </div>
           }
         >
-          <label className="admin-field">
-            <span className="admin-field__label">
+          <div className="admin-field">
+            <label className="admin-field__label" htmlFor="letter-note">
               {asking === "return"
                 ? "What must be fixed? (both signatures are cleared)"
                 : "Reason (shown on the public verification page; the number is never reused)"}
-            </span>
+            </label>
             <textarea
+              id="letter-note"
               className="admin-input admin-textarea"
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
-          </label>
+          </div>
         </Modal>
         <ConfirmDialog
           open={asking === "issue"}

@@ -436,6 +436,128 @@
   padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
+/* Dashboard page views (components/page-views-card.tsx): page dropdown and Daily / Monthly /
+   Yearly switch in the header, a dashed-grid chart, totals under it. */
+.admin-views .admin-card__header {
+  flex-wrap: wrap;
+}
+
+.admin-views .admin-card__actions {
+  flex-wrap: wrap;
+  max-width: 100%; /* phones: the switch wraps under the page dropdown */
+}
+
+.admin-views .admin-card__actions .admin-combo {
+  width: 14rem;
+  max-width: 100%;
+}
+
+/* Period switch: tabs as tall as the page dropdown next to them. */
+.admin-segmented {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.admin-dark-page .admin-card .admin-segmented a.admin-segmented__item {
+  display: inline-flex;
+  align-items: center;
+  height: var(--admin-control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-panel-line);
+  border-radius: var(--radius-md);
+  color: var(--admin-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .admin-dark-page .admin-card .admin-segmented a.admin-segmented__item:hover {
+    color: var(--admin-ink);
+  }
+}
+
+.admin-dark-page .admin-card .admin-segmented a.admin-segmented__item[aria-current="page"] {
+  border-color: var(--color-brand-50);
+  background: var(--color-brand-50);
+  color: var(--color-brand-950);
+}
+
+.admin-views__chart {
+  display: block;
+  max-width: 100%; /* never widens the card; the chart then redraws at the card's width */
+  overflow: visible;
+}
+
+.admin-views__chart text {
+  fill: var(--admin-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.admin-views__grid {
+  stroke: var(--color-panel-line);
+  stroke-dasharray: 4 4;
+}
+
+.admin-views__plot {
+  position: relative;
+}
+
+.admin-views__guide {
+  stroke: var(--admin-ink-muted);
+  stroke-dasharray: 4 4;
+}
+
+/* Hover tooltip (date and views of the nearest point). */
+.admin-views__tip {
+  position: absolute;
+  z-index: 1;
+  padding: var(--space-1-5) var(--space-2-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-50);
+  box-shadow: var(--shadow-popover);
+  color: var(--color-brand-950);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-xs);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.admin-views__axis {
+  fill: none;
+  stroke: var(--admin-ink-muted);
+}
+
+.admin-views__foot {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  color: var(--admin-ink-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-views__foot > :last-child {
+  text-align: right;
+}
+
+@media (max-width: 767px) {
+  .admin-views__foot {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .admin-views__foot > :last-child {
+    text-align: left;
+  }
+}
+
 .admin-card__body--flush {
   padding: 0;
 }
@@ -485,6 +607,17 @@
 
 .admin-account__row dd {
   margin: 0;
+}
+
+.admin-dashboard {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Card titles one step below the page title (Dashboard). */
+.admin-dashboard .admin-card__title {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
 }
 
 .admin-stat-grid {
@@ -553,49 +686,6 @@ a.admin-stat-card:hover {
 
 .admin-stat-card__trend--down {
   color: var(--color-danger);
-}
-
-.admin-welcome-card {
-  margin-top: var(--space-4);
-  display: flex;
-  align-items: center;
-}
-
-.admin-welcome {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-}
-
-.admin-welcome__avatar {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-full);
-  background: var(--color-black);
-  color: var(--color-white);
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
-}
-
-.admin-welcome__text {
-  flex: 1;
-  min-width: 0;
-}
-
-.admin-welcome__text .admin-card__subtitle {
-  margin-top: var(--space-0-5);
-}
-
-.admin-welcome__body {
-  margin: var(--space-3-5) 0 0;
-  max-width: 42rem;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  line-height: var(--admin-leading-wide);
 }
 
 .admin-btn {
@@ -1777,7 +1867,7 @@ a.admin-stat-card:hover {
   padding: var(--space-2) var(--space-8) var(--space-2) var(--space-4);
   overflow-x: auto;
   overflow-y: hidden;
-  overscroll-behavior-x: contain;
+  overscroll-behavior: contain;
   scrollbar-width: none;
   mask-image: linear-gradient(
     to right,
@@ -3471,7 +3561,7 @@ form.admin-toolbar::before {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  height: var(--size-control-sm);
+  height: var(--admin-control-height);
   padding: 0 var(--space-3);
   border: 1px solid var(--color-brand-50);
   border-radius: var(--radius-md);
@@ -3488,6 +3578,19 @@ form.admin-toolbar::before {
 
 .admin-newsletter-status strong {
   font-weight: var(--font-semibold);
+}
+
+/* every label shares one grid cell, so the button keeps the longest one's width */
+.admin-newsletter-status__value {
+  display: inline-grid;
+}
+
+.admin-newsletter-status__value > span {
+  grid-area: 1 / 1;
+}
+
+.admin-newsletter-status__value > span:not([data-current="true"]) {
+  visibility: hidden;
 }
 
 .admin-newsletter-status__menu {

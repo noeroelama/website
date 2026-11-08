@@ -717,12 +717,11 @@ function NewsletterList({
   const publishCount = publishFor?.length ?? 0;
   const publishLabel =
     publishCount === 1 ? "Publish Campaign" : `Publish ${publishCount} Campaigns`;
-  const footer = (back: () => void, action?: ReactNode) => (
+  const footer = (back: () => void) => (
     <div className="admin-modal__footer-row">
       <Button variant="outline" icon="chevronLeft" onClick={back}>
         Back
       </Button>
-      {action}
     </div>
   );
 
@@ -763,21 +762,23 @@ function NewsletterList({
         open={scheduleFor !== null}
         title="Schedule campaign"
         subtitle={`“${scheduleFor?.subject ?? ""}” goes to every active subscriber at this time.`}
-        width={460}
-        hideClose
         onClose={() => setScheduleFor(null)}
-        footer={footer(
-          () => setScheduleFor(null),
-          <Button
-            type="submit"
-            variant="outline"
-            icon="clock"
-            disabled={busy || !sendAt}
-            onClick={() => doSchedule()}
-          >
-            Schedule
-          </Button>,
-        )}
+        footer={
+          <div className="admin-modal__footer-row">
+            <Button variant="outline" icon="chevronLeft" onClick={() => setScheduleFor(null)}>
+              Back
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              icon="clock"
+              disabled={busy || !sendAt}
+              onClick={() => doSchedule()}
+            >
+              Schedule
+            </Button>
+          </div>
+        }
       >
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="campaign-send-at">
@@ -838,21 +839,23 @@ function NewsletterList({
         open={addOpen}
         title="Add New Subscriber"
         subtitle="They get a confirmation e-mail and receive campaigns only after they confirm."
-        width={460}
-        hideClose
         onClose={() => setAddOpen(false)}
-        footer={footer(
-          () => setAddOpen(false),
-          <Button
-            type="submit"
-            variant="outline"
-            icon="plus"
-            disabled={busy || !newSubscriber.email.trim()}
-            onClick={() => addSubscriber()}
-          >
-            Add Subscriber
-          </Button>,
-        )}
+        footer={
+          <div className="admin-modal__footer-row">
+            <Button variant="outline" icon="chevronLeft" onClick={() => setAddOpen(false)}>
+              Back
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              icon="plus"
+              disabled={busy || !newSubscriber.email.trim()}
+              onClick={() => addSubscriber()}
+            >
+              Add Subscriber
+            </Button>
+          </div>
+        }
       >
         <div className="admin-form-grid">
           <div className="admin-field admin-form-grid__full">

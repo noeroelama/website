@@ -441,8 +441,6 @@ function OrganizationsList({
           asForm
           open={periodModal !== null}
           title={periodModal?.mode === "edit" ? "Edit Period" : "Create Period"}
-          width={520}
-          hideClose
           onClose={() => setPeriodModal(null)}
           footer={
             <div className="admin-modal__footer-row">
@@ -590,8 +588,6 @@ function OrganizationsList({
           open={universityModal === "add"}
           title="Add University"
           subtitle={`Listed right away for members in ${countryName}.`}
-          width={520}
-          hideClose
           onClose={() => setUniversityModal(null)}
           footer={
             <div className="admin-modal__footer-row">

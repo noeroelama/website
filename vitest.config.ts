@@ -41,7 +41,6 @@ export default defineConfig({
         "packages/db/src/sql/campaigns.ts",
         "apps/admin/src/server/newsletter.ts",
         "apps/admin/src/server/dashboard.ts",
-        "packages/db/src/sql/dashboard.ts",
         "packages/domain/src/messaging/index.ts",
         "packages/db/src/sql/messages.ts",
         "packages/db/src/sql/webhooks.ts",

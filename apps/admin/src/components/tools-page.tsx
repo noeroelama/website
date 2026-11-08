@@ -1015,8 +1015,6 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
         open={editOpen}
         title="Edit Link"
         subtitle="Edit shortened link details."
-        width={790}
-        hideClose
         onClose={() => {
           setEditOpen(false);
           setEditingLink(null);
@@ -1037,7 +1035,7 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
             </Button>
             <Button
               type="submit"
-              variant="outline"
+              variant="primary"
               icon="cloud"
               onClick={() => saveEdit()}
               disabled={editSaved}
