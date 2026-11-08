@@ -31,6 +31,9 @@ const chapter = {
   logo: null,
   contactName: "Sari",
   contactPublic: "humas@ppijepang.org",
+  description: "",
+  role: "",
+  phone: "",
   website: "",
   email: "",
   instagram: "@ppijepang",
@@ -188,6 +191,31 @@ describe("chapters (Organizations → PPI) and the map", () => {
     const [onMap] = await createSqlChapterReader(fake.db as unknown as Db).listActive();
     expect(onMap).not.toHaveProperty("risk");
     expect(onMap).not.toHaveProperty("memberCount");
+  });
+
+  it("reads legacy chapter rows missing the newer public fields (description/role/phone)", async () => {
+    // A row saved before the public-profile fields existed: the reader falls back
+    // to the defaults ("" / null) instead of crashing (issue: 100% branch coverage).
+    const legacy: Record<string, unknown> = {
+      ...chapter,
+      slug: "ppi-legacy",
+      active: true,
+      mapNo: 20,
+    };
+    delete legacy["description"];
+    delete legacy["role"];
+    delete legacy["phone"];
+    await fake.db
+      .collection("chapters")
+      .doc("legacy")
+      .set({
+        ...legacy,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    const [onMap] = await createSqlChapterReader(fake.db as unknown as Db).listActive();
+    expect(onMap).toMatchObject({ slug: "ppi-legacy", description: "", role: null, phone: null });
   });
 
   it("deletes softly: gone from the list and the map until the audit entry is reverted", async () => {

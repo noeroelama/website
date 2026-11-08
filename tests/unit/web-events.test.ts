@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PublicEvent } from "@website/domain/events";
-import { eventQuery, eventsHref, pageOfEvents } from "../../apps/web/src/lib/event-query";
+import {
+  type EventQuery,
+  eventQuery,
+  eventsHref,
+  pageOfEvents,
+} from "../../apps/web/src/lib/event-query";
 
 const event = (slug: string, start: string, extra: Partial<PublicEvent> = {}): PublicEvent => ({
   id: slug,
@@ -8,6 +13,7 @@ const event = (slug: string, start: string, extra: Partial<PublicEvent> = {}): P
   title: slug,
   type: "seminar",
   startsAt: new Date(start),
+  endsAt: null,
   timezone: "UTC",
   registrationClosesAt: null,
   location: null,
@@ -21,42 +27,126 @@ const event = (slug: string, start: string, extra: Partial<PublicEvent> = {}): P
   ...extra,
 });
 
-describe("public events list query (/events?type&from&to&page)", () => {
-  it("accepts known types, ISO days and positive pages; ignores the rest", () => {
-    expect(eventQuery({})).toEqual({ type: null, from: null, to: null, page: 1 });
+/** A query with every optional filter off (same window as the bare /events URL). */
+const off: EventQuery = {
+  category: null,
+  q: null,
+  region: null,
+  time: "custom",
+  from: null,
+  to: null,
+  page: 1,
+};
+
+describe("public events list query (/events?category&q&region&time&from&to&page)", () => {
+  it("accepts known categories, ISO days, time presets and positive pages; ignores the rest", () => {
+    expect(eventQuery({})).toEqual({ ...off, time: "upcoming" });
     expect(
-      eventQuery({ type: ["webinar"], from: "2026-01-01", to: "2026-12-31", page: "3" }),
-    ).toEqual({ type: "webinar", from: "2026-01-01", to: "2026-12-31", page: 3 });
-    expect(eventQuery({ type: "party", from: "1 Jan", to: "2026-1-1", page: "0" })).toEqual({
-      type: null,
-      from: null,
-      to: null,
-      page: 1,
+      eventQuery({
+        category: "webinar",
+        q: "  beasiswa ",
+        region: "Indonesia",
+        time: "year",
+        from: "2026-01-01",
+        to: "2026-12-31",
+        page: "3",
+      }),
+    ).toEqual({
+      category: "webinar",
+      q: "beasiswa",
+      region: "Indonesia",
+      time: "year",
+      from: "2026-01-01",
+      to: "2026-12-31",
+      page: 3,
+    });
+    expect(
+      eventQuery({ category: "party", time: "decade", from: "1 Jan", to: "2026-1-1", page: "0" }),
+    ).toEqual({
+      ...off,
+      time: "upcoming",
     });
   });
 
-  it("filters by type and an inclusive date range, then pages by 12", () => {
+  it("preset windows keep the current year: week/month are clamped at Dec 31, year is the calendar year", () => {
+    const all = [
+      event("old", "2025-12-31T00:00:00Z"),
+      event("jan", "2026-01-15T00:00:00Z"),
+      event("dec1", "2026-12-01T00:00:00Z"),
+      event("dec29", "2026-12-29T00:00:00Z"),
+      event("dec31", "2026-12-31T00:00:00Z"),
+      event("newYear", "2027-01-02T00:00:00Z"),
+    ];
+    const yearEnd = new Date("2026-12-28T00:00:00Z");
+    const at = (range: "upcoming" | "week" | "month" | "year") =>
+      pageOfEvents(all, { ...off, time: range }, yearEnd).items.map((e) => e.slug);
+
+    expect(at("upcoming")).toEqual(["dec29", "dec31", "newYear"]); // no upper bound needed
+    expect(at("week")).toEqual(["dec29", "dec31"]); // +7 days would spill into 2027, clamped
+    expect(at("month")).toEqual(["dec29", "dec31"]); // +30 days would spill into 2027, clamped
+    expect(at("year")).toEqual(["jan", "dec1", "dec29", "dec31"]);
+  });
+
+  it("mid-year the week and month windows behave as rolling ranges", () => {
+    const all = [
+      event("before", "2026-11-03T00:00:00Z"),
+      event("mid", "2026-11-10T00:00:00Z"),
+      event("monthEnd", "2026-11-28T00:00:00Z"),
+      event("afterMonth", "2026-12-10T00:00:00Z"),
+    ];
+    const november = new Date("2026-11-04T00:00:00Z");
+    const at = (range: "week" | "month" | "year") =>
+      pageOfEvents(all, { ...off, time: range }, november).items.map((e) => e.slug);
+
+    expect(at("week")).toEqual(["mid"]);
+    expect(at("month")).toEqual(["mid", "monthEnd"]);
+    expect(at("year")).toEqual(["before", "mid", "monthEnd", "afterMonth"]);
+  });
+
+  it("filters by category and an inclusive date range, then pages by 12", () => {
+    const festival = event("f", "2026-10-15T00:00:00Z", { type: "festival" });
     const all = [
       event("a", "2026-10-01T00:00:00Z"),
       event("b", "2026-10-31T23:00:00Z", { type: "webinar" }),
       event("c", "2026-11-01T00:00:00Z"),
+      festival,
       ...Array.from({ length: 12 }, (_, i) => event(`x${i}`, "2027-01-01T00:00:00Z")),
     ];
-    const october = { type: null, from: "2026-10-01", to: "2026-10-31", page: 1 };
-    expect(pageOfEvents(all, october).items.map((e) => e.slug)).toEqual(["a", "b"]);
-    expect(pageOfEvents(all, { ...october, type: "webinar" }).items.map((e) => e.slug)).toEqual([
-      "b",
+    const october = { ...off, from: "2026-10-01", to: "2026-10-31" };
+    expect(pageOfEvents(all, october).items.map((e) => e.slug)).toEqual(["a", "b", "f"]);
+    expect(pageOfEvents(all, { ...october, category: "webinar" }).items.map((e) => e.slug)).toEqual(
+      ["b"],
+    );
+    expect(pageOfEvents(all, { ...october, category: "other" }).items.map((e) => e.slug)).toEqual([
+      "f",
     ]);
-    expect(pageOfEvents(all, { type: null, from: null, to: null, page: 5 })).toMatchObject({
-      page: 2,
-      pages: 2,
-    });
+    expect(pageOfEvents(all, { ...off, page: 5 })).toMatchObject({ page: 2, pages: 2 });
+  });
+
+  it("matches the text search and the region suffix", () => {
+    const all = [
+      event("s", "2026-11-01T00:00:00Z", { title: "Seminar Beasiswa" }),
+      event("l", "2026-11-02T00:00:00Z", { location: "Jakarta, Indonesia" }),
+      event("t", "2026-11-03T00:00:00Z", { location: "Singapore" }),
+    ];
+    const at = (patch: Partial<typeof off>) =>
+      pageOfEvents(all, { ...off, ...patch }).items.map((e) => e.slug);
+
+    expect(at({ q: "BEASISWA" })).toEqual(["s"]);
+    expect(at({ region: "indonesia" })).toEqual(["l"]);
+    expect(at({ q: "x" })).toEqual([]);
   });
 
   it("builds links that keep the filters", () => {
-    expect(eventsHref({ type: null, from: null, to: null, page: 1 }, 1)).toBe("/events");
-    expect(eventsHref({ type: "webinar", from: "2026-01-01", to: "2026-02-01", page: 1 }, 2)).toBe(
-      "/events?type=webinar&from=2026-01-01&to=2026-02-01&page=2",
+    expect(eventsHref({ ...off, time: "upcoming" }, 1)).toBe("/events");
+    expect(eventsHref({ ...off, time: "week", q: "beasiswa" }, 2)).toBe(
+      "/events?q=beasiswa&time=week&page=2",
     );
+    expect(
+      eventsHref(
+        { ...off, time: "year", category: "webinar", from: "2026-01-01", to: "2026-12-31" },
+        1,
+      ),
+    ).toBe("/events?category=webinar&time=year&from=2026-01-01&to=2026-12-31");
   });
 });

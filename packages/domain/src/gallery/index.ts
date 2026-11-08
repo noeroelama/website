@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { safeId } from "@website/security/validation";
 import { FeaturedImageSchema, type FeaturedImage } from "../content";
+import { type EventType } from "../events";
 import { isValidSlug, type EntityMeta } from "../shared";
 
 /** Most featured images an album shows on the site (the full album is the external link). */
@@ -12,6 +13,15 @@ export interface Album extends EntityMeta {
   readonly eventId: string;
   /** The event's title when the album was saved (lists show it without reading the event). */
   readonly eventTitle: string;
+  /** Snapshots of the linked event at save time (the filter bar, the cards and the
+   * description excerpt of the gallery list; timezone so card dates render on the
+   * event's clock). */
+  readonly eventType: EventType | null;
+  readonly eventStartsAt: Date | null;
+  readonly eventTimezone: string | null;
+  readonly eventLocation: string | null;
+  /** The event's long text, for the card excerpt (clamped to two lines in CSS). */
+  readonly eventDescription: string | null;
   readonly images: readonly FeaturedImage[];
   /** Number shown on the card; null = the number of featured images. */
   readonly totalPhotos: number | null;
@@ -54,6 +64,11 @@ export interface PublicAlbum {
   readonly slug: string;
   readonly eventId: string;
   readonly eventTitle: string;
+  readonly eventType: EventType | null;
+  readonly eventStartsAt: Date | null;
+  readonly eventTimezone: string | null;
+  readonly eventLocation: string | null;
+  readonly eventDescription: string | null;
   readonly cover: FeaturedImage | null;
   readonly images: readonly FeaturedImage[];
   readonly photoCount: number;
@@ -66,6 +81,11 @@ export function toPublicAlbum(album: Album): PublicAlbum {
     slug: album.slug,
     eventId: album.eventId,
     eventTitle: album.eventTitle,
+    eventType: album.eventType,
+    eventStartsAt: album.eventStartsAt,
+    eventTimezone: album.eventTimezone,
+    eventLocation: album.eventLocation,
+    eventDescription: album.eventDescription,
     cover: album.images[0] ?? null,
     images: album.images,
     photoCount: album.totalPhotos ?? album.images.length,

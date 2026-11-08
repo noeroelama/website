@@ -192,6 +192,11 @@ function OrganizationsList({
   const periods = useMemo(() => periodList ?? [], [periodList]);
   const toast = useToastMessage();
   const router = useRouter();
+  /** Next free badge number on /map's country table, suggested for a new chapter. */
+  const nextMapNo = useMemo(
+    () => ppis.reduce((max, c) => Math.max(max, c.mapNo ?? 0), 0) + 1,
+    [ppis],
+  );
   /* Chapter add/edit popup: null = closed, "new" = add, otherwise the chapter. */
   const [chapterForm, setChapterForm] = useState<ChapterItem | "new" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -742,7 +747,10 @@ function OrganizationsList({
           <a className="admin-table__title" href={`/organizations/chapters/${r.id}`}>
             {r.name}
           </a>
-          <div className="admin-table__sub admin-org-code">#{r.countryCode}</div>
+          <div className="admin-table__sub admin-org-code">
+            #{r.countryCode}
+            {r.mapNo !== null ? ` · №${r.mapNo}` : ""}
+          </div>
         </div>
       ),
     },
@@ -878,6 +886,7 @@ function OrganizationsList({
       {chapterForm !== null ? (
         <ChapterForm
           chapter={chapterForm === "new" ? null : chapterForm}
+          suggestedMapNo={nextMapNo}
           contactOnly={!canEdit}
           onClose={() => setChapterForm(null)}
           onSaved={(text) => {

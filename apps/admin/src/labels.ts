@@ -31,8 +31,10 @@ import {
   type FinanceStatus,
 } from "@website/domain/finance";
 import {
+  CHAPTER_REGIONS,
   CHAPTER_RISKS,
   ORG_UNIT_TYPES,
+  type ChapterRegion,
   type ChapterRisk,
   type OrgUnitType,
 } from "@website/domain/organizations";
@@ -98,11 +100,12 @@ export const MESSAGE_STATUS_LABELS = {
 } as const satisfies Record<MessageStatus, Label>;
 
 export const NEWS_CATEGORY_LABELS = {
-  general: { id: "Umum", en: "General" },
-  academic: { id: "Akademik", en: "Academic" },
-  community: { id: "Komunitas", en: "Community" },
-  announcement: { id: "Pengumuman", en: "Announcement" },
-  international: { id: "Internasional", en: "International" },
+  seminar: { id: "Seminar", en: "Seminar" },
+  workshop: { id: "Workshop", en: "Workshop" },
+  webinar: { id: "Webinar", en: "Webinar" },
+  conference: { id: "Conference", en: "Conference" },
+  meeting: { id: "Meetup", en: "Meetup" },
+  other: { id: "Lainnya", en: "Other" },
 } as const satisfies Record<NewsCategory, Label>;
 
 export const EVENT_TYPE_LABELS = {
@@ -139,6 +142,16 @@ export const CHAPTER_RISK_LABELS = {
   needs_checking: { id: "Perlu dicek", en: "Needs checking" },
   at_risk: { id: "Berisiko kekosongan", en: "At risk of a vacuum" },
 } as const satisfies Record<ChapterRisk, Label>;
+
+/** Where the chapter sits on the /map country table (regions of the side.svg design). */
+export const CHAPTER_REGION_LABELS = {
+  oceania: { id: "Oseania", en: "Oceania" },
+  southeastAsia: { id: "Asia Tenggara", en: "South East Asia" },
+  eastAsia: { id: "Asia Timur", en: "East Asia" },
+  southAsia: { id: "Asia Selatan", en: "South Asia" },
+  middleAsia: { id: "Asia Tengah", en: "Middle Asia" },
+  others: { id: "Lainnya", en: "Others" },
+} as const satisfies Record<ChapterRegion, Label>;
 
 export const FORM_USAGE_LABELS = {
   public: { id: "Formulir publik", en: "Public form" },
@@ -260,6 +273,7 @@ export const LABEL_MAPS: ReadonlyArray<{
   { name: "event type", keys: EVENT_TYPES, labels: EVENT_TYPE_LABELS },
   { name: "org unit type", keys: ORG_UNIT_TYPES, labels: ORG_UNIT_TYPE_LABELS },
   { name: "chapter risk", keys: CHAPTER_RISKS, labels: CHAPTER_RISK_LABELS },
+  { name: "chapter region", keys: CHAPTER_REGIONS, labels: CHAPTER_REGION_LABELS },
   { name: "form usage", keys: FORM_USAGES, labels: FORM_USAGE_LABELS },
   { name: "form status", keys: FORM_STATUSES, labels: FORM_STATUS_LABELS },
   { name: "question type", keys: QUESTION_TYPES, labels: QUESTION_TYPE_LABELS },

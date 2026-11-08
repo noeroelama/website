@@ -42,7 +42,8 @@ const article = {
   title: "Simposium Berakhir Sukses",
   slug: "simposium-berakhir-sukses",
   author: "Divisi Media",
-  category: "community",
+  category: "conference",
+  location: "Jakarta, Indonesia",
   publishAt: "2026-10-18T04:00:00.000Z",
   summary: "Ringkasan.",
   tags: ["Simposium"],
@@ -328,6 +329,7 @@ describe("public news reader (web)", () => {
     expect(await reader.findBySlug("future", now)).toBeNull();
     expect(await reader.findBySlug("newer", now)).toMatchObject({
       slug: "newer",
+      location: "Jakarta, Indonesia",
       body: '<p>Isi <a rel="noopener noreferrer">x</a></p>',
     });
   });

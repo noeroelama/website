@@ -59,12 +59,27 @@ function moved<T>(list: T[], from: number, to: number): T[] {
  * core members and its divisions with their members — names, roles and photos for the cabinet
  * page — display data only (not accounts, no roles). Rows are reordered by dragging the handle.
  */
-export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgUnitItem | null }) {
+/**
+ * Organizations → Period → Structure → Create / Edit Unit: the unit's name, code and type, its
+ * reporting line, its core members and its divisions with their members — names, roles and
+ * photos for the cabinet page — display data only (not accounts, no roles). Rows are reordered
+ * by dragging the handle. `units` feeds the "Reports to" picker (every unit of the period).
+ */
+export function OrgUnitEditor({
+  periodId,
+  unit,
+  units,
+}: {
+  periodId: string;
+  unit: OrgUnitItem | null;
+  units: OrgUnitItem[];
+}) {
   const router = useRouter();
   const toast = useToastMessage();
   const [name, setName] = useState(unit?.name ?? "");
   const [code, setCode] = useState(unit?.code ?? "");
   const [type, setType] = useState<OrgUnitType | "">(unit?.type ?? "");
+  const [reportTo, setReportTo] = useState<string>(unit?.reportTo ?? "");
   const [members, setMembers] = useState<MemberRow[]>(() => toRows(unit?.members ?? []));
   const [divisions, setDivisions] = useState<DivisionRow[]>(() =>
     (unit?.divisions ?? []).map((d) => ({
@@ -122,6 +137,7 @@ export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgU
       periodId,
       // Where the unit sits and its notes are kept as they are (this page does not show them).
       parentId: unit?.parentId ?? null,
+      reportTo: reportTo === "" ? null : reportTo,
       description: unit?.description ?? "",
       sort: unit?.sort ?? 0,
       active: unit?.active ?? true,
@@ -292,6 +308,29 @@ export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgU
             ))}
           </Select>
           <FieldError id="unit-type-error" message={errors["type"]} />
+        </div>
+        <div className="admin-field">
+          <label className="admin-field__label" htmlFor="unit-reports-to">
+            Reports to
+          </label>
+          <Select
+            id="unit-reports-to"
+            className="admin-input"
+            value={reportTo}
+            onChange={(e) => setReportTo(e.target.value)}
+            aria-invalid={errors["reportTo"] ? true : undefined}
+            aria-describedby="unit-reports-to-error"
+          >
+            <option value="">— none —</option>
+            {units
+              .filter((u) => u.id !== unit?.id)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.code})
+                </option>
+              ))}
+          </Select>
+          <FieldError id="unit-reports-to-error" message={errors["reportTo"]} />
         </div>
       </div>
 

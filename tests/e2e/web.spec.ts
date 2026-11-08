@@ -12,21 +12,24 @@ test("web home responds with security headers", async ({ request }) => {
 });
 
 test("public pages are available without signing in", async ({ request }) => {
-  for (const [path, title] of [
-    // Without a `lang` cookie the site is in Indonesian.
-    ["/", "PPIDK Asia-Oseania"],
-    ["/news", "Berita"],
-    ["/map", "Peta"],
-    ["/events", "Acara"],
-    ["/activities", "Kegiatan"],
-    ["/gallery", "Galeri"],
-    ["/about", "Tentang kami"],
-    ["/terms", "Syarat dan Ketentuan"],
-    ["/privacy", "Kebijakan Privasi"],
-  ] as const) {
+  // Without a `lang` cookie the site is in Indonesian. Each page renders its own
+  // heading element: the ui-shell title on the legal pages, the lists title on
+  // the list pages, the album title on /about, and a plain hero h1 on home.
+  const pageTitles: Record<string, string> = {
+    "/": "<h1>Menyatukan Pelajar Indonesia di Asia &amp; Oseania</h1>",
+    "/news": '<h1 class="site-lists__title">Blog &amp; Article</h1>',
+    "/map": '<h1 class="site-lists__title">Map PPI Negara Kawasan Asia Oseania</h1>',
+    "/events": '<h1 class="site-lists__title">Events</h1>',
+    "/activities": '<h1 class="ui-shell-title">Kegiatan</h1>',
+    "/gallery": '<h1 class="site-lists__title">Our Gallery</h1>',
+    "/about": '<h1 class="site-event__title">Tentang kami</h1>',
+    "/terms": '<h1 class="ui-shell-title">Syarat dan Ketentuan</h1>',
+    "/privacy": '<h1 class="ui-shell-title">Kebijakan Privasi</h1>',
+  };
+  for (const [path, expected] of Object.entries(pageTitles)) {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.status(), path).toBe(200);
-    expect(await response.text(), path).toContain(`<h1 class="ui-shell-title">${title}</h1>`);
+    expect(await response.text(), path).toContain(expected);
   }
 });
 
@@ -103,7 +106,7 @@ test("the account page requires a session", async ({ request }) => {
 
 test("the language switch shows English after the lang cookie is set", async ({ request }) => {
   const response = await request.get("/about", { headers: { cookie: "lang=en" } });
-  expect(await response.text()).toContain(`<h1 class="ui-shell-title">About us</h1>`);
+  expect(await response.text()).toContain(`<h1 class="site-event__title">About us</h1>`);
 });
 
 test("unknown public form links show the 404 page", async ({ request }) => {

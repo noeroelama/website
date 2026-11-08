@@ -3,21 +3,36 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { NEWS_CATEGORIES } from "@website/domain/content";
 import { NewsCards } from "@/components/news-cards";
+import { FieldIcon } from "@/components/site-field-icon";
+import { SitePager } from "@/components/site-pager";
+import { SubmitOnChangeSelect } from "@/components/submit-on-change-select";
 import { DICTIONARIES, LANG_COOKIE, languageFrom } from "@/i18n/dictionaries";
 import { Localized } from "@/i18n/localized";
-import { newsHref, newsQuery, pageOfNews } from "@/lib/news-query";
+import { newsHref, newsQuery, newsRegionsOf, NEWS_TIME_RANGES, pageOfNews } from "@/lib/news-query";
 import { publicNews } from "@/server/news";
 
 export const metadata: Metadata = { title: "News" };
 
-// Static shell (title); the filtered list streams in (query string + cached news).
+// Design (user): the news list gets the Events/Gallery look — the dark filter bar with
+// date range, Country and search, category pills with a count, 3-up cards, numbered
+// pager — but with INVERTED colours: black page, cream filter panel. Static shell
+// (title); the filtered list streams in (cached news + language cookie).
 export default function NewsPage({ searchParams }: PageProps<"/news">) {
   return (
-    <main className="ui-shell">
-      <Localized render={(t) => <h1 className="ui-shell-title">{t.pages.news}</h1>} />
-      <Suspense fallback={null}>
-        <NewsList searchParams={searchParams} />
-      </Suspense>
+    <main className="site-lists site-lists--news">
+      <div className="site-lists__inner">
+        <Localized
+          render={(t) => (
+            <>
+              <h1 className="site-lists__title">{t.pages.news}</h1>
+              <p className="site-lists__tagline">{t.news.tagline}</p>
+            </>
+          )}
+        />
+        <Suspense fallback={null}>
+          <NewsList searchParams={searchParams} />
+        </Suspense>
+      </div>
     </main>
   );
 }
@@ -26,45 +41,129 @@ async function NewsList({ searchParams }: Pick<PageProps<"/news">, "searchParams
   const query = newsQuery(await searchParams);
   const language = languageFrom((await cookies()).get(LANG_COOKIE)?.value);
   const t = DICTIONARIES[language];
-  const { items, page, pages } = pageOfNews(await publicNews(), query);
+  const all = await publicNews();
+  const countries = newsRegionsOf(all);
+  const { items, count, page, pages } = pageOfNews(all, query);
+  const filtered =
+    query.category !== null ||
+    query.tag !== null ||
+    query.q !== null ||
+    query.time !== null ||
+    query.region !== null;
   return (
     <>
-      <form className="site-filters" action="/news">
-        <label>
-          {t.news.category}{" "}
-          <select className="ui-input" name="category" defaultValue={query.category ?? ""}>
-            <option value="">{t.news.allCategories}</option>
-            {NEWS_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {t.news.categories[c]}
-              </option>
-            ))}
-          </select>
-        </label>
-        {query.tag && <input type="hidden" name="tag" value={query.tag} />}
-        <button className="ui-button" type="submit">
-          {t.news.filter}
-        </button>
-        {query.tag && (
-          <span>
-            {t.news.tagged}: #{query.tag}
+      <form className="site-lists__bar" action="/news" method="get">
+        <div className="site-lists__fields">
+          <label className="site-lists__field">
+            <span className="site-lists__field-label">
+              <FieldIcon name="date" className="site-lists__field-label-icon" />
+              {t.events.period}
+            </span>
+            <span className="site-lists__field-controls">
+              <span className="site-lists__box">
+                <FieldIcon name="date" className="site-lists__box-icon" />
+                <SubmitOnChangeSelect
+                  className="ui-input"
+                  name="time"
+                  defaultValue={query.time ?? "year"}
+                >
+                  <option value="">{t.events.allPeriods}</option>
+                  {NEWS_TIME_RANGES.map((range) => (
+                    <option key={range} value={range}>
+                      {t.events.periodOptions[range]}
+                    </option>
+                  ))}
+                </SubmitOnChangeSelect>
+              </span>
+            </span>
+          </label>
+          <label className="site-lists__field">
+            <span className="site-lists__field-label">
+              <FieldIcon name="region" className="site-lists__field-label-icon" />
+              {t.events.region}
+            </span>
+            <span className="site-lists__field-controls">
+              <span className="site-lists__box">
+                <FieldIcon name="region" className="site-lists__box-icon" />
+                <SubmitOnChangeSelect
+                  className="ui-input"
+                  name="region"
+                  defaultValue={query.region ?? ""}
+                >
+                  <option value="">{t.events.allRegions}</option>
+                  {countries.map((region) => (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  ))}
+                </SubmitOnChangeSelect>
+              </span>
+            </span>
+          </label>
+          <label className="site-lists__field">
+            <span className="site-lists__field-label">
+              <FieldIcon name="search" className="site-lists__field-label-icon" />
+              {t.news.search}
+            </span>
+            <span className="site-lists__field-controls">
+              <span className="site-lists__box">
+                <FieldIcon name="search" className="site-lists__box-icon" />
+                <input
+                  className="ui-input"
+                  type="search"
+                  name="q"
+                  placeholder={t.news.searchPlaceholder}
+                  defaultValue={query.q ?? ""}
+                />
+              </span>
+            </span>
+          </label>
+          {query.tag && <input type="hidden" name="tag" value={query.tag} />}
+          <button className="site-lists__bar-submit" type="submit">
+            {t.news.search}
+          </button>
+        </div>
+        <hr className="site-lists__bar-divider" />
+        <div className="site-lists__pills">
+          <span className="site-lists__pills-label">{t.news.category}:</span>
+          {/* Category pills exactly like the events/gallery bar: clicking the active pill clears it. */}
+          {[null, ...NEWS_CATEGORIES].map((category) => {
+            const active = (query.category ?? null) === category;
+            return (
+              <a
+                className="site-lists__pill"
+                aria-current={active ? "true" : undefined}
+                href={newsHref({ ...query, category: active ? null : category, page: 1 }, 1)}
+                key={category ?? "all"}
+              >
+                {category === null ? t.news.allCategories : t.news.categories[category]}
+              </a>
+            );
+          })}
+          <span className="site-lists__count">
+            <FieldIcon name="count" className="site-lists__count-icon" />
+            {t.news.showing.replace("{n}", String(count))}
           </span>
-        )}
-        {(query.category || query.tag) && <a href="/news">{t.news.clear}</a>}
+          {filtered && (
+            <a href="/news" className="site-lists__bar-clear">
+              {t.news.clear}
+            </a>
+          )}
+        </div>
       </form>
+
       {items.length === 0 ? (
-        <p>{t.news.empty}</p>
+        <p className="site-muted">{t.news.empty}</p>
       ) : (
-        <NewsCards items={items} t={t} language={language} />
+        <NewsCards items={items} t={t} />
       )}
       {pages > 1 && (
-        <nav className="site-pager">
-          {page > 1 && <a href={newsHref(query, page - 1)}>{t.news.previous}</a>}
-          <span>
-            {page} / {pages}
-          </span>
-          {page < pages && <a href={newsHref(query, page + 1)}>{t.news.next}</a>}
-        </nav>
+        <SitePager
+          page={page}
+          pages={pages}
+          hrefOf={(n) => newsHref(query, n)}
+          label={t.news.pagination}
+        />
       )}
     </>
   );

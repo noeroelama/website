@@ -76,6 +76,7 @@ export interface PublicEvent {
   readonly title: string;
   readonly type: EventType;
   readonly startsAt: Date;
+  readonly endsAt: Date | null; /* end of the programme, when the event has one */
   readonly timezone: string;
   readonly registrationClosesAt: Date | null;
   readonly location: string | null;
@@ -95,6 +96,7 @@ export function toPublicEvent(e: EventEntity): PublicEvent {
     title: e.title,
     type: e.type,
     startsAt: e.startsAt,
+    endsAt: e.endsAt ?? null,
     timezone: e.timezone,
     registrationClosesAt: e.registrationClosesAt,
     location: e.location,

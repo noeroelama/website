@@ -257,6 +257,101 @@ describe("organisation structure (org units)", () => {
     });
   });
 
+  it("stores the reporting line and refuses self, missing and cyclic reports", async () => {
+    const koor = await create("Koordinator", "KOOR", null, "koordinator");
+    const sekjen = await create("Sekretaris Jenderal", "SEKJEN", koor, "sekjen");
+    const sektif = await create("Sekretaris Eksekutif", "SEKTIF", koor, "staf");
+    expect(await units.get(sektif)).toMatchObject({ reportTo: null });
+
+    // A unit reports to a live unit of the same period.
+    const saved = await actions().save(...as(secretary))({
+      ...unit("Sekretaris Eksekutif", "SEKTIF", koor, "staf"),
+      id: sektif,
+      reportTo: sekjen,
+      version: 1,
+    });
+    expect(saved).toMatchObject({ ok: true, data: { version: 2 } });
+    expect(await units.get(sektif)).toMatchObject({ reportTo: sekjen });
+    expect(auditEntries().at(-1)?.["after"]).toMatchObject({ reportTo: sekjen });
+
+    // Refusals: self, a missing target and a chain that would loop back.
+    expect(
+      await actions().save(...as(secretary))({
+        ...unit("Sekretaris Eksekutif", "SEKTIF", koor, "staf"),
+        id: sektif,
+        reportTo: sektif,
+        version: 2,
+      }),
+    ).toMatchObject({ error: "refused", issues: [expect.stringContaining("itself")] });
+    expect(
+      await actions().save(...as(secretary))({
+        ...unit("Sekretaris Eksekutif", "SEKTIF", koor, "staf"),
+        id: sektif,
+        reportTo: "no-such-unit",
+        version: 2,
+      }),
+    ).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("does not exist")],
+    });
+    // B reports to A (saved above); A reporting to B would loop back to A.
+    expect(
+      await actions().save(...as(secretary))({
+        ...unit("Sekretaris Jenderal", "SEKJEN", koor, "sekjen"),
+        id: sekjen,
+        reportTo: sektif,
+        version: 1,
+      }),
+    ).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("cycle")],
+    });
+    // A chain that points at a missing unit is refused too (corrupt data guarded).
+    const wasekjen = await create("Wakil Sekretaris Jenderal", "WASEKJEN", koor, "wasekjen");
+    fake.docs.set(`orgUnits/${wasekjen}`, {
+      ...fake.docs.get(`orgUnits/${wasekjen}`),
+      reportTo: "ghost",
+    });
+    expect(
+      await actions().save(...as(secretary))({
+        ...unit("Sekretaris Jenderal", "SEKJEN", koor, "sekjen"),
+        id: sekjen,
+        reportTo: wasekjen,
+        version: 1,
+      }),
+    ).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("does not exist")],
+    });
+  });
+
+  it("refuses to delete a unit that other units report to", async () => {
+    const koor = await create("Koordinator", "KOOR", null, "koordinator");
+    const sekjen = await create("Sekretaris Jenderal", "SEKJEN", koor, "sekjen");
+    const sektif = await create("Sekretaris Eksekutif", "SEKTIF", koor, "staf");
+    await actions().save(...as(secretary))({
+      ...unit("Sekretaris Eksekutif", "SEKTIF", koor, "staf"),
+      id: sektif,
+      reportTo: sekjen,
+      version: 1,
+    });
+    expect(await actions().remove(...as(secretary))({ id: sekjen, version: 1 })).toMatchObject({
+      error: "refused",
+      issues: [expect.stringContaining("report")],
+    });
+    // Once the reporter changes its line, the target can be deleted.
+    await actions().save(...as(secretary))({
+      ...unit("Sekretaris Eksekutif", "SEKTIF", koor, "staf"),
+      id: sektif,
+      reportTo: null,
+      version: 2,
+    });
+    expect(await actions().remove(...as(secretary))({ id: sekjen, version: 1 })).toMatchObject({
+      ok: true,
+    });
+    expect((await units.listForPeriod(periodId)).map((u) => u.code)).toEqual(["KOOR", "SEKTIF"]);
+  });
+
   it("an archived period's structure is read-only", async () => {
     const koor = await create("Koordinator", "KOOR", null, "koordinator");
     const media = await create("Direktorat Media", "MED", koor);

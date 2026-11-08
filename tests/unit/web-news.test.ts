@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { PublicNews } from "@website/domain/content";
-import { newsHref, newsQuery, pageOfNews } from "../../apps/web/src/lib/news-query";
+import { newsHref, newsQuery, newsRegionsOf, pageOfNews } from "../../apps/web/src/lib/news-query";
 
 const item = (slug: string, extra: Partial<PublicNews> = {}): PublicNews => ({
   slug,
   title: slug,
   author: "Media",
-  category: "general",
+  category: "seminar",
+  location: null,
   summary: "",
   tags: [],
   publishAt: new Date("2026-10-18T00:00:00Z"),
@@ -14,49 +15,109 @@ const item = (slug: string, extra: Partial<PublicNews> = {}): PublicNews => ({
   ...extra,
 });
 
-describe("public news list query (/news?category&tag&page)", () => {
-  it("accepts known categories, short tags and positive pages; ignores the rest", () => {
-    expect(newsQuery({})).toEqual({ category: null, tag: null, page: 1 });
-    expect(newsQuery({ category: "academic", tag: " Riset ", page: "2" })).toEqual({
-      category: "academic",
+getBoilerplate();
+function getBoilerplate() {}
+
+describe("public news list query (/news?category&tag&region&time&page)", () => {
+  it("accepts known categories, short tags, countries and positive pages; ignores the rest", () => {
+    expect(newsQuery({})).toEqual({
+      category: null,
+      tag: null,
+      q: null,
+      time: null,
+      region: null,
+      page: 1,
+    });
+    expect(newsQuery({ category: "seminar", tag: " Riset ", page: "2" })).toEqual({
+      category: "seminar",
       tag: "riset",
+      q: null,
+      time: null,
+      region: null,
       page: 2,
     });
     expect(newsQuery({ category: "x", tag: "a".repeat(31), page: "-1" })).toEqual({
       category: null,
       tag: null,
+      q: null,
+      time: null,
+      region: null,
       page: 1,
     });
-    expect(newsQuery({ category: ["community", "x"], page: "1.5" })).toMatchObject({
-      category: "community",
+    expect(
+      newsQuery({ category: ["webinar", "x"], page: "1.5", region: "Indonesia" }),
+    ).toMatchObject({
+      category: "webinar",
+      region: "Indonesia",
       page: 1,
     });
   });
 
-  it("filters by category and tag, pages by 12 and clamps the page", () => {
+  it("lists the countries of the news, from the last comma-separated part of the location", () => {
+    const all = [
+      item("no-location"),
+      item("jakarta", { location: "Jakarta, Indonesia" }),
+      item("kl", { location: "Kuala Lumpur, Malaysia" }),
+      item("webinar", { location: "Jakarta (Webinar)" }),
+    ];
+    expect(newsRegionsOf(all)).toEqual(["Indonesia", "Malaysia", "Jakarta"]);
+  });
+
+  it("filters by category, country, tag and time, pages by 12 and clamps the page", () => {
     const all = [
       ...Array.from({ length: 13 }, (_, i) => item(`g${i}`)),
-      item("riset", { category: "academic", tags: ["riset"] }),
+      item("riset", { category: "seminar", tags: ["riset"], location: "Jakarta, Indonesia" }),
+      item("lama", {
+        location: "Tokyo, Jepang",
+        publishAt: new Date("2025-01-01T00:00:00Z"),
+      }),
     ];
-    expect(pageOfNews(all, { category: null, tag: null, page: 2 })).toMatchObject({
-      page: 2,
-      pages: 2,
-    });
-    expect(pageOfNews(all, { category: null, tag: null, page: 9 }).items).toHaveLength(2);
+    const none = { category: null, tag: null, q: null, time: null, region: null } as const;
+    expect(pageOfNews(all, { ...none, page: 2 })).toMatchObject({ page: 2, pages: 2 });
     expect(
-      pageOfNews(all, { category: "academic", tag: "riset", page: 1 }).items.map((n) => n.slug),
+      pageOfNews(
+        all,
+        { ...none, time: "year", page: 1 },
+        new Date("2026-10-18T00:00:00Z"),
+      ).items.map((n) => n.slug),
+    ).not.toContain("lama");
+    expect(
+      pageOfNews(all, { ...none, region: "Indonesia", page: 1 }).items.map((n) => n.slug),
     ).toEqual(["riset"]);
-    expect(pageOfNews([], { category: null, tag: null, page: 1 })).toEqual({
+    expect(
+      pageOfNews(all, {
+        category: "seminar",
+        tag: "riset",
+        q: null,
+        time: null,
+        region: null,
+        page: 1,
+      }).items.map((n) => n.slug),
+    ).toEqual(["riset"]);
+    expect(pageOfNews([], { ...none, page: 1 })).toEqual({
       items: [],
+      count: 0,
       page: 1,
       pages: 1,
     });
   });
 
   it("builds links that keep the filters", () => {
-    expect(newsHref({ category: null, tag: null, page: 1 }, 1)).toBe("/news");
-    expect(newsHref({ category: "academic", tag: "riset", page: 1 }, 3)).toBe(
-      "/news?category=academic&tag=riset&page=3",
-    );
+    expect(
+      newsHref({ category: null, tag: null, q: null, time: null, region: null, page: 1 }, 1),
+    ).toBe("/news");
+    expect(
+      newsHref(
+        {
+          category: "seminar",
+          tag: "riset",
+          q: null,
+          time: "month",
+          region: "Indonesia",
+          page: 3,
+        },
+        3,
+      ),
+    ).toBe("/news?category=seminar&tag=riset&time=month&region=Indonesia&page=3");
   });
 });

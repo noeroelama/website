@@ -62,6 +62,11 @@ describe("gallery album (GALLERY DASHBOARD)", () => {
       slug: "simposium",
       eventId: "e1",
       eventTitle: "Simposium",
+      eventType: "seminar",
+      eventStartsAt: now,
+      eventTimezone: "Asia/Jakarta",
+      eventLocation: "Jakarta, Indonesia",
+      eventDescription: "Ringkasan singkat.",
       images: [image, image],
       totalPhotos: null,
       albumUrl: "https://photos.app.goo.gl/abc",
@@ -71,7 +76,16 @@ describe("gallery album (GALLERY DASHBOARD)", () => {
       deletedAt: null,
     };
     const dto = toPublicAlbum(album);
-    expect(dto).toMatchObject({ slug: "simposium", photoCount: 2, cover: image });
+    expect(dto).toMatchObject({
+      slug: "simposium",
+      photoCount: 2,
+      cover: image,
+      eventType: "seminar",
+      eventStartsAt: now,
+      eventTimezone: "Asia/Jakarta",
+      eventLocation: "Jakarta, Indonesia",
+      eventDescription: "Ringkasan singkat.",
+    });
     expect(dto).not.toHaveProperty("version");
     expect(toPublicAlbum({ ...album, totalPhotos: 150 }).photoCount).toBe(150);
     // Albums imported from PPIDK may have no featured image yet.
@@ -87,6 +101,11 @@ describe("Gallery page rows (server mapping)", () => {
     slug: "s",
     eventId: "e1",
     eventTitle: "S",
+    eventType: null,
+    eventStartsAt: null,
+    eventTimezone: null,
+    eventLocation: null,
+    eventDescription: null,
     images: [image],
     totalPhotos: null,
     albumUrl: "https://photos.app.goo.gl/abc",

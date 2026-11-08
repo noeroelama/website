@@ -18,6 +18,17 @@ export interface SocialLink {
 export const CHAPTER_RISKS = ["none", "needs_checking", "at_risk"] as const;
 export type ChapterRisk = (typeof CHAPTER_RISKS)[number];
 
+/** Where a chapter sits on the /map country table: the design's five groups, or "Others". */
+export const CHAPTER_REGIONS = [
+  "oceania",
+  "southeastAsia",
+  "eastAsia",
+  "southAsia",
+  "middleAsia",
+  "others",
+] as const;
+export type ChapterRegion = (typeof CHAPTER_REGIONS)[number];
+
 /**
  * A member council (PPI Negara). The contact person is stored only with the contact details the
  * chapter chose to publish. `memberCount`, `conditions` and `risk` are the board's own notes for
@@ -28,11 +39,21 @@ export interface Chapter extends EntityMeta {
   readonly slug: string;
   readonly name: string;
   readonly countryCode: string;
+  /** /map table group set by the national board; null = hidden from the table. */
+  readonly region: ChapterRegion | null;
+  /** Registry number on the /map country table (design: 1 … 17); a new PPI takes the next free number. */
+  readonly mapNo: number | null;
   readonly active: boolean;
   readonly timezone: string;
   readonly logo: FeaturedImage | null;
   readonly contactName: string;
   readonly contactPublic: string;
+  /** Long public text about the chapter, shown on its detail page (/map/[slug]). */
+  readonly description: string;
+  /** The contact person's role, e.g. "Ketua", shown with the name. */
+  readonly role: string | null;
+  /** Public phone number, e.g. the contact's mobile. */
+  readonly phone: string | null;
   readonly website: string | null;
   readonly email: string | null;
   readonly instagram: string | null;
@@ -69,10 +90,33 @@ export const ChapterInputSchema = z
       .trim()
       .toUpperCase()
       .refine(isValidCountryCode, "Use the 2-letter ISO country code, e.g. JP."),
+    /** Empty = hidden from the /map table. */
+    region: z
+      .union([z.enum(CHAPTER_REGIONS), z.literal("")])
+      .default("")
+      .transform((v) => v || null),
+    /** Empty = no badge on the /map table. */
+    mapNo: z
+      .union([
+        z
+          .string()
+          .trim()
+          .regex(/^\d{1,3}$/, "Use a whole number, e.g. 18."),
+        z.literal(""),
+      ])
+      .default("")
+      .transform((v) => (v === "" ? null : Number(v)))
+      .pipe(z.number().int().min(1).max(999).nullable()),
     timezone: TimezoneSchema,
     logo: FeaturedImageSchema.nullable(),
     contactName: optionalText(120),
     contactPublic: optionalText(200),
+    /** Long public text (detail page /map/[slug]). */
+    description: optionalText(2000),
+    /** The contact's role, e.g. "Ketua"; empty = null. */
+    role: optionalText(120).transform((v) => v || null),
+    /** Public phone number; empty = null. */
+    phone: optionalText(40).transform((v) => v || null),
     website: optionalLink,
     email: z
       .union([z.literal(""), z.email("Enter a valid e-mail address.").max(254)])
@@ -109,15 +153,27 @@ export function mapPosition(latitude: number, longitude: number): { x: number; y
   return { x: clamp(0.78094 * longitude - 46.762), y: clamp(57.991 - 0.71079 * latitude) };
 }
 
-/** What visitors see of an active chapter (map card, member councils). */
+/** What visitors see of a chapter (map card, member councils, the PPIDK country table). */
 export interface PublicChapter {
   readonly slug: string;
   readonly name: string;
   readonly countryCode: string;
+  /** /map table group set by the national board; null = not shown on the table. */
+  readonly region: ChapterRegion | null;
+  /** Badge number on the /map country table (null = no badge). */
+  readonly mapNo: number | null;
+  /** True = on the map; false = deactivated, hidden from the /map table. */
+  readonly active: boolean;
   readonly timezone: string;
   readonly logo: FeaturedImage | null;
   readonly contactName: string;
   readonly contactPublic: string;
+  /** Long public text about the chapter, shown on its detail page (/map/[slug]). */
+  readonly description: string;
+  /** The contact person's role, e.g. "Ketua", shown with the name. */
+  readonly role: string | null;
+  /** Public phone number, e.g. the contact's mobile. */
+  readonly phone: string | null;
   readonly website: string | null;
   readonly email: string | null;
   readonly instagram: string | null;
@@ -130,10 +186,16 @@ export function toPublicChapter(c: Chapter): PublicChapter {
     slug: c.slug,
     name: c.name,
     countryCode: c.countryCode,
+    region: c.region,
+    mapNo: c.mapNo,
+    active: c.active,
     timezone: c.timezone,
     logo: c.logo,
     contactName: c.contactName,
     contactPublic: c.contactPublic,
+    description: c.description,
+    role: c.role,
+    phone: c.phone,
     website: c.website,
     email: c.email,
     instagram: c.instagram,
@@ -247,7 +309,14 @@ export type UnitDivision = z.infer<typeof UnitDivisionSchema>;
 export interface OrgUnit extends EntityMeta {
   readonly periodId: string;
   readonly parentId: string | null;
+  /** Where this unit sits in the DISPLAY tree (the About page's three blocks). Null = root. */
   readonly path: readonly string[];
+  /**
+   * The unit this unit reports to (the functional chain — display tree and reporting line
+   * are independent since round 23: e.g. KSA displays under Biro but reports to Sektif).
+   * Null = reports to nobody. A cycle is refused on save.
+   */
+  readonly reportTo: string | null;
   readonly name: string;
   /** Short and unique within the period, e.g. MED or MED-DSN. */
   readonly code: string;
@@ -271,6 +340,8 @@ export const OrgUnitInputSchema = z
   .object({
     periodId: safeId,
     parentId: safeId.nullable(),
+    /** Who this unit reports to (free on save; the store refuses dead targets and cycles). */
+    reportTo: safeId.nullable().default(null),
     name: safeText(120).pipe(z.string().min(2, "Enter the unit name.")),
     code: z
       .string()
@@ -321,6 +392,28 @@ export function placeOrgUnit(
 export function assertNoCycle(unitId: string, parent: Pick<OrgUnit, "id" | "path"> | null): void {
   if (parent && orgUnitPath(parent).includes(unitId)) {
     throw new RuleViolationError("A unit cannot be moved inside itself or one of its units.");
+  }
+}
+
+/**
+ * Validates a unit's reporting line: the target must be a live unit of the same period and not
+ * the unit itself (the store walks the target's chain to refuse longer cycles).
+ */
+export function placeReportTo(
+  periodId: string,
+  period: Pick<Period, "status"> | null,
+  unitId: string | null,
+  reportTo: string | null,
+  target: OrgUnit | null,
+): void {
+  if (reportTo === null) return;
+  if (!period) throw new RuleViolationError("Choose a period first.");
+  if (!canChangePeriod(period.status)) {
+    throw new RuleViolationError("This period is archived; its structure can no longer change.");
+  }
+  if (reportTo === unitId) throw new RuleViolationError("A unit cannot report to itself.");
+  if (!target || target.deletedAt || target.periodId !== periodId) {
+    throw new RuleViolationError("The unit this unit reports to does not exist in this period.");
   }
 }
 

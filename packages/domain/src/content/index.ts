@@ -5,13 +5,16 @@ import { isValidSlug, type EntityMeta } from "../shared";
 export type ContentKind = "news" | "article" | "page";
 export type ContentStatus = "draft" | "scheduled" | "published" | "archived";
 
-/** News categories (Figma flowchart); labels live in the apps' label maps. */
+/** News categories: the same activity types as the events/gallery pills (user:
+ * "Semua Seminar Workshop Webinar Conference Meetup Lainnya"), plus "other" so
+ * the Lainnya pill has content. Labels live in the apps' label maps. */
 export const NEWS_CATEGORIES = [
-  "general",
-  "academic",
-  "community",
-  "announcement",
-  "international",
+  "seminar",
+  "workshop",
+  "webinar",
+  "conference",
+  "meeting",
+  "other",
 ] as const;
 export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
 
@@ -37,6 +40,9 @@ export interface ContentItem extends EntityMeta {
   /** Byline as typed by staff (the staff account is in the audit log). */
   readonly author: string;
   readonly category: NewsCategory;
+  /** Where the news happened, as typed by staff ("Jakarta, Indonesia"); the country
+   * combobox of the news bar reads its last comma segment (like events). */
+  readonly location: string | null;
   readonly summary: string;
   /** Lower-case keywords; drive the related articles. */
   readonly tags: readonly string[];
@@ -127,6 +133,7 @@ export const NewsInputSchema = z
       .refine(isValidSlug, "Use lower-case letters, numbers and dashes."),
     author: safeText(120).pipe(z.string().min(2, "Enter the author.")),
     category: z.enum(NEWS_CATEGORIES, { error: "Choose a category." }),
+    location: safeText(300).pipe(z.string().min(2, "Enter the location.")),
     // `.nullable()` lets null reach the refine with a clear message (coerce would turn it into 1970).
     publishAt: z.coerce
       .date()
@@ -154,6 +161,7 @@ export interface PublicNews {
   readonly title: string;
   readonly author: string;
   readonly category: NewsCategory;
+  readonly location: string | null;
   readonly summary: string;
   readonly tags: readonly string[];
   /** When it went public (for published items saved without a date: the last change). */
@@ -171,6 +179,7 @@ export function toPublicNews(item: ContentItem): PublicNews {
     title: item.title,
     author: item.author,
     category: item.category,
+    location: item.location,
     summary: item.summary,
     tags: item.tags,
     publishAt: item.publishAt ?? item.updatedAt,

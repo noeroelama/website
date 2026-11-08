@@ -50,13 +50,14 @@ describe("slugs, tags and categories", () => {
     expect(formatNewsDate(now, "en")).toBe("18 October 2026");
   });
 
-  it("has the five flowchart categories", () => {
+  it("has the six activity categories, the same as the events/gallery pills", () => {
     expect(NEWS_CATEGORIES).toEqual([
-      "general",
-      "academic",
-      "community",
-      "announcement",
-      "international",
+      "seminar",
+      "workshop",
+      "webinar",
+      "conference",
+      "meeting",
+      "other",
     ]);
   });
 });
@@ -74,7 +75,8 @@ describe("news form validation (strict)", () => {
     title: "Simposium berakhir sukses",
     slug: "simposium-berakhir-sukses",
     author: "Divisi Media",
-    category: "community",
+    category: "seminar",
+    location: "Jakarta, Indonesia",
     publishAt: "2026-10-20T05:00:00.000Z",
     summary: "Ringkasan singkat.",
     tags: ["Simposium"],
@@ -99,7 +101,7 @@ describe("news form validation (strict)", () => {
     expect(NewsInputSchema.safeParse({ ...valid, featuredImage: remote }).success).toBe(false);
   });
 
-  it("requires the featured image, publish date, URL and short summary (marked * in the form)", () => {
+  it("requires the featured image, publish date, URL, location and short summary (marked * in the form)", () => {
     const fields = (input: unknown) => {
       const result = NewsInputSchema.safeParse(input);
       return result.success
@@ -113,6 +115,9 @@ describe("news form validation (strict)", () => {
       publishAt: "Choose the publish date and time.",
     });
     expect(fields({ ...valid, slug: "" })).toEqual({ slug: "Enter the URL." });
+    expect(fields({ ...valid, location: "J" })).toEqual({
+      location: "Enter the location.",
+    });
     expect(fields({ ...valid, summary: "  " })).toEqual({ summary: "Write a short summary." });
   });
 
@@ -144,7 +149,8 @@ describe("public news (DTO and related articles)", () => {
     slug: "a",
     title: "A",
     author: "Media",
-    category: "academic",
+    category: "meeting",
+    location: null,
     summary: "",
     tags: ["riset"],
     publishAt: now,
@@ -169,7 +175,8 @@ describe("public news (DTO and related articles)", () => {
       publishAt: null,
       chapterId: "jp",
       author: "Media",
-      category: "academic",
+      category: "meeting",
+      location: null,
       summary: "",
       tags: ["riset"],
       featuredImage: null,
@@ -185,8 +192,8 @@ describe("public news (DTO and related articles)", () => {
     const current = at("current", 10);
     const all = [
       at("old-same-category", 1),
-      at("shared-tag", 5, { category: "general" }),
-      at("unrelated", 9, { category: "general", tags: ["olahraga"] }),
+      at("shared-tag", 5, { category: "other" }),
+      at("unrelated", 9, { category: "other", tags: ["olahraga"] }),
       current,
       at("newest-same-category", 12, { tags: [] }),
       at("same-category", 3, { tags: [] }),
