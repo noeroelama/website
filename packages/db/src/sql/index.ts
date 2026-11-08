@@ -24,6 +24,15 @@ export {
 } from "./audit";
 export { getDocumentsByIds } from "./batch";
 export { deleteExpired, EXPIRING_COLLECTIONS } from "./expiry";
+export {
+  createSqlPageViewStore,
+  periodsOf,
+  SITE_PAGE,
+  type PageViewHit,
+  type PageViewKind,
+  type PageViewStat,
+  type SqlPageViewStore,
+} from "./page-views";
 export { nextNumbers } from "./counters";
 export { createSqlSignatureStore, type SqlSignatureStore } from "./signatures";
 export {

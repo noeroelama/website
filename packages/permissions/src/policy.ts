@@ -173,15 +173,17 @@ export function canDeleteRole(principal: Principal | null, role: RoleDefinition)
   return canSaveRole(principal, role);
 }
 
+export function isSuperadmin(principal: Principal | null): boolean {
+  return (
+    principal !== null &&
+    principal.active &&
+    principal.assignments.some((a) => a.roleId === SUPERADMIN_ROLE_ID && a.scope.type === "global")
+  );
+}
+
 export function canAssignRole(principal: Principal | null, role: RoleDefinition): boolean {
   if (!can(principal, "users.edit")) return false;
-  if (role.id === SUPERADMIN_ROLE_ID) {
-    return (
-      principal?.assignments.some(
-        (a) => a.roleId === SUPERADMIN_ROLE_ID && a.scope.type === "global",
-      ) ?? false
-    );
-  }
+  if (role.id === SUPERADMIN_ROLE_ID) return isSuperadmin(principal);
   return holdsGlobally(principal, role.permissions);
 }
 

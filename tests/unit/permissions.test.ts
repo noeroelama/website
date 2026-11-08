@@ -13,6 +13,7 @@ import {
   canSaveRole,
   DEFAULT_ROLE_ASSIGNMENTS,
   isPagePermission,
+  isSuperadmin,
   normalizePermissions,
   PAGE_PERMISSIONS,
   requirePermission,
@@ -369,6 +370,14 @@ describe("no privilege escalation through the Roles page", () => {
       false,
     );
     expect(canAssignRole(superadmin, role(SUPERADMIN_ROLE_ID))).toBe(true);
+  });
+
+  it("isSuperadmin: only an active, global superadmin assignment counts", () => {
+    expect(isSuperadmin(superadmin)).toBe(true);
+    expect(isSuperadmin(principal([{ roleId: "everything" }]))).toBe(false);
+    expect(isSuperadmin(principal([{ roleId: SUPERADMIN_ROLE_ID, scope: jp }]))).toBe(false);
+    expect(isSuperadmin({ ...superadmin, active: false })).toBe(false);
+    expect(isSuperadmin(null)).toBe(false);
   });
 });
 

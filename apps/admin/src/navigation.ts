@@ -1,6 +1,7 @@
 import {
   canAccessAdmin,
   canInSomeScope,
+  isSuperadmin,
   type AdminPageId,
   type PagePermission,
   type Principal,
@@ -15,7 +16,7 @@ export interface NavItem {
 }
 
 interface NavEntry extends NavItem {
-  readonly permission: PagePermission | null;
+  readonly permission: PagePermission | "superadmin" | null;
   readonly also?: readonly AdminPageId[];
 }
 
@@ -70,12 +71,16 @@ export const ADMIN_NAVIGATION: readonly NavEntry[] = [
   },
   { group: "Administration", label: "Audit Log", href: "/audit", permission: "audit.read" },
   { group: "Administration", label: "Email", href: "/emails", permission: "messages.read" },
-  { group: "Administration", label: "Settings", href: "/settings", permission: "settings.read" },
+  { group: "Administration", label: "Page Views", href: "/analytics", permission: "superadmin" },
 ];
 
 export function navigationFor(principal: Principal): NavItem[] {
   if (!canAccessAdmin(principal)) return [];
   return ADMIN_NAVIGATION.filter(
-    (entry) => entry.permission === null || canInSomeScope(principal, entry.permission),
+    (entry) =>
+      entry.permission === null ||
+      (entry.permission === "superadmin"
+        ? isSuperadmin(principal)
+        : canInSomeScope(principal, entry.permission)),
   ).map(({ group, label, href }) => ({ group, label, href }));
 }

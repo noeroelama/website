@@ -50,7 +50,9 @@ export function integrationStatus(env: Readonly<Record<string, unknown>>) {
     integrations: INTEGRATIONS.map(({ name, section, anyOf }) => ({
       name,
       section,
-      configured: anyOf.some((group) => group.every((key) => Boolean(env[key]))),
-    })),
+      missing: anyOf
+        .map((group) => group.filter((key) => !env[key]))
+        .reduce((a, b) => (b.length < a.length ? b : a)),
+    })).map((i) => ({ ...i, configured: i.missing.length === 0 })),
   };
 }

@@ -243,12 +243,19 @@ router.push("/things"); router.refresh();
 - **Zoom** (`/zoom`, `zoom-page.tsx`): bookings 30 days back to 180 ahead, the booking form,
   approve/reject, cancel, the invitation with its QR, and Settings (`zoom.settings`). Rules:
   `packages/domain/docs/zoom.md`.
-- **Settings** (`/settings`, `settings.read`; L3): sections Zoom, WhatsApp, other integrations and
-  Letters. Zoom settings stay on `/zoom` (`zoom.settings`) and the letterhead on `/letters?tab=types`
-  (`letter_types.edit`); this page links to them. Integrations (WAHA, Cloud API, Zoom, Drive,
-  Anthropic, short links, calendar feed, Resend) are configured only in the hosting app screen, so
-  the page shows yes/no per integration and the messaging mode, never a value
-  (`src/server/settings.ts`, `tests/unit/admin-settings.test.ts`).
+- **Page Views** (`/analytics`, superadmin only — `isSuperadmin`, not a Role Manager permission):
+  views of the public website like the PPIT statistics page (today / this month / this year,
+  averages, last 30 days, 12 months, 5 years) plus a table per web page for the chosen period: views
+  (every load), visits (one per visitor per page per UTC day), mobile/desktop visits, top referrer
+  hosts and last view. Clicking a page shows its own series. Data: `pageViewStats`
+  (`packages/db/src/sql/page-views.ts`), recorded by apps/web (`apps/web/docs/public-site.md`).
+  Tests: `tests/integration/page-views.test.ts`.
+- **Integration status** (L3, on the Dashboard; the Settings page was removed): superadmins see a
+  card "Environment variables not set" listing each integration (WAHA, Cloud API, Zoom, Drive,
+  Anthropic, short links, calendar feed, Resend) whose variables are missing, with the missing
+  names, and a note when `MESSAGING_MODE` is `log`. Never a value (`src/server/settings.ts`,
+  `tests/unit/admin-settings.test.ts`). Zoom settings stay on `/zoom` (`zoom.settings`), the
+  letterhead on `/letters?tab=types`.
 - **Tools** (`/tools`, `src/components/tools-page.tsx`): QR Generator and URL Shortener in cream
   cards on the dark page (layout scoped to `.admin-tools` in `globals.css`; fields and buttons
   follow the cream-surface colours). Links

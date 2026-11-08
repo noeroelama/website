@@ -41,7 +41,8 @@ repository logic. Details:
 - **No UI database access**: apps reach `@website/db` only from `src/server/**`.
 - **Every editable document** has `version` (optimistic concurrency), `createdAt`, `updatedAt`,
   `deletedAt` (soft delete). Writes are transactions conditional on `version`.
-- **Expiring rows** (`rateLimits`, `webauthnChallenges`, `webhookEvents`) carry `expiresAt` and are
+- **Expiring rows** (`rateLimits`, `webauthnChallenges`, `webhookEvents`, `attendanceCodes`,
+  `whatsappConversations`, `pageViewVisits`) carry `expiresAt` and are
   deleted by the admin cron job `expire` (`apps/admin/docs/cron.md`).
 
 ## Collections
@@ -118,6 +119,8 @@ repository logic. Details:
 | `calendarFeeds`             | uid                                                       | version, revokedAt                                                                                                                                                                                                                                             | .ics feed version; bumping revokes old links (G2)                                                                         |
 | `chapterOfficers`           | chapterId                                                 | officers [{ name, title, termEnd }]                                                                                                                                                                                                                            | Chapter core officers with term dates (H1)                                                                                |
 | `chapterReports`            | `{chapterId}_{yyyy}Q{n}`                                  | chapterId, quarter, activeMembers, activities, obstacles, submittedBy, submittedAt, filledByCentre                                                                                                                                                             | Quarterly chapter report; resubmitting updates, never deleted (H3)                                                        |
+| `pageViewStats`             | `{kind}_{period}_{sha256(page)}`                          | kind (day/month/year), period, page (`*` = whole site), views, visits, mobile, referrers [{ host, visits }] (max 20), lastViewedAt                                                                                                                             | `createSqlPageViewStore`: web `record`, admin Page Views                                                                  |
+| `pageViewVisits`            | sha256(visitor + page)                                    | expiresAt (2 days)                                                                                                                                                                                                                                             | One per visitor per page per UTC day; visitor = HMAC(day, IP, user agent)                                                 |
 
 ## Documents with a URL slug
 

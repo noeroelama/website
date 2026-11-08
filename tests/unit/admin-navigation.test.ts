@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   normalizePermissions,
+  PAGE_PERMISSIONS,
   resolveAssignments,
   SUPERADMIN_ROLE_ID,
   type Principal,
@@ -27,6 +28,7 @@ const roles = new Map(
         "newsletter.edit",
       ]),
     },
+    { id: "everything", name: "Everything", permissions: normalizePermissions(PAGE_PERMISSIONS) },
     { id: "user_reader", name: "User reader", permissions: normalizePermissions(["users.read"]) },
     {
       id: "chapter_editor",
@@ -56,7 +58,7 @@ describe("admin side panel navigation", () => {
       Content: ["Event", "Gallery", "Article", "Newsletter", "Forms"],
       Organization: ["Recruitment", "Letter", "Organizations"],
       Planning: ["OKR", "Programmes", "LPJ", "Finance", "Meetings", "Zoom"],
-      Administration: ["Role Manager", "Audit Log", "Email", "Settings"],
+      Administration: ["Role Manager", "Audit Log", "Email", "Page Views"],
     });
   });
 
@@ -83,6 +85,14 @@ describe("admin side panel navigation", () => {
       "Article",
       "Newsletter",
     ]);
+  });
+
+  it("shows Page Views only to a superadmin, never to a custom role with every permission", () => {
+    expect(labels(staff(SUPERADMIN_ROLE_ID))).toContain("Page Views");
+    expect(labels(staff("everything"))).not.toContain("Page Views");
+    expect(labels(staff(SUPERADMIN_ROLE_ID, { type: "chapter", chapterId: "jp" }))).not.toContain(
+      "Page Views",
+    );
   });
 
   it("opens Role Manager (people and roles in one page) with users.read", () => {
@@ -122,10 +132,11 @@ describe("admin side panel navigation", () => {
       const source = readFileSync(join(panel, href, "page.tsx"), "utf8");
       expect(source, href).toContain("export const instant = false;");
       expect(source, href).toContain(
-        permission === null
+        permission === null || permission === "superadmin"
           ? `requireAdminViewer("${href}")`
           : `requireAdminViewer("${href}", "${permission}")`,
       );
+      if (permission === "superadmin") expect(source, href).toContain("isSuperadmin(");
     }
   });
 });

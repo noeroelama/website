@@ -1,10 +1,12 @@
-import { ADMIN_PAGES, type AdminPageId } from "@website/permissions";
+import { ADMIN_PAGES, isSuperadmin, type AdminPageId } from "@website/permissions";
 import { AccessMessage } from "@/components/access-message";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DashboardPage } from "@/components/dashboard-page";
 import { formatUtc } from "@/components/format";
 import { AUDIT_ACTION_LABELS, label } from "@/labels";
 import { requireAdminViewer } from "@/server/context";
+import { getAdminEnv } from "@/server/env";
+import { integrationStatus } from "@/server/settings";
 import { visibleTask } from "@/server/tasks";
 import { dashboard } from "@/server/wiring";
 
@@ -30,6 +32,8 @@ export default async function AdminDashboardPage() {
     deadlines,
     period,
   } = await dashboard()(viewer.principal);
+  const setup = isSuperadmin(viewer.principal) ? integrationStatus(getAdminEnv()) : null;
+  const missing = setup?.integrations.filter((i) => !i.configured) ?? [];
   const link = (href: string | null, text: string) => (href ? <a href={href}>{text}</a> : text);
   return (
     <DashboardPage
@@ -53,6 +57,30 @@ export default async function AdminDashboardPage() {
         })
       }
     >
+      {setup && (missing.length > 0 || setup.messagingMode === "log") ? (
+        <Card>
+          <CardHeader title="Environment variables not set" />
+          <CardBody>
+            <p>
+              Set them in the hosting app screen (see docs/environment.md), never in the database.
+              Only superadmins see this.
+            </p>
+            <ul>
+              {missing.map((i) => (
+                <li key={i.name}>
+                  {i.name} is off: <code>{i.missing.join(", ")}</code>
+                </li>
+              ))}
+              {setup.messagingMode === "log" ? (
+                <li>
+                  WhatsApp and e-mail messages are only logged: <code>MESSAGING_MODE=live</code> is
+                  not set.
+                </li>
+              ) : null}
+            </ul>
+          </CardBody>
+        </Card>
+      ) : null}
       {queues.length > 0 ? (
         <Card>
           <CardHeader title="Waiting for my action" />

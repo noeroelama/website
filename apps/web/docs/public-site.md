@@ -273,6 +273,11 @@ per-unit public pages.
 - News: cached reads `src/server/news.ts` (`publicNews`, `publicNewsBySlug`), list query
   `src/lib/news-query.ts`, cards `src/components/news-cards.tsx`; rules in
   `packages/domain/docs/content.md`.
+- Page views: `src/components/page-view-tracker.tsx` (in the root layout; calls the server action
+  `src/app/page-view-action.ts` on every path change), `src/server/page-views.ts` (`pageViewHit`:
+  path check, bot filter, device, external referrer host, visitor = HMAC of UTC day + IP + user
+  agent with `LINK_SIGNING_SECRET`; the IP is never stored). Shown to superadmins in admin Page Views.
+  Tests: `tests/integration/page-views.test.ts`.
 - Tests: `tests/unit/web-i18n.test.ts`, `tests/unit/web-news.test.ts`,
   `tests/unit/web-events.test.ts`, `tests/integration/web-registration.test.ts`,
   `tests/integration/event-registration.test.ts`, `tests/security/captcha.test.ts`,
@@ -310,6 +315,9 @@ completeness test fail until both exist.
   `eventCounters/{eventId}`).
 - Without `RECAPTCHA_SECRET_KEY`, development and test skip the captcha; staging and production
   refuse every registration (fail closed).
+- Page views: only the path is kept (no query string, ≤ 200 safe characters); bots and requests
+  without a user agent are skipped; a failed write logs `page_view_failed` and never affects the page.
+  Any path a visitor sends is counted (the per-IP rate limit caps it).
 - If the news read fails, Home logs `home_latest_news_failed` and leaves the section out; a failing
   highlights read logs `home_highlights_failed` the same way.
 
