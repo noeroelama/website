@@ -742,6 +742,17 @@ describe("upload path (D3)", () => {
     ).toMatchObject({ error: "refused" });
   });
 
+  it("an upload is not issued before the stamp positions are saved", async () => {
+    const { id, version } = await numbered();
+    await send(id, version, await pdfWith(SOP));
+    const ready = (await letters().get(id)) as Letter;
+    expect(ready.placement).toBeNull();
+    expect(
+      await actions().issueFile(...as(secretariat))({ id, version: ready.version }),
+    ).toMatchObject({ ok: false, error: "refused" });
+    expect(((await letters().get(id)) as Letter).status).toBe("awaiting_file");
+  });
+
   it("a file replaced after stamping is never issued unseen; a changed file is refused", async () => {
     const { id, version } = await numbered();
     await send(id, version, await pdfWith(SOP));

@@ -159,6 +159,18 @@ describe("Letters page model", () => {
     );
     expect(
       letterActions(item({ status: "awaiting_file", upload: file }), { ...none, issue: true }, "s"),
+    ).toEqual([]);
+    const placement = {
+      qr: { page: 1, xMm: 175, yMm: 255, sizeMm: 22 },
+      secretary: { page: 1, xMm: 130, yMm: 230 },
+      coordinator: null,
+    };
+    expect(
+      letterActions(
+        item({ status: "awaiting_file", upload: file, placement }),
+        { ...none, issue: true },
+        "s",
+      ),
     ).toEqual(["issueFile"]);
     expect(
       letterActions(

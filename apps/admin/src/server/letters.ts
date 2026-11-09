@@ -304,6 +304,11 @@ export function createLetterActions(deps: LetterDeps) {
       if (!letter?.upload || letter.version !== version) {
         throw new RuleViolationError("Upload the final PDF first (or reload the page).");
       }
+      if (!letter.placement?.qr) {
+        throw new RuleViolationError(
+          "Save the QR and signature positions first, then check the preview.",
+        );
+      }
       const stampedFrom = letter.upload.sha256;
       const archive = await deps.files.saveFile(letter, await deps.files.stampUpload(letter));
       const now = deps.now();
