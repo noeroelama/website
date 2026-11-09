@@ -1,3 +1,7 @@
+const RELATIVE_BASE = "https://relative.invalid";
+// eslint-disable-next-line no-control-regex -- matching control characters is the purpose
+const UNSAFE_IN_PATH = /[\u0000-\u001F\u007F\\]/;
+
 export function safeReturnUrl(
   value: string | null | undefined,
   allowedOrigins: readonly string[],
@@ -5,7 +9,8 @@ export function safeReturnUrl(
   if (!value || value.length > 2048) return null;
 
   if (value.startsWith("/")) {
-    return value.startsWith("//") || value.startsWith("/\\") ? null : value;
+    if (UNSAFE_IN_PATH.test(value)) return null;
+    return new URL(value, RELATIVE_BASE).origin === RELATIVE_BASE ? value : null;
   }
 
   let url: URL;
