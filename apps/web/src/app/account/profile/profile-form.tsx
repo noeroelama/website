@@ -55,7 +55,9 @@ function toInput(f: Flat): Record<string, unknown> {
   };
 }
 
-function fromValues(v: ProfileFormValues | null): Flat {
+type StoredValues = { [K in keyof ProfileFormValues]?: ProfileFormValues[K] | null };
+
+function fromValues(v: StoredValues | null): Flat {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return {
     fullName: v?.fullName ?? "",
@@ -65,26 +67,26 @@ function fromValues(v: ProfileFormValues | null): Flat {
     university: v?.university ?? "",
     universityId: v?.universityId ?? "",
     educationLevel: v?.educationLevel ?? "",
-    major1: v?.majors[0] ?? "",
-    major2: v?.majors[1] ?? "",
-    major3: v?.majors[2] ?? "",
-    yearOfEntry: v ? String(v.yearOfEntry) : "",
-    estimatedGraduationYear: v ? String(v.estimatedGraduationYear) : "",
-    "abroad.line1": v?.addressAbroad.line1 ?? "",
-    "abroad.line2": v?.addressAbroad.line2 ?? "",
-    "abroad.city": v?.addressAbroad.city ?? "",
-    "abroad.stateOrProvince": v?.addressAbroad.stateOrProvince ?? "",
-    "abroad.postalCode": v?.addressAbroad.postalCode ?? "",
-    "abroad.countryCode": v?.addressAbroad.countryCode ?? "",
-    "id.line1": v?.addressIndonesia.line1 ?? "",
-    "id.line2": v?.addressIndonesia.line2 ?? "",
-    "id.city": v?.addressIndonesia.city ?? "",
-    "id.province": v?.addressIndonesia.province ?? "",
-    "id.postalCode": v?.addressIndonesia.postalCode ?? "",
+    major1: v?.majors?.[0] ?? "",
+    major2: v?.majors?.[1] ?? "",
+    major3: v?.majors?.[2] ?? "",
+    yearOfEntry: v?.yearOfEntry ? String(v.yearOfEntry) : "",
+    estimatedGraduationYear: v?.estimatedGraduationYear ? String(v.estimatedGraduationYear) : "",
+    "abroad.line1": v?.addressAbroad?.line1 ?? "",
+    "abroad.line2": v?.addressAbroad?.line2 ?? "",
+    "abroad.city": v?.addressAbroad?.city ?? "",
+    "abroad.stateOrProvince": v?.addressAbroad?.stateOrProvince ?? "",
+    "abroad.postalCode": v?.addressAbroad?.postalCode ?? "",
+    "abroad.countryCode": v?.addressAbroad?.countryCode ?? "",
+    "id.line1": v?.addressIndonesia?.line1 ?? "",
+    "id.line2": v?.addressIndonesia?.line2 ?? "",
+    "id.city": v?.addressIndonesia?.city ?? "",
+    "id.province": v?.addressIndonesia?.province ?? "",
+    "id.postalCode": v?.addressIndonesia?.postalCode ?? "",
     whatsappNumber: v?.whatsappNumber ?? "",
-    "emergency.phone": v?.emergencyContact.phone ?? "",
-    "emergency.name": v?.emergencyContact.name ?? "",
-    "emergency.relationship": v?.emergencyContact.relationship ?? "",
+    "emergency.phone": v?.emergencyContact?.phone ?? "",
+    "emergency.name": v?.emergencyContact?.name ?? "",
+    "emergency.relationship": v?.emergencyContact?.relationship ?? "",
     timezone: v?.timezone ?? zone,
   };
 }
