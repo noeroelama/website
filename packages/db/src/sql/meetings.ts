@@ -173,12 +173,8 @@ export function createSqlMeetingStore(db: Database) {
         if (current.deletedAt) throw new RuleViolationError("This meeting does not exist.");
         const next = step(current);
         if (next === current) return current;
-        tx.update(ref, {
-          attendance: next.attendance,
-          version: current.version + 1,
-          updatedAt: now,
-        });
-        return { ...next, version: current.version + 1, updatedAt: now };
+        tx.update(ref, { attendance: next.attendance, updatedAt: now });
+        return { ...next, version: current.version, updatedAt: now };
       });
     },
   };
