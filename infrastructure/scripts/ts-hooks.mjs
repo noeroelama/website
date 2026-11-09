@@ -6,7 +6,9 @@ export async function resolve(specifier, context, next) {
     for (const suffix of [".ts", "/index.ts"]) {
       try {
         return await next(specifier + suffix, context);
-      } catch {}
+      } catch {
+        // try the next suffix
+      }
     }
     throw error;
   }
