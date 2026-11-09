@@ -7,7 +7,7 @@ import { parseArgs } from "node:util";
 import { parseTsv } from "../../packages/db/src/ppidk/people.ts";
 import { mapPpidkPrograms, PPIDK_PROGRAM_TABLES } from "../../packages/db/src/ppidk/programs.ts";
 import { getDatabase } from "../../packages/db/src/sql/store.ts";
-import { createDiskFileStorage } from "../../packages/db/src/sql/storage.ts";
+import { createDbFileStorage } from "../../packages/db/src/sql/storage.ts";
 
 const { values } = parseArgs({
   options: {
@@ -28,7 +28,6 @@ const required = [
   "FIREBASE_CLIENT_EMAIL",
   "FIREBASE_PRIVATE_KEY",
 ];
-if (values.files) required.push("FILE_STORAGE_DIR");
 const missing = required.filter((name) => !process.env[name]);
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
@@ -98,8 +97,8 @@ if (!values.apply) {
 }
 
 if (plan.files.length > 0) {
-  const storage = createDiskFileStorage({
-    root: process.env.FILE_STORAGE_DIR,
+  const storage = createDbFileStorage({
+    db,
     baseUrl: "",
     secret: undefined,
   });
