@@ -228,7 +228,7 @@ file (they live in the cPanel app screens and the password manager).
 - [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, see
       `packages/auth/docs/authentication.md` → Account lifecycle).
 - [ ] People and the organisation imported from PPIDK once (block J): freeze the PPIDK people
-      screens, export the tables as TSV, set "Roles from appointments", then
+      screens, export the tables as TSV, set "Roles from appointments" (Role Manager → Edit Role), then
       `infrastructure/scripts/import-ppidk-people.mjs --dir <folder>` (dry run, read
       `import-report.json`, then `--apply`; see `packages/domain/docs/members.md` → Import from
       PPIDK). Spot-check 10 people; re-grant the manual roles the report lists.

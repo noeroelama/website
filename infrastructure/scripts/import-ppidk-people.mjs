@@ -48,7 +48,7 @@ const tables = Object.fromEntries(
 const roleMap = (await db.collection("settings").doc("appointmentRoles").get()).get("map");
 if (!roleMap) {
   console.error(
-    "Set the appointment roles first (admin Structure page → Roles from appointments).",
+    "Set the appointment roles first (admin Role Manager → Edit Role → Roles from appointments).",
   );
   process.exit(1);
 }

@@ -9,8 +9,12 @@ export const instant = false;
 export default async function RoleManagerEditPage() {
   const viewer = await requireAdminViewer("/roles/edit", "roles.read");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
+  const canEdit = can(viewer.principal, "roles.edit");
   const roles = await adminReads.listRoles();
-  const holders = await adminReads.countHolders(roles.map((r) => r.id));
+  const [holders, roleMap] = await Promise.all([
+    adminReads.countHolders(roles.map((r) => r.id)),
+    canEdit ? adminReads.getAppointmentRoleMap() : null,
+  ]);
 
   return (
     <RoleManagerRoles
@@ -23,9 +27,10 @@ export default async function RoleManagerEditPage() {
         holders: holders.get(role.id) ?? 0,
         builtIn: isSystemRoleId(role.id),
       }))}
-      canEdit={can(viewer.principal, "roles.edit")}
+      canEdit={canEdit}
       canSeePeople={can(viewer.principal, "users.read")}
       reauthUrl={signInAgainUrl("/roles/edit")}
+      roleMap={roleMap}
     />
   );
 }
