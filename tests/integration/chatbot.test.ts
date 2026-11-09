@@ -18,6 +18,7 @@ type Db = Parameters<typeof createSqlConversationStore>[0];
 let clock = new Date("2026-11-05T05:00:00Z");
 let fake: ReturnType<typeof fakeDb>;
 let accounts: string[];
+let existingEmails: Set<string>;
 let openList: Array<{ id: string; title: string }>;
 let errors: string[];
 let matcher: ((typed: string, names: readonly string[]) => Promise<number | null>) | null;
@@ -44,7 +45,11 @@ const bot = () =>
     matchCampus: matcher,
     ensureAccount: (email, name) => {
       accounts.push(`${email}:${name}`);
-      return Promise.resolve("uid-new");
+      return Promise.resolve(
+        existingEmails.has(email)
+          ? { uid: "uid-existing", created: false }
+          : { uid: "uid-new", created: true },
+      );
     },
     recordUser: (uid, email) => {
       accounts.push(`record:${uid}:${email}`);
@@ -59,6 +64,7 @@ const bot = () =>
 beforeEach(() => {
   fake = fakeDb();
   accounts = [];
+  existingEmails = new Set();
   openList = [{ id: "rec1", title: "Oprec Pengurus 2026" }];
   errors = [];
   matcher = null;
@@ -108,6 +114,20 @@ describe("WhatsApp chatbot (C4)", () => {
     expect(replies[12]).toContain("Akun dibuat untuk rina@example.org");
     expect(accounts).toEqual(["rina@example.org:Rina Putri", "record:uid-new:rina@example.org"]);
     expect(fake.docs.has("whatsappConversations/h6281234567890")).toBe(false);
+  });
+
+  it("never rewrites an existing account's directory entry from an unverified chat", async () => {
+    existingEmails.add("admin@example.org");
+    await say("daftar", "Mallory", "admin@example.org", "1", "tokyo", "1", "ya");
+    expect(accounts).toEqual(["admin@example.org:Mallory"]);
+  });
+
+  it("refuses names with markup and strips invisible characters", async () => {
+    const replies = await say("daftar", "<b>X</b>", "Ri​na‮ Putri");
+    expect(replies[1]).toContain("Ketik nama");
+    expect(replies[2]).toContain("e-mail");
+    await say("rina@example.org", "1", "tokyo", "1", "ya");
+    expect(accounts[0]).toBe("rina@example.org:Rina Putri");
   });
 
   it("the machine matcher helps only when the deterministic search finds nothing", async () => {
