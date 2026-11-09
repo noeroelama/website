@@ -97,9 +97,13 @@ for (const person of plan.people) {
   });
 }
 
+const keepsStoredData = (write) =>
+  write.mode === "user" || write.path.startsWith("memberProfiles/");
+let skippedProfiles = 0;
+
 for (let i = 0; i < plan.writes.length; i += 400) {
   const chunk = plan.writes.slice(i, i + 400);
-  const accounts = chunk.filter((w) => w.mode === "user").map((w) => db.doc(w.path));
+  const accounts = chunk.filter(keepsStoredData).map((w) => db.doc(w.path));
   const stored = new Map(
     accounts.length > 0 ? (await db.getAll(...accounts)).map((s) => [s.ref.path, s]) : [],
   );
@@ -116,14 +120,19 @@ for (let i = 0; i < plan.writes.length; i += 400) {
       batch.update(db.doc(write.path), {
         roleAssignments: merged,
         roleIds: [...new Set(merged.map((a) => a.roleId))],
-        chapterId: write.data.chapterId,
+        chapterId: current.get("chapterId") ?? write.data.chapterId,
         version: (current.get("version") ?? 0) + 1,
       });
+    } else if (current?.exists) {
+      skippedProfiles++;
     } else {
       batch.set(db.doc(write.path), write.data);
     }
   }
   await batch.commit();
 }
-console.log(`Done: ${plan.writes.length} documents written.`);
+console.log(
+  `Done: ${plan.writes.length - skippedProfiles} documents written, ` +
+    `${skippedProfiles} existing member profiles kept.`,
+);
 await db.close();
