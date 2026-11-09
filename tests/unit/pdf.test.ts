@@ -121,6 +121,8 @@ describe("text layout", () => {
       ["b", true],
     ]);
     expect(wrapRuns(plain(""), fonts, 12, 200)).toEqual([{ pieces: [], width: 0, last: true }]);
+    const narrow = wrapRuns(plain("abc"), fonts, 12, 2);
+    expect(narrow.map((l) => l.pieces.map((p) => p.text).join(""))).toEqual(["a", "b", "c"]);
     const endBreak = wrapRuns(
       [...plain("a"), { text: "\n", bold: false, italic: false, underline: false }],
       fonts,
@@ -207,6 +209,13 @@ describe("letter PDF", () => {
     });
     expect(await pages(draft)).toBeGreaterThan(1);
     expect((await PDFDocument.load(draft)).getTitle()).toBe("Undangan Rapat Kerja");
+  });
+
+  it("renders deeply nested lists without running out of line width", async () => {
+    const depth = 40;
+    const bodyHtml = "<ul><li>".repeat(depth) + "nested item" + "</li></ul>".repeat(depth);
+    const bytes = await renderLetterPdf({ ...base, bodyHtml });
+    expect(await pages(bytes)).toBeGreaterThanOrEqual(1);
   });
 
   it("uses letterhead art on every page, signature images and the cancelled stamp", async () => {
