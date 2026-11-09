@@ -62,7 +62,9 @@ draft ─→ review ─→ corrected ─→ desks ─→ approved ─→ issued 
 - **Letter types** (`letter_types.edit`, `/letters?tab=types`): name, code (unique case-insensitively,
   trimmed), number pattern (checked, with a live example), digits of `{nomor}`, Coordinator desk,
   recipient, whether the verification page shows the content to anyone, in use, order.
-  Deactivated, never deleted. Give the permissions in the Role Manager, as in PPIDK: the
+  Deactivated, never deleted. The code is fixed once a letter of the type has been numbered: it
+  is part of every `contentDigest`, so changing it would make the public verification report
+  those letters as altered. Give the permissions in the Role Manager, as in PPIDK: the
   Secretary-General's role every desk but the Coordinator's plus letter types and incoming
   letters; the Coordinator's role `sign_coordinator` and `cancel`; directors and directorate
   secretaries `letters.edit` (scoped to their unit by the appointment).

@@ -742,6 +742,26 @@ describe("upload path (D3)", () => {
     ).toMatchObject({ error: "refused" });
   });
 
+  it("keeps the code of a type once letters are numbered with it", async () => {
+    const { id } = await numbered();
+    const letter = (await letters().get(id)) as Letter;
+    const type = await createSqlLetterTypeStore(db()).get(letter.typeId);
+    if (!type) throw new Error("no type");
+    const base = {
+      name: "Surat Undangan Resmi",
+      numberFormat: type.numberFormat,
+      id: type.id,
+      version: type.version,
+    };
+    expect(await actions().saveType(...as(secretariat))({ ...base, code: "SUX" })).toMatchObject({
+      ok: false,
+      error: "refused",
+    });
+    expect(
+      await actions().saveType(...as(secretariat))({ ...base, code: type.code }),
+    ).toMatchObject({ ok: true });
+  });
+
   it("an upload is not issued before the stamp positions are saved", async () => {
     const { id, version } = await numbered();
     await send(id, version, await pdfWith(SOP));
