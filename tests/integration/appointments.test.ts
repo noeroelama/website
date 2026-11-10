@@ -245,6 +245,18 @@ describe("appointments → roles (B7)", () => {
 
   it("refuses self-appointment, escalation, a missing second factor, other periods and duplicates", async () => {
     await actions.saveRoleMap(...as("boss"))({ map: SUGGESTED_APPOINTMENT_ROLES, version: null });
+    const map = fake.docs.get("settings/appointmentRoles") as { version: number };
+    expect(
+      await actions.saveRoleMap(...as("boss"))({
+        map: SUGGESTED_APPOINTMENT_ROLES,
+        version: map.version,
+      }),
+    ).toMatchObject({ ok: true });
+    expect(
+      [...fake.docs.values()].filter(
+        (d) => d["resourceType"] === "appointmentRoles" && d["action"] === "UPDATE",
+      ),
+    ).toHaveLength(1);
     const refused = async (uid: string, input: ReturnType<typeof appointInput>, text: string) =>
       expect(await actions.appoint(...as(uid))(input)).toMatchObject({
         error: "refused",
@@ -261,6 +273,7 @@ describe("appointments → roles (B7)", () => {
     await refused("boss", appointInput("ana@example.org", "media", "head"), "already");
     fake.docs.delete("roles/director");
     await refused("boss", appointInput("rio@example.org", "media", "head"), "director");
+    await refused("boss", appointInput("rio@example.org", "ghost-unit", "member"), "unit");
   });
 
   it("ending an appointment revokes exactly the roles it created and ends the sessions", async () => {

@@ -294,6 +294,13 @@ describe("can()", () => {
     expect(() => requirePermission(principal([{ roleId: "viewer" }]), "articles.publish")).toThrow(
       /Missing permission/,
     );
+    expect(() => requirePermission(null, "articles.publish")).toThrow("Authentication required");
+    expect(() =>
+      requirePermission({ ...principal([{ roleId: "viewer" }]), active: false }, "articles.read"),
+    ).toThrow("Authentication required");
+    expect(() =>
+      requirePermission(principal([{ roleId: "viewer" }]), "articles.read"),
+    ).not.toThrow();
   });
 
   it("canAccessAdmin needs at least one admin-page permission", () => {

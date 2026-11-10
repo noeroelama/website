@@ -26,6 +26,7 @@ export default defineConfig({
         "apps/*/src/server/request-guard.ts",
         "apps/gateway/src/middleware/request-guard.ts",
         "apps/admin/src/server/guarded-action.ts",
+        "packages/permissions/src/policy.ts",
         "apps/admin/src/server/accounts.ts",
         "apps/admin/src/server/roles.ts",
         "apps/admin/src/server/images.ts",
