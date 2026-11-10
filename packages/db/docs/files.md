@@ -13,7 +13,7 @@ wide thumbnail for tables and card grids.
 | Part                                     | File                                                                                                 |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Rules: types, 5 MB, magic bytes, presets | `packages/domain/src/shared/images.ts`                                                               |
-| Disk storage adapter (cPanel)            | `packages/db/src/sql/storage.ts` (`createDiskFileStorage`)                                           |
+| Storage adapter (MySQL `files`)          | `packages/db/src/sql/storage.ts` (`createDbFileStorage`)                                             |
 | Serving: `/files/…`, `/private-files?t=` | `apps/web/src/server/files.ts` (`createFileRoutes`)                                                  |
 | Server pipeline + route logic (sharp)    | `apps/admin/src/server/images.ts` (`createImageUploads`)                                             |
 | Route                                    | `apps/admin/src/app/api/uploads/[preset]/route.ts`                                                   |
@@ -54,7 +54,7 @@ const { upload, busy, error } = useImageUpload("banner");
   broken files → 400 "File type not supported"). Signatures are uploaded on web later.
 - Browser: `checkImageFile` first (nothing is uploaded when it fails), then the native canvas
   shrinks the image to WebP (no library); the server re-encodes anyway.
-- Web and admin keep files in the MySQL `files` collection (`createDbFileStorage`, id `public/<path>` or `private/<path>`, bytes as base64), so no folder or `FILE_STORAGE_DIR` is needed. `createDiskFileStorage` (folder `FILE_STORAGE_DIR`, `public/<path>` and `private/<path>`) is still used by the ops scripts.
+- Web and admin keep files in the MySQL `files` collection (`createDbFileStorage`, id `public/<path>` or `private/<path>`, bytes as base64), so no folder or `FILE_STORAGE_DIR` is needed. The ops scripts that copy or import files (`copy-firestore-to-mysql.mjs --files`, `import-ppidk-{documents,programs,recruitment}.mjs --files`) write through the same adapter, so what they copy is served immediately. `createDiskFileStorage` (folder `public/<path>` and `private/<path>`) is kept for tests and a possible return to disk storage; nothing in production uses it.
   Paths are checked (`checkFilePath`: plain names only, no `..`, no absolute paths).
 - Storage names: `<folder>/<preset>_<timestamp>_<uuid8>.webp` and `…_thumb.webp`, never
   overwritten. Public presets get the URL `<WEB_URL>/files/<path>`, served by web with

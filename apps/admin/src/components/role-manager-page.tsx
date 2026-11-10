@@ -24,8 +24,10 @@ import {
   saveRoleAction,
   setStatusAction,
 } from "@/app/(panel)/roles/actions";
+import type { AppointmentRoleMap } from "@website/domain/organizations";
 import { ActionError } from "@/components/action-error";
 import { actionMessage, type ActionFailure } from "@/components/action-message";
+import { RoleMapModal } from "@/components/appointment-forms";
 import { downloadCsv } from "@/components/csv";
 import { peopleCsv } from "@/components/exports-model";
 import { formatUtc } from "@/components/format";
@@ -802,11 +804,13 @@ export function RoleManagerRoles({
   canEdit,
   canSeePeople,
   reauthUrl,
+  roleMap,
 }: {
   roles: RoleRow[];
   canEdit: boolean;
   canSeePeople: boolean;
   reauthUrl: string | null;
+  roleMap: { map: AppointmentRoleMap; version: number } | null;
 }) {
   const router = useRouter();
   const toast = useToastMessage();
@@ -814,6 +818,7 @@ export function RoleManagerRoles({
   const [searchKey, setSearchKey] = useState(0);
   const [editing, setEditing] = useState<RoleRow | "new" | null>(null);
   const [deleting, setDeleting] = useState<RoleRow | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -918,6 +923,11 @@ export function RoleManagerRoles({
                 Add New Role
               </Button>
             ) : null}
+            {canEdit ? (
+              <Button variant="outline" size="sm" icon="edit" onClick={() => setMapOpen(true)}>
+                {roleMap ? "Roles from appointments" : "Set roles from appointments"}
+              </Button>
+            ) : null}
           </div>
           <SortMenu columns={columns} />
           <SearchBox
@@ -960,6 +970,19 @@ export function RoleManagerRoles({
           onClose={() => setEditing(null)}
           onDone={(text) => {
             setEditing(null);
+            toast.show(text);
+          }}
+        />
+      ) : null}
+      {mapOpen ? (
+        <RoleMapModal
+          open
+          current={roleMap}
+          roles={roles.filter((r) => !r.builtIn).map((r) => ({ id: r.id, name: r.name }))}
+          onClose={() => setMapOpen(false)}
+          onDone={(text) => {
+            setMapOpen(false);
+            router.refresh();
             toast.show(text);
           }}
         />

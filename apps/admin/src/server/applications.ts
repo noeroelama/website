@@ -142,7 +142,7 @@ export function createApplicationActions(deps: ApplicationDeps) {
         ]);
         if (!stored) {
           throw new RuleViolationError(
-            "Set the appointment roles first (Roles from appointments).",
+            "Set the appointment roles first (Role Manager → Edit Role → Roles from appointments).",
           );
         }
         if (!unit) throw new RuleViolationError("This unit does not exist.");
