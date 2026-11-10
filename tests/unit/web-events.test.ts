@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PublicEvent } from "@website/domain/events";
+import { formatEventTimeRange } from "../../apps/web/src/lib/event-time";
 import {
   albumQuery,
   type EventQuery,
@@ -170,5 +171,14 @@ describe("gallery period", () => {
   it("an empty period (the 'any date range' option) filters nothing", () => {
     expect(albumQuery({ time: "", q: "kongres" }).time).toBeNull();
     expect(albumQuery({ time: "year" }).time).toBe("year");
+  });
+});
+
+describe("event time on the event page", () => {
+  it("names the time zone the times are shown in", () => {
+    const start = new Date("2026-11-20T10:00:00Z");
+    const end = new Date("2026-11-20T12:00:00Z");
+    expect(formatEventTimeRange(start, end, "Asia/Tokyo")).toBe("7:00 PM - 9:00 PM (GMT+9)");
+    expect(formatEventTimeRange(start, null, "Asia/Jakarta")).toBe("5:00 PM (GMT+7)");
   });
 });

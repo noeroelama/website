@@ -42,5 +42,10 @@ export function formatEventTimeRange(
       minute: "2-digit",
       hour12: true,
     }).format(date);
-  return endsAt ? `${time(startsAt)} - ${time(endsAt)}` : time(startsAt);
+  const zone =
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" })
+      .formatToParts(startsAt)
+      .find((part) => part.type === "timeZoneName")?.value ?? timeZone;
+  const range = endsAt ? `${time(startsAt)} - ${time(endsAt)}` : time(startsAt);
+  return `${range} (${zone})`;
 }
