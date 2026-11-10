@@ -23,7 +23,7 @@ import {
   type Program,
   type ProgramStatus,
 } from "@website/domain/programs";
-import { toMinor, type Money } from "@website/domain/shared";
+import { decimalToMinor, type Money } from "@website/domain/shared";
 import type { PpidkFileInfo } from "./documents";
 import type { PlannedWrite, TsvRow } from "./people";
 import type { PlannedFile } from "./recruitment";
@@ -120,7 +120,7 @@ const json = <T>(value: string | null | undefined, fallback: T): T => {
 };
 const minorOf = (value: string, currency: string): number | null =>
   /^[A-Z]{3}$/.test(currency)
-    ? toMinor(value.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, ""), currency)
+    ? decimalToMinor(value.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, ""), currency)
     : null;
 
 export function mapPpidkPrograms(
