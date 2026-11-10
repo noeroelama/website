@@ -110,6 +110,12 @@ export function RichTextStack({
   const [dragSource, setDragSource] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [focus, setFocus] = useState<{ id: string; command?: string | undefined } | null>(null);
+  // An image upload finishes after other blocks may have changed; its text change must apply to
+  // the blocks as they are then, not as they were when the upload started.
+  const latest = useRef(blocks);
+  useEffect(() => {
+    latest.current = blocks;
+  }, [blocks]);
   const endDrag = () => {
     setDragSource(null);
     setDragOver(null);
@@ -136,7 +142,11 @@ export function RichTextStack({
           onFocused={() => setFocus(null)}
           uploadImage={uploadImage}
           onChange={(text) => {
-            if (text !== block.text) onChange(blocks.map((b, j) => (j === i ? { ...b, text } : b)));
+            const current = latest.current;
+            if (current.find((b) => b.id === block.id)?.text === text) return;
+            const next = current.map((b) => (b.id === block.id ? { ...b, text } : b));
+            latest.current = next;
+            onChange(next);
           }}
           onAdd={(kind) => {
             const added = newBlock(kind.html);
