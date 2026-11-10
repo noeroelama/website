@@ -236,8 +236,10 @@ describe("appointments → roles (B7)", () => {
       { module: "users", action: "UPDATE", resourceId: "ana", revertible: false },
     ]);
     expect((await appointments.listForPeriod("p2026")).map((a) => a.id)).toEqual([id]);
+    expect((await appointments.activeForUser("ana")).map((a) => a.id)).toEqual([id]);
 
     fake.docs.set("settings/activePeriod", { periodId: "p2027" });
+    expect(await appointments.activeForUser("ana")).toEqual([]);
     expect(can(await principalOf("ana"), "events.edit", { orgUnitPath: ["koor", "media"] })).toBe(
       false,
     );

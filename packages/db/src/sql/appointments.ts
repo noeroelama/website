@@ -178,10 +178,16 @@ export function createSqlAppointmentStore(db: Database) {
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
     },
 
+    /** The user's active appointments in the active period, oldest first. */
     async activeForUser(uid: string): Promise<Appointment[]> {
-      const snapshot = await docs.where("userId", "==", uid).where("status", "==", "active").get();
+      const [active, snapshot] = await Promise.all([
+        settings.doc("activePeriod").get(),
+        docs.where("userId", "==", uid).where("status", "==", "active").get(),
+      ]);
+      const periodId = active.get("periodId") as string | undefined;
       return snapshot.docs
         .map((doc) => toAppointment(doc.id, doc.data()))
+        .filter((a) => a.periodId === periodId)
         .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
     },
 
