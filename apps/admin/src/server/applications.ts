@@ -10,6 +10,7 @@ import type {
 import { derivedAssignments, type OrgUnit } from "@website/domain/organizations";
 import type { FileAnswer } from "@website/domain/forms";
 import {
+  isRecruitmentOpen,
   makeOffer,
   PactNoteSchema,
   RevisionRequestSchema,
@@ -95,8 +96,15 @@ export function createApplicationActions(deps: ApplicationDeps) {
     requestRevision: decision(
       "recruitment.review",
       Ref.extend({ request: RevisionRequestSchema }).strict(),
-      ({ request }, userId) =>
-        () => ({ status: "revision", revision: { request, requestedBy: userId } }),
+      ({ request }, userId, now) =>
+        (_application, recruitment) => {
+          if (!isRecruitmentOpen(recruitment, now)) {
+            throw new RuleViolationError(
+              "The application window has closed, so the applicant could not send a revision.",
+            );
+          }
+          return { status: "revision", revision: { request, requestedBy: userId } };
+        },
     ),
     fail: decision("recruitment.review", Ref, to("admin_rejected")),
     pass: decision("recruitment.review", Ref, to("interview")),

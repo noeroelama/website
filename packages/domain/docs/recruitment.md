@@ -56,7 +56,9 @@ const action = nextAction(recruitment, ownApplication, new Date()); // "start" |
   with a draft is ignored, so no path can point at another applicant's file.
 - **Selection** (admin `/recruitment/{id}/applications`, tabs per step; `src/server/applications.ts`):
   `recruitment.review` requests a revision (a new round `applicationRevisions/{appId}_{n}` with
-  the request; rounds are never overwritten, a resubmission sets `resubmittedAt`), fails
+  the request; rounds are never overwritten, a resubmission sets `resubmittedAt`; only while the
+  application window is open, because the applicant can only resubmit then; a revision left
+  open when the window closes can still be failed), fails
   (`admin_rejected`), passes (`interview`) and rejects; `recruitment.offer` offers one unit of the
   recruitment, valid `offerDays` (a full unit cannot be offered). Each decision is one
   transaction with its audit entry. The queue page needs review, offer or confirm.

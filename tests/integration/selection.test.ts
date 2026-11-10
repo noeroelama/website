@@ -188,6 +188,28 @@ describe("review (recruitment.review): revision rounds, fail, pass", () => {
     ]);
   });
 
+  it("no revision after the window closes; a stuck revision can still be closed", async () => {
+    await submitted("ari");
+    await submitted("budi");
+    await decisions().requestRevision(...as(reviewer))({
+      id: appId("budi"),
+      version: version("budi"),
+      request: "Add your experience.",
+    });
+    clock = new Date("2026-11-25T00:00:00Z");
+    expect(
+      await decisions().requestRevision(...as(reviewer))({
+        id: appId("ari"),
+        version: version("ari"),
+        request: "Too late.",
+      }),
+    ).toMatchObject({ ok: false, error: "refused" });
+    expect(status("ari")).toBe("submitted");
+    expect(
+      await decisions().fail(...as(reviewer))({ id: appId("budi"), version: version("budi") }),
+    ).toMatchObject({ ok: true, data: { status: "admin_rejected" } });
+  });
+
   it("fails or passes a submitted application; ends cannot move", async () => {
     await submitted("ari");
     await submitted("budi");

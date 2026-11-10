@@ -24,7 +24,7 @@ export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 export const TRANSITIONS: Readonly<Record<ApplicationStatus, readonly ApplicationStatus[]>> = {
   draft: ["submitted", "withdrawn"],
   submitted: ["revision", "admin_rejected", "interview", "withdrawn"],
-  revision: ["submitted", "withdrawn"],
+  revision: ["submitted", "admin_rejected", "withdrawn"],
   admin_rejected: [],
   interview: ["offered", "rejected", "withdrawn"],
   offered: ["accepted", "declined", "offered", "rejected"],
