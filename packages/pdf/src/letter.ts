@@ -52,6 +52,7 @@ export interface LetterPdfInput {
 }
 
 const SIDE = 22 * MM;
+const MAX_LIST_INDENT_DEPTH = 6;
 const BREATH = 8 * MM;
 
 const embedImage = (doc: PDFDocument, image: PdfImage): Promise<PDFImage> =>
@@ -62,6 +63,19 @@ const embed = (doc: PDFDocument, image: PdfImage | null) =>
 
 export const tryEmbed = (doc: PDFDocument, image: PdfImage): Promise<PDFImage | null> =>
   embedImage(doc, image).catch(() => null);
+
+/** Height of the box a turned image takes when drawn by drawTurned. */
+export function turnedHeight(
+  image: Pick<PDFImage, "width" | "height">,
+  at: { width: number; max: number; rotation: number },
+): number {
+  const a = (-at.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(a));
+  const sin = Math.abs(Math.sin(a));
+  const ratio = image.height / image.width;
+  const w = Math.min(at.width, at.max / (cos + ratio * sin));
+  return w * sin + w * ratio * cos;
+}
 
 export function drawTurned(
   page: Pick<PDFPage, "drawImage">,
@@ -226,7 +240,7 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
         { size: block.level <= 2 ? 13 : 12, align: block.align },
       );
     } else if (block.kind === "item") {
-      const indent = 18 * (block.depth + 1);
+      const indent = 18 * (Math.min(block.depth, MAX_LIST_INDENT_DEPTH) + 1);
       flow.ensure(18);
       if (block.marker)
         flow.page.drawText(block.marker, {
@@ -250,8 +264,28 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
   }
 
   flow.gap(26);
-  flow.ensure(120);
   const column = flow.width * 0.46;
+  const images = await Promise.all(
+    input.desks.map((desk) =>
+      desk.signedOn && desk.signature ? tryEmbed(doc, desk.signature.image) : Promise.resolve(null),
+    ),
+  );
+  // The whole block must fit on one page: the desks share one top, so a break inside one desk
+  // would put the next desk on the wrong page.
+  const tallest = Math.max(
+    0,
+    ...input.desks.map((desk, i) => {
+      const image = images[i];
+      return image && desk.signature
+        ? turnedHeight(image, {
+            width: desk.signature.widthMm * MM,
+            max: column,
+            rotation: desk.signature.rotation,
+          }) + 13
+        : 36;
+    }),
+  );
+  flow.ensure(Math.max(120, tallest + 90));
   const columns =
     input.desks.length > 1 ? [SIDE, A4.width - SIDE - column] : [A4.width - SIDE - column];
   const deskTop = flow.y;
@@ -261,8 +295,7 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
     const x = columns[i] as number;
     flow.text(plain(desk.label), { x, width: column });
     flow.gap(5);
-    const image =
-      desk.signedOn && desk.signature ? await tryEmbed(doc, desk.signature.image) : null;
+    const image = images[i] ?? null;
     if (desk.signedOn && desk.signature && image) {
       const h = drawTurned(flow.page, image, {
         x,

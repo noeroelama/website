@@ -37,6 +37,17 @@ export const TRANSITIONS: Readonly<Record<ApplicationStatus, readonly Applicatio
   withdrawn: [],
 };
 
+/** Statuses that keep a seat of the offered unit taken (counted in its seat counter). */
+export const SEAT_HOLDING_STATUSES: readonly ApplicationStatus[] = [
+  "accepted",
+  "approved",
+  "pakta_review",
+  "confirmed",
+];
+
+export const holdsSeat = (status: ApplicationStatus): boolean =>
+  SEAT_HOLDING_STATUSES.includes(status);
+
 export function canTransition(from: ApplicationStatus, to: ApplicationStatus): boolean {
   return TRANSITIONS[from].includes(to);
 }

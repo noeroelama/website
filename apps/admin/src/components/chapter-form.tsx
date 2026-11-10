@@ -11,6 +11,7 @@ import {
 import { saveChapterAction, setChapterActiveAction } from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
 import { publicImage, useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
@@ -380,7 +381,7 @@ export function ChapterForm(props: {
               disabled={logo.busy || props.contactOnly}
               onClick={() => logoInput.current?.click()}
             >
-              {logo.busy ? "Uploading…" : form.logo ? "Replace logo" : "Upload logo"}
+              {form.logo ? "Replace logo" : "Upload logo"}
             </Button>
             {form.logo && !props.contactOnly && (
               <Button variant="ghost" size="sm" onClick={() => set("logo", null)}>
@@ -403,6 +404,7 @@ export function ChapterForm(props: {
               });
             }}
           />
+          <UploadBar upload={logo} />
           <FieldError id="chapter-logo-error" message={logo.error ?? errors["logo"]} />
         </div>
       </div>

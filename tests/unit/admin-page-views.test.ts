@@ -55,7 +55,7 @@ describe("page views chart (Dashboard)", () => {
     const admin = join(import.meta.dirname, "../../apps/admin/src");
     const card = readFileSync(join(admin, "components/page-views-card.tsx"), "utf8");
     expect(card).not.toMatch(/Each public page|No views in this period|<table/);
-    // The chart draws at its real width, so 12 px text stays 12 px on every screen.
+    // The chart draws at its real width, so its text keeps one size on every screen.
     const chart = readFileSync(join(admin, "components/page-views-chart.tsx"), "utf8");
     expect(chart).toMatch(/new ResizeObserver/);
     const css = readFileSync(join(admin, "app/globals.css"), "utf8");
@@ -63,10 +63,15 @@ describe("page views chart (Dashboard)", () => {
       new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`).exec(
         css,
       )?.[1] ?? "";
-    expect(rule(".admin-views__chart text")).toMatch(/font-size:\s*var\(--text-xs\)/);
+    expect(rule(".admin-views__chart text")).toMatch(/font-size:\s*var\(--text-2xs\)/);
     expect(rule(".admin-views__chart")).not.toMatch(/min-width/);
-    // Card titles sit one step below the page title (Dashboard, text-3xl).
-    expect(rule(".admin-dashboard .admin-card__title")).toMatch(/font-size:\s*var\(--text-xl\)/);
+    // Smaller type only in the page views card; other Dashboard cards keep the card title size.
+    expect(css).not.toContain(".admin-dashboard .admin-card__title");
+    expect(rule(".admin-views .admin-card__title")).toMatch(/font-size:\s*var\(--text-lg\)/);
+    expect(rule(".admin-views .admin-combo__trigger")).toMatch(/font-size:\s*var\(--text-xs\)/);
+    expect(css).toMatch(/a\.admin-segmented__item\s*\{[^}]*font-size:\s*var\(--text-xs\)/);
+    expect(rule(".admin-views__tip")).toMatch(/font-size:\s*var\(--text-2xs\)/);
+    expect(rule(".admin-views__foot")).toMatch(/font-size:\s*var\(--text-2xs\)/);
   });
 
   it("shows the date and views of the nearest point on hover, on a dashed guide line", () => {

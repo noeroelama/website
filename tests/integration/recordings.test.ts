@@ -14,6 +14,7 @@ import {
   LATE_FILE_WINDOW_MS,
   MAX_ATTEMPTS,
 } from "../../apps/admin/src/server/recordings";
+import { ZoomApiError } from "../../apps/admin/src/server/zoom-client";
 import { fakeDb } from "../support/fake-db";
 
 type Db = Parameters<typeof createSqlZoomStore>[0];
@@ -52,6 +53,7 @@ function world(
     driveHas?: Record<string, number>;
     zoomFiles?: unknown[] | null;
     failDownload?: boolean;
+    listError?: Error;
   } = {},
 ) {
   const big = CHUNK_BYTES * 2 + 1000;
@@ -89,6 +91,7 @@ function world(
   const client = {
     get: <T>(path: string) => {
       log.push(`GET ${path}`);
+      if (options.listError) return Promise.reject(options.listError);
       return Promise.resolve((zoomFiles === null ? {} : { recording_files: zoomFiles }) as T);
     },
     download: (url: string, range?: { start: number; end: number }) => {
@@ -309,6 +312,19 @@ describe("recording archive job (F3)", () => {
     await store().listSession("s/1==", [{ ...file, status: "pending" }], clock);
     expect((await store().filesForBookings(["b1"]))[0]?.status).toBe("done");
     expect(await store().filesForBookings([])).toEqual([]);
+  });
+
+  it("a session whose recordings are gone is listed empty; other errors do not stop the run", async () => {
+    const errors: string[] = [];
+    const gone = world({ listError: new ZoomApiError(404, "not found") });
+    expect(await archive(gone, errors)()).toEqual({ listed: 1, file: null });
+    expect(errors).toEqual(["recording listing failed"]);
+    expect(await archive(gone, errors)()).toEqual({ listed: 0, file: null });
+
+    await store().addSession("s/2==", "b1", clock);
+    const down = world({ listError: new ZoomApiError(500, "down") });
+    expect(await archive(down, errors)()).toEqual({ listed: 1, file: null });
+    expect(await archive(down, errors)()).toEqual({ listed: 1, file: null });
   });
 
   it("a session of a booking that no longer exists is skipped", async () => {

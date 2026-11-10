@@ -24,9 +24,7 @@ export default async function AdminLettersPage({
   const { principal } = viewer;
   const sections: { key: LetterSection; label: string }[] = [
     { key: "outgoing", label: "Outgoing" },
-    ...(canInSomeScope(principal, "incoming.read")
-      ? [{ key: "incoming" as const, label: "Incoming" }]
-      : []),
+    ...(can(principal, "incoming.read") ? [{ key: "incoming" as const, label: "Incoming" }] : []),
   ];
   const tab = (await searchParams)["tab"];
   const active: LetterSection =

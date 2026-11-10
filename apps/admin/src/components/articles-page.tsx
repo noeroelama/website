@@ -18,6 +18,7 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { formatInZone, formatUtc, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, DELETE_HINT } from "@/components/ui/confirm-dialog";
 import type { Column } from "@/components/ui/data-table";
@@ -144,6 +145,8 @@ function ArticleList({
   const toast = useToastMessage();
   const router = useRouter();
   const uploader = useImageUpload("thumbnail");
+  // Images inside the text: their own upload bar under the editor.
+  const inlineUploader = useImageUpload("thumbnail");
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
 
   const [tab, setTab] = useState<ArticleTab>("all");
@@ -324,7 +327,7 @@ function ArticleList({
     const banner = image ? publicImage(image) : null;
     if (banner) setForm((f) => ({ ...f, banner }));
   };
-  const uploadInlineImage = async (file: File) => (await uploader.upload(file))?.url ?? null;
+  const uploadInlineImage = async (file: File) => (await inlineUploader.upload(file))?.url ?? null;
 
   const errorProps = (field: string, id: string) =>
     fieldErrors[field] ? { "aria-invalid": true, "aria-describedby": `${id}-error` } : {};
@@ -703,9 +706,7 @@ function ArticleList({
                     aria-describedby="article-image-error"
                     onClick={() => bannerInputRef.current?.click()}
                   />
-                  {uploader.busy ? (
-                    <span className="admin-dropzone__title">Uploading…</span>
-                  ) : form.banner ? (
+                  {form.banner ? (
                     <>
                       <img
                         src={form.banner.thumbUrl}
@@ -748,6 +749,7 @@ function ArticleList({
                     e.target.value = "";
                   }}
                 />
+                <UploadBar upload={uploader} />
                 <FieldError
                   id="article-image-error"
                   message={uploader.error ?? fieldErrors["featuredImage"]}
@@ -760,7 +762,11 @@ function ArticleList({
                 uploadImage={uploadInlineImage}
                 label="Article content"
               />
-              <FieldError id="article-body-error" message={fieldErrors["body"]} />
+              <UploadBar upload={inlineUploader} />
+              <FieldError
+                id="article-body-error"
+                message={inlineUploader.error ?? fieldErrors["body"]}
+              />
             </div>
 
             <div className="admin-form-actions">
@@ -787,7 +793,7 @@ function ArticleList({
                   variant="outline"
                   size="sm"
                   icon="cloud"
-                  disabled={busy || uploader.busy}
+                  disabled={busy || uploader.busy || inlineUploader.busy}
                   onClick={() => save("draft")}
                 >
                   Save draft
@@ -798,7 +804,7 @@ function ArticleList({
                     variant="outline"
                     size="sm"
                     icon="globeSimple"
-                    disabled={busy || uploader.busy}
+                    disabled={busy || uploader.busy || inlineUploader.busy}
                     onClick={() => save("publish")}
                   >
                     Publish

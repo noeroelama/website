@@ -15,6 +15,7 @@ import {
 } from "@/app/(panel)/newsletter/actions";
 import { actionMessage } from "@/components/action-message";
 import { publicImage, useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { Button } from "@/components/ui/button";
 import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
@@ -964,6 +965,7 @@ function NewsletterList({
                   readOnly={formReadonly}
                 />
               </div>
+              <UploadBar upload={upload} />
             </div>
           </div>
 

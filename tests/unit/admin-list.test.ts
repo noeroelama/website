@@ -14,6 +14,7 @@ import {
   sortRows,
   sortSummary,
   toggled,
+  shownSelection,
   withIds,
 } from "../../apps/admin/src/components/list-model";
 
@@ -69,6 +70,12 @@ describe("admin list pages: sort, page, select, bulk actions", () => {
     expect([...withIds(current, ["b", "c"], true)]).toEqual(["a", "b", "c"]);
     expect([...withIds(new Set(["a", "b", "c"]), ["a", "b"], false)]).toEqual(["c"]);
     expect([...current]).toEqual(["a"]);
+  });
+
+  it("acts only on ticked rows that are still shown after search and filters", () => {
+    const picked = new Set(["a", "b", "c"]);
+    expect([...shownSelection([rows[0], rows[2]] as typeof rows, picked)]).toEqual(["a", "c"]);
+    expect([...shownSelection([], picked)]).toEqual([]);
   });
 
   it("names a count with the right plural", () => {

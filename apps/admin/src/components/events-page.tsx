@@ -12,6 +12,7 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { Button } from "@/components/ui/button";
 import type { Column } from "@/components/ui/data-table";
 import { EditableList } from "@/components/ui/editable-list";
@@ -733,9 +734,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                   aria-label="Upload the event banner"
                   onClick={() => bannerInputRef.current?.click()}
                 />
-                {bannerUpload.busy ? (
-                  <span className="admin-dropzone__title">Uploading…</span>
-                ) : form.banner ? (
+                {form.banner ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element -- Storage thumbnail (WebP) */}
                     <img
@@ -779,6 +778,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
                   e.target.value = "";
                 }}
               />
+              <UploadBar upload={bannerUpload} />
               <FieldError
                 id="event-bannerImage-error"
                 message={bannerUpload.error ?? fieldErrors["bannerImage"]}
@@ -932,6 +932,7 @@ function EventsList({ initial: events, canEdit, publicBase }: EventsListProps) {
             }}
           />
 
+          <UploadBar upload={photoUpload} />
           <FieldError id="event-photo-error" message={photoUpload.error} />
           {["timezone", "schedule", "speakers", "sponsors"].map((field) => (
             <FieldError key={field} id={`event-${field}-error`} message={fieldErrors[field]} />

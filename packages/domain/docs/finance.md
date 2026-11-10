@@ -22,7 +22,11 @@ draft ─→ submitted ─[treasurer review]─→ reviewed ─[coordinator auth
 
 `@website/domain/shared` → `money.ts`: `Money { amountMinor, currency }` (integer minor units,
 ISO 4217), `money`, `addMoney` (refuses mixing currencies), `minorDigits`, `formatMoney`
-("IDR 1,500,000.00") and `toMinor` (typed amount → minor units, null when invalid).
+("IDR 1,500,000.00"), `toMinor` (typed amount → minor units, null when invalid) and
+`decimalToMinor` (machine decimals from imports, "." only). `toMinor` accepts both
+"1,500,000.50" and "1.500.000,50": with both marks the last is the decimal mark, a repeated mark
+groups thousands, a single mark before exactly three digits groups thousands ("150.000"), any
+other single mark is the decimal mark ("12,50"); anything ambiguous is refused, never guessed.
 `@website/domain/shop` re-exports `money`/`addMoney`/`Money`, so the shop API and tests did not
 change and shop still imports nothing but the shared kernel. Minor digits are a fixed table
 (JPY, KRW, VND = 0, others 2), not Intl: CLDR gives IDR 0 cash digits, ISO and PPIDK store 2, and

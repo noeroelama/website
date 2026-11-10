@@ -1,4 +1,4 @@
-import type { Language } from "@/i18n/dictionaries";
+import type { Language } from "../i18n/dictionaries";
 
 export function formatEventTime(date: Date, timeZone: string, language: Language): string {
   return new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-GB", {
@@ -42,5 +42,10 @@ export function formatEventTimeRange(
       minute: "2-digit",
       hour12: true,
     }).format(date);
-  return endsAt ? `${time(startsAt)} - ${time(endsAt)}` : time(startsAt);
+  const zone =
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" })
+      .formatToParts(startsAt)
+      .find((part) => part.type === "timeZoneName")?.value ?? timeZone;
+  const range = endsAt ? `${time(startsAt)} - ${time(endsAt)}` : time(startsAt);
+  return `${range} (${zone})`;
 }

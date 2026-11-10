@@ -10,6 +10,7 @@ import {
 } from "@website/domain/documents";
 import { saveLetterheadAction, saveLetterTypeAction } from "@/app/(panel)/letters/actions";
 import { useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { PhotoDrop } from "@/components/ui/photo-drop";
 import { actionMessage } from "@/components/action-message";
 import { Button } from "@/components/ui/button";
@@ -184,6 +185,7 @@ function LetterheadForm({
             />
           </div>
         ))}
+        <UploadBar upload={uploads} />
         <div className="admin-field">
           <label className="admin-field__label" htmlFor="kop-opacity">
             Watermark strength (%)

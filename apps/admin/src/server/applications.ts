@@ -124,7 +124,12 @@ export function createApplicationActions(deps: ApplicationDeps) {
       "recruitment.review",
       Ref.extend({ note: PactNoteSchema }).strict(),
       ({ note }) =>
-        () => ({ status: "approved", pactNote: note }),
+        (application) => {
+          if (application.status !== "pakta_review") {
+            throw new RuleViolationError("Only a pact in review can be sent back.");
+          }
+          return { status: "approved", pactNote: note };
+        },
     ),
 
     ratify: createGuardedAction({
@@ -145,7 +150,7 @@ export function createApplicationActions(deps: ApplicationDeps) {
         ]);
         if (!stored) {
           throw new RuleViolationError(
-            "Set the appointment roles first (Roles from appointments).",
+            "Set the appointment roles first (Role Manager → Edit Role → Roles from appointments).",
           );
         }
         if (!unit) throw new RuleViolationError("This unit does not exist.");

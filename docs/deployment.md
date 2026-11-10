@@ -98,9 +98,9 @@ Also add these five as **Variables** (public values, not secret): `NEXT_PUBLIC_F
    (`<cpanel>_web`, `<cpanel>_admin`, `<cpanel>_shop`), each added to the database with ALL
    PRIVILEGES (tables are created on first use). Their URLs go into `DATABASE_URL` of each app
    (`mysql://<user>:<password>@localhost:3306/<database>`). Keep the passwords in the password manager.
-10. **Files folder** (once, cPanel Terminal): `mkdir -p ~/ppidk-files && chmod 700 ~/ppidk-files`, then
-    set `FILE_STORAGE_DIR=/home/<cpanel>/ppidk-files` on web AND admin. Never put it inside an app
-    folder: deploys replace those.
+10. **Files** (nothing to set up): uploads and copied files live in the MySQL `files` collection
+    (`packages/db/docs/files.md`), so they are covered by the database backup. `FILE_STORAGE_DIR`
+    is no longer read by web, admin or the ops scripts.
 11. **Cron Jobs**: add the `expire` job (once a day) next to the others (`apps/admin/docs/cron.md`),
     and the nightly backup lines from [disaster-recovery.md](disaster-recovery.md).
 12. **Moving existing data off Firestore** (once, only if Firestore still holds data): in cPanel
@@ -228,7 +228,7 @@ file (they live in the cPanel app screens and the password manager).
 - [ ] First superadmin granted (`infrastructure/scripts/grant-superadmin.mjs`, see
       `packages/auth/docs/authentication.md` → Account lifecycle).
 - [ ] People and the organisation imported from PPIDK once (block J): freeze the PPIDK people
-      screens, export the tables as TSV, set "Roles from appointments", then
+      screens, export the tables as TSV, set "Roles from appointments" (Role Manager → Edit Role), then
       `infrastructure/scripts/import-ppidk-people.mjs --dir <folder>` (dry run, read
       `import-report.json`, then `--apply`; see `packages/domain/docs/members.md` → Import from
       PPIDK). Spot-check 10 people; re-grant the manual roles the report lists.

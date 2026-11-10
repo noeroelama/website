@@ -3,7 +3,7 @@ import { PDFDocument, PDFName, PDFRawStream, type PDFPageDrawImageOptions } from
 import { htmlToBlocks, qrPng, renderLetterPdf, type LetterPdfInput } from "@website/pdf";
 import { embedTimes, plain, printable, wrapRuns } from "../../packages/pdf/src/flow";
 import { decodeEntities } from "../../packages/pdf/src/html";
-import { drawTurned } from "../../packages/pdf/src/letter";
+import { drawTurned, turnedHeight } from "../../packages/pdf/src/letter";
 
 const JPEG = Buffer.from(
   "/9j/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAACAAQDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABv/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJAAnHX/2Q==",
@@ -121,6 +121,8 @@ describe("text layout", () => {
       ["b", true],
     ]);
     expect(wrapRuns(plain(""), fonts, 12, 200)).toEqual([{ pieces: [], width: 0, last: true }]);
+    const narrow = wrapRuns(plain("abc"), fonts, 12, 2);
+    expect(narrow.map((l) => l.pieces.map((p) => p.text).join(""))).toEqual(["a", "b", "c"]);
     const endBreak = wrapRuns(
       [...plain("a"), { text: "\n", bold: false, italic: false, underline: false }],
       fonts,
@@ -209,6 +211,13 @@ describe("letter PDF", () => {
     expect((await PDFDocument.load(draft)).getTitle()).toBe("Undangan Rapat Kerja");
   });
 
+  it("renders deeply nested lists without running out of line width", async () => {
+    const depth = 40;
+    const bodyHtml = "<ul><li>".repeat(depth) + "nested item" + "</li></ul>".repeat(depth);
+    const bytes = await renderLetterPdf({ ...base, bodyHtml });
+    expect(await pages(bytes)).toBeGreaterThanOrEqual(1);
+  });
+
   it("uses letterhead art on every page, signature images and the cancelled stamp", async () => {
     const png = { bytes: await qrPng("art", 120), type: "png" as const };
     const jpeg = { bytes: new Uint8Array(JPEG), type: "jpeg" as const };
@@ -274,6 +283,12 @@ describe("letter PDF", () => {
     });
     expect(turned).toBeCloseTo(100);
     expect(draws[1]?.width).toBeCloseTo(100 / Math.SQRT2);
+    for (const rotation of [0, 15, 45, 90, -30]) {
+      const at = { width: 120, max: 180, rotation };
+      expect(turnedHeight(image, at)).toBeCloseTo(
+        drawTurned(spy, image, { ...at, x: 0, top: 300 }),
+      );
+    }
 
     const images = async (bytes: Uint8Array) => {
       const loaded = await PDFDocument.load(bytes);

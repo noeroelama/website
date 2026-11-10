@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { parseArgs } from "node:util";
 import { COLLECTIONS } from "../../packages/db/src/sql/collections.ts";
-import { createDiskFileStorage } from "../../packages/db/src/sql/storage.ts";
+import { createDbFileStorage } from "../../packages/db/src/sql/storage.ts";
 import { getDatabase } from "../../packages/db/src/sql/store.ts";
 
 const { values } = parseArgs({
@@ -19,7 +19,7 @@ const required = [
   "DATABASE_URL",
   "WEB_URL",
 ];
-if (values.files) required.push("FIREBASE_STORAGE_BUCKET", "FILE_STORAGE_DIR");
+if (values.files) required.push("FIREBASE_STORAGE_BUCKET");
 const missing = required.filter((name) => !process.env[name]);
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
@@ -98,8 +98,8 @@ for (const name of COLLECTIONS) {
 
 if (values.files) {
   const bucket = getStorage(app).bucket(process.env.FIREBASE_STORAGE_BUCKET);
-  const storage = createDiskFileStorage({
-    root: process.env.FILE_STORAGE_DIR,
+  const storage = createDbFileStorage({
+    db,
     baseUrl: webUrl,
     secret: undefined,
   });

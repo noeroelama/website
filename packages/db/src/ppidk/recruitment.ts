@@ -10,6 +10,7 @@ import {
   APPLICATION_STATUSES,
   applicationId,
   revisionDocId,
+  holdsSeat,
   seatCounterId,
   type ApplicationStatus,
 } from "@website/domain/recruitment";
@@ -62,13 +63,6 @@ const FORM_STATUS: Readonly<Record<string, FormStatus>> = {
   open: "published",
   closed: "closed",
 };
-
-const HOLDS_SEAT: readonly ApplicationStatus[] = [
-  "accepted",
-  "approved",
-  "pakta_review",
-  "confirmed",
-];
 
 const RESPONDENT_NAME = "q_respondentname";
 const RESPONDENT_EMAIL = "q_respondentemail";
@@ -314,8 +308,7 @@ export function mapPpidkRecruitment(
       (u) => u["period_id"] === r["period_id"] && u["active_for_selection"] === "1",
     );
     const holding = tables.recruitment_applications.filter(
-      (a) =>
-        a["recruitment_id"] === r["id"] && HOLDS_SEAT.includes(a["status"] as ApplicationStatus),
+      (a) => a["recruitment_id"] === r["id"] && holdsSeat(a["status"] as ApplicationStatus),
     );
     const opensAt = at(form["opens_at"]) ?? at(r["created_at"]) ?? now;
     if (r["pakta_template_path"]) {

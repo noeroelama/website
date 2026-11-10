@@ -442,6 +442,16 @@
   flex-wrap: wrap;
 }
 
+/* Smaller type in this card only: title, dropdown and tabs, chart text. */
+.admin-views .admin-card__title {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+
+.admin-views .admin-combo__trigger {
+  font-size: var(--text-xs);
+}
+
 .admin-views .admin-card__actions {
   flex-wrap: wrap;
   max-width: 100%; /* phones: the switch wraps under the page dropdown */
@@ -466,7 +476,7 @@
   border: 1px solid var(--color-panel-line);
   border-radius: var(--radius-md);
   color: var(--admin-ink-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: var(--font-medium);
   text-decoration: none;
   transition:
@@ -495,7 +505,7 @@
 
 .admin-views__chart text {
   fill: var(--admin-ink-muted);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
 }
 
 .admin-views__grid {
@@ -521,9 +531,9 @@
   background: var(--color-brand-50);
   box-shadow: var(--shadow-popover);
   color: var(--color-brand-950);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   font-weight: var(--font-medium);
-  line-height: var(--leading-xs);
+  line-height: var(--leading-2xs);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -539,8 +549,8 @@
   gap: var(--space-3);
   margin: var(--space-2) 0 0;
   color: var(--admin-ink-muted);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-2xs);
 }
 
 .admin-views__foot > :last-child {
@@ -612,12 +622,6 @@
 .admin-dashboard {
   display: grid;
   gap: var(--space-4);
-}
-
-/* Card titles one step below the page title (Dashboard). */
-.admin-dashboard .admin-card__title {
-  font-size: var(--text-xl);
-  line-height: var(--leading-xl);
 }
 
 .admin-stat-grid {
@@ -1143,6 +1147,68 @@ a.admin-stat-card:hover {
   gap: var(--space-2);
   width: 100%;
   margin-top: var(--space-2);
+}
+
+/* Image upload in progress (components/ui/upload-bar.tsx): label, bar, X to cancel. The track is
+   drawn from --admin-ink, so it shows on the dark page and on cream popups alike. */
+.admin-upload-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.admin-upload-bar__label {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-upload-bar__track {
+  flex: 1;
+  min-width: 0;
+  height: var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--admin-ink) 20%, transparent);
+  overflow: hidden;
+  appearance: none;
+}
+
+.admin-upload-bar__track::-webkit-progress-bar {
+  background: color-mix(in srgb, var(--admin-ink) 20%, transparent);
+}
+
+.admin-upload-bar__track::-webkit-progress-value {
+  background: var(--color-highlight);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.admin-upload-bar__track::-moz-progress-bar {
+  background: var(--color-highlight);
+  border-radius: var(--radius-full);
+}
+
+.admin-upload-bar__cancel {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .admin-upload-bar__cancel:hover {
+    background: color-mix(in srgb, var(--admin-ink) 12%, transparent);
+  }
 }
 
 .admin-dropzone {

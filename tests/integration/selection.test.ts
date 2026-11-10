@@ -371,6 +371,17 @@ describe("offers and seats (recruitment.offer; accept on the website)", () => {
     expect(status("ari")).toBe("rejected");
   });
 
+  it("an approved placement keeps its seat", async () => {
+    const confirmer = staff(["recruitment.confirm"]);
+    await submitted("ari");
+    await passAndOffer("ari");
+    await applying().respondOffer({ uid: "ari" }, { recruitmentId, accept: true });
+    expect(
+      await decisions().approve(...as(confirmer))({ id: appId("ari"), version: version("ari") }),
+    ).toMatchObject({ ok: true, data: { status: "approved" } });
+    expect(seats("finance")).toBe(1);
+  });
+
   it("the queue lists submitted applications; drafts stay private", async () => {
     await submitted("ari");
     clock = new Date("2026-11-10T06:00:00Z");

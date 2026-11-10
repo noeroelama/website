@@ -25,6 +25,7 @@ export const applying = lazyEnv(() =>
     profileComplete: hasCompleteProfile,
     storage: {
       save: (path, bytes, options) => webStorage().save(path, bytes, options),
+      remove: (path) => webStorage().remove(path),
     },
     now: () => new Date(),
     uuid: randomUUID,

@@ -122,7 +122,9 @@ export function createAppointmentActions(deps: AppointmentDeps) {
         throw new RuleViolationError("No account with this e-mail (they sign in once first).");
       if (user.uid === principal.userId) throw new RuleViolationError(SELF);
       if (!stored) {
-        throw new RuleViolationError("Set the appointment roles first (Roles from appointments).");
+        throw new RuleViolationError(
+          "Set the appointment roles first (Role Manager → Edit Role → Roles from appointments).",
+        );
       }
       if (!unit) throw new RuleViolationError("This unit does not exist.");
       const derived = derivedAssignments(input.seat, unit, stored.map);

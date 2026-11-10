@@ -79,7 +79,9 @@ Schema and validation: `packages/domain/src/members/profile.ts` (Zod, shared by 
 - Profiles are imported as answers but count as incomplete (the consent is not the current
   policy, and PPIDK did not ask e.g. the emergency contact): each member completes and agrees on
   the first visit (the profile gate). Accounts get the default role (Visitor);
-  PPIDK verification is not imported.
+  PPIDK verification is not imported. A profile that already exists is never replaced, and an
+  existing account keeps its chapter: platform answers and consent always win over PPIDK, also
+  when the import runs again.
 - Active appointments of the active period get their roles from `settings/appointmentRoles`
   (set it before importing). Manual PPIDK role assignments are NOT imported (roles are data
   here): the report lists them for Role Manager. Chapters staff already added are reused by

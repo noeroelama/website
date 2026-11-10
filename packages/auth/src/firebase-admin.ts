@@ -97,12 +97,13 @@ export function createFirebaseAccountAdmin(config: FirebaseAdminConfig): Account
 
 export function createFirebaseAccountCreator(config: FirebaseAdminConfig) {
   const auth = () => getAuth(adminApp(config));
-  return async (email: string, displayName: string): Promise<string> => {
+  return async (email: string, displayName: string): Promise<{ uid: string; created: boolean }> => {
     try {
-      return (await auth().getUserByEmail(email)).uid;
+      return { uid: (await auth().getUserByEmail(email)).uid, created: false };
     } catch (error) {
       if ((error as { code?: string }).code !== "auth/user-not-found") throw error;
-      return (await auth().createUser({ email, displayName, emailVerified: false })).uid;
+      const user = await auth().createUser({ email, displayName, emailVerified: false });
+      return { uid: user.uid, created: true };
     }
   };
 }
