@@ -1,5 +1,16 @@
 import { type EventType, type PublicEvent } from "@website/domain/events";
+import { ORGANISATION_TIME_ZONE } from "@website/domain/documents";
 import type { PublicAlbum } from "@website/domain/gallery";
+
+/** The calendar day of an instant in a time zone, as YYYY-MM-DD. */
+export function dayIn(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant);
+}
 
 export const EVENT_PAGE_SIZE = 12;
 
@@ -81,17 +92,15 @@ export function timeBounds(
   range: TimeRange,
   now: Date,
 ): { from: string | null; to: string | null } {
-  const today = now.toISOString().slice(0, 10);
+  const today = dayIn(now, ORGANISATION_TIME_ZONE);
   if (range === "upcoming") return { from: today, to: null };
   const add = (days: number) =>
-    new Date(now.getTime() + days * 86_400_000).toISOString().slice(0, 10);
-  const yearEnd = `${now.getFullYear()}-12-31`;
+    dayIn(new Date(now.getTime() + days * 86_400_000), ORGANISATION_TIME_ZONE);
+  const year = today.slice(0, 4);
+  const yearEnd = `${year}-12-31`;
   if (range === "week") return { from: today, to: add(7) < yearEnd ? add(7) : yearEnd };
   if (range === "month") return { from: today, to: add(30) < yearEnd ? add(30) : yearEnd };
-  if (range === "year") {
-    const year = now.getFullYear();
-    return { from: `${year}-01-01`, to: `${year}-12-31` };
-  }
+  if (range === "year") return { from: `${year}-01-01`, to: yearEnd };
   return { from: null, to: null };
 }
 
@@ -100,7 +109,7 @@ export function pageOfEvents(all: readonly PublicEvent[], query: EventQuery, now
   const q = query.q?.toLocaleLowerCase() ?? null;
   const region = query.region?.toLocaleLowerCase() ?? null;
   const matching = all.filter((e) => {
-    const start = e.startsAt.toISOString().slice(0, 10);
+    const start = dayIn(e.startsAt, e.timezone);
     return (
       matchesCategory(e, query.category) &&
       (q === null || e.title.toLocaleLowerCase().includes(q)) &&
@@ -111,6 +120,9 @@ export function pageOfEvents(all: readonly PublicEvent[], query: EventQuery, now
       (query.to === null || start <= query.to)
     );
   });
+  if (query.time === "upcoming" || query.time === "week" || query.time === "month") {
+    matching.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  }
   const pages = Math.max(1, Math.ceil(matching.length / EVENT_PAGE_SIZE));
   const page = Math.min(query.page, pages);
   return {
@@ -189,7 +201,7 @@ export function pageOfAlbums(albums: readonly PublicAlbum[], query: AlbumQuery, 
   const q = query.q?.toLocaleLowerCase() ?? null;
   const region = query.region?.toLocaleLowerCase() ?? null;
   const matching = albums.filter((a) => {
-    const start = a.eventStartsAt ? a.eventStartsAt.toISOString().slice(0, 10) : null;
+    const start = a.eventStartsAt ? dayIn(a.eventStartsAt, ORGANISATION_TIME_ZONE) : null;
     return (
       matchesEventType(a.eventType, query.category) &&
       (q === null || a.eventTitle.toLocaleLowerCase().includes(q)) &&

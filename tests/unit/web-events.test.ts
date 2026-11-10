@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { PublicEvent } from "@website/domain/events";
+import { formatEventTimeRange } from "../../apps/web/src/lib/event-time";
 import {
+  albumQuery,
   type EventQuery,
   eventQuery,
   eventsHref,
@@ -147,5 +149,36 @@ describe("public events list query (/events?category&q&region&time&from&to&page)
         1,
       ),
     ).toBe("/events?category=webinar&time=year&from=2026-01-01&to=2026-12-31");
+  });
+});
+
+describe("events list: local days and order", () => {
+  it("uses the event's own calendar day and the organisation's today; soonest first", () => {
+    const jakarta = { timezone: "Asia/Jakarta" };
+    const all = [
+      event("later", "2026-11-20T02:00:00Z", jakarta),
+      event("tonight-utc", "2026-11-10T20:00:00Z", jakarta),
+      event("ended-yesterday", "2026-11-09T12:00:00Z", jakarta),
+    ];
+    const morningInJakarta = new Date("2026-11-10T18:30:00Z");
+    expect(
+      pageOfEvents(all, { ...off, time: "upcoming" }, morningInJakarta).items.map((e) => e.slug),
+    ).toEqual(["tonight-utc", "later"]);
+  });
+});
+
+describe("gallery period", () => {
+  it("an empty period (the 'any date range' option) filters nothing", () => {
+    expect(albumQuery({ time: "", q: "kongres" }).time).toBeNull();
+    expect(albumQuery({ time: "year" }).time).toBe("year");
+  });
+});
+
+describe("event time on the event page", () => {
+  it("names the time zone the times are shown in", () => {
+    const start = new Date("2026-11-20T10:00:00Z");
+    const end = new Date("2026-11-20T12:00:00Z");
+    expect(formatEventTimeRange(start, end, "Asia/Tokyo")).toBe("7:00 PM - 9:00 PM (GMT+9)");
+    expect(formatEventTimeRange(start, null, "Asia/Jakarta")).toBe("5:00 PM (GMT+7)");
   });
 });
