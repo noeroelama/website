@@ -401,7 +401,9 @@ describe("PPIDK import of meetings, Zoom, short links and messages (step 7.12)",
     expect(fake.docs.get("zoomCapacity/2026-10-10")).toMatchObject({
       slots: [{ id: "ppidk-zoom-1" }],
     });
-    expect(await zoom.unlistedSessions(10)).toEqual([{ uuid: "u2", bookingId: "ppidk-zoom-1" }]);
+    expect(await zoom.unlistedSessions(10)).toMatchObject([
+      { uuid: "u2", bookingId: "ppidk-zoom-1" },
+    ]);
   });
 
   it("short links and the message log keep their history", async () => {

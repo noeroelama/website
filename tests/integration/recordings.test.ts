@@ -233,6 +233,16 @@ describe("recording archive job (F3)", () => {
     expect(await store().unlistedSessions(5)).toEqual([]);
   });
 
+  it("a session stored without createdAt (older imports) counts as past the late-file window", async () => {
+    const id = Buffer.from("s/1==").toString("hex");
+    const stored = { ...(fake.docs.get(`recordingSessions/${id}`) as Record<string, unknown>) };
+    delete stored["createdAt"];
+    fake.docs.set(`recordingSessions/${id}`, stored);
+    expect((await store().unlistedSessions(5))[0]?.createdAt).toEqual(new Date(0));
+    await archive(world())();
+    expect(await store().unlistedSessions(5)).toEqual([]);
+  });
+
   it("same name and size = done; a different size is a clash, reported and never overwritten", async () => {
     const errors: string[] = [];
     const w = world({
