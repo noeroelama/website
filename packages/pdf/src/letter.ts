@@ -52,6 +52,7 @@ export interface LetterPdfInput {
 }
 
 const SIDE = 22 * MM;
+const MAX_LIST_INDENT_DEPTH = 6;
 const BREATH = 8 * MM;
 
 const embedImage = (doc: PDFDocument, image: PdfImage): Promise<PDFImage> =>
@@ -226,7 +227,7 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Uint8Array
         { size: block.level <= 2 ? 13 : 12, align: block.align },
       );
     } else if (block.kind === "item") {
-      const indent = 18 * (block.depth + 1);
+      const indent = 18 * (Math.min(block.depth, MAX_LIST_INDENT_DEPTH) + 1);
       flow.ensure(18);
       if (block.marker)
         flow.page.drawText(block.marker, {

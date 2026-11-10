@@ -116,7 +116,12 @@ export function createApplicationActions(deps: ApplicationDeps) {
       "recruitment.review",
       Ref.extend({ note: PactNoteSchema }).strict(),
       ({ note }) =>
-        () => ({ status: "approved", pactNote: note }),
+        (application) => {
+          if (application.status !== "pakta_review") {
+            throw new RuleViolationError("Only a pact in review can be sent back.");
+          }
+          return { status: "approved", pactNote: note };
+        },
     ),
 
     ratify: createGuardedAction({

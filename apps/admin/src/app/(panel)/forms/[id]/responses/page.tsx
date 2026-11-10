@@ -14,6 +14,7 @@ export default async function FormResponsesRoute({ params }: { params: Promise<{
   const { id } = await params;
   const viewer = await requireAdminViewer(`/forms/${id}/responses`, "forms.responses");
   if (typeof viewer === "string") return <AccessMessage reason={viewer} />;
+  if (!can(viewer.principal, "forms.responses")) return <AccessMessage reason="no-access" />;
   const form = await adminReads.getForm(id);
   if (!form || form.deletedAt) notFound();
   const [versions, responses] = await Promise.all([

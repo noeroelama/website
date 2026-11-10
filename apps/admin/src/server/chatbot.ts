@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Conversation, SqlConversationStore } from "@website/db/sql";
 import { normalizeUniversityName } from "@website/domain/members";
 import { readBodyLimited } from "@website/security";
+import { safeText } from "@website/security/validation";
 
 export const CONVERSATION_TTL_MS = 30 * 60_000;
 const MAX_OPTIONS = 9;
@@ -19,7 +20,10 @@ export interface ChatbotDeps {
   ) => Promise<ReadonlyArray<{ id: string; name: string }>>;
   readonly matchCampus:
     ((typed: string, names: readonly string[]) => Promise<number | null>) | null;
-  readonly ensureAccount: (email: string, name: string) => Promise<string>;
+  readonly ensureAccount: (
+    email: string,
+    name: string,
+  ) => Promise<{ uid: string; created: boolean }>;
   readonly recordUser: (uid: string, email: string, name: string) => Promise<void>;
   readonly openRecruitments: () => Promise<ReadonlyArray<{ id: string; title: string }>>;
   readonly webUrl: string;
@@ -46,6 +50,7 @@ const pick = (text: string, count: number): number | null => {
   return Number.isInteger(n) && n >= 1 && n <= count ? n - 1 : null;
 };
 const Email = z.email().max(254);
+const Name = safeText(120).pipe(z.string().min(2));
 
 export function createChatbot(deps: ChatbotDeps) {
   async function step(
@@ -69,8 +74,9 @@ export function createChatbot(deps: ChatbotDeps) {
     const data = convo?.data ?? {};
     switch (convo?.state) {
       case "name": {
-        const name = text.trim().replace(/\s+/g, " ").slice(0, 120);
-        if (name.length < 2) return [convo, "Ketik nama lengkapmu. / Type your full name."];
+        const parsed = Name.safeParse(text);
+        if (!parsed.success) return [convo, "Ketik nama lengkapmu. / Type your full name."];
+        const name = parsed.data;
         return [
           { state: "email", data: { ...data, name } },
           "Alamat e-mail? / Your e-mail address?",
@@ -144,8 +150,8 @@ export function createChatbot(deps: ChatbotDeps) {
         if (word !== "ya" && word !== "yes") return [convo, "Balas *ya* atau *batal*."];
         const email = data["email"] as string;
         const name = data["name"] as string;
-        const uid = await deps.ensureAccount(email, name);
-        await deps.recordUser(uid, email, name);
+        const account = await deps.ensureAccount(email, name);
+        if (account.created) await deps.recordUser(account.uid, email, name);
         return [
           null,
           `Akun dibuat untuk ${email}. Masuk di ${deps.webUrl}/login dengan Google, atau pilih "Lupa kata sandi" untuk membuat kata sandi, lalu lengkapi profil (kampus: ${String(data["universityName"])}).\n\n` +

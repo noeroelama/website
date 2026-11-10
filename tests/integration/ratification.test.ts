@@ -167,6 +167,14 @@ describe("placement approval and integrity pact (C3 steps 7-8)", () => {
     });
   });
 
+  it("sending a pact back cannot be used to approve a placement", async () => {
+    setApplication("accepted");
+    expect(
+      await actions().returnPact(...as("panitia"))({ id: "rec1_ari", version: 5, note: "x" }),
+    ).toMatchObject({ ok: false });
+    expect(app()).toMatchObject({ status: "accepted" });
+  });
+
   it("the applicant uploads the signed pact; sending it back keeps every file", async () => {
     setApplication("approved");
     expect(await (await uploadPact()).json()).toEqual({ ok: true, name: "pakta.pdf" });

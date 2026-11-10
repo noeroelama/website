@@ -96,7 +96,7 @@ export function wrapRuns(
       let text = token;
       let w = font.widthOfTextAtSize(text, size);
       if (!space && used + w > limit() && pieces.length > 0) finish(false);
-      while (!space && w > limit()) {
+      while (!space && w > limit() && text.length > 1) {
         let cut = text.length - 1;
         while (cut > 1 && font.widthOfTextAtSize(text.slice(0, cut), size) > limit() - used)
           cut -= 1;
