@@ -145,6 +145,30 @@ describe("newsletter campaigns", () => {
     expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ sentCount: 1 });
   });
 
+  it("a schedule in the past is refused instead of mailing everyone at once", async () => {
+    await subscribe(1, "confirmed");
+    const id = await draft();
+    expect(
+      await actions().send(...as(sender))({ id, version: 1, sendAt: "2026-10-17T05:00:00.000Z" }),
+    ).toMatchObject({ ok: false, error: "refused" });
+    expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ status: "draft" });
+  });
+
+  it("an editor without newsletter.send who edits a scheduled campaign puts it back to draft", async () => {
+    const id = await draft();
+    await actions().send(...as(sender))({ id, version: 1, sendAt: "2026-10-19T00:00:00.000Z" });
+    const edit = { subject: "Diubah", body: "<p>Lain</p>", segment: "all" as const, id };
+    expect(await actions().save(...as(editor))({ ...edit, version: 2 })).toMatchObject({
+      ok: true,
+    });
+    expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ status: "draft", sendAt: null });
+    await actions().send(...as(sender))({ id, version: 3, sendAt: "2026-10-19T00:00:00.000Z" });
+    expect(await actions().save(...as(sender))({ ...edit, version: 4 })).toMatchObject({
+      ok: true,
+    });
+    expect(fake.docs.get(`campaigns/${id}`)).toMatchObject({ status: "scheduled" });
+  });
+
   it("schedules for later; the cron starts it when the time has come", async () => {
     await subscribe(1, "confirmed");
     const id = await draft();
