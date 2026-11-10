@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ConcurrencyConflictError } from "@website/domain/shared";
+import { ConcurrencyConflictError, RuleViolationError } from "@website/domain/shared";
 import { normalizePermissions, type Principal } from "@website/permissions";
 import { createGuardedAction } from "../../apps/admin/src/server/guarded-action";
 
@@ -27,6 +27,28 @@ describe("race conditions in admin writes", () => {
     expect(await save(() => Promise.resolve(editor))({ id: "n1" })).toEqual({
       ok: false,
       error: "conflict",
+    });
+  });
+
+  it("a missing resource reads as 'forbidden'; a failing lookup is an error", async () => {
+    const make = (resource: () => Promise<{ orgUnitPath: string[] }>) =>
+      createGuardedAction({
+        permission: "articles.edit",
+        input: z.object({ id: z.string() }),
+        resource,
+        handler: () => Promise.resolve("saved"),
+      })(() => Promise.resolve(editor));
+    expect(
+      await make(() => Promise.reject(new RuleViolationError("This article does not exist.")))({
+        id: "n1",
+      }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    await expect(make(() => Promise.reject(new Error("db down")))({ id: "n1" })).rejects.toThrow(
+      "db down",
+    );
+    expect(await make(() => Promise.resolve({ orgUnitPath: ["media"] }))({ id: "n1" })).toEqual({
+      ok: true,
+      data: "saved",
     });
   });
 

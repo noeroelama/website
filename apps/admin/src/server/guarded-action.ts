@@ -9,9 +9,9 @@ import {
 import { isRecentSignIn } from "@website/auth";
 import { toPublicError } from "@website/security";
 import {
+  can,
   canAccessAdmin,
   canInSomeScope,
-  requirePermission,
   type AdminPageId,
   type PagePermission,
   type Permission,
@@ -89,20 +89,25 @@ export function createGuardedAction<S extends z.ZodType, T>(definition: {
           fields,
         };
       }
-      try {
-        if (definition.inSomeScope) {
-          if (!canInSomeScope(principal, definition.permission as PagePermission)) {
+      if (definition.inSomeScope) {
+        if (!canInSomeScope(principal, definition.permission as PagePermission)) {
+          return { ok: false, error: "forbidden" };
+        }
+      } else {
+        // A record that is missing or out of reach reads as "forbidden" on purpose (no existence
+        // oracle), but a failing database is an error, never a permission answer.
+        let resource: ResourceContext | undefined;
+        try {
+          resource = await definition.resource?.(parsed.data);
+        } catch (error) {
+          if (error instanceof Error && error.name === "RuleViolationError") {
             return { ok: false, error: "forbidden" };
           }
-        } else {
-          requirePermission(
-            principal,
-            definition.permission,
-            await definition.resource?.(parsed.data),
-          );
+          throw error;
         }
-      } catch {
-        return { ok: false, error: "forbidden" };
+        if (!can(principal, definition.permission, resource)) {
+          return { ok: false, error: "forbidden" };
+        }
       }
       const context = await getAuditContext();
       if (
