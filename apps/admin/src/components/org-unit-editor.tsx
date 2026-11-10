@@ -8,6 +8,7 @@ import { ORG_UNIT_TYPES, type OrgUnitType } from "@website/domain/organizations"
 import { saveOrgUnitAction } from "@/app/(panel)/organizations/actions";
 import { actionMessage } from "@/components/action-message";
 import { publicImage, useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
@@ -408,6 +409,7 @@ export function OrgUnitEditor({ periodId, unit }: { periodId: string; unit: OrgU
           });
         }}
       />
+      <UploadBar upload={photo} />
       <FieldError id="unit-photo-error" message={photo.error ?? undefined} />
 
       <div className="admin-unit-footer">

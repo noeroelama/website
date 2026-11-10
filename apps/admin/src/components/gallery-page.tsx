@@ -12,6 +12,7 @@ import {
 import { actionMessage } from "@/components/action-message";
 import { formatInZone, timeAgo } from "@/components/format";
 import { publicImage, useImageUpload } from "@/components/image-upload";
+import { UploadBar } from "@/components/ui/upload-bar";
 import { Button } from "@/components/ui/button";
 import type { Column } from "@/components/ui/data-table";
 import { FieldError } from "@/components/ui/field-error";
@@ -504,7 +505,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                   />
                   <Icon name="upload" size={34} />
                   <span className="admin-dropzone__title">
-                    {upload.busy ? "Uploading…" : "Drag & drop banner images or click to browse"}
+                    Drag &amp; drop banner images or click to browse
                   </span>
                   <span className="admin-card__subtitle">
                     Any image format • Converted to WebP • Max 5MB •{" "}
@@ -523,6 +524,7 @@ function GalleryList({ initial: albums, events, canEdit, publicBase }: GalleryLi
                   e.target.value = "";
                 }}
               />
+              <UploadBar upload={upload} />
               <FieldError id="album-images-error" message={upload.error ?? fieldErrors["images"]} />
             </div>
           </div>

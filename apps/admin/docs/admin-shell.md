@@ -101,6 +101,12 @@ router.push("/things"); router.refresh();
   `FieldError` lists the requirements: a red triangle while unmet (red border too), a green tick
   once met; it updates while typing. A server message (`message`) shows until the value is
   edited; `hint` is help text shown before that. The server still checks everything.
+- **Image uploads.** Use `useImageUpload(preset)` (`src/components/image-upload.ts`) and put
+  `<UploadBar upload={…} />` (`ui/upload-bar.tsx`) under the drop zone or button, before its
+  `FieldError`: while the file is sent it shows "Uploading… n%", a bar and an X. X calls
+  `cancel()`; `upload()` then returns `null` with no error. One hook (and one bar) per place
+  images are added; the request is `sendImage` (XMLHttpRequest, because `fetch` cannot report
+  upload progress). Test: `tests/unit/admin-image-upload.test.ts`.
 - **Dropdowns.** Use `Select` instead of `<select>` (same props and `<option>` children). With
   more than 5 options it opens a list with a search box (case and accents ignored); the native
   select stays hidden in the page, so `name`, `onChange`, `required` and GET forms still work.
@@ -256,10 +262,11 @@ router.push("/things"); router.refresh();
   Average. The card header has a page dropdown (All pages + pages viewed in the period) left of the
   Daily / Monthly / Yearly switch (`page-views-controls.tsx`, `.admin-segmented`;
   `?views=…&page=…`). The chart (`page-views-chart.tsx`) draws at its real width, so its text is
-  `--text-xs` on every screen; hovering shows a dashed guide line and the date and views of the
+  one size on every screen; hovering shows a dashed guide line and the date and views of the
   nearest point (`.admin-views__tip`); axis steps and labels come from `page-views-model.ts`. Each
-  period tab is as tall as the page dropdown. Dashboard
-  card titles are `--text-xl`, one step below the page title. Data: `pageViewStats`
+  period tab is as tall as the page dropdown. This card uses smaller type than other cards:
+  title `--text-lg`, dropdown and tabs `--text-xs`, chart, tooltip and totals `--text-2xs`.
+  Data: `pageViewStats`
   (`packages/db/src/sql/page-views.ts`), recorded by apps/web (`apps/web/docs/public-site.md`).
   Tests: `tests/integration/page-views.test.ts`, `tests/unit/admin-navigation.test.ts`,
   `tests/unit/admin-page-views.test.ts`.
