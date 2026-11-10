@@ -87,6 +87,16 @@ describe("member profile on the website (B3)", () => {
       { ok: true, version: 3 },
     );
     expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: null });
+    fake.docs.set("chapters/ch-au-old", {
+      countryCode: "AU",
+      active: true,
+      name: "PPI Australia (old)",
+      deletedAt: now,
+    });
+    expect(await later.save(siti, { version: 3, profile: { ...input, ppiCountry: "AU" } })).toEqual(
+      { ok: true, version: 4 },
+    );
+    expect(fake.docs.get("users/siti")).toMatchObject({ chapterId: null });
   });
 
   it("refuses bad fields, a stale version, an old policy and anything but the own profile", async () => {

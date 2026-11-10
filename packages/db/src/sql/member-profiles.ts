@@ -105,9 +105,9 @@ export function createSqlMemberProfileStore(db: Database) {
 
   const chapterOf = async (tx: Transaction, countryCode: string) => {
     const found = await tx.get(
-      chapters.where("countryCode", "==", countryCode).where("active", "==", true).limit(1),
+      chapters.where("countryCode", "==", countryCode).where("active", "==", true),
     );
-    return found.docs[0]?.id ?? null;
+    return found.docs.find((doc) => !doc.get("deletedAt"))?.id ?? null;
   };
 
   const repository: MemberProfileRepository = {
