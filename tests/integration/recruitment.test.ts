@@ -504,10 +504,12 @@ describe("edge cases kept safe", () => {
       answers: { [questionId]: "Hi" },
     });
     await applying().submit(ari, { recruitmentId });
+    const before = saved.length;
     expect(await (await upload(ari, pdf, { "x-file-name": "" })).json()).toEqual({
       ok: false,
       error: "locked",
     });
+    expect(saved.length).toBe(before);
     const noName = await applying().uploadFile(
       budi,
       recruitmentId,
