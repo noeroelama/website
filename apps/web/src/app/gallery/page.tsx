@@ -61,8 +61,9 @@ async function AlbumList({ searchParams }: Pick<PageProps<"/gallery">, "searchPa
                 <SubmitOnChangeSelect
                   className="ui-input"
                   name="time"
-                  defaultValue={query.time ?? "upcoming"}
+                  defaultValue={query.time ?? ""}
                 >
+                  <option value="">{t.events.allPeriods}</option>
                   {TIME_RANGES.filter((range) => range !== "custom").map((range) => (
                     <option key={range} value={range}>
                       {t.events.periodOptions[range]}

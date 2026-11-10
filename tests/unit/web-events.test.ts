@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PublicEvent } from "@website/domain/events";
 import {
+  albumQuery,
   type EventQuery,
   eventQuery,
   eventsHref,
@@ -162,5 +163,12 @@ describe("events list: local days and order", () => {
     expect(
       pageOfEvents(all, { ...off, time: "upcoming" }, morningInJakarta).items.map((e) => e.slug),
     ).toEqual(["tonight-utc", "later"]);
+  });
+});
+
+describe("gallery period", () => {
+  it("an empty period (the 'any date range' option) filters nothing", () => {
+    expect(albumQuery({ time: "", q: "kongres" }).time).toBeNull();
+    expect(albumQuery({ time: "year" }).time).toBe("year");
   });
 });
