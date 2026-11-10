@@ -16,7 +16,7 @@ import {
   type FinanceFile,
   type FinanceRequest,
 } from "@website/domain/finance";
-import { formatMoney, minorDigits, money, toMinor } from "@website/domain/shared";
+import { decimalToMinor, formatMoney, minorDigits, money, toMinor } from "@website/domain/shared";
 import { money as shopMoney } from "@website/domain/shop";
 
 const now = new Date("2026-11-04T03:00:00Z");
@@ -80,7 +80,22 @@ describe("money (DEC-8: shared kernel, shop API unchanged)", () => {
     expect(toMinor(" 12 ", "AUD")).toBe(1200);
     expect(toMinor("5000", "JPY")).toBe(5000);
     expect(toMinor("50.5", "JPY")).toBeNull();
-    expect(toMinor("1.234", "IDR")).toBeNull();
+    expect(toMinor("1.234", "IDR")).toBe(123_400);
+    expect(toMinor("1.500.000,50", "IDR")).toBe(150_000_050);
+    expect(toMinor("1500000,00", "IDR")).toBe(150_000_000);
+    expect(toMinor("12,50", "AUD")).toBe(1250);
+    expect(toMinor("12,500", "AUD")).toBe(1_250_000);
+    expect(toMinor("1.5", "USD")).toBe(150);
+    expect(toMinor("12,345", "JPY")).toBe(12_345);
+    expect(toMinor("12,3456", "USD")).toBeNull();
+    expect(toMinor("1.500.25", "USD")).toBeNull();
+    expect(toMinor("1,2,3", "USD")).toBeNull();
+    expect(toMinor("1e3", "USD")).toBeNull();
+    expect(toMinor("12.", "USD")).toBeNull();
+    expect(decimalToMinor("1234.5", "IDR")).toBe(123_450);
+    expect(decimalToMinor("1.234", "IDR")).toBeNull();
+    expect(decimalToMinor("1,234", "IDR")).toBeNull();
+    expect(decimalToMinor("999999999999999", "IDR")).toBeNull();
     expect(toMinor("-1", "IDR")).toBeNull();
     expect(toMinor("abc", "IDR")).toBeNull();
     expect(toMinor("999999999999999", "IDR")).toBeNull();

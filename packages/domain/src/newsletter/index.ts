@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { safeId, safeText } from "@website/security/validation";
-import type { EntityMeta } from "../shared";
+import { RuleViolationError, type EntityMeta } from "../shared";
 
 export type SubscriptionStatus = "pending" | "confirmed" | "unsubscribed" | "suppressed";
 
@@ -156,10 +156,16 @@ export const CampaignInputSchema = z
   .strict();
 export type CampaignInput = z.infer<typeof CampaignInputSchema>;
 
+/** A scheduled time this far in the past is a mistake, not a request to send now. */
+export const SCHEDULE_GRACE_MS = 60_000;
+
 export function sendState(
   sendAt: Date | null,
   now: Date,
 ): { status: "scheduled" | "sending"; sendAt: Date } {
+  if (sendAt !== null && sendAt.getTime() < now.getTime() - SCHEDULE_GRACE_MS) {
+    throw new RuleViolationError("That time has passed. Pick a time in the future or send now.");
+  }
   return sendAt !== null && sendAt > now
     ? { status: "scheduled", sendAt }
     : { status: "sending", sendAt: now };

@@ -23,6 +23,7 @@ import {
   type Campaign,
 } from "@website/domain/newsletter";
 import { RuleViolationError } from "@website/domain/shared";
+import { can } from "@website/permissions";
 import { htmlToText, sanitizeRichText } from "@website/security/html";
 import { safeId } from "@website/security/validation";
 import { createGuardedAction, type AuditBuilder } from "./guarded-action";
@@ -121,22 +122,26 @@ export function createNewsletterActions(deps: NewsletterDeps) {
   const save = createGuardedAction({
     permission: "newsletter.edit",
     input: SaveInput,
-    handler: async ({ id, version, ...input }, _principal, audit) => {
+    handler: async ({ id, version, ...input }, principal, audit) => {
       const saved = await deps.campaigns.write(
         id ?? null,
         version,
-        (current) => ({
-          ...input,
-          body: sanitizeRichText(input.body),
-          status: current ? changeable(current).status : "draft",
-          sendAt: current?.sendAt ?? null,
-          cursor: null,
-          sentCount: 0,
-          sentAt: null,
-          openCount: 0,
-          clickCount: 0,
-          deletedAt: null,
-        }),
+        (current) => {
+          const status = current ? changeable(current).status : "draft";
+          const keepsSchedule = status !== "scheduled" || can(principal, "newsletter.send");
+          return {
+            ...input,
+            body: sanitizeRichText(input.body),
+            status: keepsSchedule ? status : "draft",
+            sendAt: keepsSchedule ? (current?.sendAt ?? null) : null,
+            cursor: null,
+            sentCount: 0,
+            sentAt: null,
+            openCount: 0,
+            clickCount: 0,
+            deletedAt: null,
+          };
+        },
         (before, after, current, next) =>
           campaignAudit(audit, current ? "UPDATE" : "CREATE")(before, after, current, next),
         deps.now(),

@@ -9,6 +9,7 @@ import { FieldError } from "@/components/ui/field-error";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { minorDigits } from "@website/domain/programs";
+import { parseAmountMinor } from "@website/domain/shared";
 
 const FieldMessages = createContext<Readonly<Record<string, string>>>({});
 
@@ -184,10 +185,12 @@ export function parseBudgets(value: string): Array<{ amountMinor: number; curren
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [code = "", amount = ""] = line.split(/\s+/);
+      const [code = "", ...amount] = line.split(/\s+/);
       const currency = code.toUpperCase();
-      const digits = /^[A-Z]{3}$/.test(currency) ? minorDigits(currency) : 0;
-      return { currency, amountMinor: Math.round(Number(amount.replace(/,/g, "")) * 10 ** digits) };
+      const minor = /^[A-Z]{3}$/.test(currency)
+        ? parseAmountMinor(amount.join(""), minorDigits(currency))
+        : null;
+      return { currency, amountMinor: minor ?? Number.NaN };
     });
 }
 

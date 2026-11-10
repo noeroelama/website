@@ -90,6 +90,8 @@ describe("campaigns (CAMPAIGN COMPOSER, send / schedule)", () => {
     expect(sendState(null, now)).toEqual({ status: "sending", sendAt: now });
     expect(sendState(later(60_000), now)).toEqual({ status: "scheduled", sendAt: later(60_000) });
     expect(sendState(now, now)).toEqual({ status: "sending", sendAt: now });
+    expect(sendState(new Date(now.getTime() - 30_000), now).status).toBe("sending");
+    expect(() => sendState(new Date(now.getTime() - 3_600_000), now)).toThrow("has passed");
     expect(canChangeCampaign("draft")).toBe(true);
     expect(canChangeCampaign("scheduled")).toBe(true);
     expect(canChangeCampaign("sending")).toBe(false);
