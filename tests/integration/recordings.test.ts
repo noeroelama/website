@@ -9,7 +9,11 @@ import {
   type RecordingFile,
 } from "@website/domain/zoom";
 import { createDriveClient, DriveApiError } from "../../apps/admin/src/server/drive";
-import { createRecordingArchive, MAX_ATTEMPTS } from "../../apps/admin/src/server/recordings";
+import {
+  createRecordingArchive,
+  LATE_FILE_WINDOW_MS,
+  MAX_ATTEMPTS,
+} from "../../apps/admin/src/server/recordings";
 import { fakeDb } from "../support/fake-db";
 
 type Db = Parameters<typeof createSqlZoomStore>[0];
@@ -118,14 +122,15 @@ function world(
   return { client, drive, log, received };
 }
 
-const archive = (w: ReturnType<typeof world> | null, errors: string[] = []) =>
+const archive = (w: ReturnType<typeof world> | null, errors: string[] = [], now = clock) =>
   createRecordingArchive({
     zoom: store(),
     client: w?.client ?? null,
     drive: w?.drive ?? null,
     logError: (message) => errors.push(message),
-    now: () => clock,
+    now: () => now,
   });
+const dayLater = new Date(clock.getTime() + LATE_FILE_WINDOW_MS + 60_000);
 
 beforeEach(async () => {
   fake = fakeDb();
@@ -167,9 +172,9 @@ describe("recording archive job (F3)", () => {
     expect(await archive(null)()).toEqual({ configured: false });
   });
 
-  it("lists every session once, then moves one chunk per call until the file is done", async () => {
+  it("lists every session once (after the late-file window), then moves one chunk per call", async () => {
     const w = world();
-    expect(await archive(w)()).toMatchObject({
+    expect(await archive(w, [], dayLater)()).toMatchObject({
       listed: 1,
       status: "uploading",
       uploaded: CHUNK_BYTES,
@@ -177,14 +182,14 @@ describe("recording archive job (F3)", () => {
     const files = await store().filesForBookings(["b1"]);
     expect(files.map((f) => f.id).sort()).toEqual(["f-chat", "f-video"]);
     expect(await store().unlistedSessions(5)).toEqual([]);
-    expect(await archive(w)()).toMatchObject({
+    expect(await archive(w, [], dayLater)()).toMatchObject({
       listed: 0,
       status: "uploading",
       uploaded: CHUNK_BYTES * 2,
     });
-    expect(await archive(w)()).toMatchObject({ status: "done" });
-    expect(await archive(w)()).toMatchObject({ file: "f-chat", status: "done" });
-    expect(await archive(w)()).toEqual({ listed: 0, file: null });
+    expect(await archive(w, [], dayLater)()).toMatchObject({ status: "done" });
+    expect(await archive(w, [], dayLater)()).toMatchObject({ file: "f-chat", status: "done" });
+    expect(await archive(w, [], dayLater)()).toEqual({ listed: 0, file: null });
     expect(w.log.filter((l) => l.startsWith("DL https://zoom.us/rec/video"))).toEqual([
       `DL https://zoom.us/rec/video 0-${CHUNK_BYTES - 1}`,
       `DL https://zoom.us/rec/video ${CHUNK_BYTES}-${CHUNK_BYTES * 2 - 1}`,
@@ -193,6 +198,39 @@ describe("recording archive job (F3)", () => {
     expect(w.log).toContain("GET /meetings/s%2F1%3D%3D/recordings");
     expect(isArchived(["s/1=="], await store().filesForBookings(["b1"]))).toBe(true);
     expect(w.log.some((l) => l.startsWith("TRASH"))).toBe(false);
+  });
+
+  it("a session with files Zoom still processes is listed again until they are ready", async () => {
+    fake.docs.set("settings/zoom", { autoDeleteRecordings: true, version: 1 });
+    const zoomFiles = [
+      {
+        id: "f-chat",
+        recording_type: "chat_file",
+        file_extension: "txt",
+        file_size: 10,
+        download_url: "https://zoom.us/rec/chat",
+        status: "completed",
+      },
+      {
+        id: "f-vtt",
+        recording_type: "audio_transcript",
+        file_extension: "vtt",
+        file_size: 5,
+        download_url: "https://zoom.us/rec/vtt",
+        status: "processing",
+      },
+    ];
+    const w = world({ zoomFiles });
+    expect(await archive(w)()).toMatchObject({ listed: 1, file: "f-chat", status: "done" });
+    expect(await store().unlistedSessions(5)).toHaveLength(1);
+    expect(w.log.some((l) => l.startsWith("TRASH"))).toBe(false);
+    zoomFiles[1] = { ...zoomFiles[1], status: "completed" } as (typeof zoomFiles)[number];
+    expect(await archive(w)()).toMatchObject({ listed: 1, file: "f-vtt", status: "done" });
+    expect((await store().filesForBookings(["b1"])).map((f) => f.id).sort()).toEqual([
+      "f-chat",
+      "f-vtt",
+    ]);
+    expect(await store().unlistedSessions(5)).toEqual([]);
   });
 
   it("same name and size = done; a different size is a clash, reported and never overwritten", async () => {

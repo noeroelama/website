@@ -80,7 +80,9 @@ always gets a short answer.
 - Sessions: `recording.completed` adds `recordingSessions/{hex(uuid)}` (bookingId, listedAt,
   trashedAt). cron `recording-archive` lists up to 3 new sessions per call
   (`GET /meetings/{uuid}/recordings`, a UUID starting with "/" or containing "//" encoded twice)
-  into `recordingFiles/{zoomFileId}` (files still "processing" are left for later), then moves
+  into `recordingFiles/{zoomFileId}`. While Zoom still processes a file (often the transcript),
+  the session stays unlisted and is listed again on later calls, for up to 24 hours after the
+  recording; auto-delete waits until the session is fully listed. A 404 lists it empty. Then moves
   **one 8 MB chunk of one file** (an upload in progress first): Zoom download with a byte
   `Range` → Drive resumable upload (`Content-Range`); progress (`uploaded`, session URL) is
   stored, the next call continues.

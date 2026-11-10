@@ -145,15 +145,24 @@ export function createSqlZoomStore(db: Database) {
       });
     },
 
-    async unlistedSessions(limit: number): Promise<Array<{ uuid: string; bookingId: string }>> {
+    async unlistedSessions(
+      limit: number,
+    ): Promise<Array<{ uuid: string; bookingId: string; createdAt: Date }>> {
       const snapshot = await sessions.where("listedAt", "==", null).limit(limit).get();
       return snapshot.docs.map((d) => ({
         uuid: d.get("uuid") as string,
         bookingId: d.get("bookingId") as string,
+        createdAt: toDate(d.get("createdAt")) ?? new Date(0),
       }));
     },
 
-    async listSession(uuid: string, files: readonly RecordingFile[], now: Date): Promise<void> {
+    /** Stores newly seen files; `complete` marks the session listed so it is not asked again. */
+    async listSession(
+      uuid: string,
+      files: readonly RecordingFile[],
+      now: Date,
+      complete = true,
+    ): Promise<void> {
       const ref = sessions.doc(sessionId(uuid));
       await db.runTransaction(async (tx) => {
         const existing = await Promise.all(
@@ -162,8 +171,12 @@ export function createSqlZoomStore(db: Database) {
         files.forEach((file, i) => {
           if (!existing[i]?.exists) tx.set(recordingFiles.doc(safeId.parse(file.id)), { ...file });
         });
-        tx.update(ref, { listedAt: now });
+        if (complete) tx.update(ref, { listedAt: now });
       });
+    },
+
+    async sessionListed(uuid: string): Promise<boolean> {
+      return Boolean((await sessions.doc(sessionId(uuid)).get()).get("listedAt"));
     },
 
     async markSessionTrashed(uuid: string, now: Date): Promise<void> {

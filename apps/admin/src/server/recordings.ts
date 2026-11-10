@@ -32,6 +32,7 @@ export interface RecordingArchiveDeps {
     | "filesForBookings"
     | "markSessionTrashed"
     | "sessionTrashed"
+    | "sessionListed"
     | "readSettings"
   >;
   readonly client: Pick<ZoomClient, "get" | "download" | "trashRecording"> | null;
@@ -41,6 +42,8 @@ export interface RecordingArchiveDeps {
 }
 
 export const MAX_ATTEMPTS = 5;
+/** How long a session is listed again while Zoom still processes some of its files. */
+export const LATE_FILE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function createRecordingArchive(deps: RecordingArchiveDeps) {
   async function listSessions(): Promise<number> {
@@ -76,7 +79,9 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
             updatedAt: now,
           };
         });
-      await deps.zoom.listSession(session.uuid, files, now);
+      const processing = (list.recording_files ?? []).some((f) => f.status === "processing");
+      const fresh = now.getTime() - session.createdAt.getTime() < LATE_FILE_WINDOW_MS;
+      await deps.zoom.listSession(session.uuid, files, now, !(processing && fresh));
     }
     return sessions.length;
   }
@@ -145,6 +150,7 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
   async function trashIfDone(file: RecordingFile, settings: ZoomSettings): Promise<boolean> {
     if (!settings.autoDeleteRecordings || file.status !== "done") return false;
     if (await deps.zoom.sessionTrashed(file.sessionUuid)) return false;
+    if (!(await deps.zoom.sessionListed(file.sessionUuid))) return false;
     const files = (await deps.zoom.filesForBookings([file.bookingId])).filter(
       (f) => f.sessionUuid === file.sessionUuid,
     );
