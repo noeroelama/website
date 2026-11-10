@@ -406,6 +406,37 @@ describe("applying (C3 steps 1-2)", () => {
     expect(await (await upload(ari, pdf)).json()).toEqual({ error: "closed" });
   });
 
+  it("the store itself still refuses files for a closed window or a locked application", async () => {
+    const file = { path: "x.pdf", name: "x.pdf", contentType: "application/pdf" as const, size: 1 };
+    await applying().saveDraft(ari, {
+      recruitmentId,
+      choices: ["finance"],
+      answers: { [questionId]: "Hi" },
+    });
+    expect(await applying().submit(ari, { recruitmentId })).toMatchObject({ ok: true });
+    expect(await web().setPortfolio(recruitmentId, "ari", file, clock)).toEqual({
+      ok: false,
+      error: "locked",
+    });
+    expect(await web().setAnswerFile(recruitmentId, "ari", questionId, file, clock)).toEqual({
+      ok: false,
+      error: "locked",
+    });
+    expect(await web().setPact(recruitmentId, "ari", file, clock)).toEqual({
+      ok: false,
+      error: "locked",
+    });
+    const late = new Date("2026-11-20T00:00:00Z");
+    expect(await web().setPortfolio(recruitmentId, "budi", file, late)).toEqual({
+      ok: false,
+      error: "closed",
+    });
+    expect(await web().setAnswerFile(recruitmentId, "budi", questionId, file, late)).toEqual({
+      ok: false,
+      error: "closed",
+    });
+  });
+
   it("withdraws before a seat is taken", async () => {
     expect(await applying().withdraw(ari, { recruitmentId })).toEqual({
       ok: false,

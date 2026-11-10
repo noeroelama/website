@@ -58,7 +58,6 @@ function splitAmount(text: string): { whole: string; fraction: string } | null {
     decimal === null
       ? [value, ""]
       : [value.slice(0, value.lastIndexOf(decimal)), value.slice(value.lastIndexOf(decimal) + 1)];
-  if (!/^\d*$/.test(fraction)) return null;
   if (/[.,]/.test(whole) && !/^\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*$/.test(whole)) return null;
   return { whole: whole.replace(/[.,]/g, ""), fraction };
 }
