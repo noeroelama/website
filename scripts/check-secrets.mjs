@@ -5,7 +5,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const git = (args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
+const git = (/** @type {string[]} */ args) =>
+  execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
 
 const files = git(["ls-files", "--cached", "--others", "--exclude-standard"])
   .split("\n")
@@ -23,6 +24,7 @@ const FORBIDDEN_NAMES = [
   /^credentials\.json$/,
 ];
 
+/** @type {Array<[RegExp, string]>} */
 const CONTENT_PATTERNS = [
   [/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----(?!\\n\.\.\.)/, "private key"],
   [/"type"\s*:\s*"service_account"/, "Google service account JSON"],

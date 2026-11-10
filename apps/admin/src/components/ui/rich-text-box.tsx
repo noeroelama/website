@@ -287,7 +287,9 @@ function RichTextBox({
     ensureCaret();
     try {
       document.execCommand(cmd, false, arg);
-    } catch {}
+    } catch {
+      /* stale restored range — the live selection still applies */
+    }
     syncEditorText();
     editorRef.current?.focus();
   };

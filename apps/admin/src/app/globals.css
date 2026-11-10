@@ -4693,6 +4693,7 @@ form.admin-toolbar::before {
   display: none;
 }
 
+/* Mobile list cards: begin */
 @media (max-width: 767px) {
   .admin-dark-page :has(> .admin-page-header):has(> .admin-tabs) {
     gap: var(--space-3);
@@ -5212,6 +5213,7 @@ form.admin-toolbar::before {
     padding: 0 var(--space-3);
   }
 }
+/* Mobile list cards: end */
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

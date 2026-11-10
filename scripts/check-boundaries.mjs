@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+/** @type {Record<string, string[]>} */
 const ALLOWED = {
   web: [
     "auth",
@@ -58,6 +59,7 @@ const ALLOWED = {
   db: ["apikeys", "audit", "auth", "config", "domain", "permissions", "security"],
 };
 
+/** @type {Record<string, Record<string, string[]>>} */
 const SUBPATHS = {
   shop: { domain: ["shop", "shared"] },
   web: {
@@ -82,6 +84,7 @@ const SUBPATHS = {
   contracts: { security: ["validation"] },
 };
 
+/** @type {Record<string, Record<string, string>>} */
 const FORBIDDEN_REASON = {
   gateway: {
     auth: "gateway must not import staff auth/session",
@@ -99,14 +102,17 @@ for (const group of ["apps", "packages"]) {
     try {
       const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
       workspaces.push({ group, name, dir, pkg });
-    } catch {}
+    } catch {
+      /* not a workspace */
+    }
   }
 }
 
-const shortName = (pkgName) => pkgName.replace(/^@website\//, "");
-const isInternal = (name) =>
+const shortName = (/** @type {string} */ pkgName) => pkgName.replace(/^@website\//, "");
+const isInternal = (/** @type {string} */ name) =>
   name.startsWith("@website/") || ["web", "admin", "shop", "gateway"].includes(name);
 
+/** @type {Map<string, string[]>} */
 const graph = new Map();
 for (const ws of workspaces) {
   const key = ws.name;
@@ -131,8 +137,8 @@ for (const ws of workspaces) {
 
 const IMPORT_RE =
   /(?:import|export)\s[^'"`]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|^\s*import\s*["']([^"']+)["']/gm;
-const walk = (dir) => {
-  const out = [];
+const walk = (/** @type {string} */ dir) => {
+  /** @type {string[]} */ const out = [];
   for (const entry of readdirSync(dir)) {
     if (["node_modules", ".next", "dist", ".turbo"].includes(entry)) continue;
     const full = join(dir, entry);
@@ -180,7 +186,7 @@ for (const ws of workspaces) {
 
 const visiting = new Set();
 const done = new Set();
-const visit = (node, path) => {
+const visit = (/** @type {string} */ node, /** @type {string[]} */ path) => {
   if (done.has(node)) return;
   if (visiting.has(node)) {
     errors.push(`dependency cycle: ${[...path, node].join(" → ")}`);

@@ -130,7 +130,9 @@ function QrPreview({
         );
       }
       save(canvas.toDataURL("image/png"), "qr-code.png");
-    } catch {}
+    } catch {
+      /* Keep the button inert if generation fails (e.g. content overflows the symbol). */
+    }
   };
 
   const downloadSvg = async () => {
@@ -147,7 +149,9 @@ function QrPreview({
       const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
       save(url, "qr-code.svg");
       URL.revokeObjectURL(url);
-    } catch {}
+    } catch {
+      /* Keep the button inert if generation fails (e.g. content overflows the symbol). */
+    }
   };
 
   return (
@@ -320,7 +324,9 @@ function ToolsList({ initialLinks, canEdit }: ToolsProps) {
             setQrText(content);
           }
           toast.show(isLink ? `Link read: ${content}` : "Text read from QR");
-        } catch {}
+        } catch {
+          /* Non-QR images keep the plain upload behaviour. */
+        }
       };
       img.src = reader.result as string;
     };
