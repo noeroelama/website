@@ -96,6 +96,14 @@ export function withIds(
   return next;
 }
 
+/** The ticked rows that are still shown; bulk actions never act on a row hidden by a filter. */
+export function shownSelection(
+  shown: readonly { id: string }[],
+  picked: ReadonlySet<string>,
+): Set<string> {
+  return new Set(shown.filter((row) => picked.has(row.id)).map((row) => row.id));
+}
+
 export const countText = (count: number, noun: string): string =>
   `${count} ${noun}${count === 1 ? "" : "s"}`;
 

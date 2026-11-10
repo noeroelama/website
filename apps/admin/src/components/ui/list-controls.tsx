@@ -21,6 +21,7 @@ import {
   pageSlice,
   runEach,
   sortRows,
+  shownSelection,
   sortSummary,
   toggled,
   withIds,
@@ -42,7 +43,7 @@ export function useListTable<T extends { id: string }, K extends string>(
   const [filters, setFilters] = useState<ColumnFilters<K>>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [picked, setSelected] = useState<Set<string>>(() => new Set());
 
   /* eslint-disable react-hooks/exhaustive-deps */
   const shown = useMemo(() => filterRows(rows, filters, filterText), [rows, filters]);
@@ -51,6 +52,7 @@ export function useListTable<T extends { id: string }, K extends string>(
     return key === null ? [...shown] : sortRows(shown, (row) => sortValue(row, key), sort.dir);
   }, [shown, sort]);
   /* eslint-enable react-hooks/exhaustive-deps */
+  const selected = useMemo(() => shownSelection(shown, picked), [shown, picked]);
   const view = pageSlice(sorted, page, pageSize);
   const pageIds = view.rows.map((row) => row.id);
   const pageAll = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
