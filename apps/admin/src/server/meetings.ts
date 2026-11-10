@@ -178,10 +178,14 @@ export function createMeetingActions(deps: MeetingDeps) {
           else if (times.startsAt.getTime() < now.getTime()) {
             throw new RuleViolationError("The start time has passed.");
           }
-          const agenda = input.agenda.map((title, i) => ({
-            id: current?.agenda.find((a) => a.title === title)?.id ?? `${i}-${deps.uuid()}`,
-            title,
-          }));
+          // Each stored item keeps its id at most once, so two items with the same title keep
+          // two ids (and their notes) instead of collapsing into one.
+          const unused = [...(current?.agenda ?? [])];
+          const agenda = input.agenda.map((title, i) => {
+            const kept = unused.findIndex((a) => a.title === title);
+            const [match] = kept >= 0 ? unused.splice(kept, 1) : [];
+            return { id: match?.id ?? `${i}-${deps.uuid()}`, title };
+          });
           return {
             periodId: current?.periodId ?? periodId,
             title: input.title,

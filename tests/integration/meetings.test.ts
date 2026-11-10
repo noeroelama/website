@@ -317,6 +317,26 @@ describe("meetings (F4)", () => {
 });
 
 describe("meeting edits and lists (F4)", () => {
+  it("two agenda items with the same title keep two ids", async () => {
+    const m = await create({}, unitPlanner);
+    const before = await store().get(m.id);
+    const saved = await actions().save(...as(unitPlanner))({
+      ...input,
+      id: m.id,
+      version: m.version,
+      periodId: "p1",
+      agenda: ["Report", "Budget", "Budget"],
+      participants: [
+        { email: "chair@example.org", role: "chair" },
+        { email: "sec@example.org", role: "secretary" },
+      ],
+    });
+    if (!saved.ok) throw new Error(JSON.stringify(saved));
+    const ids = (await store().get(m.id))?.agenda.map((a) => a.id) ?? [];
+    expect(ids[1]).toBe(before?.agenda[1]?.id);
+    expect(new Set(ids).size).toBe(3);
+  });
+
   it("edits keep agenda ids of unchanged items and stay inside the editor's units", async () => {
     const m = await create({}, unitPlanner);
     const before = await store().get(m.id);
