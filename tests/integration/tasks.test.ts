@@ -139,6 +139,7 @@ describe("My Tasks (G1)", () => {
       ["action:a2", true, false],
       ["disposition:in1:d2", true, false],
     ]);
+    expect(mine.find((t) => t.kind === "disposition")?.href).toBe("/letters?tab=incoming");
     period = null;
     expect((await tasks().mine("rina")).map((t) => t.id)).toEqual(["action:a1", "action:a2"]);
   });

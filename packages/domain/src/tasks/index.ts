@@ -61,7 +61,7 @@ export function dispositionTasks(
         due: d.dueDate,
         done: d.status === "done",
         overdue: overdue(d.dueDate, d.status === "done", today),
-        href: `/incoming`,
+        href: "/letters?tab=incoming",
         orgUnitPath: d.toOrgUnitId ? unitPathOf(d.toOrgUnitId) : [],
         page: "incoming" as const,
       })),
