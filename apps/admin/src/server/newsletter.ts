@@ -117,6 +117,13 @@ function optInMessage(to: string, link: string): Message {
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
+/** Every subscriber, not the admin list's page of 2000. */
+const EXPORT_LIMIT = 1_000_000;
+
+/** Quotes a CSV cell and defuses spreadsheet formulas (=, +, -, @), as the finance export does. */
+const csvCell = (value: string) =>
+  `"${(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value).replace(/"/g, '""')}"`;
+
 export function createNewsletterActions(deps: NewsletterDeps) {
   const save = createGuardedAction({
     permission: "newsletter.edit",
@@ -310,7 +317,7 @@ export function createNewsletterActions(deps: NewsletterDeps) {
     permission: "newsletter.export",
     input: z.object({}).strict(),
     handler: async (_input, principal) => {
-      const rows = await deps.subscribers.listForAdmin();
+      const rows = await deps.subscribers.listForAdmin(EXPORT_LIMIT);
       deps.logExport(principal.userId, rows.length);
       const csv = (row: SubscriberRow) =>
         [
@@ -320,7 +327,7 @@ export function createNewsletterActions(deps: NewsletterDeps) {
           row.createdAt.toISOString(),
           row.confirmedAt?.toISOString() ?? "",
         ]
-          .map((v) => `"${v.replace(/"/g, '""')}"`)
+          .map(csvCell)
           .join(",");
       return { csv: ["email,name,status,subscribed,confirmed", ...rows.map(csv)].join("\r\n") };
     },

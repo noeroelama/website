@@ -229,6 +229,13 @@ describe("newsletter campaigns", () => {
       expect.stringContaining('"user2@example.org","","pending"'),
     ]);
     expect(exports).toEqual([["staff-1", 2]]);
+
+    const [key, doc] = [...fake.docs.entries()].find(
+      ([p, d]) => p.startsWith("subscribers/") && d["email"] === "user1@example.org",
+    ) as [string, Record<string, unknown>];
+    fake.docs.set(key, { ...doc, name: '=HYPERLINK("https://evil.example","x")' });
+    const guarded = await actions().exportSubscribers(...as(sender))({});
+    expect(guarded.ok && guarded.data.csv).toContain(`"'=HYPERLINK(""https://evil.example""`);
   });
 
   it("every campaign e-mail has an open pixel and tracked links; Send Test has neither", async () => {
