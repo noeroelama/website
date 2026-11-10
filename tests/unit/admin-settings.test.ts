@@ -38,5 +38,8 @@ describe("dashboard: integration status (L3)", () => {
       expect(text).not.toContain(value);
     }
     expect(integrationStatus({}).messagingMode).toBe("log");
+    expect(integrationStatus({ RESEND_API_KEY: "re_x" }).integrations).toContainEqual(
+      expect.objectContaining({ name: "E-mail (Resend)", missing: ["EMAIL_FROM_TRANSACTIONAL"] }),
+    );
   });
 });

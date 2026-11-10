@@ -41,7 +41,11 @@ const INTEGRATIONS: ReadonlyArray<{
     anyOf: [["GOPPI_BASE_URL", "GOPPI_API_KEY"], ["SHORTLINK_API_KEY"]],
   },
   { name: "Calendar feeds", section: "other", anyOf: [["CALENDAR_FEED_SIGNING_SECRET"]] },
-  { name: "E-mail (Resend)", section: "other", anyOf: [["RESEND_API_KEY"]] },
+  {
+    name: "E-mail (Resend)",
+    section: "other",
+    anyOf: [["RESEND_API_KEY", "EMAIL_FROM_TRANSACTIONAL"]],
+  },
 ];
 
 export function integrationStatus(env: Readonly<Record<string, unknown>>) {
