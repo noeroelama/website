@@ -1,4 +1,4 @@
-import type { Language } from "@/i18n/dictionaries";
+import type { Language } from "../i18n/dictionaries";
 
 export function formatEventTime(date: Date, timeZone: string, language: Language): string {
   return new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-GB", {
