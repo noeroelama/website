@@ -259,6 +259,7 @@ describe("meetings (F4)", () => {
     expect((await store().get(m.id))?.attendance["member"]).toEqual(once);
     expect(await attend("member", "ZZZZZZ")).toEqual({ ok: false, error: "invalid" });
     expect(await attend("member", "bad")).toEqual({ ok: false, error: "invalid" });
+    expect((await store().get(m.id))?.version).toBe(m.version);
 
     clock = new Date("2026-11-10T10:00:00Z");
     const removed = await deleteExpired(db(), clock);

@@ -165,8 +165,19 @@ export function withQuestionIds(
   return questions.map((q) => ({ ...q, id: q.id || newQuestionId(uuid()) }));
 }
 
+function sortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortedKeys);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, sortedKeys((value as Record<string, unknown>)[key])]),
+  );
+}
+
+/** Compares question lists by content: key order differs between input and MySQL JSON. */
 export function sameQuestions(a: readonly Question[], b: readonly Question[]): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(sortedKeys(a)) === JSON.stringify(sortedKeys(b));
 }
 
 export type VersionPlan =

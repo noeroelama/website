@@ -170,7 +170,8 @@ export function letterActions(
     }
   }
   if (can.issue && status === "approved") actions.push("issue");
-  if (can.issue && status === "awaiting_file" && item.upload) actions.push("issueFile");
+  if (can.issue && status === "awaiting_file" && item.upload && item.placement)
+    actions.push("issueFile");
   if (can.cancel && (status === "issued" || status === "awaiting_file")) actions.push("cancel");
   return actions;
 }

@@ -72,6 +72,10 @@ export function letterTypeSnapshot(t: LetterTypeFields): Snapshot {
 }
 
 export function createSqlLetterTypeStore(db: Database) {
+  const hasNumberedLetters = async (typeId: string) =>
+    (await db.collection("letters").where("typeId", "==", typeId).get()).docs.some(
+      (doc) => typeof doc.get("contentDigest") === "string",
+    );
   const store = createSluggedStore<LetterType>(db, {
     collection: "letterTypes",
     slug: {
@@ -103,7 +107,21 @@ export function createSqlLetterTypeStore(db: Database) {
       ) => AuditEvent,
       now: Date,
     ) {
-      return store.write(id, version, () => ({ ...input, deletedAt: null }), auditFor, now);
+      return store.write(
+        id,
+        version,
+        async (current) => {
+          if (current && current.code !== input.code && (await hasNumberedLetters(current.id))) {
+            throw new RuleViolationError(
+              "Letters were already numbered with this code; their verification depends on it. " +
+                "Add a new letter type instead.",
+            );
+          }
+          return { ...input, deletedAt: null };
+        },
+        auditFor,
+        now,
+      );
     },
   };
 }

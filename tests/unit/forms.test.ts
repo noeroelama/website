@@ -172,6 +172,9 @@ describe("version freezing (C1)", () => {
       number: 2,
     });
     expect(sameQuestions([q1, q2], [q2, q1])).toBe(false);
+    const reordered = Object.fromEntries(Object.entries(q1).reverse()) as typeof q1;
+    expect(sameQuestions([q1], [reordered])).toBe(true);
+    expect(planVersion(version(3, [reordered], true), [q1])).toEqual({ write: "none", number: 3 });
   });
 });
 

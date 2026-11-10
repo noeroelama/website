@@ -10,6 +10,7 @@ import {
   offerExpired,
   portfolioRequired,
   revisionDocId,
+  holdsSeat,
   seatCounterId,
   takeSeat,
   assertBookable,
@@ -475,7 +476,7 @@ export function createSqlApplicationStore(db: Database) {
           ? counters.doc(seatCounterId(recruitment.id, decision.offer.orgUnitId))
           : null;
         const releaseCounter =
-          current.status === "accepted" && current.offer
+          holdsSeat(current.status) && !holdsSeat(decision.status) && current.offer
             ? counters.doc(seatCounterId(recruitment.id, current.offer.orgUnitId))
             : null;
         const [offerSeat, releaseSeat] = await Promise.all([

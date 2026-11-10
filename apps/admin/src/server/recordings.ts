@@ -8,7 +8,7 @@ import {
   type ZoomSettings,
 } from "@website/domain/zoom";
 import type { DriveClient } from "./drive";
-import type { ZoomClient } from "./zoom-client";
+import { ZoomApiError, type ZoomClient } from "./zoom-client";
 
 interface ZoomRecordingList {
   recording_files?: Array<{
@@ -49,9 +49,21 @@ export function createRecordingArchive(deps: RecordingArchiveDeps) {
     for (const session of sessions) {
       const booking = await deps.zoom.get(session.bookingId);
       if (!booking) continue;
-      const list = await client.get<ZoomRecordingList>(
-        `/meetings/${zoomUuidPath(session.uuid)}/recordings`,
-      );
+      let list: ZoomRecordingList;
+      try {
+        list = await client.get<ZoomRecordingList>(
+          `/meetings/${zoomUuidPath(session.uuid)}/recordings`,
+        );
+      } catch (error) {
+        deps.logError("recording listing failed", {
+          sessionUuid: session.uuid,
+          error: String(error),
+        });
+        if (error instanceof ZoomApiError && error.status === 404) {
+          await deps.zoom.listSession(session.uuid, [], deps.now());
+        }
+        continue;
+      }
       const now = deps.now();
       const files: RecordingFile[] = (list.recording_files ?? [])
         .filter((f) => f.id && f.download_url && f.status !== "processing")
