@@ -10,6 +10,25 @@ const PAGE = /^\/[\w\-./~%@]{0,199}$/;
 const HOST = /^[a-z0-9.-]{1,100}$/;
 const BOT = /bot|crawl|spider|slurp|preview|headless|lighthouse/i;
 
+/** Sections of the site whose pages are counted; content sections keep their item slug. */
+const WITH_ITEMS = new Set([
+  "news",
+  "events",
+  "gallery",
+  "recruitment",
+  "newsletter",
+  "activities",
+]);
+const SECTIONS = new Set([...WITH_ITEMS, "about", "map", "privacy", "terms", "verify", "attend"]);
+
+/** The page as counted: a known section, plus one item slug where the section has items. */
+export function countedPage(path: string): string | null {
+  const [section = "", item] = path.split("?")[0]?.split("/").filter(Boolean) ?? [];
+  if (section === "") return "/";
+  if (!SECTIONS.has(section)) return null;
+  return WITH_ITEMS.has(section) && item ? `/${section}/${item}` : `/${section}`;
+}
+
 function referrerHost(value: unknown): string | null {
   if (typeof value !== "string" || !URL.canParse(value)) return null;
   const url = new URL(value);
@@ -26,9 +45,11 @@ export function pageViewHit(
   const ua = headers.get("user-agent") ?? "";
   if (!ua || BOT.test(ua)) return null;
   if (typeof input.page !== "string" || !PAGE.test(input.page)) return null;
+  const page = countedPage(input.page);
+  if (!page) return null;
   const day = now.toISOString().slice(0, 10);
   return {
-    page: input.page,
+    page,
     // The day is in the hash, so one visitor cannot be followed from one day to the next.
     visitor: keyedHash("page-view", `${day}|${clientIp(headers)}|${ua}`, secret),
     mobile: /Mobi|Android|iPhone|iPad/i.test(ua),

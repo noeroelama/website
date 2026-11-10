@@ -45,6 +45,11 @@ describe("page views: web hit", () => {
     expect(hit("/", desktop, undefined, "javascript:alert(1)")?.referrer).toBeNull();
     expect(hit("/", desktop, undefined, "not a url")?.referrer).toBeNull();
     expect(hit("/", desktop, undefined, 42)?.referrer).toBeNull();
+    expect(hit("/anything-a-client-sends", desktop)).toBeNull();
+    expect(hit("/account/profile", desktop)).toBeNull();
+    expect(hit("/news/abc/extra/levels", desktop)?.page).toBe("/news/abc");
+    expect(hit("/verify/8F3KM-QRTVW", desktop)?.page).toBe("/verify");
+    expect(hit("/about", desktop)?.page).toBe("/about");
   });
 });
 
